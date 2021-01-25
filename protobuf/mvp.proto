@@ -1,0 +1,155 @@
+syntax = "proto3";
+
+package biatob.proto.mvp;
+
+enum Void {
+  VOID = 0;
+}
+
+enum Pronouns {
+  THEY_THEM = 0;
+  SHE_HER = 1;
+  HE_HIM = 2;
+}
+
+message Auth {
+  oneof auth_kind {
+    string magic_token = 1;
+  }
+}
+message AuthError {
+  oneof auth_error_kind {
+    Void invalid_token = 1;
+  }
+}
+
+message SignUpRequest {
+  string email = 1;
+  string password = 2;
+  string display_name = 3;
+  Pronouns pronouns = 4;
+}
+message SignUpResponse {
+  oneof signup_result {
+    Void ok = 1;
+    Error error = 2;
+  }
+  message Error {
+    string catchall = 1;
+    Void email_already_registered = 2;
+  }
+}
+
+message CertaintyRange {
+  float low_logodds = 1;
+  float high_logodds = 2;
+}
+message MarketPrivacy {
+  oneof privacy_kind {
+    Void all_trusted_by_author = 1;
+    Emails specific_users = 2;
+  }
+  message Emails {
+    repeated string emails = 1;
+  }
+}
+message CreateMarketRequest {
+  Auth auth = 1;
+  string question = 2;
+  MarketPrivacy privacy = 3;
+  CertaintyRange certainty = 4;
+  float maximum_stake = 5;
+  uint64 open_seconds = 6;
+  string special_rules = 7;
+}
+message CreateMarketResponse {
+  oneof create_market_result {
+    uint64 new_market_id = 1;
+    Error error = 2;
+  }
+  message Error {
+    string catchall = 1;
+    AuthError auth_error = 2;
+  }
+}
+
+message GetMarketRequest {
+  Auth auth = 1;
+  uint64 market_id = 2;
+}
+message GetMarketResponse {
+  oneof get_market_result {
+    Market market = 1;
+    Error error = 2;
+  }
+  message Market {
+    string question = 1;
+    CertaintyRange certainty = 2;
+    float maximum_stake = 3;
+    float remaining_yes_stake = 4;
+    float remaining_no_stake = 5;
+    uint64 created_unixtime = 6;
+    uint64 closes_unixtime = 7;
+    string special_rules = 8;
+    UserInfo creator = 9;
+  }
+  message Error {
+    string catchall = 1;
+    AuthError auth_error = 2;
+  }
+}
+message UserInfo {
+  string display_name = 1;
+  Pronouns pronouns = 2;
+}
+
+message StakeRequest {
+  Auth auth = 1;
+  uint64 market_id = 2;
+  bool expected_resolution = 3;
+  float stake = 4;
+}
+message StakeResponse {
+  oneof stake_result {
+    Void ok = 1;
+    Error error = 2;
+  }
+  message Error {
+    string catchall = 1;
+    AuthError auth_error = 2;
+  }
+}
+
+message GetUserRequest {
+  Auth auth = 1;
+  string email = 2;
+}
+message GetUserResponse {
+  oneof get_user_result {
+    User user = 1;
+    Error error = 2;
+  }
+  message User {
+    bool trusted_by_requester = 1;
+    bool trusts_requester = 2;
+  }
+  message Error {
+    string catchall = 1;
+    AuthError auth_error = 2;
+  }
+}
+
+message MarkTrustedRequest {
+  Auth auth = 1;
+  string email_to_trust = 2;
+}
+message MarkTrustedResponse {
+  oneof result {
+    Void ok = 1;
+    Error error = 2;
+  }
+  message Error {
+    string catchall = 1;
+    AuthError auth_error = 2;
+  }
+}
