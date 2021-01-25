@@ -24,15 +24,14 @@ type alias State =
 
 view : Config msg -> State -> Html msg
 view config state =
-
   H.div []
     [ H.h2 [] [H.text state.market.question]
     , H.p []
         [ H.text (must "no creator given" state.market.creator).displayName
         , H.text " assigned this a "
-        , state.market.certainty |> must "no certainty given" |> .lowLogodds  |> logoddsToProb |> (*) 100 |> round |> String.fromInt |> H.text
+        , state.market.certainty |> must "no certainty given" |> .low |> (*) 100 |> round |> String.fromInt |> H.text
         , H.text "-"
-        , state.market.certainty |> must "no certainty given" |> .highLogodds |> logoddsToProb |> (*) 100 |> round |> String.fromInt |> H.text
+        , state.market.certainty |> must "no certainty given" |> .high |> (*) 100 |> round |> String.fromInt |> H.text
         , H.text "% chance, and staked $"
         , state.market.maximumStake |> round |> String.fromInt |> H.text
         , H.text "."

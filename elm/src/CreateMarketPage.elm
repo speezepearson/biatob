@@ -73,7 +73,7 @@ previewConfig =
 formStateToProto : Form.State -> Pb.GetMarketResponseMarket
 formStateToProto form =
   { question = Form.question form
-  , certainty = Just {lowLogodds=0, highLogodds=0} -- TODO
+  , certainty = Just {low = Form.lowP form |> Maybe.withDefault 0, high = Form.highP form |> Maybe.withDefault 1}
   , maximumStake = Form.stake form |> Maybe.withDefault 0
   , remainingYesStake = Form.stake form |> Maybe.withDefault 0
   , remainingNoStake = Form.stake form |> Maybe.withDefault 0

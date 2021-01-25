@@ -1,4 +1,4 @@
-module CreateMarketForm exposing (State, Config, view, initStateForDemo, question, stake, lowPYes, lowPNo, openForSeconds, specialRules)
+module CreateMarketForm exposing (State, Config, view, initStateForDemo, question, stake, lowPYes, lowPNo, openForSeconds, specialRules, lowP, highP)
 
 import Browser
 import Html as H exposing (Html)
@@ -33,9 +33,13 @@ question {questionField} = questionField
 stake : State -> Maybe Float
 stake {stakeField} = String.toFloat stakeField
 lowPYes : State -> Maybe Float
-lowPYes {lowPYesField} = String.toFloat lowPYesField
+lowPYes {lowPYesField} = String.toFloat lowPYesField |> Maybe.map (\n -> n/100)
 lowPNo : State -> Maybe Float
-lowPNo {lowPNoField} = String.toFloat lowPNoField
+lowPNo {lowPNoField} = String.toFloat lowPNoField |> Maybe.map (\n -> n/100)
+lowP : State -> Maybe Float
+lowP state = lowPYes state
+highP : State -> Maybe Float
+highP state = lowPNo state |> Maybe.map (\p -> 1 - p)
 openForSeconds : State -> Maybe Int
 openForSeconds {openForNField, openForUnitField} =
   String.toInt openForNField
@@ -63,11 +67,20 @@ isValidOpenForNField s =
     Nothing -> False
 
 outlineIfInvalid : Bool -> H.Attribute msg
-outlineIfInvalid isValid =
-  HA.style "outline" (if isValid then "none" else "2px solid red")
+outlineIfInvalid isInvalid =
+  HA.style "outline" (if isInvalid then "2px solid red" else "none")
 
 view : Config msg -> State -> Html msg
 view config state =
+  let
+    invalidStake = stake state |> Maybe.map (\n -> n <= 0 || n > maxStake) |> Maybe.withDefault False
+    invalidLowPYes = lowPYes state |> Maybe.map (\n -> n < 0 || n > 1) |> Maybe.withDefault False
+    invalidLowPNo = lowPNo state |> Maybe.map (\n -> n < 0 || n > 1) |> Maybe.withDefault False
+    invalidPsRel = case (lowPYes state, lowPNo state) of
+      (Just lpy, Just lpn) -> lpy + lpn >= 1
+      _ -> False
+    invalidOpenForN = openForSeconds state |> Maybe.map (\n -> n < 0) |> Maybe.withDefault False
+  in
   H.div []
     [ H.ul []
         [ H.li [] 
@@ -87,7 +100,7 @@ view config state =
                 [ HA.type_ "number", HA.min "0", HA.max (String.fromInt maxStake)
                 , HA.value state.stakeField
                 , HE.onInput (\s -> config.setState {state | stakeField = s})
-                , outlineIfInvalid (isValidStakeStr state.stakeField)
+                , outlineIfInvalid invalidStake
                 ] []
             ]
         , H.li []
@@ -103,7 +116,7 @@ view config state =
                       , HA.style "width" "5em"
                       , HA.value state.lowPYesField
                       , HE.onInput (\s -> config.setState {state | lowPYesField = s})
-                      , outlineIfInvalid (isValidPercentProbabilityStr state.lowPYesField)
+                      , outlineIfInvalid invalidLowPYes
                       ] []                  
                   ]
                 , H.li []
@@ -115,7 +128,7 @@ view config state =
                       , HA.style "width" "5em"
                       , HA.value state.lowPNoField
                       , HE.onInput (\s -> config.setState {state | lowPNoField = s})
-                      , outlineIfInvalid (isValidPercentProbabilityStr state.lowPNoField)
+                      , outlineIfInvalid invalidLowPNo
                       ] []
                   ]
                 ]
@@ -123,7 +136,7 @@ view config state =
             , case (String.toFloat state.lowPYesField, String.toFloat state.lowPNoField) of
                 (Just lpy, Just lpn) ->
                   H.strong
-                    [ outlineIfInvalid (lpy + lpn < 100)
+                    [ outlineIfInvalid invalidPsRel
                     ]
                     [ lpy                  |> round |> String.fromInt |> H.text
                     , H.text "-"
@@ -141,7 +154,7 @@ view config state =
                 , HA.style "width" "5em"
                 , HA.value state.openForNField
                 , HE.onInput (\s -> config.setState {state | openForNField = s})
-                , outlineIfInvalid (isValidOpenForNField state.openForNField)
+                , outlineIfInvalid invalidOpenForN
                 ] []
             , H.select
                 [ HE.onInput (\s -> config.setState {state | openForUnitField = if s=="days" then Days else Weeks})

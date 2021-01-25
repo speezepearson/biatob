@@ -41,8 +41,8 @@ message SignUpResponse {
 }
 
 message CertaintyRange {
-  float low_logodds = 1;
-  float high_logodds = 2;
+  float low = 1;
+  float high = 2;
 }
 message MarketPrivacy {
   oneof privacy_kind {
