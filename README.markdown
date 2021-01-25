@@ -13,3 +13,4 @@ TODO
 - consider allowing "soft resolutions" so a market can resolve "80% yes"
 - figure out an accounting system that track how many "points" people owe each other
 - figure out how users can undo accidental bets
+- figure out how to round things properly for display
