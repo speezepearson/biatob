@@ -8,7 +8,7 @@ import Time
 import Html exposing (s)
 
 import Biatob.Proto.Mvp as Pb
-import Utils exposing (they, them, their, pluralize, must)
+import Utils exposing (they, them, their, pluralize, capitalize, must)
 
 type alias Config msg =
   { setState : State -> msg
@@ -31,10 +31,14 @@ view config state =
 
     yesStakeMultiplier = Debug.log (Debug.toString certainty) (1 - certainty.high) / certainty.high
     noStakeMultiplier = certainty.low / (1 - certainty.low)
-    maxYesStake = state.market.maximumStake / yesStakeMultiplier |> floor
-    maxNoStake = state.market.maximumStake / noStakeMultiplier |> floor
-    invalidStakeYes = state.stakeYesField |> String.toInt |> Maybe.map (\n -> n < 0 || n > maxYesStake) |> Maybe.withDefault True
-    invalidStakeNo = state.stakeNoField |> String.toInt |> Maybe.map (\n -> n < 0 || n > maxNoStake) |> Maybe.withDefault True
+    maxYesStake = state.market.remainingYesStake / yesStakeMultiplier |> floor
+    maxNoStake = state.market.remainingNoStake / noStakeMultiplier |> floor
+    (invalidStakeYes, emphasizeRemainingStakeYes) = case String.toInt state.stakeYesField of
+      Nothing -> (True, False)
+      Just n -> (n < 0 || n > maxYesStake, n > maxYesStake)
+    (invalidStakeNo, emphasizeRemainingStakeNo) = case String.toInt state.stakeNoField of
+      Nothing -> (True, False)
+      Just n -> (n < 0 || n > maxNoStake, n > Debug.log "mns" maxNoStake)
   in
   H.div []
     [ H.h2 [] [H.text state.market.question]
@@ -47,6 +51,11 @@ view config state =
         , H.text "% chance, and staked $"
         , state.market.maximumStake |> round |> String.fromInt |> H.text
         , H.text "."
+        , H.br [] []
+        , H.strong [Utils.outlineIfInvalid emphasizeRemainingStakeYes] [H.text <| "$" ++ String.fromFloat state.market.remainingYesStake]
+        , H.text " remain staked on Yes, "
+        , H.strong [Utils.outlineIfInvalid emphasizeRemainingStakeNo] [H.text <| "$" ++ String.fromFloat state.market.remainingNoStake]
+        , H.text " remain staked on No."
         , H.br [] []
         , H.text "Market opened "
         , state.market.createdUnixtime |> (*) 1000 |> Time.millisToPosix
@@ -67,7 +76,7 @@ view config state =
             , Utils.outlineIfInvalid invalidStakeYes
             ] []
         , H.text " against Spencer's "
-        , H.strong [] [H.text "$", state.stakeYesField |> String.toFloat |> Maybe.map ((*) yesStakeMultiplier >> min state.market.maximumStake >> floor >> String.fromInt) |> Maybe.withDefault "???" |> H.text]
+        , H.strong [Utils.outlineIfInvalid emphasizeRemainingStakeYes] [H.text "$", state.stakeYesField |> String.toFloat |> Maybe.map ((*) yesStakeMultiplier >> floor >> String.fromInt) |> Maybe.withDefault "???" |> H.text]
         , H.text " that this will resolve Yes? "
         , H.button
           [ HE.onClick <|
@@ -86,7 +95,7 @@ view config state =
             , Utils.outlineIfInvalid invalidStakeNo
             ] []
         , H.text " against Spencer's "
-        , H.strong [] [H.text "$", state.stakeNoField |> String.toFloat |> Maybe.map ((*) noStakeMultiplier >> min state.market.maximumStake >> floor >> String.fromInt) |> Maybe.withDefault "???" |> H.text]
+        , H.strong [Utils.outlineIfInvalid emphasizeRemainingStakeNo] [H.text "$", state.stakeNoField |> String.toFloat |> Maybe.map ((*) noStakeMultiplier >> floor >> String.fromInt) |> Maybe.withDefault "???" |> H.text]
         , H.text " that this will resolve No? "
         , H.button
           [ HE.onClick <|
@@ -105,7 +114,7 @@ initStateForDemo =
       , certainty = Just {low = 0.8, high = 0.9}
       , maximumStake = 100
       , remainingYesStake = 100
-      , remainingNoStake = 100
+      , remainingNoStake = 50
       , createdUnixtime = 0 -- TODO
       , closesUnixtime = 86400
       , specialRules = "If the CDC doesn't publish statistics on this, I'll fall back to some other official organization, like the WHO; failing that, I'll look for journal papers on U.S. cases, and go with a consensus if I find one; failing that, the market is unresolvable."

@@ -6,6 +6,10 @@ import Html.Attributes as HA
 import Biatob.Proto.Mvp as Pb
 
 
+capitalize : String -> String
+capitalize s =
+  String.toUpper (String.left 1 s) ++ String.dropLeft 1 s
+
 must : String -> Maybe a -> a
 must errmsg mx =
   case mx of
