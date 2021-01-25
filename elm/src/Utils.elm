@@ -1,5 +1,8 @@
 module Utils exposing (..)
 
+import Html as H
+import Html.Attributes as HA
+
 import Biatob.Proto.Mvp as Pb
 
 
@@ -8,11 +11,6 @@ must errmsg mx =
   case mx of
     Just x -> x
     Nothing -> Debug.todo errmsg
-
-logoddsToProb : Float -> Float
-logoddsToProb logodds =
-  let odds = e^logodds
-  in odds / (odds+1)
 
 they : Pb.Pronouns -> String
 they pronouns = case pronouns of
@@ -41,3 +39,7 @@ pluralize pronouns (singular, plural) = case pronouns of
   Pb.SheHer -> singular
   Pb.TheyThem -> plural
   Pb.PronounsUnrecognized_ _ -> plural
+
+outlineIfInvalid : Bool -> H.Attribute msg
+outlineIfInvalid isInvalid =
+  HA.style "outline" (if isInvalid then "2px solid red" else "none")

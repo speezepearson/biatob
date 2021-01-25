@@ -26,7 +26,8 @@ initForDemo =
   { form = Form.initStateForDemo
   , preview =
       { now = Time.millisToPosix 0
-      , stakeFields = { yes = "0" , no = "0" }
+      , stakeYesField = "0"
+      , stakeNoField = "0"
       , market = formStateToProto Form.initStateForDemo
       }
   }

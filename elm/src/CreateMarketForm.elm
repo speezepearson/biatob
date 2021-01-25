@@ -4,6 +4,9 @@ import Browser
 import Html as H exposing (Html)
 import Html.Attributes as HA
 import Html.Events as HE
+
+import Utils
+
 howToWriteGoodBetsUrl = "http://example.com/TODO"
 maxStake = 5000
 
@@ -66,10 +69,6 @@ isValidOpenForNField s =
     Just n -> 0 <= n
     Nothing -> False
 
-outlineIfInvalid : Bool -> H.Attribute msg
-outlineIfInvalid isInvalid =
-  HA.style "outline" (if isInvalid then "2px solid red" else "none")
-
 view : Config msg -> State -> Html msg
 view config state =
   let
@@ -100,7 +99,7 @@ view config state =
                 [ HA.type_ "number", HA.min "0", HA.max (String.fromInt maxStake)
                 , HA.value state.stakeField
                 , HE.onInput (\s -> config.setState {state | stakeField = s})
-                , outlineIfInvalid invalidStake
+                , Utils.outlineIfInvalid invalidStake
                 ] []
             ]
         , H.li []
@@ -116,7 +115,7 @@ view config state =
                       , HA.style "width" "5em"
                       , HA.value state.lowPYesField
                       , HE.onInput (\s -> config.setState {state | lowPYesField = s})
-                      , outlineIfInvalid invalidLowPYes
+                      , Utils.outlineIfInvalid invalidLowPYes
                       ] []                  
                   ]
                 , H.li []
@@ -128,7 +127,7 @@ view config state =
                       , HA.style "width" "5em"
                       , HA.value state.lowPNoField
                       , HE.onInput (\s -> config.setState {state | lowPNoField = s})
-                      , outlineIfInvalid invalidLowPNo
+                      , Utils.outlineIfInvalid invalidLowPNo
                       ] []
                   ]
                 ]
@@ -136,7 +135,7 @@ view config state =
             , case (String.toFloat state.lowPYesField, String.toFloat state.lowPNoField) of
                 (Just lpy, Just lpn) ->
                   H.strong
-                    [ outlineIfInvalid invalidPsRel
+                    [ Utils.outlineIfInvalid invalidPsRel
                     ]
                     [ lpy                  |> round |> String.fromInt |> H.text
                     , H.text "-"
@@ -144,7 +143,7 @@ view config state =
                     , H.text "%"
                     ]
                 _ ->
-                  H.strong [outlineIfInvalid False] [H.text "???%"]
+                  H.strong [Utils.outlineIfInvalid False] [H.text "???%"]
             , H.text " likely."
             ]
         , H.li []
@@ -154,7 +153,7 @@ view config state =
                 , HA.style "width" "5em"
                 , HA.value state.openForNField
                 , HE.onInput (\s -> config.setState {state | openForNField = s})
-                , outlineIfInvalid invalidOpenForN
+                , Utils.outlineIfInvalid invalidOpenForN
                 ] []
             , H.select
                 [ HE.onInput (\s -> config.setState {state | openForUnitField = if s=="days" then Days else Weeks})
