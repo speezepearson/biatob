@@ -13,8 +13,7 @@ import Time
 import Html exposing (s)
 
 import Biatob.Proto.Mvp as Pb
-import Utils exposing (they, them, their, pluralize, capitalize, must)
-import Utils
+import Utils exposing (must)
 
 epsilon = 0.0000001 -- 🎵 I hate floating-point arithmetic 🎶
 
@@ -61,8 +60,8 @@ view config state =
           let winnings = state.userPosition.winCentsIfYes in
           if winnings == 0 then H.text "" else
           H.div []
-            [ H.text "This market has resolved YES. You "
-            , H.text <| if winnings > 0 then "are owed " else "owe "
+            [ H.text "This market has resolved YES. "
+            , H.text <| if winnings > 0 then creator.displayName ++ " owes you " else ("you owe " ++ creator.displayName ++ " ")
             , H.text <| Utils.formatCents <| abs winnings
             , H.text <| "."
             ]
@@ -70,18 +69,18 @@ view config state =
           let winnings = state.userPosition.winCentsIfNo in
           if winnings == 0 then H.text "" else
           H.div []
-            [ H.text "This market has resolved NO. You "
-            , H.text <| if winnings > 0 then "are owed " else "owe "
+            [ H.text "This market has resolved NO. "
+            , H.text <| if winnings > 0 then creator.displayName ++ " owes you " else ("you owe " ++ creator.displayName ++ " ")
             , H.text <| Utils.formatCents <| abs winnings
             , H.text <| "."
             ]
         Pb.ResolutionNoneYet ->
           H.div []
-            [ H.text "This market hasn't resolved yet. If it resolves Yes, you will "
-            , H.text <| if state.userPosition.winCentsIfYes > 0 then "be owed " else "owe "
+            [ H.text "This market hasn't resolved yet. If it resolves Yes, "
+            , H.text <| if state.userPosition.winCentsIfYes > 0 then creator.displayName ++ " will owe you " else ("you will owe " ++ creator.displayName ++ " ")
             , H.text <| Utils.formatCents <| abs state.userPosition.winCentsIfYes
-            , H.text <| "; if No, you will "
-            , H.text <| if state.userPosition.winCentsIfNo > 0 then "be owed " else "owe "
+            , H.text <| "; if No, "
+            , H.text <| if state.userPosition.winCentsIfNo > 0 then creator.displayName ++ " will owe you " else ("you will owe " ++ creator.displayName ++ " ")
             , H.text <| Utils.formatCents <| abs state.userPosition.winCentsIfNo
             , H.text <| "."
             ]
@@ -167,7 +166,7 @@ initStateForDemo =
         , createdUnixtime = 0 -- TODO
         , closesUnixtime = 86400
         , specialRules = "If the CDC doesn't publish statistics on this, I'll fall back to some other official organization, like the WHO; failing that, I'll look for journal papers on U.S. cases, and go with a consensus if I find one; failing that, the market is unresolvable."
-        , creator = Just {displayName = "Spencer" , pronouns = Pb.HeHim}
+        , creator = Just {displayName = "Spencer", pronouns = Pb.HeHim}
         , resolution = Pb.ResolutionNoneYet
         }
   in
