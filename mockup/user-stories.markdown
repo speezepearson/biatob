@@ -61,32 +61,7 @@ I also receive an email
 
 I'm reading somebody's writing, when I see <svg height=1.5ex viewBox="0 0 100 15"><style>a { fill: #008800 }</style><a href="http://example.com/TODO" x=0 y=13><text text-decoration="underline" x=0 y=13>$100 @ 80-90%</text></a></svg>. I click it out of curiosity. It shows:
 
-<div style="margin: 1em; border: 1px solid black; padding: 2em">
-  <h2>By 2021-08-01, will at least 50% of U.S. COVID-19 cases be B117 or a derivative strain, as reported by the CDC?</h2>
-  Spencer assigned this a 80-90% chance, and staked $100. <br />
-  <div style="margin: 1em; border: 1px solid black; padding: 1em">
-    <p>Hi, newcomer! Confused? Curious?  This is a site that helps people make friendly wagers! <span style="opacity:0.5">("Why?" To promote epistemic virtue and thereby make the world a better, saner place! When I force myself to make concrete predictions about important things, it frequently turns out that I don't actually believe what I thought I did. (Crazy, right!? Brains <i>suck!</i>) And betting, i.e. attaching money to my predictions, is <a href="https://marginalrevolution.com/marginalrevolution/2012/11/a-bet-is-a-tax-on-bullshit.html">just an extra incentive to get them right</a>.)</span></p>
-    <p>Spencer is willing to put his money where his mouth is. Good for him! And, if you think he's wrong, you can earn money and set him straight at the same time!</p>
-    <details><summary><strong>"Cool! How do I accept this bet?"</strong></summary>
-        <p> First off, let's be clear: this is not a "real" prediction market site like PredictIt or Betfair. Everything here works on the honor system. A bet can only be made between <i>people who trust each other in real life.</i> So, ask yourself, do you trust Spencer? And does Spencer trust you? If either answer is no, you're out of luck: the honor system only works where there's honor.</p>
-        <p>But! If you do trust each other, the flow goes like this:</p>
-        <ul>
-          <li><input type="email" placeholder="email@ddre.ss"/> <input type="password" placeholder="password"/> <select><option>they/them</option><option>she/her</option><option>he/him</option></select><button>Sign up</button></li>
-          <li><button disabled>Mark spencer@invalid.net as trusted</button></li>
-          <li>Ask Spencer to go to <code>https://biatob.com/user/__YOUR_EMAIL__</code> and mark <i>you</i> as trusted. <button disabled>Copy</button></li>
-          <li>Wager against him, below!</li>
-        </ul>
-        <p>When the bet resolves, you'll both get an email telling you who owes who how much. You can enter that into Venmo or Splitwise or whatever.</p>
-        <p><button>Hide this tutorial.</button></p>
-      </details>
-      <details><summary><strong>"I <i>really</i> don't like this idea."</strong></summary> Sorry! I know some people are averse to this sort of thing. If you click <button>Hide embeds</button>, I'll try to not show you any more links to people's wagers (insofar as I can -- it's hard to control what appears on other people's sites).
-      </details>
-  </div>
-  Market opened 2021-01-09, closes 2021-01-23. <br />
-  Stake $<input disabled style="width: 5em" type="number" value="99" step="1" /> against Spencer's <strong>$11</strong> that this will resolve Yes? <button disabled>Commit</button><br />
-  Stake $<input disabled style="width: 5em" type="number" value="25" step="1" /> against Spencer's <strong>$100</strong> that this will resolve No? <button disabled>Commit</button><br />
-  <strong>Spencer's special rules:</strong> If the CDC doesn't publish statistics on this, I'll fall back to some other official organization, like the WHO; failing that, I'll look for journal papers on U.S. cases, and go with a consensus if I find one; failing that, the market is unresolvable. <br/>
-</div>
+<iframe style="margin: 2em" width="100%" height="500" src="newbie-1.html"></iframe>
 
 
 ### Untrusted reader
