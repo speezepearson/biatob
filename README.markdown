@@ -14,3 +14,5 @@ TODO
 - figure out an accounting system that track how many "points" people owe each other
 - figure out how users can undo accidental bets
 - figure out how to round things properly for display
+- monetize via freemium or subscription?
+- advertise to Caplan/Hanson/LessWrong/EAG/CFAR?
