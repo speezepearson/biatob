@@ -9,6 +9,9 @@ import Html exposing (s)
 
 import Biatob.Proto.Mvp as Pb
 import Utils exposing (they, them, their, pluralize, capitalize, must)
+import Utils
+
+epsilon = 0.0000001 -- 🎵 I hate floating-point arithmetic 🎶
 
 type alias Config msg =
   { setState : State -> msg
@@ -18,6 +21,7 @@ type alias Config msg =
 
 type alias State =
   { market : Pb.GetMarketResponseMarket
+  , userPosition : Pb.Position
   , stakeYesField : String
   , stakeNoField : String
   , now : Time.Posix
@@ -31,30 +35,63 @@ view config state =
 
     yesStakeMultiplier = Debug.log (Debug.toString certainty) (1 - certainty.high) / certainty.high
     noStakeMultiplier = certainty.low / (1 - certainty.low)
-    maxYesStake = state.market.remainingYesStake / yesStakeMultiplier |> floor
-    maxNoStake = state.market.remainingNoStake / noStakeMultiplier |> floor
-    (invalidStakeYes, emphasizeRemainingStakeYes) = case String.toInt state.stakeYesField of
+    maxYesStake = state.market.remainingYesStake / yesStakeMultiplier
+    maxNoStake = state.market.remainingNoStake / noStakeMultiplier
+    (invalidStakeYes, emphasizeRemainingStakeYes) = case String.toFloat state.stakeYesField of
       Nothing -> (True, False)
-      Just n -> (n < 0 || n > maxYesStake, n > maxYesStake)
-    (invalidStakeNo, emphasizeRemainingStakeNo) = case String.toInt state.stakeNoField of
+      Just n -> (n < 0 || n > maxYesStake + epsilon, n > maxYesStake + epsilon)
+    (invalidStakeNo, emphasizeRemainingStakeNo) = case String.toFloat state.stakeNoField of
       Nothing -> (True, False)
-      Just n -> (n < 0 || n > maxNoStake, n > Debug.log "mns" maxNoStake)
+      Just n -> (n < 0 || n > maxNoStake + epsilon, n > maxNoStake + epsilon)
   in
   H.div []
     [ H.h2 [] [H.text state.market.question]
+    , case state.market.resolution of
+        Pb.ResolutionYes ->
+          let winnings = state.userPosition.winningsIfYes in
+          if winnings == 0 then H.text "" else
+          H.div []
+            [ H.text "This market has resolved YES. You "
+            , H.text <| if winnings > 0 then "are owed " else "owe "
+            , H.text <| Utils.formatDollars <| abs winnings
+            , H.text <| "."
+            ]
+        Pb.ResolutionNo ->
+          let winnings = state.userPosition.winningsIfNo in
+          if winnings == 0 then H.text "" else
+          H.div []
+            [ H.text "This market has resolved NO. You "
+            , H.text <| if winnings > 0 then "are owed " else "owe "
+            , H.text <| Utils.formatDollars <| abs winnings
+            , H.text <| "."
+            ]
+        Pb.ResolutionNoneYet ->
+          H.div []
+            [ H.text "This market hasn't resolved yet. If it resolves Yes, you will "
+            , H.text <| if state.userPosition.winningsIfYes > 0 then "be owed " else "owe "
+            , H.text <| Utils.formatDollars <| abs state.userPosition.winningsIfYes
+            , H.text <| "; if No, you will "
+            , H.text <| if state.userPosition.winningsIfNo > 0 then "be owed " else "owe "
+            , H.text <| Utils.formatDollars <| abs state.userPosition.winningsIfNo
+            , H.text <| "."
+            ]
+        Pb.ResolutionUnrecognized_ _ ->
+          H.span [HA.style "color" "red"]
+            [H.text "Oh dear, something has gone very strange with this market. Please email TODO with this URL to report it!"]
+    , H.hr [] []
     , H.p []
         [ H.text creator.displayName
         , H.text " assigned this a "
         , certainty.low |> (*) 100 |> round |> String.fromInt |> H.text
         , H.text "-"
         , certainty.high |> (*) 100 |> round |> String.fromInt |> H.text
-        , H.text "% chance, and staked $"
-        , state.market.maximumStake |> round |> String.fromInt |> H.text
+        , H.text "% chance, and staked "
+        , state.market.maximumStake |> Utils.formatDollars |> H.text
         , H.text "."
         , H.br [] []
-        , H.strong [Utils.outlineIfInvalid emphasizeRemainingStakeYes] [H.text <| "$" ++ String.fromFloat state.market.remainingYesStake]
+        , H.strong [Utils.outlineIfInvalid emphasizeRemainingStakeYes] [state.market.remainingYesStake |> Utils.formatDollars |> H.text]
         , H.text " remain staked on Yes, "
-        , H.strong [Utils.outlineIfInvalid emphasizeRemainingStakeNo] [H.text <| "$" ++ String.fromFloat state.market.remainingNoStake]
+        , H.strong [Utils.outlineIfInvalid emphasizeRemainingStakeNo] [state.market.remainingNoStake |> Utils.formatDollars |> H.text]
         , H.text " remain staked on No."
         , H.br [] []
         , H.text "Market opened "
@@ -70,13 +107,13 @@ view config state =
         [ H.text "Stake $"
         , H.input
             [ HA.style "width" "5em"
-            , HA.type_"number", HA.min "0", HA.max (maxYesStake |> String.fromInt)
+            , HA.type_"number", HA.min "0", HA.max (maxYesStake |> (+) epsilon |> String.fromFloat), HA.step "any"
             , HA.value state.stakeYesField
             , HE.onInput (\s -> config.setState {state | stakeYesField = s})
             , Utils.outlineIfInvalid invalidStakeYes
             ] []
         , H.text " against Spencer's "
-        , H.strong [Utils.outlineIfInvalid emphasizeRemainingStakeYes] [H.text "$", state.stakeYesField |> String.toFloat |> Maybe.map ((*) yesStakeMultiplier >> floor >> String.fromInt) |> Maybe.withDefault "???" |> H.text]
+        , H.strong [Utils.outlineIfInvalid emphasizeRemainingStakeYes] [state.stakeYesField |> String.toFloat |>  Maybe.map ((*) yesStakeMultiplier >> Utils.formatDollars) |> Maybe.withDefault "???" |> H.text]
         , H.text " that this will resolve Yes? "
         , H.button
           [ HE.onClick <|
@@ -89,13 +126,13 @@ view config state =
         , H.text "Stake $"
         , H.input
             [ HA.style "width" "5em"
-            , HA.type_"number", HA.min "0", HA.max (maxNoStake |> String.fromInt)
+            , HA.type_"number", HA.min "0", HA.max (maxNoStake |> (+) epsilon |> String.fromFloat), HA.step "any"
             , HA.value state.stakeNoField
             , HE.onInput (\s -> config.setState {state | stakeNoField = s})
             , Utils.outlineIfInvalid invalidStakeNo
             ] []
         , H.text " against Spencer's "
-        , H.strong [Utils.outlineIfInvalid emphasizeRemainingStakeNo] [H.text "$", state.stakeNoField |> String.toFloat |> Maybe.map ((*) noStakeMultiplier >> floor >> String.fromInt) |> Maybe.withDefault "???" |> H.text]
+        , H.strong [Utils.outlineIfInvalid emphasizeRemainingStakeNo] [state.stakeNoField |> String.toFloat |>  Maybe.map ((*) noStakeMultiplier >> Utils.formatDollars) |> Maybe.withDefault "???" |> H.text]
         , H.text " that this will resolve No? "
         , H.button
           [ HE.onClick <|
@@ -119,7 +156,9 @@ initStateForDemo =
       , closesUnixtime = 86400
       , specialRules = "If the CDC doesn't publish statistics on this, I'll fall back to some other official organization, like the WHO; failing that, I'll look for journal papers on U.S. cases, and go with a consensus if I find one; failing that, the market is unresolvable."
       , creator = Just {displayName = "Spencer" , pronouns = Pb.HeHim} -- TODO
+      , resolution = Pb.ResolutionNoneYet
       }
+  , userPosition = { winningsIfYes = -5 , winningsIfNo = 8 }
   , stakeYesField = "0"
   , stakeNoField = "0"
   , now = Time.millisToPosix 0

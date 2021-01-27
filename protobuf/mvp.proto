@@ -12,6 +12,17 @@ enum Pronouns {
   HE_HIM = 2;
 }
 
+enum Resolution {
+  RESOLUTION_NONE_YET = 0;
+  RESOLUTION_YES = 1;
+  RESOLUTION_NO = 2;
+}
+
+message Position {
+  float winnings_if_yes = 1;
+  float winnings_if_no = 2;
+}
+
 message Auth {
   oneof auth_kind {
     string magic_token = 1;
@@ -92,6 +103,7 @@ message GetMarketResponse {
     uint64 closes_unixtime = 7;
     string special_rules = 8;
     UserInfo creator = 9;
+    Resolution resolution = 10;
   }
   message Error {
     string catchall = 1;

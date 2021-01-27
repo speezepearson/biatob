@@ -29,6 +29,7 @@ initForDemo =
       , stakeYesField = "0"
       , stakeNoField = "0"
       , market = formStateToProto Form.initStateForDemo
+      , userPosition = { winningsIfYes = 0 , winningsIfNo = 0 }
       }
   }
 
@@ -82,6 +83,7 @@ formStateToProto form =
   , closesUnixtime = 0 + (Form.openForSeconds form |> Maybe.withDefault 0) -- TODO
   , specialRules = form.specialRulesField
   , creator = Just {displayName = "Spencer" , pronouns = Pb.HeHim} -- TODO
+  , resolution = Pb.ResolutionNoneYet
   }
 
 main : Program () Model Msg
