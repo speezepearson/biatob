@@ -1,4 +1,18 @@
-module CreateMarketForm exposing (State, Config, view, initStateForDemo, question, stakeCents, lowPYes, lowPNo, openForSeconds, specialRules, lowP, highP)
+module CreateMarketForm exposing
+  ( State
+  , Config
+  , view
+  , initStateForDemo
+  , question
+  , stakeCents
+  , lowPYes
+  , lowPNo
+  , openForSeconds
+  , specialRules
+  , lowP
+  , highP
+  , main
+  )
 
 import Browser
 import Html as H exposing (Html)

@@ -1,4 +1,4 @@
-module CreateMarketPage exposing (..)
+module CreateMarketPage exposing (main)
 
 import Browser
 import Html as H exposing (Html)

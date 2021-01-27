@@ -1,4 +1,9 @@
-module Market exposing  (Config, State, view)
+module Market exposing
+  ( Config
+  , State
+  , view
+  , main
+  )
 
 import Browser
 import Html as H exposing (Html)

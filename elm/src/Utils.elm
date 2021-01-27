@@ -3,8 +3,6 @@ module Utils exposing (..)
 import Html as H
 import Html.Attributes as HA
 
-import Biatob.Proto.Mvp as Pb
-
 
 formatCents : Int -> String
 formatCents n =
