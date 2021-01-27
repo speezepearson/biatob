@@ -29,7 +29,7 @@ initForDemo =
       , stakeYesField = "0"
       , stakeNoField = "0"
       , market = formStateToProto Form.initStateForDemo
-      , userPosition = { winningsIfYes = 0 , winningsIfNo = 0 }
+      , userPosition = { winCentsIfYes = 0 , winCentsIfNo = 0 }
       }
   }
 
@@ -76,9 +76,9 @@ formStateToProto : Form.State -> Pb.GetMarketResponseMarket
 formStateToProto form =
   { question = Form.question form
   , certainty = Just {low = Form.lowP form |> Maybe.withDefault 0, high = Form.highP form |> Maybe.withDefault 1}
-  , maximumStake = Form.stake form |> Maybe.withDefault 0
-  , remainingYesStake = Form.stake form |> Maybe.withDefault 0
-  , remainingNoStake = Form.stake form |> Maybe.withDefault 0
+  , maximumStakeCents = Form.stakeCents form |> Maybe.withDefault 0
+  , remainingYesStakeCents = Form.stakeCents form |> Maybe.withDefault 0
+  , remainingNoStakeCents = Form.stakeCents form |> Maybe.withDefault 0
   , createdUnixtime = 0 -- TODO
   , closesUnixtime = 0 + (Form.openForSeconds form |> Maybe.withDefault 0) -- TODO
   , specialRules = form.specialRulesField

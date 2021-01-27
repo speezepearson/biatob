@@ -1,4 +1,4 @@
-module CreateMarketForm exposing (State, Config, view, initStateForDemo, question, stake, lowPYes, lowPNo, openForSeconds, specialRules, lowP, highP)
+module CreateMarketForm exposing (State, Config, view, initStateForDemo, question, stakeCents, lowPYes, lowPNo, openForSeconds, specialRules, lowP, highP)
 
 import Browser
 import Html as H exposing (Html)
@@ -8,7 +8,7 @@ import Html.Events as HE
 import Utils
 
 howToWriteGoodBetsUrl = "http://example.com/TODO"
-maxStake = 5000
+maxLegalStakeCents = 500000
 
 type alias Config msg =
   { setState : State -> msg
@@ -33,8 +33,8 @@ type alias State =
 
 question : State -> String
 question {questionField} = questionField
-stake : State -> Maybe Float
-stake {stakeField} = String.toFloat stakeField
+stakeCents : State -> Maybe Int
+stakeCents {stakeField} = String.toFloat stakeField |> Maybe.map ((*) 100 >> round)
 lowPYes : State -> Maybe Float
 lowPYes {lowPYesField} = String.toFloat lowPYesField |> Maybe.map (\n -> n/100)
 lowPNo : State -> Maybe Float
@@ -50,35 +50,16 @@ openForSeconds {openForNField, openForUnitField} =
 specialRules : State -> String
 specialRules {specialRulesField} = specialRulesField
 
-
-isValidPercentProbabilityStr : String -> Bool
-isValidPercentProbabilityStr s =
-  case String.toFloat s of
-    Just n -> 0 <= n && n <= 100
-    Nothing -> False
-
-isValidStakeStr : String -> Bool
-isValidStakeStr s =
-  case String.toFloat s of
-    Just n -> 0 <= n && n <= maxStake
-    Nothing -> False
-
-isValidOpenForNField : String -> Bool
-isValidOpenForNField s =
-  case String.toInt s of
-    Just n -> 0 <= n
-    Nothing -> False
-
 view : Config msg -> State -> Html msg
 view config state =
   let
-    invalidStake = stake state |> Maybe.map (\n -> n <= 0 || n > maxStake) |> Maybe.withDefault False
-    invalidLowPYes = lowPYes state |> Maybe.map (\n -> n < 0 || n > 1) |> Maybe.withDefault False
-    invalidLowPNo = lowPNo state |> Maybe.map (\n -> n < 0 || n > 1) |> Maybe.withDefault False
+    invalidStake = stakeCents state |> Maybe.map (\n -> n <= 0 || n > maxLegalStakeCents) |> Maybe.withDefault True
+    invalidLowPYes = lowPYes state |> Maybe.map (\n -> n < 0 || n > 1) |> Maybe.withDefault True
+    invalidLowPNo = lowPNo state |> Maybe.map (\n -> n < 0 || n > 1) |> Maybe.withDefault True
     invalidPsRel = case (lowPYes state, lowPNo state) of
       (Just lpy, Just lpn) -> lpy + lpn >= 1
       _ -> False
-    invalidOpenForN = openForSeconds state |> Maybe.map (\n -> n < 0) |> Maybe.withDefault False
+    invalidOpenForN = openForSeconds state |> Maybe.map (\n -> n < 0) |> Maybe.withDefault True
   in
   H.div []
     [ H.ul []
@@ -96,7 +77,7 @@ view config state =
         , H.li []
             [ H.text "How much are you willing to stake? $"
             , H.input
-                [ HA.type_ "number", HA.min "0", HA.max (String.fromInt maxStake)
+                [ HA.type_ "number", HA.min "0", HA.max (String.fromInt maxLegalStakeCents)
                 , HA.value state.stakeField
                 , HE.onInput (\s -> config.setState {state | stakeField = s})
                 , Utils.outlineIfInvalid invalidStake
