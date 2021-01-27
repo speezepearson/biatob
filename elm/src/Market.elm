@@ -33,7 +33,7 @@ view config state =
     creator = state.market.creator |> must "no creator given"
     certainty = state.market.certainty |> must "no certainty given"
 
-    yesStakeMultiplier = Debug.log (Debug.toString certainty) (1 - certainty.high) / certainty.high
+    yesStakeMultiplier = (1 - certainty.high) / certainty.high
     noStakeMultiplier = certainty.low / (1 - certainty.low)
     maxYesStake = state.market.remainingYesStake / yesStakeMultiplier
     maxNoStake = state.market.remainingNoStake / noStakeMultiplier
