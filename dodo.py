@@ -4,12 +4,7 @@ import subprocess
 
 def task_proto():
   protos = list(Path('protobuf').glob('**/*.proto'))
-  camelcase_names = [
-    re.sub(r'(?:^|_)([a-z])',
-           lambda m: m.group(1).upper(),
-           p.with_suffix('').name)
-    for p in protos
-  ]
+  snake_to_camel = lambda s: re.sub(r'(?:^|_)([a-z])', lambda m: m.group(1).upper(), s)
 
   yield {
     'name': 'python',
@@ -31,7 +26,7 @@ def task_proto():
     yield {
       'name': 'elm',
       'file_dep': protos,
-      'targets': [Path('elm/protobuf/Biatob/Proto')/(n+'.elm') for n in camelcase_names],
+      'targets': [Path('elm/protobuf/Biatob/Proto')/snake_to_camel(p.with_suffix('.elm').name) for p in protos],
       'actions': [
         'mkdir -p elm/protobuf',
         f'protoc --elm_out=elm/protobuf {" ".join(str(p) for p in protos)}',
@@ -45,7 +40,11 @@ def task_proto():
       'name': 'mypy',
       'file_dep': protos,
       'targets': [Path('server/protobuf/')/(p.with_suffix('').name+'_pb2.pyi') for p in protos],
-      'actions': [f'protoc --mypy_out=server {" ".join(str(p) for p in protos)}'],
+      'actions': [
+        'mkdir -p server/protobuf',
+        'touch server/protobuf/__init__.py',
+        f'protoc --mypy_out=server {" ".join(str(p) for p in protos)}',
+      ],
     }
   else:
     print('WARNING: protoc-gen-mypy not found, not generating mypy protos')
