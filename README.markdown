@@ -18,13 +18,12 @@ Extrapolate.
 
 TODO
 --------------
-- sketch the signup process, and how trust is establihed between accounts
-- write copy explaining how to operationalize a bet well
-- consider a semi-formalized system for naming an arbiter
-- consider allowing "soft resolutions" so a market can resolve "80% yes"
-- figure out an accounting system that track how many "points" people owe each other
-- figure out how users can undo accidental bets
-- figure out how to round things properly for display
-- monetize via freemium or subscription?
-- advertise to Caplan/Hanson/LessWrong/EAG/CFAR?
-- add "Sign in with [identity provider]"
+- P1 [mvp]: sketch the signup process, and how trust is established between accounts
+- P2 [pre-beta]: write copy explaining how to operationalize a bet well
+- P2 [pre-beta]: consider a semi-formalized system for naming an arbiter
+- P2 [pre-beta]: figure out how users can undo accidental bets
+- P2 [pre-beta]: add "Sign in with [identity provider]"
+- P3 [nice-to-have]: monetize via freemium or subscription?
+- P3 [nice-to-have]: consider allowing "soft resolutions" so a market can resolve "80% yes"
+- P3 [nice-to-have]: consider letting people download a list of all their bets
+- P3 [nice-to-have]: advertise to Caplan/Hanson/LessWrong/EAG/CFAR?
