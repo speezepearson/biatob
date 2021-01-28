@@ -14,15 +14,15 @@ args = parser.parse_args()
 async def create_market_handler(request):
     name = request.match_info.get('name', "Anonymous")
     create_req = mvp_pb2.CreateMarketRequest()
-    create_req.ParseFromString(request.read())
+    create_req.ParseFromString(await request.read())
     # TODO: reject user inputs that are permuted by HTML sanitization
-    print(create_req.string)
-    return web.Response(text='created something about {create_req.string}')
+    print(create_req.question)
+    return web.Response(text='created something about {create_req.question}')
 
 app = web.Application()
 app.add_routes([
     web.static('/static', args.elm_dist),
-    web.post('/create', create_market_handler),
+    web.post('/api/create_market', create_market_handler),
     ])
 
 if __name__ == '__main__':
