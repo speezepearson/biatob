@@ -12,7 +12,7 @@ def task_proto():
   return {
     'file_dep': protos,
     'targets': [Path('elm/protobuf/Biatob/Proto')/(n+'.elm') for n in camelcase_names],
-    'actions': ['mkdir -p elm/protobuf', 'protoc --elm_out=elm/protobuf ' + ' '.join(str(p) for p in protos)]
+    'actions': ['mkdir -p elm/protobuf', 'protoc --elm_out=elm/protobuf --python_out=server/protobuf --mypy_out=mypy_proto_wat ' + ' '.join(str(p) for p in protos)]
   }
 
 def task_elm():
