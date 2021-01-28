@@ -16,8 +16,8 @@ async def create_market_handler(request):
     create_req = mvp_pb2.CreateMarketRequest()
     create_req.ParseFromString(await request.read())
     # TODO: reject user inputs that are permuted by HTML sanitization
-    print(create_req.string)
-    return web.Response(text='created something about {create_req.string}')
+    print(create_req.question)
+    return web.Response(text='created something about {create_req.question}')
 
 app = web.Application()
 app.add_routes([
