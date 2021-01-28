@@ -1,5 +1,6 @@
 from pathlib import Path
 import re
+import subprocess
 
 def task_proto():
   protos = list(Path('protobuf').glob('**/*.proto'))
@@ -9,17 +10,46 @@ def task_proto():
            p.with_suffix('').name)
     for p in protos
   ]
-  return {
+
+  yield {
+    'name': 'python',
     'file_dep': protos,
-    'targets': [
-      *[Path('elm/protobuf/Biatob/Proto')/(n+'.elm') for n in camelcase_names],
-      *[Path('server/protobuf/')/(p.with_suffix('').name+'_pb2.py') for p in protos],
-    ],
+    'targets':
+      ['server/protobuf/__init__.py']
+      + [Path('server/protobuf/')/(p.with_suffix('').name+'_pb2.py')  for p in protos]
+      ,
     'actions': [
-      'mkdir -p elm/protobuf server/protobuf',
-      'protoc --elm_out=elm/protobuf --python_out=server ' + ' '.join(str(p) for p in protos),
+      'mkdir -p server/protobuf',
+      'touch server/protobuf/__init__.py',
+      f'protoc --python_out=server {" ".join(str(p) for p in protos)}',
     ],
   }
+
+  has_protoc_gen_for = lambda lang: not subprocess.call(['which', f'protoc-gen-{lang}'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+  if has_protoc_gen_for('elm'):
+    yield {
+      'name': 'elm',
+      'file_dep': protos,
+      'targets': [Path('elm/protobuf/Biatob/Proto')/(n+'.elm') for n in camelcase_names],
+      'actions': [
+        'mkdir -p elm/protobuf',
+        f'protoc --elm_out=elm/protobuf {" ".join(str(p) for p in protos)}',
+      ],
+    }
+  else:
+    print('WARNING: protoc-gen-elm not found, not generating elm protos')
+
+  if has_protoc_gen_for('mypy'):
+    yield {
+      'name': 'mypy',
+      'file_dep': protos,
+      'targets': [Path('server/protobuf/')/(p.with_suffix('').name+'_pb2.pyi') for p in protos],
+      'actions': [f'protoc --mypy_out=server {" ".join(str(p) for p in protos)}'],
+    }
+  else:
+    print('WARNING: protoc-gen-mypy not found, not generating mypy protos')
+
 
 def task_elm():
   src = Path('elm/src')
