@@ -4,6 +4,17 @@ This project does not touch real money: financial stuff is really hard; appropri
 
 See [./mockup/user-stories.markdown](./mockup/user-stories.markdown) for descriptions of who uses this and how.
 
+Development
+-----------
+
+This project uses the `doit` build system: https://pydoit.org/tutorial_1.html
+
+`doit list` lists all the targets.
+
+`doit proto` builds the `proto` target.
+
+Extrapolate.
+
 
 TODO
 --------------
@@ -16,3 +27,4 @@ TODO
 - figure out how to round things properly for display
 - monetize via freemium or subscription?
 - advertise to Caplan/Hanson/LessWrong/EAG/CFAR?
+- add "Sign in with [identity provider]"
