@@ -27,9 +27,14 @@ def task_elm():
   modules = [p.with_suffix('').name for p in src.glob('*.elm') if '\nmain =' in p.read_text()]
   return {
     'file_dep': ['elm/elm.json', *src.glob('**/*.elm')],
-    'targets': [dist/f'{mod}.js' for mod in modules],
-    'actions': [f'mkdir -p {dist}'] +
-               [f'cd elm && elm make src/{mod}.elm --output=dist/{mod}.js' for mod in modules],
+    'targets': [
+      *[dist/f'{mod}.js' for mod in modules],
+      *[dist/f'{mod}.html' for mod in modules],
+    ],
+    'actions': [f'mkdir -p {dist}']
+               + [f'cd elm && elm make src/{mod}.elm --output=dist/{mod}.js' for mod in modules]
+               + [f'cd elm && elm make src/{mod}.elm && mv index.html dist/{mod}.html' for mod in modules]
+               ,
   }
 
 def task_userstories():
