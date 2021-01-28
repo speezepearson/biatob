@@ -18,7 +18,8 @@ import Browser
 import Html as H exposing (Html)
 import Html.Attributes as HA
 import Html.Events as HE
-
+import Protobuf.Encode as PE
+import Biatob.Proto.Mvp as BProto
 import Utils
 
 howToWriteGoodBetsUrl = "http://example.com/TODO"
