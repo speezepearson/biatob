@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='protobuf/mvp.proto',
   package='biatob.proto.mvp',
   syntax='proto3',
-  serialized_pb=_b('\n\x12protobuf/mvp.proto\x12\x10\x62iatob.proto.mvp\"\xba\x07\n\nWorldState\x12\x36\n\x05users\x18\x01 \x03(\x0b\x32\'.biatob.proto.mvp.WorldState.UsersEntry\x12:\n\x07markets\x18\x02 \x03(\x0b\x32).biatob.proto.mvp.WorldState.MarketsEntry\x12Q\n\x14\x61uth_token_owner_ids\x18\x03 \x03(\x0b\x32\x33.biatob.proto.mvp.WorldState.AuthTokenOwnerIdsEntry\x1a^\n\nUsersEntry\x12\x0b\n\x03key\x18\x01 \x01(\x04\x12?\n\x05value\x18\x02 \x01(\x0b\x32\x30.biatob.proto.mvp.WorldState.UserInfoTodoUnclash:\x02\x38\x01\x1aS\n\x0cMarketsEntry\x12\x0b\n\x03key\x18\x01 \x01(\x04\x12\x32\n\x05value\x18\x02 \x01(\x0b\x32#.biatob.proto.mvp.WorldState.Market:\x02\x38\x01\x1a\x38\n\x16\x41uthTokenOwnerIdsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x04:\x02\x38\x01\x1aW\n\x13UserInfoTodoUnclash\x12\x10\n\x08username\x18\x01 \x01(\t\x12\x17\n\x0fpassword_bcrypt\x18\x02 \x01(\x0c\x12\x15\n\rtrusted_users\x18\x03 \x03(\x04\x1a\xb0\x02\n\x06Market\x12\x10\n\x08question\x18\x01 \x01(\t\x12\x33\n\tcertainty\x18\x02 \x01(\x0b\x32 .biatob.proto.mvp.CertaintyRange\x12\x1b\n\x13maximum_stake_cents\x18\x03 \x01(\x04\x12\x18\n\x10\x63reated_unixtime\x18\x04 \x01(\x04\x12\x17\n\x0f\x63loses_unixtime\x18\x05 \x01(\x04\x12\x15\n\rspecial_rules\x18\x06 \x01(\t\x12\x12\n\ncreator_id\x18\x07 \x01(\x04\x12\x32\n\x06trades\x18\x08 \x03(\x0b\x32\".biatob.proto.mvp.WorldState.Trade\x12\x30\n\nresolution\x18\t \x01(\x0e\x32\x1c.biatob.proto.mvp.Resolution\x1aj\n\x05Trade\x12\x11\n\tbettor_id\x18\x01 \x01(\x04\x12\x1b\n\x13\x65xpected_resolution\x18\x02 \x01(\x08\x12\x14\n\x0c\x62\x65ttor_stake\x18\x03 \x01(\x04\x12\x1b\n\x13transacted_unixtime\x18\x04 \x01(\x04\"=\n\x08Position\x12\x18\n\x10win_cents_if_yes\x18\x01 \x01(\x03\x12\x17\n\x0fwin_cents_if_no\x18\x02 \x01(\x03\"*\n\x04\x41uth\x12\x15\n\x0bmagic_token\x18\x01 \x01(\tH\x00\x42\x0b\n\tauth_kind\"O\n\tAuthError\x12/\n\rinvalid_token\x18\x01 \x01(\x0e\x32\x16.biatob.proto.mvp.VoidH\x00\x42\x11\n\x0f\x61uth_error_kind\"F\n\rSignUpRequest\x12\r\n\x05\x65mail\x18\x01 \x01(\t\x12\x10\n\x08password\x18\x02 \x01(\t\x12\x14\n\x0c\x64isplay_name\x18\x03 \x01(\t\"\xd5\x01\n\x0eSignUpResponse\x12$\n\x02ok\x18\x01 \x01(\x0e\x32\x16.biatob.proto.mvp.VoidH\x00\x12\x37\n\x05\x65rror\x18\x02 \x01(\x0b\x32&.biatob.proto.mvp.SignUpResponse.ErrorH\x00\x1aS\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\t\x12\x38\n\x18\x65mail_already_registered\x18\x02 \x01(\x0e\x32\x16.biatob.proto.mvp.VoidB\x0f\n\rsignup_result\"+\n\x0e\x43\x65rtaintyRange\x12\x0b\n\x03low\x18\x01 \x01(\x02\x12\x0c\n\x04high\x18\x02 \x01(\x02\"\xb4\x01\n\rMarketPrivacy\x12\x37\n\x15\x61ll_trusted_by_author\x18\x01 \x01(\x0e\x32\x16.biatob.proto.mvp.VoidH\x00\x12@\n\x0especific_users\x18\x02 \x01(\x0b\x32&.biatob.proto.mvp.MarketPrivacy.EmailsH\x00\x1a\x18\n\x06\x45mails\x12\x0e\n\x06\x65mails\x18\x01 \x03(\tB\x0e\n\x0cprivacy_kind\"\xfe\x01\n\x13\x43reateMarketRequest\x12$\n\x04\x61uth\x18\x01 \x01(\x0b\x32\x16.biatob.proto.mvp.Auth\x12\x10\n\x08question\x18\x02 \x01(\t\x12\x30\n\x07privacy\x18\x03 \x01(\x0b\x32\x1f.biatob.proto.mvp.MarketPrivacy\x12\x33\n\tcertainty\x18\x04 \x01(\x0b\x32 .biatob.proto.mvp.CertaintyRange\x12\x1b\n\x13maximum_stake_cents\x18\x05 \x01(\x04\x12\x14\n\x0copen_seconds\x18\x06 \x01(\x04\x12\x15\n\rspecial_rules\x18\x07 \x01(\t\"\xd2\x01\n\x14\x43reateMarketResponse\x12\x17\n\rnew_market_id\x18\x01 \x01(\x04H\x00\x12=\n\x05\x65rror\x18\x02 \x01(\x0b\x32,.biatob.proto.mvp.CreateMarketResponse.ErrorH\x00\x1aJ\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\t\x12/\n\nauth_error\x18\x02 \x01(\x0b\x32\x1b.biatob.proto.mvp.AuthErrorB\x16\n\x14\x63reate_market_result\"K\n\x10GetMarketRequest\x12$\n\x04\x61uth\x18\x01 \x01(\x0b\x32\x16.biatob.proto.mvp.Auth\x12\x11\n\tmarket_id\x18\x02 \x01(\x04\"\xcb\x04\n\x11GetMarketResponse\x12<\n\x06market\x18\x01 \x01(\x0b\x32*.biatob.proto.mvp.GetMarketResponse.MarketH\x00\x12:\n\x05\x65rror\x18\x02 \x01(\x0b\x32).biatob.proto.mvp.GetMarketResponse.ErrorH\x00\x1a\xda\x02\n\x06Market\x12\x10\n\x08question\x18\x01 \x01(\t\x12\x33\n\tcertainty\x18\x02 \x01(\x0b\x32 .biatob.proto.mvp.CertaintyRange\x12\x1b\n\x13maximum_stake_cents\x18\x03 \x01(\x04\x12!\n\x19remaining_yes_stake_cents\x18\x04 \x01(\x04\x12 \n\x18remaining_no_stake_cents\x18\x05 \x01(\x04\x12\x18\n\x10\x63reated_unixtime\x18\x06 \x01(\x04\x12\x17\n\x0f\x63loses_unixtime\x18\x07 \x01(\x04\x12\x15\n\rspecial_rules\x18\x08 \x01(\t\x12+\n\x07\x63reator\x18\t \x01(\x0b\x32\x1a.biatob.proto.mvp.UserInfo\x12\x30\n\nresolution\x18\n \x01(\x0e\x32\x1c.biatob.proto.mvp.Resolution\x1aJ\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\t\x12/\n\nauth_error\x18\x02 \x01(\x0b\x32\x1b.biatob.proto.mvp.AuthErrorB\x13\n\x11get_market_result\" \n\x08UserInfo\x12\x14\n\x0c\x64isplay_name\x18\x01 \x01(\t\"s\n\x0cStakeRequest\x12$\n\x04\x61uth\x18\x01 \x01(\x0b\x32\x16.biatob.proto.mvp.Auth\x12\x11\n\tmarket_id\x18\x02 \x01(\x04\x12\x1b\n\x13\x65xpected_resolution\x18\x03 \x01(\x08\x12\r\n\x05stake\x18\x04 \x01(\x04\"\xc9\x01\n\rStakeResponse\x12$\n\x02ok\x18\x01 \x01(\x0e\x32\x16.biatob.proto.mvp.VoidH\x00\x12\x36\n\x05\x65rror\x18\x02 \x01(\x0b\x32%.biatob.proto.mvp.StakeResponse.ErrorH\x00\x1aJ\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\t\x12/\n\nauth_error\x18\x02 \x01(\x0b\x32\x1b.biatob.proto.mvp.AuthErrorB\x0e\n\x0cstake_result\"E\n\x0eGetUserRequest\x12$\n\x04\x61uth\x18\x01 \x01(\x0b\x32\x16.biatob.proto.mvp.Auth\x12\r\n\x05\x65mail\x18\x02 \x01(\t\"\xa2\x02\n\x0fGetUserResponse\x12\x36\n\x04user\x18\x01 \x01(\x0b\x32&.biatob.proto.mvp.GetUserResponse.UserH\x00\x12\x38\n\x05\x65rror\x18\x02 \x01(\x0b\x32\'.biatob.proto.mvp.GetUserResponse.ErrorH\x00\x1a>\n\x04User\x12\x1c\n\x14trusted_by_requester\x18\x01 \x01(\x08\x12\x18\n\x10trusts_requester\x18\x02 \x01(\x08\x1aJ\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\t\x12/\n\nauth_error\x18\x02 \x01(\x0b\x32\x1b.biatob.proto.mvp.AuthErrorB\x11\n\x0fget_user_result\"R\n\x12MarkTrustedRequest\x12$\n\x04\x61uth\x18\x01 \x01(\x0b\x32\x16.biatob.proto.mvp.Auth\x12\x16\n\x0e\x65mail_to_trust\x18\x02 \x01(\t\"\xcf\x01\n\x13MarkTrustedResponse\x12$\n\x02ok\x18\x01 \x01(\x0e\x32\x16.biatob.proto.mvp.VoidH\x00\x12<\n\x05\x65rror\x18\x02 \x01(\x0b\x32+.biatob.proto.mvp.MarkTrustedResponse.ErrorH\x00\x1aJ\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\t\x12/\n\nauth_error\x18\x02 \x01(\x0b\x32\x1b.biatob.proto.mvp.AuthErrorB\x08\n\x06result*\x10\n\x04Void\x12\x08\n\x04VOID\x10\x00*L\n\nResolution\x12\x17\n\x13RESOLUTION_NONE_YET\x10\x00\x12\x12\n\x0eRESOLUTION_YES\x10\x01\x12\x11\n\rRESOLUTION_NO\x10\x02\x62\x06proto3')
+  serialized_pb=_b('\n\x12protobuf/mvp.proto\x12\x10\x62iatob.proto.mvp\"\xba\x08\n\nWorldState\x12\x36\n\x05users\x18\x01 \x03(\x0b\x32\'.biatob.proto.mvp.WorldState.UsersEntry\x12H\n\x0fusername_to_uid\x18\x04 \x03(\x0b\x32/.biatob.proto.mvp.WorldState.UsernameToUidEntry\x12:\n\x07markets\x18\x02 \x03(\x0b\x32).biatob.proto.mvp.WorldState.MarketsEntry\x12Q\n\x14\x61uth_token_owner_ids\x18\x03 \x03(\x0b\x32\x33.biatob.proto.mvp.WorldState.AuthTokenOwnerIdsEntry\x1a^\n\nUsersEntry\x12\x0b\n\x03key\x18\x01 \x01(\x04\x12?\n\x05value\x18\x02 \x01(\x0b\x32\x30.biatob.proto.mvp.WorldState.UserInfoTodoUnclash:\x02\x38\x01\x1a\x34\n\x12UsernameToUidEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x04:\x02\x38\x01\x1aS\n\x0cMarketsEntry\x12\x0b\n\x03key\x18\x01 \x01(\x04\x12\x32\n\x05value\x18\x02 \x01(\x0b\x32#.biatob.proto.mvp.WorldState.Market:\x02\x38\x01\x1a\x38\n\x16\x41uthTokenOwnerIdsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x04:\x02\x38\x01\x1aW\n\x13UserInfoTodoUnclash\x12\x10\n\x08username\x18\x01 \x01(\t\x12\x17\n\x0fpassword_bcrypt\x18\x02 \x01(\x0c\x12\x15\n\rtrusted_users\x18\x03 \x03(\x04\x1a\xb0\x02\n\x06Market\x12\x10\n\x08question\x18\x01 \x01(\t\x12\x33\n\tcertainty\x18\x02 \x01(\x0b\x32 .biatob.proto.mvp.CertaintyRange\x12\x1b\n\x13maximum_stake_cents\x18\x03 \x01(\x04\x12\x18\n\x10\x63reated_unixtime\x18\x04 \x01(\x04\x12\x17\n\x0f\x63loses_unixtime\x18\x05 \x01(\x04\x12\x15\n\rspecial_rules\x18\x06 \x01(\t\x12\x12\n\ncreator_id\x18\x07 \x01(\x04\x12\x32\n\x06trades\x18\x08 \x03(\x0b\x32\".biatob.proto.mvp.WorldState.Trade\x12\x30\n\nresolution\x18\t \x01(\x0e\x32\x1c.biatob.proto.mvp.Resolution\x1aj\n\x05Trade\x12\x11\n\tbettor_id\x18\x01 \x01(\x04\x12\x1b\n\x13\x65xpected_resolution\x18\x02 \x01(\x08\x12\x14\n\x0c\x62\x65ttor_stake\x18\x03 \x01(\x04\x12\x1b\n\x13transacted_unixtime\x18\x04 \x01(\x04\"=\n\x08Position\x12\x18\n\x10win_cents_if_yes\x18\x01 \x01(\x03\x12\x17\n\x0fwin_cents_if_no\x18\x02 \x01(\x03\"*\n\x04\x41uth\x12\x15\n\x0bmagic_token\x18\x01 \x01(\tH\x00\x42\x0b\n\tauth_kind\"O\n\tAuthError\x12/\n\rinvalid_token\x18\x01 \x01(\x0e\x32\x16.biatob.proto.mvp.VoidH\x00\x42\x11\n\x0f\x61uth_error_kind\"F\n\rSignUpRequest\x12\r\n\x05\x65mail\x18\x01 \x01(\t\x12\x10\n\x08password\x18\x02 \x01(\t\x12\x14\n\x0c\x64isplay_name\x18\x03 \x01(\t\"\xd5\x01\n\x0eSignUpResponse\x12$\n\x02ok\x18\x01 \x01(\x0e\x32\x16.biatob.proto.mvp.VoidH\x00\x12\x37\n\x05\x65rror\x18\x02 \x01(\x0b\x32&.biatob.proto.mvp.SignUpResponse.ErrorH\x00\x1aS\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\t\x12\x38\n\x18\x65mail_already_registered\x18\x02 \x01(\x0e\x32\x16.biatob.proto.mvp.VoidB\x0f\n\rsignup_result\"+\n\x0e\x43\x65rtaintyRange\x12\x0b\n\x03low\x18\x01 \x01(\x02\x12\x0c\n\x04high\x18\x02 \x01(\x02\"\xb4\x01\n\rMarketPrivacy\x12\x37\n\x15\x61ll_trusted_by_author\x18\x01 \x01(\x0e\x32\x16.biatob.proto.mvp.VoidH\x00\x12@\n\x0especific_users\x18\x02 \x01(\x0b\x32&.biatob.proto.mvp.MarketPrivacy.EmailsH\x00\x1a\x18\n\x06\x45mails\x12\x0e\n\x06\x65mails\x18\x01 \x03(\tB\x0e\n\x0cprivacy_kind\"\xfe\x01\n\x13\x43reateMarketRequest\x12$\n\x04\x61uth\x18\x01 \x01(\x0b\x32\x16.biatob.proto.mvp.Auth\x12\x10\n\x08question\x18\x02 \x01(\t\x12\x30\n\x07privacy\x18\x03 \x01(\x0b\x32\x1f.biatob.proto.mvp.MarketPrivacy\x12\x33\n\tcertainty\x18\x04 \x01(\x0b\x32 .biatob.proto.mvp.CertaintyRange\x12\x1b\n\x13maximum_stake_cents\x18\x05 \x01(\x04\x12\x14\n\x0copen_seconds\x18\x06 \x01(\x04\x12\x15\n\rspecial_rules\x18\x07 \x01(\t\"\xd2\x01\n\x14\x43reateMarketResponse\x12\x17\n\rnew_market_id\x18\x01 \x01(\x04H\x00\x12=\n\x05\x65rror\x18\x02 \x01(\x0b\x32,.biatob.proto.mvp.CreateMarketResponse.ErrorH\x00\x1aJ\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\t\x12/\n\nauth_error\x18\x02 \x01(\x0b\x32\x1b.biatob.proto.mvp.AuthErrorB\x16\n\x14\x63reate_market_result\"K\n\x10GetMarketRequest\x12$\n\x04\x61uth\x18\x01 \x01(\x0b\x32\x16.biatob.proto.mvp.Auth\x12\x11\n\tmarket_id\x18\x02 \x01(\x04\"\xcb\x04\n\x11GetMarketResponse\x12<\n\x06market\x18\x01 \x01(\x0b\x32*.biatob.proto.mvp.GetMarketResponse.MarketH\x00\x12:\n\x05\x65rror\x18\x02 \x01(\x0b\x32).biatob.proto.mvp.GetMarketResponse.ErrorH\x00\x1a\xda\x02\n\x06Market\x12\x10\n\x08question\x18\x01 \x01(\t\x12\x33\n\tcertainty\x18\x02 \x01(\x0b\x32 .biatob.proto.mvp.CertaintyRange\x12\x1b\n\x13maximum_stake_cents\x18\x03 \x01(\x04\x12!\n\x19remaining_yes_stake_cents\x18\x04 \x01(\x04\x12 \n\x18remaining_no_stake_cents\x18\x05 \x01(\x04\x12\x18\n\x10\x63reated_unixtime\x18\x06 \x01(\x04\x12\x17\n\x0f\x63loses_unixtime\x18\x07 \x01(\x04\x12\x15\n\rspecial_rules\x18\x08 \x01(\t\x12+\n\x07\x63reator\x18\t \x01(\x0b\x32\x1a.biatob.proto.mvp.UserInfo\x12\x30\n\nresolution\x18\n \x01(\x0e\x32\x1c.biatob.proto.mvp.Resolution\x1aJ\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\t\x12/\n\nauth_error\x18\x02 \x01(\x0b\x32\x1b.biatob.proto.mvp.AuthErrorB\x13\n\x11get_market_result\" \n\x08UserInfo\x12\x14\n\x0c\x64isplay_name\x18\x01 \x01(\t\"s\n\x0cStakeRequest\x12$\n\x04\x61uth\x18\x01 \x01(\x0b\x32\x16.biatob.proto.mvp.Auth\x12\x11\n\tmarket_id\x18\x02 \x01(\x04\x12\x1b\n\x13\x65xpected_resolution\x18\x03 \x01(\x08\x12\r\n\x05stake\x18\x04 \x01(\x04\"\xc9\x01\n\rStakeResponse\x12$\n\x02ok\x18\x01 \x01(\x0e\x32\x16.biatob.proto.mvp.VoidH\x00\x12\x36\n\x05\x65rror\x18\x02 \x01(\x0b\x32%.biatob.proto.mvp.StakeResponse.ErrorH\x00\x1aJ\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\t\x12/\n\nauth_error\x18\x02 \x01(\x0b\x32\x1b.biatob.proto.mvp.AuthErrorB\x0e\n\x0cstake_result\"E\n\x0eGetUserRequest\x12$\n\x04\x61uth\x18\x01 \x01(\x0b\x32\x16.biatob.proto.mvp.Auth\x12\r\n\x05\x65mail\x18\x02 \x01(\t\"\xa2\x02\n\x0fGetUserResponse\x12\x36\n\x04user\x18\x01 \x01(\x0b\x32&.biatob.proto.mvp.GetUserResponse.UserH\x00\x12\x38\n\x05\x65rror\x18\x02 \x01(\x0b\x32\'.biatob.proto.mvp.GetUserResponse.ErrorH\x00\x1a>\n\x04User\x12\x1c\n\x14trusted_by_requester\x18\x01 \x01(\x08\x12\x18\n\x10trusts_requester\x18\x02 \x01(\x08\x1aJ\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\t\x12/\n\nauth_error\x18\x02 \x01(\x0b\x32\x1b.biatob.proto.mvp.AuthErrorB\x11\n\x0fget_user_result\"R\n\x12MarkTrustedRequest\x12$\n\x04\x61uth\x18\x01 \x01(\x0b\x32\x16.biatob.proto.mvp.Auth\x12\x16\n\x0e\x65mail_to_trust\x18\x02 \x01(\t\"\xcf\x01\n\x13MarkTrustedResponse\x12$\n\x02ok\x18\x01 \x01(\x0e\x32\x16.biatob.proto.mvp.VoidH\x00\x12<\n\x05\x65rror\x18\x02 \x01(\x0b\x32+.biatob.proto.mvp.MarkTrustedResponse.ErrorH\x00\x1aJ\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\t\x12/\n\nauth_error\x18\x02 \x01(\x0b\x32\x1b.biatob.proto.mvp.AuthErrorB\x08\n\x06result*\x10\n\x04Void\x12\x08\n\x04VOID\x10\x00*L\n\nResolution\x12\x17\n\x13RESOLUTION_NONE_YET\x10\x00\x12\x12\n\x0eRESOLUTION_YES\x10\x01\x12\x11\n\rRESOLUTION_NO\x10\x02\x62\x06proto3')
 )
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
@@ -37,8 +37,8 @@ _VOID = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=3851,
-  serialized_end=3867,
+  serialized_start=3979,
+  serialized_end=3995,
 )
 _sym_db.RegisterEnumDescriptor(_VOID)
 
@@ -64,8 +64,8 @@ _RESOLUTION = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=3869,
-  serialized_end=3945,
+  serialized_start=3997,
+  serialized_end=4073,
 )
 _sym_db.RegisterEnumDescriptor(_RESOLUTION)
 
@@ -110,8 +110,45 @@ _WORLDSTATE_USERSENTRY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=254,
-  serialized_end=348,
+  serialized_start=328,
+  serialized_end=422,
+)
+
+_WORLDSTATE_USERNAMETOUIDENTRY = _descriptor.Descriptor(
+  name='UsernameToUidEntry',
+  full_name='biatob.proto.mvp.WorldState.UsernameToUidEntry',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='key', full_name='biatob.proto.mvp.WorldState.UsernameToUidEntry.key', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='value', full_name='biatob.proto.mvp.WorldState.UsernameToUidEntry.value', index=1,
+      number=2, type=4, cpp_type=4, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=_descriptor._ParseOptions(descriptor_pb2.MessageOptions(), _b('8\001')),
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=424,
+  serialized_end=476,
 )
 
 _WORLDSTATE_MARKETSENTRY = _descriptor.Descriptor(
@@ -147,8 +184,8 @@ _WORLDSTATE_MARKETSENTRY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=350,
-  serialized_end=433,
+  serialized_start=478,
+  serialized_end=561,
 )
 
 _WORLDSTATE_AUTHTOKENOWNERIDSENTRY = _descriptor.Descriptor(
@@ -184,8 +221,8 @@ _WORLDSTATE_AUTHTOKENOWNERIDSENTRY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=435,
-  serialized_end=491,
+  serialized_start=563,
+  serialized_end=619,
 )
 
 _WORLDSTATE_USERINFOTODOUNCLASH = _descriptor.Descriptor(
@@ -228,8 +265,8 @@ _WORLDSTATE_USERINFOTODOUNCLASH = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=493,
-  serialized_end=580,
+  serialized_start=621,
+  serialized_end=708,
 )
 
 _WORLDSTATE_MARKET = _descriptor.Descriptor(
@@ -314,8 +351,8 @@ _WORLDSTATE_MARKET = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=583,
-  serialized_end=887,
+  serialized_start=711,
+  serialized_end=1015,
 )
 
 _WORLDSTATE_TRADE = _descriptor.Descriptor(
@@ -365,8 +402,8 @@ _WORLDSTATE_TRADE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=889,
-  serialized_end=995,
+  serialized_start=1017,
+  serialized_end=1123,
 )
 
 _WORLDSTATE = _descriptor.Descriptor(
@@ -384,14 +421,21 @@ _WORLDSTATE = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='markets', full_name='biatob.proto.mvp.WorldState.markets', index=1,
+      name='username_to_uid', full_name='biatob.proto.mvp.WorldState.username_to_uid', index=1,
+      number=4, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='markets', full_name='biatob.proto.mvp.WorldState.markets', index=2,
       number=2, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='auth_token_owner_ids', full_name='biatob.proto.mvp.WorldState.auth_token_owner_ids', index=2,
+      name='auth_token_owner_ids', full_name='biatob.proto.mvp.WorldState.auth_token_owner_ids', index=3,
       number=3, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
@@ -400,7 +444,7 @@ _WORLDSTATE = _descriptor.Descriptor(
   ],
   extensions=[
   ],
-  nested_types=[_WORLDSTATE_USERSENTRY, _WORLDSTATE_MARKETSENTRY, _WORLDSTATE_AUTHTOKENOWNERIDSENTRY, _WORLDSTATE_USERINFOTODOUNCLASH, _WORLDSTATE_MARKET, _WORLDSTATE_TRADE, ],
+  nested_types=[_WORLDSTATE_USERSENTRY, _WORLDSTATE_USERNAMETOUIDENTRY, _WORLDSTATE_MARKETSENTRY, _WORLDSTATE_AUTHTOKENOWNERIDSENTRY, _WORLDSTATE_USERINFOTODOUNCLASH, _WORLDSTATE_MARKET, _WORLDSTATE_TRADE, ],
   enum_types=[
   ],
   options=None,
@@ -410,7 +454,7 @@ _WORLDSTATE = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=41,
-  serialized_end=995,
+  serialized_end=1123,
 )
 
 
@@ -447,8 +491,8 @@ _POSITION = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=997,
-  serialized_end=1058,
+  serialized_start=1125,
+  serialized_end=1186,
 )
 
 
@@ -481,8 +525,8 @@ _AUTH = _descriptor.Descriptor(
       name='auth_kind', full_name='biatob.proto.mvp.Auth.auth_kind',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=1060,
-  serialized_end=1102,
+  serialized_start=1188,
+  serialized_end=1230,
 )
 
 
@@ -515,8 +559,8 @@ _AUTHERROR = _descriptor.Descriptor(
       name='auth_error_kind', full_name='biatob.proto.mvp.AuthError.auth_error_kind',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=1104,
-  serialized_end=1183,
+  serialized_start=1232,
+  serialized_end=1311,
 )
 
 
@@ -560,8 +604,8 @@ _SIGNUPREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1185,
-  serialized_end=1255,
+  serialized_start=1313,
+  serialized_end=1383,
 )
 
 
@@ -598,8 +642,8 @@ _SIGNUPRESPONSE_ERROR = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1371,
-  serialized_end=1454,
+  serialized_start=1499,
+  serialized_end=1582,
 )
 
 _SIGNUPRESPONSE = _descriptor.Descriptor(
@@ -638,8 +682,8 @@ _SIGNUPRESPONSE = _descriptor.Descriptor(
       name='signup_result', full_name='biatob.proto.mvp.SignUpResponse.signup_result',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=1258,
-  serialized_end=1471,
+  serialized_start=1386,
+  serialized_end=1599,
 )
 
 
@@ -676,8 +720,8 @@ _CERTAINTYRANGE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1473,
-  serialized_end=1516,
+  serialized_start=1601,
+  serialized_end=1644,
 )
 
 
@@ -707,8 +751,8 @@ _MARKETPRIVACY_EMAILS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1659,
-  serialized_end=1683,
+  serialized_start=1787,
+  serialized_end=1811,
 )
 
 _MARKETPRIVACY = _descriptor.Descriptor(
@@ -747,8 +791,8 @@ _MARKETPRIVACY = _descriptor.Descriptor(
       name='privacy_kind', full_name='biatob.proto.mvp.MarketPrivacy.privacy_kind',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=1519,
-  serialized_end=1699,
+  serialized_start=1647,
+  serialized_end=1827,
 )
 
 
@@ -820,8 +864,8 @@ _CREATEMARKETREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1702,
-  serialized_end=1956,
+  serialized_start=1830,
+  serialized_end=2084,
 )
 
 
@@ -858,8 +902,8 @@ _CREATEMARKETRESPONSE_ERROR = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2071,
-  serialized_end=2145,
+  serialized_start=2199,
+  serialized_end=2273,
 )
 
 _CREATEMARKETRESPONSE = _descriptor.Descriptor(
@@ -898,8 +942,8 @@ _CREATEMARKETRESPONSE = _descriptor.Descriptor(
       name='create_market_result', full_name='biatob.proto.mvp.CreateMarketResponse.create_market_result',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=1959,
-  serialized_end=2169,
+  serialized_start=2087,
+  serialized_end=2297,
 )
 
 
@@ -936,8 +980,8 @@ _GETMARKETREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2171,
-  serialized_end=2246,
+  serialized_start=2299,
+  serialized_end=2374,
 )
 
 
@@ -1030,8 +1074,8 @@ _GETMARKETRESPONSE_MARKET = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2393,
-  serialized_end=2739,
+  serialized_start=2521,
+  serialized_end=2867,
 )
 
 _GETMARKETRESPONSE_ERROR = _descriptor.Descriptor(
@@ -1067,8 +1111,8 @@ _GETMARKETRESPONSE_ERROR = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2071,
-  serialized_end=2145,
+  serialized_start=2199,
+  serialized_end=2273,
 )
 
 _GETMARKETRESPONSE = _descriptor.Descriptor(
@@ -1107,8 +1151,8 @@ _GETMARKETRESPONSE = _descriptor.Descriptor(
       name='get_market_result', full_name='biatob.proto.mvp.GetMarketResponse.get_market_result',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=2249,
-  serialized_end=2836,
+  serialized_start=2377,
+  serialized_end=2964,
 )
 
 
@@ -1138,8 +1182,8 @@ _USERINFO = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2838,
-  serialized_end=2870,
+  serialized_start=2966,
+  serialized_end=2998,
 )
 
 
@@ -1190,8 +1234,8 @@ _STAKEREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2872,
-  serialized_end=2987,
+  serialized_start=3000,
+  serialized_end=3115,
 )
 
 
@@ -1228,8 +1272,8 @@ _STAKERESPONSE_ERROR = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2071,
-  serialized_end=2145,
+  serialized_start=2199,
+  serialized_end=2273,
 )
 
 _STAKERESPONSE = _descriptor.Descriptor(
@@ -1268,8 +1312,8 @@ _STAKERESPONSE = _descriptor.Descriptor(
       name='stake_result', full_name='biatob.proto.mvp.StakeResponse.stake_result',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=2990,
-  serialized_end=3191,
+  serialized_start=3118,
+  serialized_end=3319,
 )
 
 
@@ -1306,8 +1350,8 @@ _GETUSERREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3193,
-  serialized_end=3262,
+  serialized_start=3321,
+  serialized_end=3390,
 )
 
 
@@ -1344,8 +1388,8 @@ _GETUSERRESPONSE_USER = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3398,
-  serialized_end=3460,
+  serialized_start=3526,
+  serialized_end=3588,
 )
 
 _GETUSERRESPONSE_ERROR = _descriptor.Descriptor(
@@ -1381,8 +1425,8 @@ _GETUSERRESPONSE_ERROR = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2071,
-  serialized_end=2145,
+  serialized_start=2199,
+  serialized_end=2273,
 )
 
 _GETUSERRESPONSE = _descriptor.Descriptor(
@@ -1421,8 +1465,8 @@ _GETUSERRESPONSE = _descriptor.Descriptor(
       name='get_user_result', full_name='biatob.proto.mvp.GetUserResponse.get_user_result',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=3265,
-  serialized_end=3555,
+  serialized_start=3393,
+  serialized_end=3683,
 )
 
 
@@ -1459,8 +1503,8 @@ _MARKTRUSTEDREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3557,
-  serialized_end=3639,
+  serialized_start=3685,
+  serialized_end=3767,
 )
 
 
@@ -1497,8 +1541,8 @@ _MARKTRUSTEDRESPONSE_ERROR = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2071,
-  serialized_end=2145,
+  serialized_start=2199,
+  serialized_end=2273,
 )
 
 _MARKTRUSTEDRESPONSE = _descriptor.Descriptor(
@@ -1537,12 +1581,13 @@ _MARKTRUSTEDRESPONSE = _descriptor.Descriptor(
       name='result', full_name='biatob.proto.mvp.MarkTrustedResponse.result',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=3642,
-  serialized_end=3849,
+  serialized_start=3770,
+  serialized_end=3977,
 )
 
 _WORLDSTATE_USERSENTRY.fields_by_name['value'].message_type = _WORLDSTATE_USERINFOTODOUNCLASH
 _WORLDSTATE_USERSENTRY.containing_type = _WORLDSTATE
+_WORLDSTATE_USERNAMETOUIDENTRY.containing_type = _WORLDSTATE
 _WORLDSTATE_MARKETSENTRY.fields_by_name['value'].message_type = _WORLDSTATE_MARKET
 _WORLDSTATE_MARKETSENTRY.containing_type = _WORLDSTATE
 _WORLDSTATE_AUTHTOKENOWNERIDSENTRY.containing_type = _WORLDSTATE
@@ -1553,6 +1598,7 @@ _WORLDSTATE_MARKET.fields_by_name['resolution'].enum_type = _RESOLUTION
 _WORLDSTATE_MARKET.containing_type = _WORLDSTATE
 _WORLDSTATE_TRADE.containing_type = _WORLDSTATE
 _WORLDSTATE.fields_by_name['users'].message_type = _WORLDSTATE_USERSENTRY
+_WORLDSTATE.fields_by_name['username_to_uid'].message_type = _WORLDSTATE_USERNAMETOUIDENTRY
 _WORLDSTATE.fields_by_name['markets'].message_type = _WORLDSTATE_MARKETSENTRY
 _WORLDSTATE.fields_by_name['auth_token_owner_ids'].message_type = _WORLDSTATE_AUTHTOKENOWNERIDSENTRY
 _AUTH.oneofs_by_name['auth_kind'].fields.append(
@@ -1673,6 +1719,13 @@ WorldState = _reflection.GeneratedProtocolMessageType('WorldState', (_message.Me
     ))
   ,
 
+  UsernameToUidEntry = _reflection.GeneratedProtocolMessageType('UsernameToUidEntry', (_message.Message,), dict(
+    DESCRIPTOR = _WORLDSTATE_USERNAMETOUIDENTRY,
+    __module__ = 'protobuf.mvp_pb2'
+    # @@protoc_insertion_point(class_scope:biatob.proto.mvp.WorldState.UsernameToUidEntry)
+    ))
+  ,
+
   MarketsEntry = _reflection.GeneratedProtocolMessageType('MarketsEntry', (_message.Message,), dict(
     DESCRIPTOR = _WORLDSTATE_MARKETSENTRY,
     __module__ = 'protobuf.mvp_pb2'
@@ -1713,6 +1766,7 @@ WorldState = _reflection.GeneratedProtocolMessageType('WorldState', (_message.Me
   ))
 _sym_db.RegisterMessage(WorldState)
 _sym_db.RegisterMessage(WorldState.UsersEntry)
+_sym_db.RegisterMessage(WorldState.UsernameToUidEntry)
 _sym_db.RegisterMessage(WorldState.MarketsEntry)
 _sym_db.RegisterMessage(WorldState.AuthTokenOwnerIdsEntry)
 _sym_db.RegisterMessage(WorldState.UserInfoTodoUnclash)
@@ -1920,6 +1974,8 @@ _sym_db.RegisterMessage(MarkTrustedResponse.Error)
 
 _WORLDSTATE_USERSENTRY.has_options = True
 _WORLDSTATE_USERSENTRY._options = _descriptor._ParseOptions(descriptor_pb2.MessageOptions(), _b('8\001'))
+_WORLDSTATE_USERNAMETOUIDENTRY.has_options = True
+_WORLDSTATE_USERNAMETOUIDENTRY._options = _descriptor._ParseOptions(descriptor_pb2.MessageOptions(), _b('8\001'))
 _WORLDSTATE_MARKETSENTRY.has_options = True
 _WORLDSTATE_MARKETSENTRY._options = _descriptor._ParseOptions(descriptor_pb2.MessageOptions(), _b('8\001'))
 _WORLDSTATE_AUTHTOKENOWNERIDSENTRY.has_options = True

@@ -64,6 +64,7 @@ type Resolution
 -}
 type alias WorldState =
     { users : Dict.Dict Int (Maybe WorldStateUserInfoTodoUnclash)
+    , usernameToUid : Dict.Dict String Int
     , markets : Dict.Dict Int (Maybe WorldStateMarket)
     , authTokenOwnerIds : Dict.Dict String Int
     }
@@ -427,8 +428,9 @@ resolutionDecoder =
 -}
 worldStateDecoder : Decode.Decoder WorldState
 worldStateDecoder =
-    Decode.message (WorldState Dict.empty Dict.empty Dict.empty)
+    Decode.message (WorldState Dict.empty Dict.empty Dict.empty Dict.empty)
         [ Decode.mapped 1 ( 0, Nothing ) Decode.uint32 (Decode.map Just worldStateUserInfoTodoUnclashDecoder) .users setUsers
+        , Decode.mapped 4 ( "", 0 ) Decode.string Decode.uint32 .usernameToUid setUsernameToUid
         , Decode.mapped 2 ( 0, Nothing ) Decode.uint32 (Decode.map Just worldStateMarketDecoder) .markets setMarkets
         , Decode.mapped 3 ( "", 0 ) Decode.string Decode.uint32 .authTokenOwnerIds setAuthTokenOwnerIds
         ]
@@ -797,6 +799,7 @@ toWorldStateEncoder : WorldState -> Encode.Encoder
 toWorldStateEncoder model =
     Encode.message
         [ ( 1, Encode.dict Encode.uint32 (Maybe.withDefault Encode.none << Maybe.map toWorldStateUserInfoTodoUnclashEncoder) model.users )
+        , ( 4, Encode.dict Encode.string Encode.uint32 model.usernameToUid )
         , ( 2, Encode.dict Encode.uint32 (Maybe.withDefault Encode.none << Maybe.map toWorldStateMarketEncoder) model.markets )
         , ( 3, Encode.dict Encode.string Encode.uint32 model.authTokenOwnerIds )
         ]
@@ -1184,6 +1187,11 @@ toMarkTrustedResponseErrorEncoder model =
 setUsers : a -> { b | users : a } -> { b | users : a }
 setUsers value model =
     { model | users = value }
+
+
+setUsernameToUid : a -> { b | usernameToUid : a } -> { b | usernameToUid : a }
+setUsernameToUid value model =
+    { model | usernameToUid = value }
 
 
 setMarkets : a -> { b | markets : a } -> { b | markets : a }

@@ -66,6 +66,16 @@ def task_elm():
                ,
   }
 
+def task_test():
+  yield {
+    'name': 'python',
+    'file_dep': list(Path('server').glob('**/*.py')),
+    'actions': [
+      'mypy server',
+      'cd server && pytest',
+    ]
+  }
+
 def task_userstories():
   src = Path('mockup/user-stories.markdown')
   dst = src.with_suffix('.html')

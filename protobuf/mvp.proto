@@ -7,6 +7,8 @@ package biatob.proto.mvp;
 message WorldState {
 
   map<uint64, UserInfoTodoUnclash> users = 1;
+  map<string, uint64> username_to_uid = 4;
+
   map<uint64, Market> markets = 2;
 
   map<string, uint64> auth_token_owner_ids = 3;
