@@ -2,7 +2,7 @@
 
 
 module Biatob.Proto.Mvp exposing
-    ( Void(..), Pronouns(..), Resolution(..), Position, AuthKind(..), Auth, AuthErrorKind(..), AuthError, SignUpRequest, SignupResult(..), SignUpResponse, SignUpResponseError, CertaintyRange, PrivacyKind(..), MarketPrivacy, MarketPrivacyEmails, CreateMarketRequest, CreateMarketResult(..), CreateMarketResponse, CreateMarketResponseError, GetMarketRequest, GetMarketResult(..), GetMarketResponse, GetMarketResponseMarket, GetMarketResponseError, UserInfo, StakeRequest, StakeResult(..), StakeResponse, StakeResponseError, GetUserRequest, GetUserResult(..), GetUserResponse, GetUserResponseUser, GetUserResponseError, MarkTrustedRequest, Result(..), MarkTrustedResponse, MarkTrustedResponseError
+    ( Void(..), Resolution(..), Position, AuthKind(..), Auth, AuthErrorKind(..), AuthError, SignUpRequest, SignupResult(..), SignUpResponse, SignUpResponseError, CertaintyRange, PrivacyKind(..), MarketPrivacy, MarketPrivacyEmails, CreateMarketRequest, CreateMarketResult(..), CreateMarketResponse, CreateMarketResponseError, GetMarketRequest, GetMarketResult(..), GetMarketResponse, GetMarketResponseMarket, GetMarketResponseError, UserInfo, StakeRequest, StakeResult(..), StakeResponse, StakeResponseError, GetUserRequest, GetUserResult(..), GetUserResponse, GetUserResponseUser, GetUserResponseError, MarkTrustedRequest, Result(..), MarkTrustedResponse, MarkTrustedResponseError
     , positionDecoder, authDecoder, authErrorDecoder, signUpRequestDecoder, signUpResponseDecoder, certaintyRangeDecoder, marketPrivacyDecoder, createMarketRequestDecoder, createMarketResponseDecoder, getMarketRequestDecoder, getMarketResponseDecoder, userInfoDecoder, stakeRequestDecoder, stakeResponseDecoder, getUserRequestDecoder, getUserResponseDecoder, markTrustedRequestDecoder, markTrustedResponseDecoder
     , toPositionEncoder, toAuthEncoder, toAuthErrorEncoder, toSignUpRequestEncoder, toSignUpResponseEncoder, toCertaintyRangeEncoder, toMarketPrivacyEncoder, toCreateMarketRequestEncoder, toCreateMarketResponseEncoder, toGetMarketRequestEncoder, toGetMarketResponseEncoder, toUserInfoEncoder, toStakeRequestEncoder, toStakeResponseEncoder, toGetUserRequestEncoder, toGetUserResponseEncoder, toMarkTrustedRequestEncoder, toMarkTrustedResponseEncoder
     )
@@ -20,7 +20,7 @@ To run it use [`elm-protocol-buffers`](https://package.elm-lang.org/packages/eri
 
 # Model
 
-@docs Void, Pronouns, Resolution, Position, AuthKind, Auth, AuthErrorKind, AuthError, SignUpRequest, SignupResult, SignUpResponse, SignUpResponseError, CertaintyRange, PrivacyKind, MarketPrivacy, MarketPrivacyEmails, CreateMarketRequest, CreateMarketResult, CreateMarketResponse, CreateMarketResponseError, GetMarketRequest, GetMarketResult, GetMarketResponse, GetMarketResponseMarket, GetMarketResponseError, UserInfo, StakeRequest, StakeResult, StakeResponse, StakeResponseError, GetUserRequest, GetUserResult, GetUserResponse, GetUserResponseUser, GetUserResponseError, MarkTrustedRequest, Result, MarkTrustedResponse, MarkTrustedResponseError
+@docs Void, Resolution, Position, AuthKind, Auth, AuthErrorKind, AuthError, SignUpRequest, SignupResult, SignUpResponse, SignUpResponseError, CertaintyRange, PrivacyKind, MarketPrivacy, MarketPrivacyEmails, CreateMarketRequest, CreateMarketResult, CreateMarketResponse, CreateMarketResponseError, GetMarketRequest, GetMarketResult, GetMarketResponse, GetMarketResponseMarket, GetMarketResponseError, UserInfo, StakeRequest, StakeResult, StakeResponse, StakeResponseError, GetUserRequest, GetUserResult, GetUserResponse, GetUserResponseUser, GetUserResponseError, MarkTrustedRequest, Result, MarkTrustedResponse, MarkTrustedResponseError
 
 
 # Decoder
@@ -47,15 +47,6 @@ import Protobuf.Encode as Encode
 type Void
     = Void
     | VoidUnrecognized_ Int
-
-
-{-| `Pronouns` enumeration
--}
-type Pronouns
-    = TheyThem
-    | SheHer
-    | HeHim
-    | PronounsUnrecognized_ Int
 
 
 {-| `Resolution` enumeration
@@ -107,7 +98,6 @@ type alias SignUpRequest =
     { email : String
     , password : String
     , displayName : String
-    , pronouns : Pronouns
     }
 
 
@@ -247,7 +237,6 @@ type alias GetMarketResponseError =
 -}
 type alias UserInfo =
     { displayName : String
-    , pronouns : Pronouns
     }
 
 
@@ -369,26 +358,6 @@ voidDecoder =
             )
 
 
-pronounsDecoder : Decode.Decoder Pronouns
-pronounsDecoder =
-    Decode.int32
-        |> Decode.map
-            (\value ->
-                case value of
-                    0 ->
-                        TheyThem
-
-                    1 ->
-                        SheHer
-
-                    2 ->
-                        HeHim
-
-                    v ->
-                        PronounsUnrecognized_ v
-            )
-
-
 resolutionDecoder : Decode.Decoder Resolution
 resolutionDecoder =
     Decode.int32
@@ -447,11 +416,10 @@ authErrorDecoder =
 -}
 signUpRequestDecoder : Decode.Decoder SignUpRequest
 signUpRequestDecoder =
-    Decode.message (SignUpRequest "" "" "" TheyThem)
+    Decode.message (SignUpRequest "" "" "")
         [ Decode.optional 1 Decode.string setEmail
         , Decode.optional 2 Decode.string setPassword
         , Decode.optional 3 Decode.string setDisplayName
-        , Decode.optional 4 pronounsDecoder setPronouns
         ]
 
 
@@ -593,9 +561,8 @@ getMarketResponseErrorDecoder =
 -}
 userInfoDecoder : Decode.Decoder UserInfo
 userInfoDecoder =
-    Decode.message (UserInfo "" TheyThem)
+    Decode.message (UserInfo "")
         [ Decode.optional 1 Decode.string setDisplayName
-        , Decode.optional 2 pronounsDecoder setPronouns
         ]
 
 
@@ -717,23 +684,6 @@ toVoidEncoder value =
                 v
 
 
-toPronounsEncoder : Pronouns -> Encode.Encoder
-toPronounsEncoder value =
-    Encode.int32 <|
-        case value of
-            TheyThem ->
-                0
-
-            SheHer ->
-                1
-
-            HeHim ->
-                2
-
-            PronounsUnrecognized_ v ->
-                v
-
-
 toResolutionEncoder : Resolution -> Encode.Encoder
 toResolutionEncoder value =
     Encode.int32 <|
@@ -801,7 +751,6 @@ toSignUpRequestEncoder model =
         [ ( 1, Encode.string model.email )
         , ( 2, Encode.string model.password )
         , ( 3, Encode.string model.displayName )
-        , ( 4, toPronounsEncoder model.pronouns )
         ]
 
 
@@ -969,7 +918,6 @@ toUserInfoEncoder : UserInfo -> Encode.Encoder
 toUserInfoEncoder model =
     Encode.message
         [ ( 1, Encode.string model.displayName )
-        , ( 2, toPronounsEncoder model.pronouns )
         ]
 
 
@@ -1131,11 +1079,6 @@ setPassword value model =
 setDisplayName : a -> { b | displayName : a } -> { b | displayName : a }
 setDisplayName value model =
     { model | displayName = value }
-
-
-setPronouns : a -> { b | pronouns : a } -> { b | pronouns : a }
-setPronouns value model =
-    { model | pronouns = value }
 
 
 setSignupResult : a -> { b | signupResult : a } -> { b | signupResult : a }

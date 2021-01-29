@@ -104,7 +104,7 @@ formStateToProto form =
   , createdUnixtime = 0 -- TODO
   , closesUnixtime = 0 + (Form.openForSeconds form |> Maybe.withDefault 0) -- TODO
   , specialRules = form.specialRulesField
-  , creator = Just {displayName = "Spencer" , pronouns = Pb.HeHim} -- TODO
+  , creator = Just {displayName = "Spencer"} -- TODO
   , resolution = Pb.ResolutionNoneYet
   }
 

@@ -54,26 +54,6 @@ class Void(builtin___int):
 VOID = typing___cast('Void', 0)
 global___Void = Void
 
-class Pronouns(builtin___int):
-    DESCRIPTOR: google___protobuf___descriptor___EnumDescriptor = ...
-    @classmethod
-    def Name(cls, number: builtin___int) -> builtin___str: ...
-    @classmethod
-    def Value(cls, name: builtin___str) -> 'Pronouns': ...
-    @classmethod
-    def keys(cls) -> typing___List[builtin___str]: ...
-    @classmethod
-    def values(cls) -> typing___List['Pronouns']: ...
-    @classmethod
-    def items(cls) -> typing___List[typing___Tuple[builtin___str, 'Pronouns']]: ...
-    THEY_THEM = typing___cast('Pronouns', 0)
-    SHE_HER = typing___cast('Pronouns', 1)
-    HE_HIM = typing___cast('Pronouns', 2)
-THEY_THEM = typing___cast('Pronouns', 0)
-SHE_HER = typing___cast('Pronouns', 1)
-HE_HIM = typing___cast('Pronouns', 2)
-global___Pronouns = Pronouns
-
 class Resolution(builtin___int):
     DESCRIPTOR: google___protobuf___descriptor___EnumDescriptor = ...
     @classmethod
@@ -162,14 +142,12 @@ class SignUpRequest(google___protobuf___message___Message):
     email = ... # type: typing___Text
     password = ... # type: typing___Text
     display_name = ... # type: typing___Text
-    pronouns = ... # type: global___Pronouns
 
     def __init__(self,
         *,
         email : typing___Optional[typing___Text] = None,
         password : typing___Optional[typing___Text] = None,
         display_name : typing___Optional[typing___Text] = None,
-        pronouns : typing___Optional[global___Pronouns] = None,
         ) -> None: ...
     if sys.version_info >= (3,):
         @classmethod
@@ -179,7 +157,7 @@ class SignUpRequest(google___protobuf___message___Message):
         def FromString(cls, s: typing___Union[builtin___bytes, builtin___buffer, builtin___unicode]) -> SignUpRequest: ...
     def MergeFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
     def CopyFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
-    def ClearField(self, field_name: typing_extensions___Literal[u"display_name",b"display_name",u"email",b"email",u"password",b"password",u"pronouns",b"pronouns"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions___Literal[u"display_name",b"display_name",u"email",b"email",u"password",b"password"]) -> None: ...
 global___SignUpRequest = SignUpRequest
 
 class SignUpResponse(google___protobuf___message___Message):
@@ -500,12 +478,10 @@ global___GetMarketResponse = GetMarketResponse
 class UserInfo(google___protobuf___message___Message):
     DESCRIPTOR: google___protobuf___descriptor___Descriptor = ...
     display_name = ... # type: typing___Text
-    pronouns = ... # type: global___Pronouns
 
     def __init__(self,
         *,
         display_name : typing___Optional[typing___Text] = None,
-        pronouns : typing___Optional[global___Pronouns] = None,
         ) -> None: ...
     if sys.version_info >= (3,):
         @classmethod
@@ -515,7 +491,7 @@ class UserInfo(google___protobuf___message___Message):
         def FromString(cls, s: typing___Union[builtin___bytes, builtin___buffer, builtin___unicode]) -> UserInfo: ...
     def MergeFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
     def CopyFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
-    def ClearField(self, field_name: typing_extensions___Literal[u"display_name",b"display_name",u"pronouns",b"pronouns"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions___Literal[u"display_name",b"display_name"]) -> None: ...
 global___UserInfo = UserInfo
 
 class StakeRequest(google___protobuf___message___Message):

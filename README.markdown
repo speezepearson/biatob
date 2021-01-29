@@ -27,3 +27,4 @@ TODO
 - P3 [nice-to-have]: consider allowing "soft resolutions" so a market can resolve "80% yes"
 - P3 [nice-to-have]: consider letting people download a list of all their bets
 - P3 [nice-to-have]: advertise to Caplan/Hanson/LessWrong/EAG/CFAR?
+- P4 [nice-to-have]: let people subscribe to their mutuals' bets (RSS?)
