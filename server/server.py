@@ -24,10 +24,13 @@ def weak_rand_not_in(rng: random.Random, limit: int, xs: Container[int]) -> int:
         result = rng.randrange(0, limit)
     return result
 
+def indent(s: str) -> str:
+    return '\n'.join('  '+line for line in s.splitlines())
+
 class Marketplace(abc.ABC):
-    def register_user(self, username: str, password: str) -> None: pass
+    def register_user(self, username: str, password: str) -> UserId: pass
     def mint_auth_token(self, username: str, password: str) -> Optional[AuthToken]: pass
-    def create_market(self, market: mvp_pb2.WorldState.Market) -> None: pass
+    def create_market(self, market: mvp_pb2.WorldState.Market) -> MarketId: pass
     def resolve_market(self, market_id: MarketId, resolution: bool) -> None: pass
     def set_trust(self, *, truster: UserId, trusted: UserId, trusts: bool) -> None: pass
     def bet(self, market_id: MarketId, participant_id: UserId, expected_resolution: bool, bettor_stake_cents: int) -> None: pass
@@ -51,7 +54,7 @@ class FSMarketplace(Marketplace):
         yield wstate
         self._set_state(wstate)
 
-    def register_user(self, username: str, password: str) -> None:
+    def register_user(self, username: str, password: str) -> UserId:
         with self._mutate_state() as wstate:
             if username in wstate.username_to_uid:
                 raise KeyError(username)
@@ -62,6 +65,7 @@ class FSMarketplace(Marketplace):
                 trusted_users=[],
             ))
             wstate.username_to_uid[username] = uid
+            return uid
 
     def mint_auth_token(self, username: str, password: str) -> AuthToken:
         with self._mutate_state() as wstate:
@@ -77,10 +81,11 @@ class FSMarketplace(Marketplace):
             return token
 
 
-    def create_market(self, market: mvp_pb2.WorldState.Market) -> None:
+    def create_market(self, market: mvp_pb2.WorldState.Market) -> MarketId:
         with self._mutate_state() as wstate:
             mid = MarketId(weak_rand_not_in(self._rng, limit=2**64, xs=wstate.markets.keys()))
             wstate.markets[mid].MergeFrom(market)
+            return mid
 
     def resolve_market(self, market_id: MarketId, resolution: bool) -> None:
         with self._mutate_state() as wstate:
@@ -116,23 +121,41 @@ class FSMarketplace(Marketplace):
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--elm-dist", default="elm/dist")
+parser.add_argument("--state-path", type=Path, default="server.WorldState.pb")
 
+def proto_response(message_pb) -> web.Response:
+    return web.Response(status=200, content_type='application/octet-stream', body=message_pb.SerializeToString())
 
-async def create_market_handler(request):
-    name = request.match_info.get('name', "Anonymous")
-    create_req = mvp_pb2.CreateMarketRequest()
-    create_req.ParseFromString(await request.read())
-    # TODO: reject user inputs that are permuted by HTML sanitization
-    print(create_req.question)
-    return web.Response(text='created something about {create_req.question}')
+def make_routes(marketplace: Marketplace) -> web.RouteTableDef:
+    routes = web.RouteTableDef()
 
+    @routes.post('/api/create_market')
+    async def api_create_market(http_request: web.Request) -> web.StreamResponse:
+        creator_id = int(http_request.match_info.get('TODO_auth_user_id', '0'))
+        create_req = mvp_pb2.CreateMarketRequest()
+        create_req.ParseFromString(await http_request.read())
+        now = int(time.time())
+        market = mvp_pb2.WorldState.Market(
+            question=create_req.question,
+            certainty=create_req.certainty,
+            maximum_stake_cents=create_req.maximum_stake_cents,
+            created_unixtime=now,
+            closes_unixtime=now + create_req.open_seconds,
+            special_rules=create_req.special_rules,
+            creator_id=creator_id,
+            trades=[],
+            resolution=mvp_pb2.RESOLUTION_NONE_YET,
+        )
+        market_id = marketplace.create_market(market)
+        print(f'market id {market_id} =>\n{indent(str(market))}')
+        return proto_response(mvp_pb2.CreateMarketResponse(new_market_id=market_id))
+
+    return routes
 
 if __name__ == '__main__':
     args = parser.parse_args()
     app = web.Application()
-    app.add_routes([
-        web.static('/static', args.elm_dist),
-        web.post('/api/create_market', create_market_handler),
-        ])
+    app.add_routes([web.static('/static', args.elm_dist)])
+    app.add_routes(make_routes(FSMarketplace(state_path=args.state_path)))
 
     web.run_app(app)
