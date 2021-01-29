@@ -1,0 +1,8 @@
+aiohttp
+protobuf
+bcrypt
+requests
+
+# testing
+pytest-aiohttp
+pytest
