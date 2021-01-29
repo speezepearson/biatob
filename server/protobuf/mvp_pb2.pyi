@@ -6,6 +6,7 @@ from google.protobuf.descriptor import (
 )
 
 from google.protobuf.internal.containers import (
+    RepeatedCompositeFieldContainer as google___protobuf___internal___containers___RepeatedCompositeFieldContainer,
     RepeatedScalarFieldContainer as google___protobuf___internal___containers___RepeatedScalarFieldContainer,
 )
 
@@ -16,6 +17,8 @@ from google.protobuf.message import (
 from typing import (
     Iterable as typing___Iterable,
     List as typing___List,
+    Mapping as typing___Mapping,
+    MutableMapping as typing___MutableMapping,
     Optional as typing___Optional,
     Text as typing___Text,
     Tuple as typing___Tuple,
@@ -73,6 +76,192 @@ RESOLUTION_NONE_YET = typing___cast('Resolution', 0)
 RESOLUTION_YES = typing___cast('Resolution', 1)
 RESOLUTION_NO = typing___cast('Resolution', 2)
 global___Resolution = Resolution
+
+class WorldState(google___protobuf___message___Message):
+    DESCRIPTOR: google___protobuf___descriptor___Descriptor = ...
+    class UsersEntry(google___protobuf___message___Message):
+        DESCRIPTOR: google___protobuf___descriptor___Descriptor = ...
+        key = ... # type: builtin___int
+
+        @property
+        def value(self) -> global___WorldState.UserInfoTodoUnclash: ...
+
+        def __init__(self,
+            *,
+            key : typing___Optional[builtin___int] = None,
+            value : typing___Optional[global___WorldState.UserInfoTodoUnclash] = None,
+            ) -> None: ...
+        if sys.version_info >= (3,):
+            @classmethod
+            def FromString(cls, s: builtin___bytes) -> WorldState.UsersEntry: ...
+        else:
+            @classmethod
+            def FromString(cls, s: typing___Union[builtin___bytes, builtin___buffer, builtin___unicode]) -> WorldState.UsersEntry: ...
+        def MergeFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
+        def CopyFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
+        def HasField(self, field_name: typing_extensions___Literal[u"value",b"value"]) -> builtin___bool: ...
+        def ClearField(self, field_name: typing_extensions___Literal[u"key",b"key",u"value",b"value"]) -> None: ...
+    global___UsersEntry = UsersEntry
+
+    class MarketsEntry(google___protobuf___message___Message):
+        DESCRIPTOR: google___protobuf___descriptor___Descriptor = ...
+        key = ... # type: builtin___int
+
+        @property
+        def value(self) -> global___WorldState.Market: ...
+
+        def __init__(self,
+            *,
+            key : typing___Optional[builtin___int] = None,
+            value : typing___Optional[global___WorldState.Market] = None,
+            ) -> None: ...
+        if sys.version_info >= (3,):
+            @classmethod
+            def FromString(cls, s: builtin___bytes) -> WorldState.MarketsEntry: ...
+        else:
+            @classmethod
+            def FromString(cls, s: typing___Union[builtin___bytes, builtin___buffer, builtin___unicode]) -> WorldState.MarketsEntry: ...
+        def MergeFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
+        def CopyFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
+        def HasField(self, field_name: typing_extensions___Literal[u"value",b"value"]) -> builtin___bool: ...
+        def ClearField(self, field_name: typing_extensions___Literal[u"key",b"key",u"value",b"value"]) -> None: ...
+    global___MarketsEntry = MarketsEntry
+
+    class AuthTokenOwnerIdsEntry(google___protobuf___message___Message):
+        DESCRIPTOR: google___protobuf___descriptor___Descriptor = ...
+        key = ... # type: typing___Text
+        value = ... # type: builtin___int
+
+        def __init__(self,
+            *,
+            key : typing___Optional[typing___Text] = None,
+            value : typing___Optional[builtin___int] = None,
+            ) -> None: ...
+        if sys.version_info >= (3,):
+            @classmethod
+            def FromString(cls, s: builtin___bytes) -> WorldState.AuthTokenOwnerIdsEntry: ...
+        else:
+            @classmethod
+            def FromString(cls, s: typing___Union[builtin___bytes, builtin___buffer, builtin___unicode]) -> WorldState.AuthTokenOwnerIdsEntry: ...
+        def MergeFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
+        def CopyFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
+        def ClearField(self, field_name: typing_extensions___Literal[u"key",b"key",u"value",b"value"]) -> None: ...
+    global___AuthTokenOwnerIdsEntry = AuthTokenOwnerIdsEntry
+
+    class UserInfoTodoUnclash(google___protobuf___message___Message):
+        DESCRIPTOR: google___protobuf___descriptor___Descriptor = ...
+        username = ... # type: typing___Text
+        password_bcrypt = ... # type: builtin___bytes
+        trusted_users = ... # type: google___protobuf___internal___containers___RepeatedScalarFieldContainer[builtin___int]
+
+        def __init__(self,
+            *,
+            username : typing___Optional[typing___Text] = None,
+            password_bcrypt : typing___Optional[builtin___bytes] = None,
+            trusted_users : typing___Optional[typing___Iterable[builtin___int]] = None,
+            ) -> None: ...
+        if sys.version_info >= (3,):
+            @classmethod
+            def FromString(cls, s: builtin___bytes) -> WorldState.UserInfoTodoUnclash: ...
+        else:
+            @classmethod
+            def FromString(cls, s: typing___Union[builtin___bytes, builtin___buffer, builtin___unicode]) -> WorldState.UserInfoTodoUnclash: ...
+        def MergeFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
+        def CopyFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
+        def ClearField(self, field_name: typing_extensions___Literal[u"password_bcrypt",b"password_bcrypt",u"trusted_users",b"trusted_users",u"username",b"username"]) -> None: ...
+    global___UserInfoTodoUnclash = UserInfoTodoUnclash
+
+    class Market(google___protobuf___message___Message):
+        DESCRIPTOR: google___protobuf___descriptor___Descriptor = ...
+        question = ... # type: typing___Text
+        maximum_stake_cents = ... # type: builtin___int
+        created_unixtime = ... # type: builtin___int
+        closes_unixtime = ... # type: builtin___int
+        special_rules = ... # type: typing___Text
+        creator_id = ... # type: builtin___int
+        resolution = ... # type: global___Resolution
+
+        @property
+        def certainty(self) -> global___CertaintyRange: ...
+
+        @property
+        def trades(self) -> google___protobuf___internal___containers___RepeatedCompositeFieldContainer[global___WorldState.Trade]: ...
+
+        def __init__(self,
+            *,
+            question : typing___Optional[typing___Text] = None,
+            certainty : typing___Optional[global___CertaintyRange] = None,
+            maximum_stake_cents : typing___Optional[builtin___int] = None,
+            created_unixtime : typing___Optional[builtin___int] = None,
+            closes_unixtime : typing___Optional[builtin___int] = None,
+            special_rules : typing___Optional[typing___Text] = None,
+            creator_id : typing___Optional[builtin___int] = None,
+            trades : typing___Optional[typing___Iterable[global___WorldState.Trade]] = None,
+            resolution : typing___Optional[global___Resolution] = None,
+            ) -> None: ...
+        if sys.version_info >= (3,):
+            @classmethod
+            def FromString(cls, s: builtin___bytes) -> WorldState.Market: ...
+        else:
+            @classmethod
+            def FromString(cls, s: typing___Union[builtin___bytes, builtin___buffer, builtin___unicode]) -> WorldState.Market: ...
+        def MergeFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
+        def CopyFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
+        def HasField(self, field_name: typing_extensions___Literal[u"certainty",b"certainty"]) -> builtin___bool: ...
+        def ClearField(self, field_name: typing_extensions___Literal[u"certainty",b"certainty",u"closes_unixtime",b"closes_unixtime",u"created_unixtime",b"created_unixtime",u"creator_id",b"creator_id",u"maximum_stake_cents",b"maximum_stake_cents",u"question",b"question",u"resolution",b"resolution",u"special_rules",b"special_rules",u"trades",b"trades"]) -> None: ...
+    global___Market = Market
+
+    class Trade(google___protobuf___message___Message):
+        DESCRIPTOR: google___protobuf___descriptor___Descriptor = ...
+        bettor_id = ... # type: builtin___int
+        expected_resolution = ... # type: builtin___bool
+        bettor_stake = ... # type: builtin___int
+        transacted_unixtime = ... # type: builtin___int
+
+        def __init__(self,
+            *,
+            bettor_id : typing___Optional[builtin___int] = None,
+            expected_resolution : typing___Optional[builtin___bool] = None,
+            bettor_stake : typing___Optional[builtin___int] = None,
+            transacted_unixtime : typing___Optional[builtin___int] = None,
+            ) -> None: ...
+        if sys.version_info >= (3,):
+            @classmethod
+            def FromString(cls, s: builtin___bytes) -> WorldState.Trade: ...
+        else:
+            @classmethod
+            def FromString(cls, s: typing___Union[builtin___bytes, builtin___buffer, builtin___unicode]) -> WorldState.Trade: ...
+        def MergeFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
+        def CopyFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
+        def ClearField(self, field_name: typing_extensions___Literal[u"bettor_id",b"bettor_id",u"bettor_stake",b"bettor_stake",u"expected_resolution",b"expected_resolution",u"transacted_unixtime",b"transacted_unixtime"]) -> None: ...
+    global___Trade = Trade
+
+
+    @property
+    def users(self) -> typing___MutableMapping[builtin___int, global___WorldState.UserInfoTodoUnclash]: ...
+
+    @property
+    def markets(self) -> typing___MutableMapping[builtin___int, global___WorldState.Market]: ...
+
+    @property
+    def auth_token_owner_ids(self) -> typing___MutableMapping[typing___Text, builtin___int]: ...
+
+    def __init__(self,
+        *,
+        users : typing___Optional[typing___Mapping[builtin___int, global___WorldState.UserInfoTodoUnclash]] = None,
+        markets : typing___Optional[typing___Mapping[builtin___int, global___WorldState.Market]] = None,
+        auth_token_owner_ids : typing___Optional[typing___Mapping[typing___Text, builtin___int]] = None,
+        ) -> None: ...
+    if sys.version_info >= (3,):
+        @classmethod
+        def FromString(cls, s: builtin___bytes) -> WorldState: ...
+    else:
+        @classmethod
+        def FromString(cls, s: typing___Union[builtin___bytes, builtin___buffer, builtin___unicode]) -> WorldState: ...
+    def MergeFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
+    def CopyFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
+    def ClearField(self, field_name: typing_extensions___Literal[u"auth_token_owner_ids",b"auth_token_owner_ids",u"markets",b"markets",u"users",b"users"]) -> None: ...
+global___WorldState = WorldState
 
 class Position(google___protobuf___message___Message):
     DESCRIPTOR: google___protobuf___descriptor___Descriptor = ...

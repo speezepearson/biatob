@@ -2,6 +2,45 @@ syntax = "proto3";
 
 package biatob.proto.mvp;
 
+// For MVP purposes, we're just gonna store the entire worldstate in a protobuf blob. "Data base"? Huh?
+// TODO(P3): ^ stop doing that
+message WorldState {
+
+  map<uint64, UserInfoTodoUnclash> users = 1;
+  map<uint64, Market> markets = 2;
+
+  map<string, uint64> auth_token_owner_ids = 3;
+
+  message UserInfoTodoUnclash {
+    string username = 1;
+    bytes password_bcrypt = 2;
+    repeated uint64 trusted_users = 3;
+    // TODO: string email = 3; // optional
+  }
+  message Market {
+    // Set upon creation, never changed
+    string question = 1;
+    CertaintyRange certainty = 2;
+    uint64 maximum_stake_cents = 3;
+    uint64 created_unixtime = 4;
+    uint64 closes_unixtime = 5;
+    string special_rules = 6;
+    uint64 creator_id = 7;
+
+    // Changes regularly
+    repeated Trade trades = 8;
+    Resolution resolution = 9;
+  }
+
+  message Trade {
+    uint64 bettor_id = 1;
+    bool expected_resolution = 2;
+    uint64 bettor_stake = 3;
+    uint64 transacted_unixtime = 4;
+  }
+}
+
+
 enum Void {
   VOID = 0;
 }

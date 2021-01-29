@@ -1,14 +1,26 @@
 #! /usr/bin/env python3
 # TODO: flock over the database file
 
+import secrets
+
+import bcrypt
 from aiohttp import web
-from .protobuf.protobuf import mvp_pb2
+from .protobuf import mvp_pb2
 
 import argparse
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--elm-dist", default="elm/dist")
 args = parser.parse_args()
+
+def register_user(wstate: mvp_pb2.WorldState, username: str, password: str) -> None:
+    uid = secrets.randbelow(2**64)
+    while uid in wstate.users: uid = secrets.randbelow(2**64)
+    wstate.users.get_or_create(uid).MergeFrom(mvp_pb2.WorldState.UserInfoTodoUnclash(
+        username=username,
+        password_bcrypt=bcrypt.hashpw(password.encode('utf8'), bcrypt.gensalt()),
+        trusted_users=[],
+    ))
 
 
 async def create_market_handler(request):
