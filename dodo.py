@@ -71,7 +71,7 @@ def task_test():
     'name': 'python',
     'file_dep': list(Path('server').glob('**/*.py')),
     'actions': [
-      'pip3 install -r server/requirements.txt',
+      # 'pip3 install -r server/requirements.txt',
       'mypy server',
       'cd server && pytest',
     ]

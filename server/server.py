@@ -4,19 +4,23 @@
 import abc
 import argparse
 import contextlib
+import hmac
 from pathlib import Path
 import random
 import secrets
 import time
-from typing import Iterator, Optional, Container, NewType, Callable
+from typing import Iterator, Optional, Container, NewType, Callable, NoReturn
 
 import bcrypt  # type: ignore
 from aiohttp import web
 from .protobuf import mvp_pb2
 
-UserId = NewType('UserId', int)
 MarketId = NewType('MarketId', int)
 AuthToken = NewType('AuthToken', str)
+
+class UsernameAlreadyRegisteredError(Exception): pass
+class NoSuchUserError(Exception): pass
+class BadPasswordError(Exception): pass
 
 def weak_rand_not_in(rng: random.Random, limit: int, xs: Container[int]) -> int:
     result = rng.randrange(0, limit)
@@ -27,13 +31,22 @@ def weak_rand_not_in(rng: random.Random, limit: int, xs: Container[int]) -> int:
 def indent(s: str) -> str:
     return '\n'.join('  '+line for line in s.splitlines())
 
+def ensure_user_exists(wstate: mvp_pb2.WorldState, user: mvp_pb2.UserId) -> None:
+    if user.WhichOneof('kind') == 'username':
+        if user.username not in wstate.username_users:
+            raise NoSuchUserError(user.username)
+    else:
+        raise RuntimeError(f'unrecognized UserId kind: {user!r}')
+
+def raise_(e: Exception) -> NoReturn: raise e
+
 class Marketplace(abc.ABC):
-    def register_user(self, username: str, password: str) -> UserId: pass
-    def mint_auth_token(self, username: str, password: str) -> Optional[AuthToken]: pass
+    def register_username(self, username: str, password: str) -> None: pass
+    def mint_auth_token_for_username(self, username: str, password: str) -> mvp_pb2.AuthToken: pass
     def create_market(self, market: mvp_pb2.WorldState.Market) -> MarketId: pass
     def resolve_market(self, market_id: MarketId, resolution: bool) -> None: pass
-    def set_trust(self, *, truster: UserId, trusted: UserId, trusts: bool) -> None: pass
-    def bet(self, market_id: MarketId, participant_id: UserId, expected_resolution: bool, bettor_stake_cents: int) -> None: pass
+    def set_trust(self, *, truster: mvp_pb2.UserId, trusted: mvp_pb2.UserId, trusts: bool) -> None: pass
+    def bet(self, market_id: MarketId, bettor: mvp_pb2.UserId, expected_resolution: bool, bettor_stake_cents: int) -> None: pass
 
 class FSMarketplace(Marketplace):
     def __init__(self, state_path: Path, random_seed: Optional[int] = None, clock: Callable[[], int] = lambda: int(time.time())) -> None:
@@ -54,32 +67,29 @@ class FSMarketplace(Marketplace):
         yield wstate
         self._set_state(wstate)
 
-    def register_user(self, username: str, password: str) -> UserId:
+    def register_username(self, username: str, password: str) -> None:
         with self._mutate_state() as wstate:
-            if username in wstate.username_to_uid:
-                raise KeyError(username)
-            uid = UserId(weak_rand_not_in(self._rng, limit=2**64, xs=wstate.users.keys()))
-            wstate.users[uid].MergeFrom(mvp_pb2.WorldState.UserInfoTodoUnclash(
-                username=username,
+            if username in wstate.username_users:
+                raise UsernameAlreadyRegisteredError(username)
+            wstate.username_users[username].MergeFrom(mvp_pb2.WorldState.UsernameInfo(
                 password_bcrypt=bcrypt.hashpw(password.encode('utf8'), bcrypt.gensalt()),
-                trusted_users=[],
+                info=mvp_pb2.WorldState.GenericUserInfo(trusted_users=[]),
             ))
-            wstate.username_to_uid[username] = uid
-            return uid
 
-    def mint_auth_token(self, username: str, password: str) -> AuthToken:
+    def mint_auth_token_for_username(self, username: str, password: str) -> mvp_pb2.AuthToken:
         with self._mutate_state() as wstate:
-            if username not in wstate.username_to_uid:
-                raise KeyError(username)
-            uid = UserId(wstate.username_to_uid[username])
-            if uid not in wstate.users:
-                raise RuntimeError(uid)
-            if not bcrypt.checkpw(password.encode('utf8'), wstate.users[uid].password_bcrypt):
-                raise ValueError()
+            if username not in wstate.username_users:
+                raise NoSuchUserError(username)
+            if not bcrypt.checkpw(password.encode('utf8'), wstate.username_users[username].password_bcrypt):
+                raise BadPasswordError()
             token = AuthToken(secrets.token_urlsafe(16))
-            wstate.auth_token_owner_ids[token] = uid
-            return token
-
+            info = mvp_pb2.AuthToken(
+                owner=mvp_pb2.UserId(username=username),
+                minted_unixtime=int(self._clock()),
+                expires_unixtime=int(self._clock() + 60*60*24),
+            )
+            info.hmac_of_rest = hmac.digest(key=b'TODO super secret', msg=info.SerializeToString(), digest='sha256')
+            return info
 
     def create_market(self, market: mvp_pb2.WorldState.Market) -> MarketId:
         with self._mutate_state() as wstate:
@@ -93,26 +103,24 @@ class FSMarketplace(Marketplace):
                 raise KeyError(market_id)
             wstate.markets[market_id].resolution = mvp_pb2.RESOLUTION_YES if resolution else mvp_pb2.RESOLUTION_NO
 
-    def set_trust(self, *, truster: UserId, trusted: UserId, trusts: bool) -> None:
+    def set_trust(self, *, truster: mvp_pb2.UserId, trusted: mvp_pb2.UserId, trusts: bool) -> None:
         with self._mutate_state() as wstate:
-            if truster not in wstate.users:
-                raise KeyError(truster)
-            if trusted not in wstate.users:
-                raise KeyError(trusted)
+            ensure_user_exists(wstate, truster)
+            ensure_user_exists(wstate, trusted)
+            info: mvp_pb2.WorldState.GenericUserInfo = (wstate.username_users[truster.username] if truster.WhichOneof('kind')=='username' else raise_(RuntimeError(truster))).info
             if trusts:
-                wstate.users[truster].trusted_users.append(trusted)
+                info.trusted_users.append(trusted)
             else:
-                wstate.users[truster].trusted_users.remove(trusted)
+                info.trusted_users.remove(trusted)
 
-    def bet(self, market_id: MarketId, participant_id: UserId, expected_resolution: bool, bettor_stake_cents: int) -> None:
+    def bet(self, market_id: MarketId, bettor: mvp_pb2.UserId, expected_resolution: bool, bettor_stake_cents: int) -> None:
         with self._mutate_state() as wstate:
             if market_id not in wstate.markets:
                 raise KeyError(market_id)
-            if participant_id not in wstate.users:
-                raise KeyError(participant_id)
+            ensure_user_exists(wstate, bettor)
             # TODO: more validity-checking
             wstate.markets[market_id].trades.append(mvp_pb2.WorldState.Trade(
-                bettor_id=participant_id,
+                bettor=bettor,
                 expected_resolution=expected_resolution,
                 bettor_stake=bettor_stake_cents,
                 transacted_unixtime=self._clock(),
@@ -131,7 +139,7 @@ def make_routes(marketplace: Marketplace) -> web.RouteTableDef:
 
     @routes.post('/api/create_market')
     async def api_create_market(http_request: web.Request) -> web.StreamResponse:
-        creator_id = int(http_request.match_info.get('TODO_auth_user_id', '0'))
+        creator = mvp_pb2.UserId(username='TODO_user')
         create_req = mvp_pb2.CreateMarketRequest()
         create_req.ParseFromString(await http_request.read())
         now = int(time.time())
@@ -142,7 +150,7 @@ def make_routes(marketplace: Marketplace) -> web.RouteTableDef:
             created_unixtime=now,
             closes_unixtime=now + create_req.open_seconds,
             special_rules=create_req.special_rules,
-            creator_id=creator_id,
+            creator=creator,
             trades=[],
             resolution=mvp_pb2.RESOLUTION_NONE_YET,
         )

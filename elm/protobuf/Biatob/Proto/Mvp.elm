@@ -2,9 +2,9 @@
 
 
 module Biatob.Proto.Mvp exposing
-    ( Void(..), Resolution(..), WorldState, WorldStateUserInfoTodoUnclash, WorldStateMarket, WorldStateTrade, Position, AuthKind(..), Auth, AuthErrorKind(..), AuthError, SignUpRequest, SignupResult(..), SignUpResponse, SignUpResponseError, CertaintyRange, PrivacyKind(..), MarketPrivacy, MarketPrivacyEmails, CreateMarketRequest, CreateMarketResult(..), CreateMarketResponse, CreateMarketResponseError, GetMarketRequest, GetMarketResult(..), GetMarketResponse, GetMarketResponseMarket, GetMarketResponseError, UserInfo, StakeRequest, StakeResult(..), StakeResponse, StakeResponseError, GetUserRequest, GetUserResult(..), GetUserResponse, GetUserResponseUser, GetUserResponseError, MarkTrustedRequest, Result(..), MarkTrustedResponse, MarkTrustedResponseError
-    , worldStateDecoder, positionDecoder, authDecoder, authErrorDecoder, signUpRequestDecoder, signUpResponseDecoder, certaintyRangeDecoder, marketPrivacyDecoder, createMarketRequestDecoder, createMarketResponseDecoder, getMarketRequestDecoder, getMarketResponseDecoder, userInfoDecoder, stakeRequestDecoder, stakeResponseDecoder, getUserRequestDecoder, getUserResponseDecoder, markTrustedRequestDecoder, markTrustedResponseDecoder
-    , toWorldStateEncoder, toPositionEncoder, toAuthEncoder, toAuthErrorEncoder, toSignUpRequestEncoder, toSignUpResponseEncoder, toCertaintyRangeEncoder, toMarketPrivacyEncoder, toCreateMarketRequestEncoder, toCreateMarketResponseEncoder, toGetMarketRequestEncoder, toGetMarketResponseEncoder, toUserInfoEncoder, toStakeRequestEncoder, toStakeResponseEncoder, toGetUserRequestEncoder, toGetUserResponseEncoder, toMarkTrustedRequestEncoder, toMarkTrustedResponseEncoder
+    ( Void(..), Resolution(..), Kind(..), UserId, AuthToken, WorldState, WorldStateGenericUserInfo, WorldStateUsernameInfo, WorldStateMarket, WorldStateTrade, Position, AuthKind(..), Auth, AuthErrorKind(..), AuthError, SignUpRequest, SignupResult(..), SignUpResponse, SignUpResponseError, CertaintyRange, PrivacyKind(..), MarketPrivacy, MarketPrivacyEmails, CreateMarketRequest, CreateMarketResult(..), CreateMarketResponse, CreateMarketResponseError, GetMarketRequest, GetMarketResult(..), GetMarketResponse, GetMarketResponseMarket, GetMarketResponseError, UserInfo, StakeRequest, StakeResult(..), StakeResponse, StakeResponseError, GetUserRequest, GetUserResult(..), GetUserResponse, GetUserResponseUser, GetUserResponseError, MarkTrustedRequest, Result(..), MarkTrustedResponse, MarkTrustedResponseError
+    , userIdDecoder, authTokenDecoder, worldStateDecoder, positionDecoder, authDecoder, authErrorDecoder, signUpRequestDecoder, signUpResponseDecoder, certaintyRangeDecoder, marketPrivacyDecoder, createMarketRequestDecoder, createMarketResponseDecoder, getMarketRequestDecoder, getMarketResponseDecoder, userInfoDecoder, stakeRequestDecoder, stakeResponseDecoder, getUserRequestDecoder, getUserResponseDecoder, markTrustedRequestDecoder, markTrustedResponseDecoder
+    , toUserIdEncoder, toAuthTokenEncoder, toWorldStateEncoder, toPositionEncoder, toAuthEncoder, toAuthErrorEncoder, toSignUpRequestEncoder, toSignUpResponseEncoder, toCertaintyRangeEncoder, toMarketPrivacyEncoder, toCreateMarketRequestEncoder, toCreateMarketResponseEncoder, toGetMarketRequestEncoder, toGetMarketResponseEncoder, toUserInfoEncoder, toStakeRequestEncoder, toStakeResponseEncoder, toGetUserRequestEncoder, toGetUserResponseEncoder, toMarkTrustedRequestEncoder, toMarkTrustedResponseEncoder
     )
 
 {-| ProtoBuf module: `Biatob.Proto.Mvp`
@@ -20,17 +20,17 @@ To run it use [`elm-protocol-buffers`](https://package.elm-lang.org/packages/eri
 
 # Model
 
-@docs Void, Resolution, WorldState, WorldStateUserInfoTodoUnclash, WorldStateMarket, WorldStateTrade, Position, AuthKind, Auth, AuthErrorKind, AuthError, SignUpRequest, SignupResult, SignUpResponse, SignUpResponseError, CertaintyRange, PrivacyKind, MarketPrivacy, MarketPrivacyEmails, CreateMarketRequest, CreateMarketResult, CreateMarketResponse, CreateMarketResponseError, GetMarketRequest, GetMarketResult, GetMarketResponse, GetMarketResponseMarket, GetMarketResponseError, UserInfo, StakeRequest, StakeResult, StakeResponse, StakeResponseError, GetUserRequest, GetUserResult, GetUserResponse, GetUserResponseUser, GetUserResponseError, MarkTrustedRequest, Result, MarkTrustedResponse, MarkTrustedResponseError
+@docs Void, Resolution, Kind, UserId, AuthToken, WorldState, WorldStateGenericUserInfo, WorldStateUsernameInfo, WorldStateMarket, WorldStateTrade, Position, AuthKind, Auth, AuthErrorKind, AuthError, SignUpRequest, SignupResult, SignUpResponse, SignUpResponseError, CertaintyRange, PrivacyKind, MarketPrivacy, MarketPrivacyEmails, CreateMarketRequest, CreateMarketResult, CreateMarketResponse, CreateMarketResponseError, GetMarketRequest, GetMarketResult, GetMarketResponse, GetMarketResponseMarket, GetMarketResponseError, UserInfo, StakeRequest, StakeResult, StakeResponse, StakeResponseError, GetUserRequest, GetUserResult, GetUserResponse, GetUserResponseUser, GetUserResponseError, MarkTrustedRequest, Result, MarkTrustedResponse, MarkTrustedResponseError
 
 
 # Decoder
 
-@docs worldStateDecoder, positionDecoder, authDecoder, authErrorDecoder, signUpRequestDecoder, signUpResponseDecoder, certaintyRangeDecoder, marketPrivacyDecoder, createMarketRequestDecoder, createMarketResponseDecoder, getMarketRequestDecoder, getMarketResponseDecoder, userInfoDecoder, stakeRequestDecoder, stakeResponseDecoder, getUserRequestDecoder, getUserResponseDecoder, markTrustedRequestDecoder, markTrustedResponseDecoder
+@docs userIdDecoder, authTokenDecoder, worldStateDecoder, positionDecoder, authDecoder, authErrorDecoder, signUpRequestDecoder, signUpResponseDecoder, certaintyRangeDecoder, marketPrivacyDecoder, createMarketRequestDecoder, createMarketResponseDecoder, getMarketRequestDecoder, getMarketResponseDecoder, userInfoDecoder, stakeRequestDecoder, stakeResponseDecoder, getUserRequestDecoder, getUserResponseDecoder, markTrustedRequestDecoder, markTrustedResponseDecoder
 
 
 # Encoder
 
-@docs toWorldStateEncoder, toPositionEncoder, toAuthEncoder, toAuthErrorEncoder, toSignUpRequestEncoder, toSignUpResponseEncoder, toCertaintyRangeEncoder, toMarketPrivacyEncoder, toCreateMarketRequestEncoder, toCreateMarketResponseEncoder, toGetMarketRequestEncoder, toGetMarketResponseEncoder, toUserInfoEncoder, toStakeRequestEncoder, toStakeResponseEncoder, toGetUserRequestEncoder, toGetUserResponseEncoder, toMarkTrustedRequestEncoder, toMarkTrustedResponseEncoder
+@docs toUserIdEncoder, toAuthTokenEncoder, toWorldStateEncoder, toPositionEncoder, toAuthEncoder, toAuthErrorEncoder, toSignUpRequestEncoder, toSignUpResponseEncoder, toCertaintyRangeEncoder, toMarketPrivacyEncoder, toCreateMarketRequestEncoder, toCreateMarketResponseEncoder, toGetMarketRequestEncoder, toGetMarketResponseEncoder, toUserInfoEncoder, toStakeRequestEncoder, toStakeResponseEncoder, toGetUserRequestEncoder, toGetUserResponseEncoder, toMarkTrustedRequestEncoder, toMarkTrustedResponseEncoder
 
 -}
 
@@ -60,22 +60,49 @@ type Resolution
     | ResolutionUnrecognized_ Int
 
 
-{-| `WorldState` message
+{-| Kind
 -}
-type alias WorldState =
-    { users : Dict.Dict Int (Maybe WorldStateUserInfoTodoUnclash)
-    , usernameToUid : Dict.Dict String Int
-    , markets : Dict.Dict Int (Maybe WorldStateMarket)
-    , authTokenOwnerIds : Dict.Dict String Int
+type Kind
+    = KindUsername String
+
+
+{-| `UserId` message
+-}
+type alias UserId =
+    { kind : Maybe Kind
     }
 
 
-{-| `WorldStateUserInfoTodoUnclash` message
+{-| `AuthToken` message
 -}
-type alias WorldStateUserInfoTodoUnclash =
-    { username : String
+type alias AuthToken =
+    { hmacOfRest : Bytes.Bytes
+    , owner : Maybe UserId
+    , mintedUnixtime : Int
+    , expiresUnixtime : Int
+    }
+
+
+{-| `WorldState` message
+-}
+type alias WorldState =
+    { usernameUsers : Dict.Dict String (Maybe WorldStateUsernameInfo)
+    , markets : Dict.Dict Int (Maybe WorldStateMarket)
+    }
+
+
+{-| `WorldStateGenericUserInfo` message
+-}
+type alias WorldStateGenericUserInfo =
+    { trustedUsers : List UserId
+    }
+
+
+{-| `WorldStateUsernameInfo` message
+-}
+type alias WorldStateUsernameInfo =
+    { info : Maybe WorldStateGenericUserInfo
     , passwordBcrypt : Bytes.Bytes
-    , trustedUsers : List Int
     }
 
 
@@ -88,7 +115,7 @@ type alias WorldStateMarket =
     , createdUnixtime : Int
     , closesUnixtime : Int
     , specialRules : String
-    , creatorId : Int
+    , creator : Maybe UserId
     , trades : List WorldStateTrade
     , resolution : Resolution
     }
@@ -97,7 +124,7 @@ type alias WorldStateMarket =
 {-| `WorldStateTrade` message
 -}
 type alias WorldStateTrade =
-    { bettorId : Int
+    { bettor : Maybe UserId
     , expectedResolution : Bool
     , bettorStake : Int
     , transactedUnixtime : Int
@@ -424,37 +451,65 @@ resolutionDecoder =
             )
 
 
+{-| `UserId` decoder
+-}
+userIdDecoder : Decode.Decoder UserId
+userIdDecoder =
+    Decode.message (UserId Nothing)
+        [ Decode.oneOf
+            [ ( 1, Decode.map KindUsername Decode.string )
+            ]
+            setKind
+        ]
+
+
+{-| `AuthToken` decoder
+-}
+authTokenDecoder : Decode.Decoder AuthToken
+authTokenDecoder =
+    Decode.message (AuthToken (Encode.encode <| Encode.string "") Nothing 0 0)
+        [ Decode.optional 1 Decode.bytes setHmacOfRest
+        , Decode.optional 2 (Decode.map Just userIdDecoder) setOwner
+        , Decode.optional 3 Decode.uint32 setMintedUnixtime
+        , Decode.optional 4 Decode.uint32 setExpiresUnixtime
+        ]
+
+
 {-| `WorldState` decoder
 -}
 worldStateDecoder : Decode.Decoder WorldState
 worldStateDecoder =
-    Decode.message (WorldState Dict.empty Dict.empty Dict.empty Dict.empty)
-        [ Decode.mapped 1 ( 0, Nothing ) Decode.uint32 (Decode.map Just worldStateUserInfoTodoUnclashDecoder) .users setUsers
-        , Decode.mapped 4 ( "", 0 ) Decode.string Decode.uint32 .usernameToUid setUsernameToUid
+    Decode.message (WorldState Dict.empty Dict.empty)
+        [ Decode.mapped 1 ( "", Nothing ) Decode.string (Decode.map Just worldStateUsernameInfoDecoder) .usernameUsers setUsernameUsers
         , Decode.mapped 2 ( 0, Nothing ) Decode.uint32 (Decode.map Just worldStateMarketDecoder) .markets setMarkets
-        , Decode.mapped 3 ( "", 0 ) Decode.string Decode.uint32 .authTokenOwnerIds setAuthTokenOwnerIds
         ]
 
 
-worldStateUserInfoTodoUnclashDecoder : Decode.Decoder WorldStateUserInfoTodoUnclash
-worldStateUserInfoTodoUnclashDecoder =
-    Decode.message (WorldStateUserInfoTodoUnclash "" (Encode.encode <| Encode.string "") [])
-        [ Decode.optional 1 Decode.string setUsername
+worldStateGenericUserInfoDecoder : Decode.Decoder WorldStateGenericUserInfo
+worldStateGenericUserInfoDecoder =
+    Decode.message (WorldStateGenericUserInfo [])
+        [ Decode.repeated 1 userIdDecoder .trustedUsers setTrustedUsers
+        ]
+
+
+worldStateUsernameInfoDecoder : Decode.Decoder WorldStateUsernameInfo
+worldStateUsernameInfoDecoder =
+    Decode.message (WorldStateUsernameInfo Nothing (Encode.encode <| Encode.string ""))
+        [ Decode.optional 1 (Decode.map Just worldStateGenericUserInfoDecoder) setInfo
         , Decode.optional 2 Decode.bytes setPasswordBcrypt
-        , Decode.repeated 3 Decode.uint32 .trustedUsers setTrustedUsers
         ]
 
 
 worldStateMarketDecoder : Decode.Decoder WorldStateMarket
 worldStateMarketDecoder =
-    Decode.message (WorldStateMarket "" Nothing 0 0 0 "" 0 [] ResolutionNoneYet)
+    Decode.message (WorldStateMarket "" Nothing 0 0 0 "" Nothing [] ResolutionNoneYet)
         [ Decode.optional 1 Decode.string setQuestion
         , Decode.optional 2 (Decode.map Just certaintyRangeDecoder) setCertainty
         , Decode.optional 3 Decode.uint32 setMaximumStakeCents
         , Decode.optional 4 Decode.uint32 setCreatedUnixtime
         , Decode.optional 5 Decode.uint32 setClosesUnixtime
         , Decode.optional 6 Decode.string setSpecialRules
-        , Decode.optional 7 Decode.uint32 setCreatorId
+        , Decode.optional 7 (Decode.map Just userIdDecoder) setCreator
         , Decode.repeated 8 worldStateTradeDecoder .trades setTrades
         , Decode.optional 9 resolutionDecoder setResolution
         ]
@@ -462,8 +517,8 @@ worldStateMarketDecoder =
 
 worldStateTradeDecoder : Decode.Decoder WorldStateTrade
 worldStateTradeDecoder =
-    Decode.message (WorldStateTrade 0 False 0 0)
-        [ Decode.optional 1 Decode.uint32 setBettorId
+    Decode.message (WorldStateTrade Nothing False 0 0)
+        [ Decode.optional 1 (Decode.map Just userIdDecoder) setBettor
         , Decode.optional 2 Decode.bool setExpectedResolution
         , Decode.optional 3 Decode.uint32 setBettorStake
         , Decode.optional 4 Decode.uint32 setTransactedUnixtime
@@ -793,24 +848,56 @@ toResolutionEncoder value =
                 v
 
 
+toKindEncoder : Kind -> ( Int, Encode.Encoder )
+toKindEncoder model =
+    case model of
+        KindUsername value ->
+            ( 1, Encode.string value )
+
+
+{-| `UserId` encoder
+-}
+toUserIdEncoder : UserId -> Encode.Encoder
+toUserIdEncoder model =
+    Encode.message
+        [ Maybe.withDefault ( 0, Encode.none ) <| Maybe.map toKindEncoder model.kind
+        ]
+
+
+{-| `AuthToken` encoder
+-}
+toAuthTokenEncoder : AuthToken -> Encode.Encoder
+toAuthTokenEncoder model =
+    Encode.message
+        [ ( 1, Encode.bytes model.hmacOfRest )
+        , ( 2, (Maybe.withDefault Encode.none << Maybe.map toUserIdEncoder) model.owner )
+        , ( 3, Encode.uint32 model.mintedUnixtime )
+        , ( 4, Encode.uint32 model.expiresUnixtime )
+        ]
+
+
 {-| `WorldState` encoder
 -}
 toWorldStateEncoder : WorldState -> Encode.Encoder
 toWorldStateEncoder model =
     Encode.message
-        [ ( 1, Encode.dict Encode.uint32 (Maybe.withDefault Encode.none << Maybe.map toWorldStateUserInfoTodoUnclashEncoder) model.users )
-        , ( 4, Encode.dict Encode.string Encode.uint32 model.usernameToUid )
+        [ ( 1, Encode.dict Encode.string (Maybe.withDefault Encode.none << Maybe.map toWorldStateUsernameInfoEncoder) model.usernameUsers )
         , ( 2, Encode.dict Encode.uint32 (Maybe.withDefault Encode.none << Maybe.map toWorldStateMarketEncoder) model.markets )
-        , ( 3, Encode.dict Encode.string Encode.uint32 model.authTokenOwnerIds )
         ]
 
 
-toWorldStateUserInfoTodoUnclashEncoder : WorldStateUserInfoTodoUnclash -> Encode.Encoder
-toWorldStateUserInfoTodoUnclashEncoder model =
+toWorldStateGenericUserInfoEncoder : WorldStateGenericUserInfo -> Encode.Encoder
+toWorldStateGenericUserInfoEncoder model =
     Encode.message
-        [ ( 1, Encode.string model.username )
+        [ ( 1, Encode.list toUserIdEncoder model.trustedUsers )
+        ]
+
+
+toWorldStateUsernameInfoEncoder : WorldStateUsernameInfo -> Encode.Encoder
+toWorldStateUsernameInfoEncoder model =
+    Encode.message
+        [ ( 1, (Maybe.withDefault Encode.none << Maybe.map toWorldStateGenericUserInfoEncoder) model.info )
         , ( 2, Encode.bytes model.passwordBcrypt )
-        , ( 3, Encode.list Encode.uint32 model.trustedUsers )
         ]
 
 
@@ -823,7 +910,7 @@ toWorldStateMarketEncoder model =
         , ( 4, Encode.uint32 model.createdUnixtime )
         , ( 5, Encode.uint32 model.closesUnixtime )
         , ( 6, Encode.string model.specialRules )
-        , ( 7, Encode.uint32 model.creatorId )
+        , ( 7, (Maybe.withDefault Encode.none << Maybe.map toUserIdEncoder) model.creator )
         , ( 8, Encode.list toWorldStateTradeEncoder model.trades )
         , ( 9, toResolutionEncoder model.resolution )
         ]
@@ -832,7 +919,7 @@ toWorldStateMarketEncoder model =
 toWorldStateTradeEncoder : WorldStateTrade -> Encode.Encoder
 toWorldStateTradeEncoder model =
     Encode.message
-        [ ( 1, Encode.uint32 model.bettorId )
+        [ ( 1, (Maybe.withDefault Encode.none << Maybe.map toUserIdEncoder) model.bettor )
         , ( 2, Encode.bool model.expectedResolution )
         , ( 3, Encode.uint32 model.bettorStake )
         , ( 4, Encode.uint32 model.transactedUnixtime )
@@ -1184,14 +1271,34 @@ toMarkTrustedResponseErrorEncoder model =
 -- SETTERS
 
 
-setUsers : a -> { b | users : a } -> { b | users : a }
-setUsers value model =
-    { model | users = value }
+setKind : a -> { b | kind : a } -> { b | kind : a }
+setKind value model =
+    { model | kind = value }
 
 
-setUsernameToUid : a -> { b | usernameToUid : a } -> { b | usernameToUid : a }
-setUsernameToUid value model =
-    { model | usernameToUid = value }
+setHmacOfRest : a -> { b | hmacOfRest : a } -> { b | hmacOfRest : a }
+setHmacOfRest value model =
+    { model | hmacOfRest = value }
+
+
+setOwner : a -> { b | owner : a } -> { b | owner : a }
+setOwner value model =
+    { model | owner = value }
+
+
+setMintedUnixtime : a -> { b | mintedUnixtime : a } -> { b | mintedUnixtime : a }
+setMintedUnixtime value model =
+    { model | mintedUnixtime = value }
+
+
+setExpiresUnixtime : a -> { b | expiresUnixtime : a } -> { b | expiresUnixtime : a }
+setExpiresUnixtime value model =
+    { model | expiresUnixtime = value }
+
+
+setUsernameUsers : a -> { b | usernameUsers : a } -> { b | usernameUsers : a }
+setUsernameUsers value model =
+    { model | usernameUsers = value }
 
 
 setMarkets : a -> { b | markets : a } -> { b | markets : a }
@@ -1199,24 +1306,19 @@ setMarkets value model =
     { model | markets = value }
 
 
-setAuthTokenOwnerIds : a -> { b | authTokenOwnerIds : a } -> { b | authTokenOwnerIds : a }
-setAuthTokenOwnerIds value model =
-    { model | authTokenOwnerIds = value }
+setTrustedUsers : a -> { b | trustedUsers : a } -> { b | trustedUsers : a }
+setTrustedUsers value model =
+    { model | trustedUsers = value }
 
 
-setUsername : a -> { b | username : a } -> { b | username : a }
-setUsername value model =
-    { model | username = value }
+setInfo : a -> { b | info : a } -> { b | info : a }
+setInfo value model =
+    { model | info = value }
 
 
 setPasswordBcrypt : a -> { b | passwordBcrypt : a } -> { b | passwordBcrypt : a }
 setPasswordBcrypt value model =
     { model | passwordBcrypt = value }
-
-
-setTrustedUsers : a -> { b | trustedUsers : a } -> { b | trustedUsers : a }
-setTrustedUsers value model =
-    { model | trustedUsers = value }
 
 
 setQuestion : a -> { b | question : a } -> { b | question : a }
@@ -1249,9 +1351,9 @@ setSpecialRules value model =
     { model | specialRules = value }
 
 
-setCreatorId : a -> { b | creatorId : a } -> { b | creatorId : a }
-setCreatorId value model =
-    { model | creatorId = value }
+setCreator : a -> { b | creator : a } -> { b | creator : a }
+setCreator value model =
+    { model | creator = value }
 
 
 setTrades : a -> { b | trades : a } -> { b | trades : a }
@@ -1264,9 +1366,9 @@ setResolution value model =
     { model | resolution = value }
 
 
-setBettorId : a -> { b | bettorId : a } -> { b | bettorId : a }
-setBettorId value model =
-    { model | bettorId = value }
+setBettor : a -> { b | bettor : a } -> { b | bettor : a }
+setBettor value model =
+    { model | bettor = value }
 
 
 setExpectedResolution : a -> { b | expectedResolution : a } -> { b | expectedResolution : a }
@@ -1397,11 +1499,6 @@ setRemainingYesStakeCents value model =
 setRemainingNoStakeCents : a -> { b | remainingNoStakeCents : a } -> { b | remainingNoStakeCents : a }
 setRemainingNoStakeCents value model =
     { model | remainingNoStakeCents = value }
-
-
-setCreator : a -> { b | creator : a } -> { b | creator : a }
-setCreator value model =
-    { model | creator = value }
 
 
 setStake : a -> { b | stake : a } -> { b | stake : a }

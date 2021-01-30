@@ -2,23 +2,44 @@ syntax = "proto3";
 
 package biatob.proto.mvp;
 
+message UserId {
+  oneof kind {
+    string username = 1;
+    // string oauth_google_acct = 2;
+    // string oauth_facebook_acct = 3;
+  }
+}
+
+message AuthToken {
+  bytes hmac_of_rest = 1;
+  UserId owner = 2;
+  uint64 minted_unixtime = 3;
+  uint64 expires_unixtime = 4;
+}
+
 // For MVP purposes, we're just gonna store the entire worldstate in a protobuf blob. "Data base"? Huh?
 // TODO(P3): ^ stop doing that
 message WorldState {
 
-  map<uint64, UserInfoTodoUnclash> users = 1;
-  map<string, uint64> username_to_uid = 4;
+  map<string, UsernameInfo> username_users = 1;
+  // map<string, GoogleOauthInfo> google_oauth_users = 5;
+  // map<string, FacebookOauthInfo> facebook_oauth_users = 6;
 
   map<uint64, Market> markets = 2;
 
-  map<string, uint64> auth_token_owner_ids = 3;
-
-  message UserInfoTodoUnclash {
-    string username = 1;
-    bytes password_bcrypt = 2;
-    repeated uint64 trusted_users = 3;
-    // TODO: string email = 3; // optional
+  message GenericUserInfo {
+    repeated UserId trusted_users = 1;
   }
+  message UsernameInfo {
+    GenericUserInfo info = 1;
+    bytes password_bcrypt = 2;
+  }
+  // message GoogleOauthInfo {
+  //   GenericUserInfo info = 1;
+  // }
+  // message FacebookOauthInfo {
+  //   GenericUserInfo info = 1;
+  // }
   message Market {
     // Set upon creation, never changed
     string question = 1;
@@ -27,7 +48,7 @@ message WorldState {
     uint64 created_unixtime = 4;
     uint64 closes_unixtime = 5;
     string special_rules = 6;
-    uint64 creator_id = 7;
+    UserId creator = 7;
 
     // Changes regularly
     repeated Trade trades = 8;
@@ -35,7 +56,7 @@ message WorldState {
   }
 
   message Trade {
-    uint64 bettor_id = 1;
+    UserId bettor = 1;
     bool expected_resolution = 2;
     uint64 bettor_stake = 3;
     uint64 transacted_unixtime = 4;

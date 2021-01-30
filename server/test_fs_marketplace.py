@@ -13,13 +13,9 @@ def temp_path():
   if result.exists():
     result.unlink()
 
-def test_mint_auth_token(temp_path):
+def test_register_username(temp_path):
   marketplace = FSMarketplace(state_path=temp_path)
 
-  with pytest.raises(KeyError):
-    marketplace.mint_auth_token(username='Spencer', password='secret')
-
-  marketplace.register_user(username='Spencer', password='secret')
-  marketplace.mint_auth_token(username='Spencer', password='secret')
-  with pytest.raises(ValueError):
-    marketplace.mint_auth_token(username='Spencer', password='wrong pw')
+  assert 'potato' not in marketplace._get_state().username_users
+  marketplace.register_username(username='potato', password='secret')
+  assert 'potato' in marketplace._get_state().username_users
