@@ -125,7 +125,7 @@ type alias WorldStateMarket =
 -}
 type alias WorldStateTrade =
     { bettor : Maybe UserId
-    , expectedResolution : Bool
+    , bettorExpectedResolution : Bool
     , bettorStake : Int
     , transactedUnixtime : Int
     }
@@ -285,6 +285,7 @@ type alias GetMarketResponseMarket =
 -}
 type alias GetMarketResponseError =
     { catchall : String
+    , noSuchMarket : Void
     }
 
 
@@ -495,7 +496,7 @@ worldStateTradeDecoder : Decode.Decoder WorldStateTrade
 worldStateTradeDecoder =
     Decode.message (WorldStateTrade Nothing False 0 0)
         [ Decode.optional 1 (Decode.map Just userIdDecoder) setBettor
-        , Decode.optional 2 Decode.bool setExpectedResolution
+        , Decode.optional 2 Decode.bool setBettorExpectedResolution
         , Decode.optional 3 Decode.uint32 setBettorStake
         , Decode.optional 4 Decode.uint32 setTransactedUnixtime
         ]
@@ -663,8 +664,9 @@ getMarketResponseMarketDecoder =
 
 getMarketResponseErrorDecoder : Decode.Decoder GetMarketResponseError
 getMarketResponseErrorDecoder =
-    Decode.message (GetMarketResponseError "")
+    Decode.message (GetMarketResponseError "" Void)
         [ Decode.optional 1 Decode.string setCatchall
+        , Decode.optional 2 voidDecoder setNoSuchMarket
         ]
 
 
@@ -878,7 +880,7 @@ toWorldStateTradeEncoder : WorldStateTrade -> Encode.Encoder
 toWorldStateTradeEncoder model =
     Encode.message
         [ ( 1, (Maybe.withDefault Encode.none << Maybe.map toUserIdEncoder) model.bettor )
-        , ( 2, Encode.bool model.expectedResolution )
+        , ( 2, Encode.bool model.bettorExpectedResolution )
         , ( 3, Encode.uint32 model.bettorStake )
         , ( 4, Encode.uint32 model.transactedUnixtime )
         ]
@@ -1072,6 +1074,7 @@ toGetMarketResponseErrorEncoder : GetMarketResponseError -> Encode.Encoder
 toGetMarketResponseErrorEncoder model =
     Encode.message
         [ ( 1, Encode.string model.catchall )
+        , ( 2, toVoidEncoder model.noSuchMarket )
         ]
 
 
@@ -1303,9 +1306,9 @@ setBettor value model =
     { model | bettor = value }
 
 
-setExpectedResolution : a -> { b | expectedResolution : a } -> { b | expectedResolution : a }
-setExpectedResolution value model =
-    { model | expectedResolution = value }
+setBettorExpectedResolution : a -> { b | bettorExpectedResolution : a } -> { b | bettorExpectedResolution : a }
+setBettorExpectedResolution value model =
+    { model | bettorExpectedResolution = value }
 
 
 setBettorStake : a -> { b | bettorStake : a } -> { b | bettorStake : a }
@@ -1413,9 +1416,19 @@ setRemainingNoStakeCents value model =
     { model | remainingNoStakeCents = value }
 
 
+setNoSuchMarket : a -> { b | noSuchMarket : a } -> { b | noSuchMarket : a }
+setNoSuchMarket value model =
+    { model | noSuchMarket = value }
+
+
 setDisplayName : a -> { b | displayName : a } -> { b | displayName : a }
 setDisplayName value model =
     { model | displayName = value }
+
+
+setExpectedResolution : a -> { b | expectedResolution : a } -> { b | expectedResolution : a }
+setExpectedResolution value model =
+    { model | expectedResolution = value }
 
 
 setStake : a -> { b | stake : a } -> { b | stake : a }

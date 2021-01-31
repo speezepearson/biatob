@@ -265,7 +265,7 @@ class WorldState(google___protobuf___message___Message):
 
     class Trade(google___protobuf___message___Message):
         DESCRIPTOR: google___protobuf___descriptor___Descriptor = ...
-        expected_resolution = ... # type: builtin___bool
+        bettor_expected_resolution = ... # type: builtin___bool
         bettor_stake = ... # type: builtin___int
         transacted_unixtime = ... # type: builtin___int
 
@@ -275,7 +275,7 @@ class WorldState(google___protobuf___message___Message):
         def __init__(self,
             *,
             bettor : typing___Optional[global___UserId] = None,
-            expected_resolution : typing___Optional[builtin___bool] = None,
+            bettor_expected_resolution : typing___Optional[builtin___bool] = None,
             bettor_stake : typing___Optional[builtin___int] = None,
             transacted_unixtime : typing___Optional[builtin___int] = None,
             ) -> None: ...
@@ -288,7 +288,7 @@ class WorldState(google___protobuf___message___Message):
         def MergeFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
         def CopyFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
         def HasField(self, field_name: typing_extensions___Literal[u"bettor",b"bettor"]) -> builtin___bool: ...
-        def ClearField(self, field_name: typing_extensions___Literal[u"bettor",b"bettor",u"bettor_stake",b"bettor_stake",u"expected_resolution",b"expected_resolution",u"transacted_unixtime",b"transacted_unixtime"]) -> None: ...
+        def ClearField(self, field_name: typing_extensions___Literal[u"bettor",b"bettor",u"bettor_expected_resolution",b"bettor_expected_resolution",u"bettor_stake",b"bettor_stake",u"transacted_unixtime",b"transacted_unixtime"]) -> None: ...
     global___Trade = Trade
 
 
@@ -648,10 +648,12 @@ class GetMarketResponse(google___protobuf___message___Message):
     class Error(google___protobuf___message___Message):
         DESCRIPTOR: google___protobuf___descriptor___Descriptor = ...
         catchall = ... # type: typing___Text
+        no_such_market = ... # type: global___Void
 
         def __init__(self,
             *,
             catchall : typing___Optional[typing___Text] = None,
+            no_such_market : typing___Optional[global___Void] = None,
             ) -> None: ...
         if sys.version_info >= (3,):
             @classmethod
@@ -661,7 +663,7 @@ class GetMarketResponse(google___protobuf___message___Message):
             def FromString(cls, s: typing___Union[builtin___bytes, builtin___buffer, builtin___unicode]) -> GetMarketResponse.Error: ...
         def MergeFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
         def CopyFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
-        def ClearField(self, field_name: typing_extensions___Literal[u"catchall",b"catchall"]) -> None: ...
+        def ClearField(self, field_name: typing_extensions___Literal[u"catchall",b"catchall",u"no_such_market",b"no_such_market"]) -> None: ...
     global___Error = Error
 
 

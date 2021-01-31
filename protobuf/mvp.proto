@@ -57,7 +57,7 @@ message WorldState {
 
   message Trade {
     UserId bettor = 1;
-    bool expected_resolution = 2;
+    bool bettor_expected_resolution = 2;
     uint64 bettor_stake = 3;
     uint64 transacted_unixtime = 4;
   }
@@ -152,6 +152,7 @@ message GetMarketResponse {
   }
   message Error {
     string catchall = 1;
+    Void no_such_market = 2;
   }
 }
 message UserInfo {

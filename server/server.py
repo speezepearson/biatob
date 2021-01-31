@@ -11,7 +11,7 @@ from pathlib import Path
 import random
 import secrets
 import time
-from typing import Iterator, Optional, Container, NewType, Callable, NoReturn
+from typing import Iterator, Optional, Container, NewType, Callable, NoReturn, Tuple
 
 import bcrypt  # type: ignore
 from aiohttp import web
@@ -41,6 +41,17 @@ def ensure_user_exists(wstate: mvp_pb2.WorldState, user: mvp_pb2.UserId) -> None
 
 def raise_(e: Exception) -> NoReturn: raise e
 
+def remaining_stake_cents(market: mvp_pb2.WorldState.Market) -> Tuple[int, int]:
+    # TODO: fix the almost-certainly-wrong math below, and figure out why it's so unintuitive
+    pool_against = pool_for = float(market.maximum_stake_cents)
+    for trade in market.trades:
+        if trade.bettor_expected_resolution:
+            pool_against -= trade.bettor_stake * market.certainty.low/(1-market.certainty.low)
+        else:
+            pool_for -= trade.bettor_stake * market.certainty.high/(1-market.certainty.high)
+    return (int(pool_against), int(pool_for))
+
+
 def compute_token_hmac(key: bytes, token: mvp_pb2.AuthToken) -> bytes:
     scratchpad = copy.copy(token)
     scratchpad.hmac_of_rest = b''
@@ -53,6 +64,7 @@ class Marketplace(abc.ABC):
     def register_username(self, username: str, password: str) -> None: pass
     def get_username_info(self, username: str) -> Optional[mvp_pb2.WorldState.UsernameInfo]: pass
     def create_market(self, market: mvp_pb2.WorldState.Market) -> MarketId: pass
+    def get_market(self, market_id: MarketId) -> Optional[mvp_pb2.WorldState.Market]: pass
     def resolve_market(self, market_id: MarketId, resolution: bool) -> None: pass
     def set_trust(self, *, truster: mvp_pb2.UserId, trusted: mvp_pb2.UserId, trusts: bool) -> None: pass
     def bet(self, market_id: MarketId, bettor: mvp_pb2.UserId, expected_resolution: bool, bettor_stake_cents: int) -> None: pass
@@ -94,6 +106,10 @@ class FSMarketplace(Marketplace):
             wstate.markets[mid].MergeFrom(market)
             return mid
 
+    def get_market(self, market_id: MarketId) -> Optional[mvp_pb2.WorldState.Market]:
+        wstate = self._get_state()
+        return wstate.markets.get(market_id)
+
     def resolve_market(self, market_id: MarketId, resolution: bool) -> None:
         with self._mutate_state() as wstate:
             if market_id not in wstate.markets:
@@ -110,7 +126,7 @@ class FSMarketplace(Marketplace):
             else:
                 info.trusted_users.remove(trusted)
 
-    def bet(self, market_id: MarketId, bettor: mvp_pb2.UserId, expected_resolution: bool, bettor_stake_cents: int) -> None:
+    def bet(self, market_id: MarketId, bettor: mvp_pb2.UserId, bettor_expected_resolution: bool, bettor_stake_cents: int) -> None:
         with self._mutate_state() as wstate:
             if market_id not in wstate.markets:
                 raise KeyError(market_id)
@@ -118,7 +134,7 @@ class FSMarketplace(Marketplace):
             # TODO: more validity-checking
             wstate.markets[market_id].trades.append(mvp_pb2.WorldState.Trade(
                 bettor=bettor,
-                expected_resolution=expected_resolution,
+                bettor_expected_resolution=bettor_expected_resolution,
                 bettor_stake=bettor_stake_cents,
                 transacted_unixtime=self._clock(),
             ))
@@ -198,7 +214,7 @@ class ApiServer:
             auth = self._auth_from_headers(http_req)
             if auth is None:
                 return (web.Response(status=403), mvp_pb2.CreateMarketResponse(error=mvp_pb2.CreateMarketResponse.Error(catchall='not logged in')))
-            now = int(time.time())
+            now = int(self._clock())
             market = mvp_pb2.WorldState.Market(
                 question=pb_req.question,
                 certainty=pb_req.certainty,
@@ -213,6 +229,33 @@ class ApiServer:
             market_id = self._marketplace.create_market(market)
             print(f'market id {market_id} =>\n{indent(str(market))}')
             return (web.Response(), mvp_pb2.CreateMarketResponse(new_market_id=market_id))
+
+        @routes.post('/api/get_market')
+        @proto_handler(mvp_pb2.GetMarketRequest, mvp_pb2.GetMarketResponse)
+        async def api_get_market(http_req: web.Request, pb_req: mvp_pb2.GetMarketRequest) -> Tuple[web.Response, mvp_pb2.GetMarketResponse]:
+            # TODO: ensure market should be visible to current user
+            # auth = self._auth_from_headers(http_req)
+            print('getting market', pb_req.market_id)
+            ws_market = self._marketplace.get_market(market_id=MarketId(pb_req.market_id))
+            if ws_market is None:
+                return (web.Response(status=404), mvp_pb2.GetMarketResponse(error=mvp_pb2.GetMarketResponse.Error(no_such_market=mvp_pb2.VOID)))
+
+            (rem_no, rem_yes) = remaining_stake_cents(ws_market)
+            return (
+                web.Response(),
+                mvp_pb2.GetMarketResponse(market=mvp_pb2.GetMarketResponse.Market(
+                    question=ws_market.question,
+                    certainty=ws_market.certainty,
+                    maximum_stake_cents=ws_market.maximum_stake_cents,
+                    remaining_yes_stake_cents=rem_no,
+                    remaining_no_stake_cents=rem_yes,
+                    created_unixtime=ws_market.created_unixtime,
+                    closes_unixtime=ws_market.closes_unixtime,
+                    special_rules=ws_market.special_rules,
+                    creator=mvp_pb2.UserInfo(display_name='TODO'),
+                    resolution=ws_market.resolution,
+                )),
+            )
 
 
         return routes

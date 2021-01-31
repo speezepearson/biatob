@@ -53,8 +53,8 @@ async def test_whoami(aiohttp_client, marketplace_fixture, app_fixture):
   assert pb_resp.auth.owner == mvp_pb2.UserId(username='potato')
 
 
-async def test_create_market(aiohttp_client, marketplace_fixture, app_fixture):
-  pb_req = mvp_pb2.CreateMarketRequest(
+async def test_create_and_get_market(aiohttp_client, marketplace_fixture, app_fixture, clock_fixture):
+  create_pb_req = mvp_pb2.CreateMarketRequest(
     question="Is 1 > 2?",
     certainty=mvp_pb2.CertaintyRange(low=0.90, high=1.00),
     maximum_stake_cents=100_00,
@@ -63,12 +63,24 @@ async def test_create_market(aiohttp_client, marketplace_fixture, app_fixture):
   )
 
   cli = await aiohttp_client(app_fixture)
-  (http_resp, pb_resp) = await post_proto(cli, '/api/create_market', pb_req, mvp_pb2.CreateMarketResponse)
+  (http_resp, create_pb_resp) = await post_proto(cli, '/api/create_market', create_pb_req, mvp_pb2.CreateMarketResponse)
   assert http_resp.status == 403
 
   (http_resp, _) = await post_proto(cli, '/api/register_username', mvp_pb2.RegisterUsernameRequest(username='potato', password='secret'), mvp_pb2.RegisterUsernameResponse)
   assert http_resp.status == 200
 
-  (http_resp, pb_resp) = await post_proto(cli, '/api/create_market', pb_req, mvp_pb2.CreateMarketResponse)
+  (http_resp, create_pb_resp) = await post_proto(cli, '/api/create_market', create_pb_req, mvp_pb2.CreateMarketResponse)
   assert http_resp.status == 200
-  assert pb_resp.new_market_id > 0
+  assert create_pb_resp.new_market_id > 0
+
+  (http_resp, get_pb_resp) = await post_proto(cli, '/api/get_market', mvp_pb2.GetMarketRequest(market_id=create_pb_resp.new_market_id), mvp_pb2.GetMarketResponse)
+  assert http_resp.status == 200
+  returned_market = get_pb_resp.market
+  assert returned_market.question == create_pb_req.question
+  assert returned_market.certainty == create_pb_req.certainty
+  assert returned_market.maximum_stake_cents == create_pb_req.maximum_stake_cents
+  assert returned_market.remaining_yes_stake_cents == create_pb_req.maximum_stake_cents
+  assert returned_market.remaining_no_stake_cents == create_pb_req.maximum_stake_cents
+  assert returned_market.created_unixtime == clock_fixture.now()
+  assert returned_market.closes_unixtime == returned_market.created_unixtime + create_pb_req.open_seconds
+  assert returned_market.special_rules == create_pb_req.special_rules
