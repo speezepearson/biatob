@@ -265,8 +265,9 @@ class WorldState(google___protobuf___message___Message):
 
     class Trade(google___protobuf___message___Message):
         DESCRIPTOR: google___protobuf___descriptor___Descriptor = ...
-        bettor_expected_resolution = ... # type: builtin___bool
-        bettor_stake = ... # type: builtin___int
+        bettor_is_a_skeptic = ... # type: builtin___bool
+        bettor_stake_cents = ... # type: builtin___int
+        creator_stake_cents = ... # type: builtin___int
         transacted_unixtime = ... # type: builtin___int
 
         @property
@@ -275,8 +276,9 @@ class WorldState(google___protobuf___message___Message):
         def __init__(self,
             *,
             bettor : typing___Optional[global___UserId] = None,
-            bettor_expected_resolution : typing___Optional[builtin___bool] = None,
-            bettor_stake : typing___Optional[builtin___int] = None,
+            bettor_is_a_skeptic : typing___Optional[builtin___bool] = None,
+            bettor_stake_cents : typing___Optional[builtin___int] = None,
+            creator_stake_cents : typing___Optional[builtin___int] = None,
             transacted_unixtime : typing___Optional[builtin___int] = None,
             ) -> None: ...
         if sys.version_info >= (3,):
@@ -288,7 +290,7 @@ class WorldState(google___protobuf___message___Message):
         def MergeFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
         def CopyFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
         def HasField(self, field_name: typing_extensions___Literal[u"bettor",b"bettor"]) -> builtin___bool: ...
-        def ClearField(self, field_name: typing_extensions___Literal[u"bettor",b"bettor",u"bettor_expected_resolution",b"bettor_expected_resolution",u"bettor_stake",b"bettor_stake",u"transacted_unixtime",b"transacted_unixtime"]) -> None: ...
+        def ClearField(self, field_name: typing_extensions___Literal[u"bettor",b"bettor",u"bettor_is_a_skeptic",b"bettor_is_a_skeptic",u"bettor_stake_cents",b"bettor_stake_cents",u"creator_stake_cents",b"creator_stake_cents",u"transacted_unixtime",b"transacted_unixtime"]) -> None: ...
     global___Trade = Trade
 
 
@@ -313,27 +315,6 @@ class WorldState(google___protobuf___message___Message):
     def CopyFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
     def ClearField(self, field_name: typing_extensions___Literal[u"markets",b"markets",u"username_users",b"username_users"]) -> None: ...
 global___WorldState = WorldState
-
-class Position(google___protobuf___message___Message):
-    DESCRIPTOR: google___protobuf___descriptor___Descriptor = ...
-    win_cents_if_yes = ... # type: builtin___int
-    win_cents_if_no = ... # type: builtin___int
-
-    def __init__(self,
-        *,
-        win_cents_if_yes : typing___Optional[builtin___int] = None,
-        win_cents_if_no : typing___Optional[builtin___int] = None,
-        ) -> None: ...
-    if sys.version_info >= (3,):
-        @classmethod
-        def FromString(cls, s: builtin___bytes) -> Position: ...
-    else:
-        @classmethod
-        def FromString(cls, s: typing___Union[builtin___bytes, builtin___buffer, builtin___unicode]) -> Position: ...
-    def MergeFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
-    def CopyFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
-    def ClearField(self, field_name: typing_extensions___Literal[u"win_cents_if_no",b"win_cents_if_no",u"win_cents_if_yes",b"win_cents_if_yes"]) -> None: ...
-global___Position = Position
 
 class WhoamiRequest(google___protobuf___message___Message):
     DESCRIPTOR: google___protobuf___descriptor___Descriptor = ...
@@ -607,8 +588,8 @@ class GetMarketResponse(google___protobuf___message___Message):
         DESCRIPTOR: google___protobuf___descriptor___Descriptor = ...
         question = ... # type: typing___Text
         maximum_stake_cents = ... # type: builtin___int
-        remaining_yes_stake_cents = ... # type: builtin___int
-        remaining_no_stake_cents = ... # type: builtin___int
+        remaining_stake_cents_vs_believers = ... # type: builtin___int
+        remaining_stake_cents_vs_skeptics = ... # type: builtin___int
         created_unixtime = ... # type: builtin___int
         closes_unixtime = ... # type: builtin___int
         special_rules = ... # type: typing___Text
@@ -620,18 +601,22 @@ class GetMarketResponse(google___protobuf___message___Message):
         @property
         def creator(self) -> global___UserInfo: ...
 
+        @property
+        def your_trades(self) -> google___protobuf___internal___containers___RepeatedCompositeFieldContainer[global___GetMarketResponse.Trade]: ...
+
         def __init__(self,
             *,
             question : typing___Optional[typing___Text] = None,
             certainty : typing___Optional[global___CertaintyRange] = None,
             maximum_stake_cents : typing___Optional[builtin___int] = None,
-            remaining_yes_stake_cents : typing___Optional[builtin___int] = None,
-            remaining_no_stake_cents : typing___Optional[builtin___int] = None,
+            remaining_stake_cents_vs_believers : typing___Optional[builtin___int] = None,
+            remaining_stake_cents_vs_skeptics : typing___Optional[builtin___int] = None,
             created_unixtime : typing___Optional[builtin___int] = None,
             closes_unixtime : typing___Optional[builtin___int] = None,
             special_rules : typing___Optional[typing___Text] = None,
             creator : typing___Optional[global___UserInfo] = None,
             resolution : typing___Optional[global___Resolution] = None,
+            your_trades : typing___Optional[typing___Iterable[global___GetMarketResponse.Trade]] = None,
             ) -> None: ...
         if sys.version_info >= (3,):
             @classmethod
@@ -642,7 +627,7 @@ class GetMarketResponse(google___protobuf___message___Message):
         def MergeFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
         def CopyFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
         def HasField(self, field_name: typing_extensions___Literal[u"certainty",b"certainty",u"creator",b"creator"]) -> builtin___bool: ...
-        def ClearField(self, field_name: typing_extensions___Literal[u"certainty",b"certainty",u"closes_unixtime",b"closes_unixtime",u"created_unixtime",b"created_unixtime",u"creator",b"creator",u"maximum_stake_cents",b"maximum_stake_cents",u"question",b"question",u"remaining_no_stake_cents",b"remaining_no_stake_cents",u"remaining_yes_stake_cents",b"remaining_yes_stake_cents",u"resolution",b"resolution",u"special_rules",b"special_rules"]) -> None: ...
+        def ClearField(self, field_name: typing_extensions___Literal[u"certainty",b"certainty",u"closes_unixtime",b"closes_unixtime",u"created_unixtime",b"created_unixtime",u"creator",b"creator",u"maximum_stake_cents",b"maximum_stake_cents",u"question",b"question",u"remaining_stake_cents_vs_believers",b"remaining_stake_cents_vs_believers",u"remaining_stake_cents_vs_skeptics",b"remaining_stake_cents_vs_skeptics",u"resolution",b"resolution",u"special_rules",b"special_rules",u"your_trades",b"your_trades"]) -> None: ...
     global___Market = Market
 
     class Error(google___protobuf___message___Message):
@@ -665,6 +650,31 @@ class GetMarketResponse(google___protobuf___message___Message):
         def CopyFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
         def ClearField(self, field_name: typing_extensions___Literal[u"catchall",b"catchall",u"no_such_market",b"no_such_market"]) -> None: ...
     global___Error = Error
+
+    class Trade(google___protobuf___message___Message):
+        DESCRIPTOR: google___protobuf___descriptor___Descriptor = ...
+        bettor_is_a_skeptic = ... # type: builtin___bool
+        creator_stake_cents = ... # type: builtin___int
+        bettor_stake_cents = ... # type: builtin___int
+        transacted_unixtime = ... # type: builtin___int
+
+        def __init__(self,
+            *,
+            bettor_is_a_skeptic : typing___Optional[builtin___bool] = None,
+            creator_stake_cents : typing___Optional[builtin___int] = None,
+            bettor_stake_cents : typing___Optional[builtin___int] = None,
+            transacted_unixtime : typing___Optional[builtin___int] = None,
+            ) -> None: ...
+        if sys.version_info >= (3,):
+            @classmethod
+            def FromString(cls, s: builtin___bytes) -> GetMarketResponse.Trade: ...
+        else:
+            @classmethod
+            def FromString(cls, s: typing___Union[builtin___bytes, builtin___buffer, builtin___unicode]) -> GetMarketResponse.Trade: ...
+        def MergeFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
+        def CopyFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
+        def ClearField(self, field_name: typing_extensions___Literal[u"bettor_is_a_skeptic",b"bettor_is_a_skeptic",u"bettor_stake_cents",b"bettor_stake_cents",u"creator_stake_cents",b"creator_stake_cents",u"transacted_unixtime",b"transacted_unixtime"]) -> None: ...
+    global___Trade = Trade
 
 
     @property

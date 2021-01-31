@@ -32,10 +32,9 @@ initForDemo _ =
   ({ form = Form.initStateForDemo
   , preview =
       { now = Time.millisToPosix 0
-      , stakeYesField = "0"
-      , stakeNoField = "0"
+      , believerStakeField = "0"
+      , skepticStakeField = "0"
       , market = formStateToProto Form.initStateForDemo
-      , userPosition = { winCentsIfYes = 0 , winCentsIfNo = 0 }
       }
   }
   , Cmd.none)
@@ -98,13 +97,14 @@ formStateToProto form =
   { question = Form.question form
   , certainty = Just {low = Form.lowP form |> Maybe.withDefault 0, high = Form.highP form |> Maybe.withDefault 1}
   , maximumStakeCents = Form.stakeCents form |> Maybe.withDefault 0
-  , remainingYesStakeCents = Form.stakeCents form |> Maybe.withDefault 0
-  , remainingNoStakeCents = Form.stakeCents form |> Maybe.withDefault 0
+  , remainingStakeCentsVsBelievers = Form.stakeCents form |> Maybe.withDefault 0
+  , remainingStakeCentsVsSkeptics = Form.stakeCents form |> Maybe.withDefault 0
   , createdUnixtime = 0 -- TODO
   , closesUnixtime = 0 + (Form.openForSeconds form |> Maybe.withDefault 0) -- TODO
   , specialRules = form.specialRulesField
   , creator = Just {displayName = "Spencer"} -- TODO
   , resolution = Pb.ResolutionNoneYet
+  , yourTrades = []
   }
 
 main : Program () Model Msg

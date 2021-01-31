@@ -2,9 +2,9 @@
 
 
 module Biatob.Proto.Mvp exposing
-    ( Void(..), Resolution(..), Kind(..), UserId, AuthToken, WorldState, WorldStateGenericUserInfo, WorldStateUsernameInfo, WorldStateMarket, WorldStateTrade, Position, WhoamiRequest, WhoamiResponse, RegisterUsernameRequest, RegisterUsernameResult(..), RegisterUsernameResponse, RegisterUsernameResponseError, CertaintyRange, PrivacyKind(..), MarketPrivacy, MarketPrivacyEmails, CreateMarketRequest, CreateMarketResult(..), CreateMarketResponse, CreateMarketResponseError, GetMarketRequest, GetMarketResult(..), GetMarketResponse, GetMarketResponseMarket, GetMarketResponseError, UserInfo, StakeRequest, StakeResult(..), StakeResponse, StakeResponseError, GetUserRequest, GetUserResult(..), GetUserResponse, GetUserResponseUser, GetUserResponseError, MarkTrustedRequest, Result(..), MarkTrustedResponse, MarkTrustedResponseError
-    , userIdDecoder, authTokenDecoder, worldStateDecoder, positionDecoder, whoamiRequestDecoder, whoamiResponseDecoder, registerUsernameRequestDecoder, registerUsernameResponseDecoder, certaintyRangeDecoder, marketPrivacyDecoder, createMarketRequestDecoder, createMarketResponseDecoder, getMarketRequestDecoder, getMarketResponseDecoder, userInfoDecoder, stakeRequestDecoder, stakeResponseDecoder, getUserRequestDecoder, getUserResponseDecoder, markTrustedRequestDecoder, markTrustedResponseDecoder
-    , toUserIdEncoder, toAuthTokenEncoder, toWorldStateEncoder, toPositionEncoder, toWhoamiRequestEncoder, toWhoamiResponseEncoder, toRegisterUsernameRequestEncoder, toRegisterUsernameResponseEncoder, toCertaintyRangeEncoder, toMarketPrivacyEncoder, toCreateMarketRequestEncoder, toCreateMarketResponseEncoder, toGetMarketRequestEncoder, toGetMarketResponseEncoder, toUserInfoEncoder, toStakeRequestEncoder, toStakeResponseEncoder, toGetUserRequestEncoder, toGetUserResponseEncoder, toMarkTrustedRequestEncoder, toMarkTrustedResponseEncoder
+    ( Void(..), Resolution(..), Kind(..), UserId, AuthToken, WorldState, WorldStateGenericUserInfo, WorldStateUsernameInfo, WorldStateMarket, WorldStateTrade, WhoamiRequest, WhoamiResponse, RegisterUsernameRequest, RegisterUsernameResult(..), RegisterUsernameResponse, RegisterUsernameResponseError, CertaintyRange, PrivacyKind(..), MarketPrivacy, MarketPrivacyEmails, CreateMarketRequest, CreateMarketResult(..), CreateMarketResponse, CreateMarketResponseError, GetMarketRequest, GetMarketResult(..), GetMarketResponse, GetMarketResponseMarket, GetMarketResponseError, GetMarketResponseTrade, UserInfo, StakeRequest, StakeResult(..), StakeResponse, StakeResponseError, GetUserRequest, GetUserResult(..), GetUserResponse, GetUserResponseUser, GetUserResponseError, MarkTrustedRequest, Result(..), MarkTrustedResponse, MarkTrustedResponseError
+    , userIdDecoder, authTokenDecoder, worldStateDecoder, whoamiRequestDecoder, whoamiResponseDecoder, registerUsernameRequestDecoder, registerUsernameResponseDecoder, certaintyRangeDecoder, marketPrivacyDecoder, createMarketRequestDecoder, createMarketResponseDecoder, getMarketRequestDecoder, getMarketResponseDecoder, userInfoDecoder, stakeRequestDecoder, stakeResponseDecoder, getUserRequestDecoder, getUserResponseDecoder, markTrustedRequestDecoder, markTrustedResponseDecoder
+    , toUserIdEncoder, toAuthTokenEncoder, toWorldStateEncoder, toWhoamiRequestEncoder, toWhoamiResponseEncoder, toRegisterUsernameRequestEncoder, toRegisterUsernameResponseEncoder, toCertaintyRangeEncoder, toMarketPrivacyEncoder, toCreateMarketRequestEncoder, toCreateMarketResponseEncoder, toGetMarketRequestEncoder, toGetMarketResponseEncoder, toUserInfoEncoder, toStakeRequestEncoder, toStakeResponseEncoder, toGetUserRequestEncoder, toGetUserResponseEncoder, toMarkTrustedRequestEncoder, toMarkTrustedResponseEncoder
     )
 
 {-| ProtoBuf module: `Biatob.Proto.Mvp`
@@ -20,17 +20,17 @@ To run it use [`elm-protocol-buffers`](https://package.elm-lang.org/packages/eri
 
 # Model
 
-@docs Void, Resolution, Kind, UserId, AuthToken, WorldState, WorldStateGenericUserInfo, WorldStateUsernameInfo, WorldStateMarket, WorldStateTrade, Position, WhoamiRequest, WhoamiResponse, RegisterUsernameRequest, RegisterUsernameResult, RegisterUsernameResponse, RegisterUsernameResponseError, CertaintyRange, PrivacyKind, MarketPrivacy, MarketPrivacyEmails, CreateMarketRequest, CreateMarketResult, CreateMarketResponse, CreateMarketResponseError, GetMarketRequest, GetMarketResult, GetMarketResponse, GetMarketResponseMarket, GetMarketResponseError, UserInfo, StakeRequest, StakeResult, StakeResponse, StakeResponseError, GetUserRequest, GetUserResult, GetUserResponse, GetUserResponseUser, GetUserResponseError, MarkTrustedRequest, Result, MarkTrustedResponse, MarkTrustedResponseError
+@docs Void, Resolution, Kind, UserId, AuthToken, WorldState, WorldStateGenericUserInfo, WorldStateUsernameInfo, WorldStateMarket, WorldStateTrade, WhoamiRequest, WhoamiResponse, RegisterUsernameRequest, RegisterUsernameResult, RegisterUsernameResponse, RegisterUsernameResponseError, CertaintyRange, PrivacyKind, MarketPrivacy, MarketPrivacyEmails, CreateMarketRequest, CreateMarketResult, CreateMarketResponse, CreateMarketResponseError, GetMarketRequest, GetMarketResult, GetMarketResponse, GetMarketResponseMarket, GetMarketResponseError, GetMarketResponseTrade, UserInfo, StakeRequest, StakeResult, StakeResponse, StakeResponseError, GetUserRequest, GetUserResult, GetUserResponse, GetUserResponseUser, GetUserResponseError, MarkTrustedRequest, Result, MarkTrustedResponse, MarkTrustedResponseError
 
 
 # Decoder
 
-@docs userIdDecoder, authTokenDecoder, worldStateDecoder, positionDecoder, whoamiRequestDecoder, whoamiResponseDecoder, registerUsernameRequestDecoder, registerUsernameResponseDecoder, certaintyRangeDecoder, marketPrivacyDecoder, createMarketRequestDecoder, createMarketResponseDecoder, getMarketRequestDecoder, getMarketResponseDecoder, userInfoDecoder, stakeRequestDecoder, stakeResponseDecoder, getUserRequestDecoder, getUserResponseDecoder, markTrustedRequestDecoder, markTrustedResponseDecoder
+@docs userIdDecoder, authTokenDecoder, worldStateDecoder, whoamiRequestDecoder, whoamiResponseDecoder, registerUsernameRequestDecoder, registerUsernameResponseDecoder, certaintyRangeDecoder, marketPrivacyDecoder, createMarketRequestDecoder, createMarketResponseDecoder, getMarketRequestDecoder, getMarketResponseDecoder, userInfoDecoder, stakeRequestDecoder, stakeResponseDecoder, getUserRequestDecoder, getUserResponseDecoder, markTrustedRequestDecoder, markTrustedResponseDecoder
 
 
 # Encoder
 
-@docs toUserIdEncoder, toAuthTokenEncoder, toWorldStateEncoder, toPositionEncoder, toWhoamiRequestEncoder, toWhoamiResponseEncoder, toRegisterUsernameRequestEncoder, toRegisterUsernameResponseEncoder, toCertaintyRangeEncoder, toMarketPrivacyEncoder, toCreateMarketRequestEncoder, toCreateMarketResponseEncoder, toGetMarketRequestEncoder, toGetMarketResponseEncoder, toUserInfoEncoder, toStakeRequestEncoder, toStakeResponseEncoder, toGetUserRequestEncoder, toGetUserResponseEncoder, toMarkTrustedRequestEncoder, toMarkTrustedResponseEncoder
+@docs toUserIdEncoder, toAuthTokenEncoder, toWorldStateEncoder, toWhoamiRequestEncoder, toWhoamiResponseEncoder, toRegisterUsernameRequestEncoder, toRegisterUsernameResponseEncoder, toCertaintyRangeEncoder, toMarketPrivacyEncoder, toCreateMarketRequestEncoder, toCreateMarketResponseEncoder, toGetMarketRequestEncoder, toGetMarketResponseEncoder, toUserInfoEncoder, toStakeRequestEncoder, toStakeResponseEncoder, toGetUserRequestEncoder, toGetUserResponseEncoder, toMarkTrustedRequestEncoder, toMarkTrustedResponseEncoder
 
 -}
 
@@ -125,17 +125,10 @@ type alias WorldStateMarket =
 -}
 type alias WorldStateTrade =
     { bettor : Maybe UserId
-    , bettorExpectedResolution : Bool
-    , bettorStake : Int
+    , bettorIsASkeptic : Bool
+    , bettorStakeCents : Int
+    , creatorStakeCents : Int
     , transactedUnixtime : Int
-    }
-
-
-{-| `Position` message
--}
-type alias Position =
-    { winCentsIfYes : Int
-    , winCentsIfNo : Int
     }
 
 
@@ -271,13 +264,14 @@ type alias GetMarketResponseMarket =
     { question : String
     , certainty : Maybe CertaintyRange
     , maximumStakeCents : Int
-    , remainingYesStakeCents : Int
-    , remainingNoStakeCents : Int
+    , remainingStakeCentsVsBelievers : Int
+    , remainingStakeCentsVsSkeptics : Int
     , createdUnixtime : Int
     , closesUnixtime : Int
     , specialRules : String
     , creator : Maybe UserInfo
     , resolution : Resolution
+    , yourTrades : List GetMarketResponseTrade
     }
 
 
@@ -286,6 +280,16 @@ type alias GetMarketResponseMarket =
 type alias GetMarketResponseError =
     { catchall : String
     , noSuchMarket : Void
+    }
+
+
+{-| `GetMarketResponseTrade` message
+-}
+type alias GetMarketResponseTrade =
+    { bettorIsASkeptic : Bool
+    , creatorStakeCents : Int
+    , bettorStakeCents : Int
+    , transactedUnixtime : Int
     }
 
 
@@ -494,21 +498,12 @@ worldStateMarketDecoder =
 
 worldStateTradeDecoder : Decode.Decoder WorldStateTrade
 worldStateTradeDecoder =
-    Decode.message (WorldStateTrade Nothing False 0 0)
+    Decode.message (WorldStateTrade Nothing False 0 0 0)
         [ Decode.optional 1 (Decode.map Just userIdDecoder) setBettor
-        , Decode.optional 2 Decode.bool setBettorExpectedResolution
-        , Decode.optional 3 Decode.uint32 setBettorStake
-        , Decode.optional 4 Decode.uint32 setTransactedUnixtime
-        ]
-
-
-{-| `Position` decoder
--}
-positionDecoder : Decode.Decoder Position
-positionDecoder =
-    Decode.message (Position 0 0)
-        [ Decode.optional 1 Decode.int32 setWinCentsIfYes
-        , Decode.optional 2 Decode.int32 setWinCentsIfNo
+        , Decode.optional 2 Decode.bool setBettorIsASkeptic
+        , Decode.optional 3 Decode.uint32 setBettorStakeCents
+        , Decode.optional 4 Decode.uint32 setCreatorStakeCents
+        , Decode.optional 5 Decode.uint32 setTransactedUnixtime
         ]
 
 
@@ -648,17 +643,18 @@ getMarketResponseDecoder =
 
 getMarketResponseMarketDecoder : Decode.Decoder GetMarketResponseMarket
 getMarketResponseMarketDecoder =
-    Decode.message (GetMarketResponseMarket "" Nothing 0 0 0 0 0 "" Nothing ResolutionNoneYet)
+    Decode.message (GetMarketResponseMarket "" Nothing 0 0 0 0 0 "" Nothing ResolutionNoneYet [])
         [ Decode.optional 1 Decode.string setQuestion
         , Decode.optional 2 (Decode.map Just certaintyRangeDecoder) setCertainty
         , Decode.optional 3 Decode.uint32 setMaximumStakeCents
-        , Decode.optional 4 Decode.uint32 setRemainingYesStakeCents
-        , Decode.optional 5 Decode.uint32 setRemainingNoStakeCents
+        , Decode.optional 4 Decode.uint32 setRemainingStakeCentsVsBelievers
+        , Decode.optional 5 Decode.uint32 setRemainingStakeCentsVsSkeptics
         , Decode.optional 6 Decode.uint32 setCreatedUnixtime
         , Decode.optional 7 Decode.uint32 setClosesUnixtime
         , Decode.optional 8 Decode.string setSpecialRules
         , Decode.optional 9 (Decode.map Just userInfoDecoder) setCreator
         , Decode.optional 10 resolutionDecoder setResolution
+        , Decode.repeated 11 getMarketResponseTradeDecoder .yourTrades setYourTrades
         ]
 
 
@@ -667,6 +663,16 @@ getMarketResponseErrorDecoder =
     Decode.message (GetMarketResponseError "" Void)
         [ Decode.optional 1 Decode.string setCatchall
         , Decode.optional 2 voidDecoder setNoSuchMarket
+        ]
+
+
+getMarketResponseTradeDecoder : Decode.Decoder GetMarketResponseTrade
+getMarketResponseTradeDecoder =
+    Decode.message (GetMarketResponseTrade False 0 0 0)
+        [ Decode.optional 1 Decode.bool setBettorIsASkeptic
+        , Decode.optional 2 Decode.uint32 setCreatorStakeCents
+        , Decode.optional 3 Decode.uint32 setBettorStakeCents
+        , Decode.optional 4 Decode.uint32 setTransactedUnixtime
         ]
 
 
@@ -880,19 +886,10 @@ toWorldStateTradeEncoder : WorldStateTrade -> Encode.Encoder
 toWorldStateTradeEncoder model =
     Encode.message
         [ ( 1, (Maybe.withDefault Encode.none << Maybe.map toUserIdEncoder) model.bettor )
-        , ( 2, Encode.bool model.bettorExpectedResolution )
-        , ( 3, Encode.uint32 model.bettorStake )
-        , ( 4, Encode.uint32 model.transactedUnixtime )
-        ]
-
-
-{-| `Position` encoder
--}
-toPositionEncoder : Position -> Encode.Encoder
-toPositionEncoder model =
-    Encode.message
-        [ ( 1, Encode.int32 model.winCentsIfYes )
-        , ( 2, Encode.int32 model.winCentsIfNo )
+        , ( 2, Encode.bool model.bettorIsASkeptic )
+        , ( 3, Encode.uint32 model.bettorStakeCents )
+        , ( 4, Encode.uint32 model.creatorStakeCents )
+        , ( 5, Encode.uint32 model.transactedUnixtime )
         ]
 
 
@@ -1060,13 +1057,14 @@ toGetMarketResponseMarketEncoder model =
         [ ( 1, Encode.string model.question )
         , ( 2, (Maybe.withDefault Encode.none << Maybe.map toCertaintyRangeEncoder) model.certainty )
         , ( 3, Encode.uint32 model.maximumStakeCents )
-        , ( 4, Encode.uint32 model.remainingYesStakeCents )
-        , ( 5, Encode.uint32 model.remainingNoStakeCents )
+        , ( 4, Encode.uint32 model.remainingStakeCentsVsBelievers )
+        , ( 5, Encode.uint32 model.remainingStakeCentsVsSkeptics )
         , ( 6, Encode.uint32 model.createdUnixtime )
         , ( 7, Encode.uint32 model.closesUnixtime )
         , ( 8, Encode.string model.specialRules )
         , ( 9, (Maybe.withDefault Encode.none << Maybe.map toUserInfoEncoder) model.creator )
         , ( 10, toResolutionEncoder model.resolution )
+        , ( 11, Encode.list toGetMarketResponseTradeEncoder model.yourTrades )
         ]
 
 
@@ -1075,6 +1073,16 @@ toGetMarketResponseErrorEncoder model =
     Encode.message
         [ ( 1, Encode.string model.catchall )
         , ( 2, toVoidEncoder model.noSuchMarket )
+        ]
+
+
+toGetMarketResponseTradeEncoder : GetMarketResponseTrade -> Encode.Encoder
+toGetMarketResponseTradeEncoder model =
+    Encode.message
+        [ ( 1, Encode.bool model.bettorIsASkeptic )
+        , ( 2, Encode.uint32 model.creatorStakeCents )
+        , ( 3, Encode.uint32 model.bettorStakeCents )
+        , ( 4, Encode.uint32 model.transactedUnixtime )
         ]
 
 
@@ -1306,29 +1314,24 @@ setBettor value model =
     { model | bettor = value }
 
 
-setBettorExpectedResolution : a -> { b | bettorExpectedResolution : a } -> { b | bettorExpectedResolution : a }
-setBettorExpectedResolution value model =
-    { model | bettorExpectedResolution = value }
+setBettorIsASkeptic : a -> { b | bettorIsASkeptic : a } -> { b | bettorIsASkeptic : a }
+setBettorIsASkeptic value model =
+    { model | bettorIsASkeptic = value }
 
 
-setBettorStake : a -> { b | bettorStake : a } -> { b | bettorStake : a }
-setBettorStake value model =
-    { model | bettorStake = value }
+setBettorStakeCents : a -> { b | bettorStakeCents : a } -> { b | bettorStakeCents : a }
+setBettorStakeCents value model =
+    { model | bettorStakeCents = value }
+
+
+setCreatorStakeCents : a -> { b | creatorStakeCents : a } -> { b | creatorStakeCents : a }
+setCreatorStakeCents value model =
+    { model | creatorStakeCents = value }
 
 
 setTransactedUnixtime : a -> { b | transactedUnixtime : a } -> { b | transactedUnixtime : a }
 setTransactedUnixtime value model =
     { model | transactedUnixtime = value }
-
-
-setWinCentsIfYes : a -> { b | winCentsIfYes : a } -> { b | winCentsIfYes : a }
-setWinCentsIfYes value model =
-    { model | winCentsIfYes = value }
-
-
-setWinCentsIfNo : a -> { b | winCentsIfNo : a } -> { b | winCentsIfNo : a }
-setWinCentsIfNo value model =
-    { model | winCentsIfNo = value }
 
 
 setAuth : a -> { b | auth : a } -> { b | auth : a }
@@ -1406,14 +1409,19 @@ setGetMarketResult value model =
     { model | getMarketResult = value }
 
 
-setRemainingYesStakeCents : a -> { b | remainingYesStakeCents : a } -> { b | remainingYesStakeCents : a }
-setRemainingYesStakeCents value model =
-    { model | remainingYesStakeCents = value }
+setRemainingStakeCentsVsBelievers : a -> { b | remainingStakeCentsVsBelievers : a } -> { b | remainingStakeCentsVsBelievers : a }
+setRemainingStakeCentsVsBelievers value model =
+    { model | remainingStakeCentsVsBelievers = value }
 
 
-setRemainingNoStakeCents : a -> { b | remainingNoStakeCents : a } -> { b | remainingNoStakeCents : a }
-setRemainingNoStakeCents value model =
-    { model | remainingNoStakeCents = value }
+setRemainingStakeCentsVsSkeptics : a -> { b | remainingStakeCentsVsSkeptics : a } -> { b | remainingStakeCentsVsSkeptics : a }
+setRemainingStakeCentsVsSkeptics value model =
+    { model | remainingStakeCentsVsSkeptics = value }
+
+
+setYourTrades : a -> { b | yourTrades : a } -> { b | yourTrades : a }
+setYourTrades value model =
+    { model | yourTrades = value }
 
 
 setNoSuchMarket : a -> { b | noSuchMarket : a } -> { b | noSuchMarket : a }

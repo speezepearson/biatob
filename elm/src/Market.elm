@@ -25,16 +25,15 @@ type alias Config msg =
 
 type alias State =
   { market : Pb.GetMarketResponseMarket
-  , userPosition : Pb.Position
-  , stakeYesField : String
-  , stakeNoField : String
+  , believerStakeField : String
+  , skepticStakeField : String
   , now : Time.Posix
   }
 
-stakeYesCents : State -> Maybe Int
-stakeYesCents {stakeYesField} = String.toFloat stakeYesField |> Maybe.map ((*) 100 >> round)
-stakeNoCents : State -> Maybe Int
-stakeNoCents {stakeNoField} = String.toFloat stakeNoField |> Maybe.map ((*) 100 >> round)
+believerStakeCents : State -> Maybe Int
+believerStakeCents {believerStakeField} = String.toFloat believerStakeField |> Maybe.map ((*) 100 >> round)
+skepticStakeCents : State -> Maybe Int
+skepticStakeCents {skepticStakeField} = String.toFloat skepticStakeField |> Maybe.map ((*) 100 >> round)
 
 view : Config msg -> State -> Html msg
 view config state =
@@ -42,46 +41,53 @@ view config state =
     creator = state.market.creator |> must "no creator given"
     certainty = state.market.certainty |> must "no certainty given"
 
-    yesStakeMultiplier = (1 - certainty.high) / certainty.high
-    noStakeMultiplier = certainty.low / (1 - certainty.low)
-    maxYesStakeCents = toFloat state.market.remainingYesStakeCents / yesStakeMultiplier |> round
-    maxNoStakeCents = toFloat state.market.remainingNoStakeCents / noStakeMultiplier |> round
-    (invalidStakeYes, emphasizeRemainingStakeYes) = case stakeYesCents state of
+    winCentsIfYes = state.market.yourTrades |> List.map (\t -> if t.bettorIsASkeptic then -t.bettorStakeCents else t.creatorStakeCents) |> List.sum
+    winCentsIfNo = state.market.yourTrades |> List.map (\t -> if t.bettorIsASkeptic then t.creatorStakeCents else -t.bettorStakeCents) |> List.sum
+    creatorStakeFactorVsBelievers = (1 - certainty.high) / certainty.high
+    creatorStakeFactorVsSkeptics = certainty.low / (1 - certainty.low)
+    maxBelieverStakeCents = toFloat state.market.remainingStakeCentsVsBelievers / creatorStakeFactorVsBelievers |> floor
+    maxSkepticStakeCents = toFloat state.market.remainingStakeCentsVsSkeptics / creatorStakeFactorVsSkeptics |> floor
+    (invalidBelieverStake, emphasizeRemainingStakeVsBelievers) = case believerStakeCents state of
       Nothing -> (True, False)
-      Just n -> (n < 0 || n > maxYesStakeCents, n > maxYesStakeCents)
-    (invalidStakeNo, emphasizeRemainingStakeNo) = case stakeNoCents state of
+      Just n -> (n < 0 || n > maxBelieverStakeCents, n > maxBelieverStakeCents)
+    (invalidSkepticStake, emphasizeRemainingStakeVsSkeptics) = case skepticStakeCents state of
       Nothing -> (True, False)
-      Just n -> (n < 0 || n > maxNoStakeCents, n > maxNoStakeCents)
+      Just n -> (n < 0 || n > maxSkepticStakeCents, n > maxSkepticStakeCents)
+
+    _ = Debug.log ""
+          { skepticStakeField = state.skepticStakeField
+          , skepticStakeCents = skepticStakeCents state
+          , remainingStakeCentsVsSkeptics = state.market.remainingStakeCentsVsSkeptics
+          , maxSkepticStakeCents = maxSkepticStakeCents
+          }
   in
   H.div []
     [ H.h2 [] [H.text state.market.question]
     , case state.market.resolution of
         Pb.ResolutionYes ->
-          let winnings = state.userPosition.winCentsIfYes in
-          if winnings == 0 then H.text "" else
+          if winCentsIfYes == 0 then H.text "" else
           H.div []
             [ H.text "This market has resolved YES. "
-            , H.text <| if winnings > 0 then creator.displayName ++ " owes you " else ("you owe " ++ creator.displayName ++ " ")
-            , H.text <| Utils.formatCents <| abs winnings
+            , H.text <| if winCentsIfYes > 0 then creator.displayName ++ " owes you " else ("you owe " ++ creator.displayName ++ " ")
+            , H.text <| Utils.formatCents <| abs winCentsIfYes
             , H.text <| "."
             ]
         Pb.ResolutionNo ->
-          let winnings = state.userPosition.winCentsIfNo in
-          if winnings == 0 then H.text "" else
+          if winCentsIfNo == 0 then H.text "" else
           H.div []
             [ H.text "This market has resolved NO. "
-            , H.text <| if winnings > 0 then creator.displayName ++ " owes you " else ("you owe " ++ creator.displayName ++ " ")
-            , H.text <| Utils.formatCents <| abs winnings
+            , H.text <| if winCentsIfNo > 0 then creator.displayName ++ " owes you " else ("you owe " ++ creator.displayName ++ " ")
+            , H.text <| Utils.formatCents <| abs winCentsIfNo
             , H.text <| "."
             ]
         Pb.ResolutionNoneYet ->
           H.div []
             [ H.text "This market hasn't resolved yet. If it resolves Yes, "
-            , H.text <| if state.userPosition.winCentsIfYes > 0 then creator.displayName ++ " will owe you " else ("you will owe " ++ creator.displayName ++ " ")
-            , H.text <| Utils.formatCents <| abs state.userPosition.winCentsIfYes
+            , H.text <| if winCentsIfYes > 0 then creator.displayName ++ " will owe you " else ("you will owe " ++ creator.displayName ++ " ")
+            , H.text <| Utils.formatCents <| abs winCentsIfYes
             , H.text <| "; if No, "
-            , H.text <| if state.userPosition.winCentsIfNo > 0 then creator.displayName ++ " will owe you " else ("you will owe " ++ creator.displayName ++ " ")
-            , H.text <| Utils.formatCents <| abs state.userPosition.winCentsIfNo
+            , H.text <| if winCentsIfNo > 0 then creator.displayName ++ " will owe you " else ("you will owe " ++ creator.displayName ++ " ")
+            , H.text <| Utils.formatCents <| abs winCentsIfNo
             , H.text <| "."
             ]
         Pb.ResolutionUnrecognized_ _ ->
@@ -98,10 +104,10 @@ view config state =
         , state.market.maximumStakeCents |> Utils.formatCents |> H.text
         , H.text "."
         , H.br [] []
-        , H.strong [Utils.outlineIfInvalid emphasizeRemainingStakeYes] [state.market.remainingYesStakeCents |> Utils.formatCents |> H.text]
-        , H.text " remain staked on Yes, "
-        , H.strong [Utils.outlineIfInvalid emphasizeRemainingStakeNo] [state.market.remainingNoStakeCents |> Utils.formatCents |> H.text]
-        , H.text " remain staked on No."
+        , H.strong [Utils.outlineIfInvalid emphasizeRemainingStakeVsSkeptics] [state.market.remainingStakeCentsVsSkeptics |> Utils.formatCents |> H.text]
+        , H.text " remain staked against skeptics, "
+        , H.strong [Utils.outlineIfInvalid emphasizeRemainingStakeVsBelievers] [state.market.remainingStakeCentsVsBelievers |> Utils.formatCents |> H.text]
+        , H.text " remain staked against believers."
         , H.br [] []
         , H.text "Market opened "
         , state.market.createdUnixtime |> (*) 1000 |> Time.millisToPosix
@@ -113,40 +119,40 @@ view config state =
             |> H.text
         ]
     , H.p []
-        [ H.text "Stake $"
+        [ H.text "Bet $"
         , H.input
             [ HA.style "width" "5em"
-            , HA.type_"number", HA.min "0", HA.max (toFloat maxYesStakeCents / 100 + epsilon |> String.fromFloat), HA.step "any"
-            , HA.value state.stakeYesField
-            , HE.onInput (\s -> config.setState {state | stakeYesField = s})
-            , Utils.outlineIfInvalid invalidStakeYes
+            , HA.type_"number", HA.min "0", HA.max (toFloat maxSkepticStakeCents / 100 + epsilon |> String.fromFloat), HA.step "any"
+            , HA.value state.skepticStakeField
+            , HE.onInput (\s -> config.setState {state | skepticStakeField = s})
+            , Utils.outlineIfInvalid invalidSkepticStake
             ] []
-        , H.text " against Spencer's "
-        , H.strong [Utils.outlineIfInvalid emphasizeRemainingStakeYes] [stakeYesCents state |>  Maybe.map (toFloat >> (*) yesStakeMultiplier >> round >> Utils.formatCents) |> Maybe.withDefault "???" |> H.text]
-        , H.text " that this will resolve Yes? "
+        , H.text " that this will resolve No, against Spencer's "
+        , H.strong [Utils.outlineIfInvalid emphasizeRemainingStakeVsSkeptics] [skepticStakeCents state |>  Maybe.map (toFloat >> (*) creatorStakeFactorVsSkeptics >> round >> Utils.formatCents) |> Maybe.withDefault "???" |> H.text]
+        , H.text "? "
         , H.button
           [ HE.onClick <|
-              case stakeYesCents state of
-                Just stake -> config.onStake True stake
+              case believerStakeCents state of
+                Just stake -> config.onStake False stake
                 Nothing -> config.nevermind
           ]
           [H.text "Commit"]
         , H.br [] []
-        , H.text "Stake $"
-        , H.input
+        , H.text "Bet $"
+                , H.input
             [ HA.style "width" "5em"
-            , HA.type_"number", HA.min "0", HA.max (toFloat maxNoStakeCents / 100 + epsilon |> String.fromFloat), HA.step "any"
-            , HA.value state.stakeNoField
-            , HE.onInput (\s -> config.setState {state | stakeNoField = s})
-            , Utils.outlineIfInvalid invalidStakeNo
+            , HA.type_"number", HA.min "0", HA.max (toFloat maxBelieverStakeCents / 100 + epsilon |> String.fromFloat), HA.step "any"
+            , HA.value state.believerStakeField
+            , HE.onInput (\s -> config.setState {state | believerStakeField = s})
+            , Utils.outlineIfInvalid invalidBelieverStake
             ] []
-        , H.text " against Spencer's "
-        , H.strong [Utils.outlineIfInvalid emphasizeRemainingStakeNo] [stakeNoCents state |>  Maybe.map (toFloat >> (*) noStakeMultiplier >> round >> Utils.formatCents) |> Maybe.withDefault "???" |> H.text]
-        , H.text " that this will resolve No? "
+        , H.text " that this will resolve Yes, against Spencer's "
+        , H.strong [Utils.outlineIfInvalid emphasizeRemainingStakeVsBelievers] [believerStakeCents state |>  Maybe.map (toFloat >> (*) creatorStakeFactorVsBelievers >> round >> Utils.formatCents) |> Maybe.withDefault "???" |> H.text]
+        , H.text "? "
         , H.button
           [ HE.onClick <|
-              case stakeYesCents state of
-                Just stake -> config.onStake False stake
+              case believerStakeCents state of
+                Just stake -> config.onStake True stake
                 Nothing -> config.nevermind
           ]
           [H.text "Commit"]
@@ -161,19 +167,19 @@ initStateForDemo =
         { question = "By 2021-08-01, will at least 50% of U.S. COVID-19 cases be B117 or a derivative strain, as reported by the CDC?"
         , certainty = Just {low = 0.8, high = 0.9}
         , maximumStakeCents = 10000
-        , remainingYesStakeCents = 10000
-        , remainingNoStakeCents = 5000
+        , remainingStakeCentsVsBelievers = 10000
+        , remainingStakeCentsVsSkeptics = 5000
         , createdUnixtime = 0 -- TODO
         , closesUnixtime = 86400
         , specialRules = "If the CDC doesn't publish statistics on this, I'll fall back to some other official organization, like the WHO; failing that, I'll look for journal papers on U.S. cases, and go with a consensus if I find one; failing that, the market is unresolvable."
         , creator = Just {displayName = "Spencer"}
         , resolution = Pb.ResolutionNoneYet
+        , yourTrades = []
         }
   in
     { market = market
-    , userPosition = { winCentsIfYes = -500 , winCentsIfNo = 800 }
-    , stakeYesField = "0"
-    , stakeNoField = "0"
+    , believerStakeField = "0"
+    , skepticStakeField = "0"
     , now = Time.millisToPosix 0
     }
 type MsgForDemo = SetState State | Ignore

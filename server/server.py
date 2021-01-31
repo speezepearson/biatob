@@ -42,16 +42,6 @@ def ensure_user_exists(wstate: mvp_pb2.WorldState, user: mvp_pb2.UserId) -> None
 
 def raise_(e: Exception) -> NoReturn: raise e
 
-def remaining_stake_cents(market: mvp_pb2.WorldState.Market) -> Tuple[int, int]:
-    # TODO: fix the almost-certainly-wrong math below, and figure out why it's so unintuitive
-    pool_against = pool_for = float(market.maximum_stake_cents)
-    for trade in market.trades:
-        if trade.bettor_expected_resolution:
-            pool_against -= trade.bettor_stake * market.certainty.low/(1-market.certainty.low)
-        else:
-            pool_for -= trade.bettor_stake * market.certainty.high/(1-market.certainty.high)
-    return (int(pool_against), int(pool_for))
-
 
 class Marketplace(abc.ABC):
     def register_username(self, username: str, password: str) -> None: pass
@@ -60,7 +50,7 @@ class Marketplace(abc.ABC):
     def get_market(self, market_id: MarketId) -> Optional[mvp_pb2.WorldState.Market]: pass
     def resolve_market(self, market_id: MarketId, resolution: bool) -> None: pass
     def set_trust(self, *, truster: mvp_pb2.UserId, trusted: mvp_pb2.UserId, trusts: bool) -> None: pass
-    def bet(self, market_id: MarketId, bettor: mvp_pb2.UserId, expected_resolution: bool, bettor_stake_cents: int) -> None: pass
+    def bet(self, market_id: MarketId, bettor: mvp_pb2.UserId, bettor_is_a_skeptic: bool, bettor_stake_cents: int) -> None: pass
 
 class FSMarketplace(Marketplace):
     def __init__(self, state_path: Path, random_seed: Optional[int] = None, clock: Callable[[], int] = lambda: int(time.time())) -> None:
@@ -119,16 +109,28 @@ class FSMarketplace(Marketplace):
             else:
                 info.trusted_users.remove(trusted)
 
-    def bet(self, market_id: MarketId, bettor: mvp_pb2.UserId, bettor_expected_resolution: bool, bettor_stake_cents: int) -> None:
+    def bet(self, market_id: MarketId, bettor: mvp_pb2.UserId, bettor_is_a_skeptic: bool, bettor_stake_cents: int) -> None:
         with self._mutate_state() as wstate:
             if market_id not in wstate.markets:
                 raise KeyError(market_id)
             ensure_user_exists(wstate, bettor)
-            # TODO: more validity-checking
-            wstate.markets[market_id].trades.append(mvp_pb2.WorldState.Trade(
+            # TODO: more validity-checking?
+            market = wstate.markets[market_id]
+            if bettor_is_a_skeptic:
+                lowP = market.certainty.low
+                creator_stake_cents = int(bettor_stake_cents * lowP/(1-lowP))
+                if sum(t.creator_stake_cents for t in market.trades if t.bettor_is_a_skeptic) + creator_stake_cents > market.maximum_stake_cents:
+                    raise ValueError()
+            else:
+                highP = market.certainty.high
+                creator_stake_cents = int(bettor_stake_cents * (1-highP)/highP)
+                if sum(t.creator_stake_cents for t in market.trades if not t.bettor_is_a_skeptic) + creator_stake_cents > market.maximum_stake_cents:
+                    raise ValueError()
+            market.trades.append(mvp_pb2.WorldState.Trade(
                 bettor=bettor,
-                bettor_expected_resolution=bettor_expected_resolution,
-                bettor_stake=bettor_stake_cents,
+                bettor_is_a_skeptic=bettor_is_a_skeptic,
+                creator_stake_cents=creator_stake_cents,
+                bettor_stake_cents=bettor_stake_cents,
                 transacted_unixtime=self._clock(),
             ))
 
@@ -256,20 +258,28 @@ class ApiServer:
             if ws_market is None:
                 return (web.Response(status=404), mvp_pb2.GetMarketResponse(error=mvp_pb2.GetMarketResponse.Error(no_such_market=mvp_pb2.VOID)))
 
-            (rem_no, rem_yes) = remaining_stake_cents(ws_market)
             return (
                 web.Response(),
                 mvp_pb2.GetMarketResponse(market=mvp_pb2.GetMarketResponse.Market(
                     question=ws_market.question,
                     certainty=ws_market.certainty,
                     maximum_stake_cents=ws_market.maximum_stake_cents,
-                    remaining_yes_stake_cents=rem_no,
-                    remaining_no_stake_cents=rem_yes,
+                    remaining_stake_cents_vs_believers=ws_market.maximum_stake_cents - sum(t.creator_stake_cents for t in ws_market.trades if not t.bettor_is_a_skeptic),
+                    remaining_stake_cents_vs_skeptics=ws_market.maximum_stake_cents - sum(t.creator_stake_cents for t in ws_market.trades if t.bettor_is_a_skeptic),
                     created_unixtime=ws_market.created_unixtime,
                     closes_unixtime=ws_market.closes_unixtime,
                     special_rules=ws_market.special_rules,
                     creator=mvp_pb2.UserInfo(display_name='TODO'),
                     resolution=ws_market.resolution,
+                    your_trades=[
+                        mvp_pb2.GetMarketResponse.Trade(
+                            bettor_is_a_skeptic=t.bettor_is_a_skeptic,
+                            creator_stake_cents=t.creator_stake_cents,
+                            bettor_stake_cents=t.bettor_stake_cents,
+                            transacted_unixtime=t.transacted_unixtime,
+                        )
+                        for t in ws_market.trades
+                    ],
                 )),
             )
 

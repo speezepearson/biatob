@@ -79,8 +79,8 @@ async def test_create_and_get_market(aiohttp_client, marketplace_fixture, app_fi
   assert returned_market.question == create_pb_req.question
   assert returned_market.certainty == create_pb_req.certainty
   assert returned_market.maximum_stake_cents == create_pb_req.maximum_stake_cents
-  assert returned_market.remaining_yes_stake_cents == create_pb_req.maximum_stake_cents
-  assert returned_market.remaining_no_stake_cents == create_pb_req.maximum_stake_cents
+  assert returned_market.remaining_stake_cents_vs_believers == create_pb_req.maximum_stake_cents
+  assert returned_market.remaining_stake_cents_vs_skeptics == create_pb_req.maximum_stake_cents
   assert returned_market.created_unixtime == clock_fixture.now()
   assert returned_market.closes_unixtime == returned_market.created_unixtime + create_pb_req.open_seconds
   assert returned_market.special_rules == create_pb_req.special_rules

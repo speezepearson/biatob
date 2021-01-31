@@ -57,9 +57,10 @@ message WorldState {
 
   message Trade {
     UserId bettor = 1;
-    bool bettor_expected_resolution = 2;
-    uint64 bettor_stake = 3;
-    uint64 transacted_unixtime = 4;
+    bool bettor_is_a_skeptic = 2;
+    uint64 bettor_stake_cents = 3;
+    uint64 creator_stake_cents = 4;
+    uint64 transacted_unixtime = 5;
   }
 }
 
@@ -72,11 +73,6 @@ enum Resolution {
   RESOLUTION_NONE_YET = 0;
   RESOLUTION_YES = 1;
   RESOLUTION_NO = 2;
-}
-
-message Position {
-  int64 win_cents_if_yes = 1;
-  int64 win_cents_if_no = 2;
 }
 
 message WhoamiRequest {}
@@ -142,17 +138,24 @@ message GetMarketResponse {
     string question = 1;
     CertaintyRange certainty = 2;
     uint64 maximum_stake_cents = 3;
-    uint64 remaining_yes_stake_cents = 4;
-    uint64 remaining_no_stake_cents = 5;
+    uint64 remaining_stake_cents_vs_believers = 4;
+    uint64 remaining_stake_cents_vs_skeptics = 5;
     uint64 created_unixtime = 6;
     uint64 closes_unixtime = 7;
     string special_rules = 8;
     UserInfo creator = 9;
     Resolution resolution = 10;
+    repeated Trade your_trades = 11;
   }
   message Error {
     string catchall = 1;
     Void no_such_market = 2;
+  }
+  message Trade {
+    bool bettor_is_a_skeptic = 1;
+    uint64 creator_stake_cents = 2;
+    uint64 bettor_stake_cents = 3;
+    uint64 transacted_unixtime = 4;
   }
 }
 message UserInfo {
