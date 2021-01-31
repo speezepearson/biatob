@@ -89,8 +89,9 @@ formConfig =
 previewConfig : Market.Config Msg
 previewConfig =
   { setState = SetMarketPreviewState
-  , onStake = (\_ _ -> TodoIgnore)
+  , onStake = (\_ -> TodoIgnore)
   , nevermind = TodoIgnore
+  , disableCommit = True
   }
 
 formStateToProto : Form.State -> Pb.GetMarketResponseMarket

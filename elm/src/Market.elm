@@ -19,8 +19,9 @@ epsilon = 0.0000001 -- 🎵 I hate floating-point arithmetic 🎶
 
 type alias Config msg =
   { setState : State -> msg
-  , onStake : Bool -> Int -> msg
+  , onStake : {bettorIsASkeptic:Bool, betterStakeCents:Int} -> msg
   , nevermind : msg
+  , disableCommit : Bool
   }
 
 type alias State =
@@ -41,6 +42,9 @@ view config state =
     creator = state.market.creator |> must "no creator given"
     certainty = state.market.certainty |> must "no certainty given"
 
+    isClosed = Time.posixToMillis state.now > 1000*state.market.closesUnixtime
+    disableInputs = isClosed || (state.market.resolution /= Pb.ResolutionNoneYet)
+    disableCommit = disableInputs || config.disableCommit
     winCentsIfYes = state.market.yourTrades |> List.map (\t -> if t.bettorIsASkeptic then -t.bettorStakeCents else t.creatorStakeCents) |> List.sum
     winCentsIfNo = state.market.yourTrades |> List.map (\t -> if t.bettorIsASkeptic then t.creatorStakeCents else -t.bettorStakeCents) |> List.sum
     creatorStakeFactorVsBelievers = (1 - certainty.high) / certainty.high
@@ -82,7 +86,7 @@ view config state =
             ]
         Pb.ResolutionNoneYet ->
           H.div []
-            [ H.text "This market hasn't resolved yet. If it resolves Yes, "
+            [ H.text <| "This market " ++ (if isClosed then "has closed, but " else "") ++ "hasn't resolved yet. If it resolves Yes, "
             , H.text <| if winCentsIfYes > 0 then creator.displayName ++ " will owe you " else ("you will owe " ++ creator.displayName ++ " ")
             , H.text <| Utils.formatCents <| abs winCentsIfYes
             , H.text <| "; if No, "
@@ -125,15 +129,17 @@ view config state =
             , HA.type_"number", HA.min "0", HA.max (toFloat maxSkepticStakeCents / 100 + epsilon |> String.fromFloat), HA.step "any"
             , HA.value state.skepticStakeField
             , HE.onInput (\s -> config.setState {state | skepticStakeField = s})
+            , HA.disabled disableInputs
             , Utils.outlineIfInvalid invalidSkepticStake
             ] []
         , H.text " that this will resolve No, against Spencer's "
         , H.strong [Utils.outlineIfInvalid emphasizeRemainingStakeVsSkeptics] [skepticStakeCents state |>  Maybe.map (toFloat >> (*) creatorStakeFactorVsSkeptics >> round >> Utils.formatCents) |> Maybe.withDefault "???" |> H.text]
         , H.text "? "
         , H.button
-          [ HE.onClick <|
-              case believerStakeCents state of
-                Just stake -> config.onStake False stake
+          [ HA.disabled (invalidSkepticStake || disableCommit)
+          , HE.onClick <|
+              case skepticStakeCents state of
+                Just stake -> config.onStake {bettorIsASkeptic=True, betterStakeCents=stake}
                 Nothing -> config.nevermind
           ]
           [H.text "Commit"]
@@ -144,50 +150,52 @@ view config state =
             , HA.type_"number", HA.min "0", HA.max (toFloat maxBelieverStakeCents / 100 + epsilon |> String.fromFloat), HA.step "any"
             , HA.value state.believerStakeField
             , HE.onInput (\s -> config.setState {state | believerStakeField = s})
+            , HA.disabled disableInputs
             , Utils.outlineIfInvalid invalidBelieverStake
             ] []
         , H.text " that this will resolve Yes, against Spencer's "
         , H.strong [Utils.outlineIfInvalid emphasizeRemainingStakeVsBelievers] [believerStakeCents state |>  Maybe.map (toFloat >> (*) creatorStakeFactorVsBelievers >> round >> Utils.formatCents) |> Maybe.withDefault "???" |> H.text]
         , H.text "? "
         , H.button
-          [ HE.onClick <|
+          [ HA.disabled (invalidBelieverStake || disableCommit)
+          , HE.onClick <|
               case believerStakeCents state of
-                Just stake -> config.onStake True stake
+                Just stake -> config.onStake {bettorIsASkeptic=False, betterStakeCents=stake}
                 Nothing -> config.nevermind
           ]
           [H.text "Commit"]
         ]
     ]
 
+init : Pb.GetMarketResponseMarket -> State
+init market =
+  { market = market
+  , believerStakeField = "0"
+  , skepticStakeField = "0"
+  , now = Time.millisToPosix 0
+  }
 initStateForDemo : State
 initStateForDemo =
-  let
-      market : Pb.GetMarketResponseMarket
-      market = 
-        { question = "By 2021-08-01, will at least 50% of U.S. COVID-19 cases be B117 or a derivative strain, as reported by the CDC?"
-        , certainty = Just {low = 0.8, high = 0.9}
-        , maximumStakeCents = 10000
-        , remainingStakeCentsVsBelievers = 10000
-        , remainingStakeCentsVsSkeptics = 5000
-        , createdUnixtime = 0 -- TODO
-        , closesUnixtime = 86400
-        , specialRules = "If the CDC doesn't publish statistics on this, I'll fall back to some other official organization, like the WHO; failing that, I'll look for journal papers on U.S. cases, and go with a consensus if I find one; failing that, the market is unresolvable."
-        , creator = Just {displayName = "Spencer"}
-        , resolution = Pb.ResolutionNoneYet
-        , yourTrades = []
-        }
-  in
-    { market = market
-    , believerStakeField = "0"
-    , skepticStakeField = "0"
-    , now = Time.millisToPosix 0
+  init
+    { question = "By 2021-08-01, will at least 50% of U.S. COVID-19 cases be B117 or a derivative strain, as reported by the CDC?"
+    , certainty = Just {low = 0.8, high = 0.9}
+    , maximumStakeCents = 10000
+    , remainingStakeCentsVsBelievers = 10000
+    , remainingStakeCentsVsSkeptics = 5000
+    , createdUnixtime = 0 -- TODO
+    , closesUnixtime = 86400
+    , specialRules = "If the CDC doesn't publish statistics on this, I'll fall back to some other official organization, like the WHO; failing that, I'll look for journal papers on U.S. cases, and go with a consensus if I find one; failing that, the market is unresolvable."
+    , creator = Just {displayName = "Spencer"}
+    , resolution = Pb.ResolutionNoneYet
+    , yourTrades = []
     }
+
 type MsgForDemo = SetState State | Ignore
 main : Program () State MsgForDemo
 main =
   Browser.sandbox
     { init = initStateForDemo
-    , view = view {onStake = (\_ _ -> Ignore), nevermind=Ignore, setState = SetState}
+    , view = view {onStake = (\_ -> Ignore), nevermind=Ignore, setState=SetState, disableCommit=True}
     , update = \msg model -> case msg of
         Ignore -> model
         SetState newState -> newState
