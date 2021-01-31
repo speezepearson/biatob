@@ -79,30 +79,23 @@ message Position {
   int64 win_cents_if_no = 2;
 }
 
-message Auth {
-  oneof auth_kind {
-    string magic_token = 1;
-  }
-}
-message AuthError {
-  oneof auth_error_kind {
-    Void invalid_token = 1;
-  }
+message WhoamiRequest {}
+message WhoamiResponse {
+  AuthToken auth = 1;
 }
 
-message SignUpRequest {
-  string email = 1;
+message RegisterUsernameRequest {
+  string username = 1;
   string password = 2;
-  string display_name = 3;
 }
-message SignUpResponse {
-  oneof signup_result {
+message RegisterUsernameResponse {
+  oneof register_username_result {
     Void ok = 1;
     Error error = 2;
   }
   message Error {
     string catchall = 1;
-    Void email_already_registered = 2;
+    Void username_taken = 2;
   }
 }
 
@@ -120,7 +113,6 @@ message MarketPrivacy {
   }
 }
 message CreateMarketRequest {
-  Auth auth = 1;
   string question = 2;
   MarketPrivacy privacy = 3;
   CertaintyRange certainty = 4;
@@ -135,12 +127,10 @@ message CreateMarketResponse {
   }
   message Error {
     string catchall = 1;
-    AuthError auth_error = 2;
   }
 }
 
 message GetMarketRequest {
-  Auth auth = 1;
   uint64 market_id = 2;
 }
 message GetMarketResponse {
@@ -162,7 +152,6 @@ message GetMarketResponse {
   }
   message Error {
     string catchall = 1;
-    AuthError auth_error = 2;
   }
 }
 message UserInfo {
@@ -170,7 +159,6 @@ message UserInfo {
 }
 
 message StakeRequest {
-  Auth auth = 1;
   uint64 market_id = 2;
   bool expected_resolution = 3;
   uint64 stake = 4;
@@ -182,12 +170,10 @@ message StakeResponse {
   }
   message Error {
     string catchall = 1;
-    AuthError auth_error = 2;
   }
 }
 
 message GetUserRequest {
-  Auth auth = 1;
   string email = 2;
 }
 message GetUserResponse {
@@ -201,12 +187,10 @@ message GetUserResponse {
   }
   message Error {
     string catchall = 1;
-    AuthError auth_error = 2;
   }
 }
 
 message MarkTrustedRequest {
-  Auth auth = 1;
   string email_to_trust = 2;
 }
 message MarkTrustedResponse {
@@ -216,6 +200,5 @@ message MarkTrustedResponse {
   }
   message Error {
     string catchall = 1;
-    AuthError auth_error = 2;
   }
 }

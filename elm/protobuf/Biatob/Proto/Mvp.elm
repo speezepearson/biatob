@@ -2,9 +2,9 @@
 
 
 module Biatob.Proto.Mvp exposing
-    ( Void(..), Resolution(..), Kind(..), UserId, AuthToken, WorldState, WorldStateGenericUserInfo, WorldStateUsernameInfo, WorldStateMarket, WorldStateTrade, Position, AuthKind(..), Auth, AuthErrorKind(..), AuthError, SignUpRequest, SignupResult(..), SignUpResponse, SignUpResponseError, CertaintyRange, PrivacyKind(..), MarketPrivacy, MarketPrivacyEmails, CreateMarketRequest, CreateMarketResult(..), CreateMarketResponse, CreateMarketResponseError, GetMarketRequest, GetMarketResult(..), GetMarketResponse, GetMarketResponseMarket, GetMarketResponseError, UserInfo, StakeRequest, StakeResult(..), StakeResponse, StakeResponseError, GetUserRequest, GetUserResult(..), GetUserResponse, GetUserResponseUser, GetUserResponseError, MarkTrustedRequest, Result(..), MarkTrustedResponse, MarkTrustedResponseError
-    , userIdDecoder, authTokenDecoder, worldStateDecoder, positionDecoder, authDecoder, authErrorDecoder, signUpRequestDecoder, signUpResponseDecoder, certaintyRangeDecoder, marketPrivacyDecoder, createMarketRequestDecoder, createMarketResponseDecoder, getMarketRequestDecoder, getMarketResponseDecoder, userInfoDecoder, stakeRequestDecoder, stakeResponseDecoder, getUserRequestDecoder, getUserResponseDecoder, markTrustedRequestDecoder, markTrustedResponseDecoder
-    , toUserIdEncoder, toAuthTokenEncoder, toWorldStateEncoder, toPositionEncoder, toAuthEncoder, toAuthErrorEncoder, toSignUpRequestEncoder, toSignUpResponseEncoder, toCertaintyRangeEncoder, toMarketPrivacyEncoder, toCreateMarketRequestEncoder, toCreateMarketResponseEncoder, toGetMarketRequestEncoder, toGetMarketResponseEncoder, toUserInfoEncoder, toStakeRequestEncoder, toStakeResponseEncoder, toGetUserRequestEncoder, toGetUserResponseEncoder, toMarkTrustedRequestEncoder, toMarkTrustedResponseEncoder
+    ( Void(..), Resolution(..), Kind(..), UserId, AuthToken, WorldState, WorldStateGenericUserInfo, WorldStateUsernameInfo, WorldStateMarket, WorldStateTrade, Position, WhoamiRequest, WhoamiResponse, RegisterUsernameRequest, RegisterUsernameResult(..), RegisterUsernameResponse, RegisterUsernameResponseError, CertaintyRange, PrivacyKind(..), MarketPrivacy, MarketPrivacyEmails, CreateMarketRequest, CreateMarketResult(..), CreateMarketResponse, CreateMarketResponseError, GetMarketRequest, GetMarketResult(..), GetMarketResponse, GetMarketResponseMarket, GetMarketResponseError, UserInfo, StakeRequest, StakeResult(..), StakeResponse, StakeResponseError, GetUserRequest, GetUserResult(..), GetUserResponse, GetUserResponseUser, GetUserResponseError, MarkTrustedRequest, Result(..), MarkTrustedResponse, MarkTrustedResponseError
+    , userIdDecoder, authTokenDecoder, worldStateDecoder, positionDecoder, whoamiRequestDecoder, whoamiResponseDecoder, registerUsernameRequestDecoder, registerUsernameResponseDecoder, certaintyRangeDecoder, marketPrivacyDecoder, createMarketRequestDecoder, createMarketResponseDecoder, getMarketRequestDecoder, getMarketResponseDecoder, userInfoDecoder, stakeRequestDecoder, stakeResponseDecoder, getUserRequestDecoder, getUserResponseDecoder, markTrustedRequestDecoder, markTrustedResponseDecoder
+    , toUserIdEncoder, toAuthTokenEncoder, toWorldStateEncoder, toPositionEncoder, toWhoamiRequestEncoder, toWhoamiResponseEncoder, toRegisterUsernameRequestEncoder, toRegisterUsernameResponseEncoder, toCertaintyRangeEncoder, toMarketPrivacyEncoder, toCreateMarketRequestEncoder, toCreateMarketResponseEncoder, toGetMarketRequestEncoder, toGetMarketResponseEncoder, toUserInfoEncoder, toStakeRequestEncoder, toStakeResponseEncoder, toGetUserRequestEncoder, toGetUserResponseEncoder, toMarkTrustedRequestEncoder, toMarkTrustedResponseEncoder
     )
 
 {-| ProtoBuf module: `Biatob.Proto.Mvp`
@@ -20,17 +20,17 @@ To run it use [`elm-protocol-buffers`](https://package.elm-lang.org/packages/eri
 
 # Model
 
-@docs Void, Resolution, Kind, UserId, AuthToken, WorldState, WorldStateGenericUserInfo, WorldStateUsernameInfo, WorldStateMarket, WorldStateTrade, Position, AuthKind, Auth, AuthErrorKind, AuthError, SignUpRequest, SignupResult, SignUpResponse, SignUpResponseError, CertaintyRange, PrivacyKind, MarketPrivacy, MarketPrivacyEmails, CreateMarketRequest, CreateMarketResult, CreateMarketResponse, CreateMarketResponseError, GetMarketRequest, GetMarketResult, GetMarketResponse, GetMarketResponseMarket, GetMarketResponseError, UserInfo, StakeRequest, StakeResult, StakeResponse, StakeResponseError, GetUserRequest, GetUserResult, GetUserResponse, GetUserResponseUser, GetUserResponseError, MarkTrustedRequest, Result, MarkTrustedResponse, MarkTrustedResponseError
+@docs Void, Resolution, Kind, UserId, AuthToken, WorldState, WorldStateGenericUserInfo, WorldStateUsernameInfo, WorldStateMarket, WorldStateTrade, Position, WhoamiRequest, WhoamiResponse, RegisterUsernameRequest, RegisterUsernameResult, RegisterUsernameResponse, RegisterUsernameResponseError, CertaintyRange, PrivacyKind, MarketPrivacy, MarketPrivacyEmails, CreateMarketRequest, CreateMarketResult, CreateMarketResponse, CreateMarketResponseError, GetMarketRequest, GetMarketResult, GetMarketResponse, GetMarketResponseMarket, GetMarketResponseError, UserInfo, StakeRequest, StakeResult, StakeResponse, StakeResponseError, GetUserRequest, GetUserResult, GetUserResponse, GetUserResponseUser, GetUserResponseError, MarkTrustedRequest, Result, MarkTrustedResponse, MarkTrustedResponseError
 
 
 # Decoder
 
-@docs userIdDecoder, authTokenDecoder, worldStateDecoder, positionDecoder, authDecoder, authErrorDecoder, signUpRequestDecoder, signUpResponseDecoder, certaintyRangeDecoder, marketPrivacyDecoder, createMarketRequestDecoder, createMarketResponseDecoder, getMarketRequestDecoder, getMarketResponseDecoder, userInfoDecoder, stakeRequestDecoder, stakeResponseDecoder, getUserRequestDecoder, getUserResponseDecoder, markTrustedRequestDecoder, markTrustedResponseDecoder
+@docs userIdDecoder, authTokenDecoder, worldStateDecoder, positionDecoder, whoamiRequestDecoder, whoamiResponseDecoder, registerUsernameRequestDecoder, registerUsernameResponseDecoder, certaintyRangeDecoder, marketPrivacyDecoder, createMarketRequestDecoder, createMarketResponseDecoder, getMarketRequestDecoder, getMarketResponseDecoder, userInfoDecoder, stakeRequestDecoder, stakeResponseDecoder, getUserRequestDecoder, getUserResponseDecoder, markTrustedRequestDecoder, markTrustedResponseDecoder
 
 
 # Encoder
 
-@docs toUserIdEncoder, toAuthTokenEncoder, toWorldStateEncoder, toPositionEncoder, toAuthEncoder, toAuthErrorEncoder, toSignUpRequestEncoder, toSignUpResponseEncoder, toCertaintyRangeEncoder, toMarketPrivacyEncoder, toCreateMarketRequestEncoder, toCreateMarketResponseEncoder, toGetMarketRequestEncoder, toGetMarketResponseEncoder, toUserInfoEncoder, toStakeRequestEncoder, toStakeResponseEncoder, toGetUserRequestEncoder, toGetUserResponseEncoder, toMarkTrustedRequestEncoder, toMarkTrustedResponseEncoder
+@docs toUserIdEncoder, toAuthTokenEncoder, toWorldStateEncoder, toPositionEncoder, toWhoamiRequestEncoder, toWhoamiResponseEncoder, toRegisterUsernameRequestEncoder, toRegisterUsernameResponseEncoder, toCertaintyRangeEncoder, toMarketPrivacyEncoder, toCreateMarketRequestEncoder, toCreateMarketResponseEncoder, toGetMarketRequestEncoder, toGetMarketResponseEncoder, toUserInfoEncoder, toStakeRequestEncoder, toStakeResponseEncoder, toGetUserRequestEncoder, toGetUserResponseEncoder, toMarkTrustedRequestEncoder, toMarkTrustedResponseEncoder
 
 -}
 
@@ -139,60 +139,46 @@ type alias Position =
     }
 
 
-{-| AuthKind
+{-| `WhoamiRequest` message
 -}
-type AuthKind
-    = AuthKindMagicToken String
+type alias WhoamiRequest =
+    {}
 
 
-{-| `Auth` message
+{-| `WhoamiResponse` message
 -}
-type alias Auth =
-    { authKind : Maybe AuthKind
+type alias WhoamiResponse =
+    { auth : Maybe AuthToken
     }
 
 
-{-| AuthErrorKind
+{-| `RegisterUsernameRequest` message
 -}
-type AuthErrorKind
-    = AuthErrorKindInvalidToken Void
-
-
-{-| `AuthError` message
--}
-type alias AuthError =
-    { authErrorKind : Maybe AuthErrorKind
-    }
-
-
-{-| `SignUpRequest` message
--}
-type alias SignUpRequest =
-    { email : String
+type alias RegisterUsernameRequest =
+    { username : String
     , password : String
-    , displayName : String
     }
 
 
-{-| SignupResult
+{-| RegisterUsernameResult
 -}
-type SignupResult
-    = SignupResultOk Void
-    | SignupResultError SignUpResponseError
+type RegisterUsernameResult
+    = RegisterUsernameResultOk Void
+    | RegisterUsernameResultError RegisterUsernameResponseError
 
 
-{-| `SignUpResponse` message
+{-| `RegisterUsernameResponse` message
 -}
-type alias SignUpResponse =
-    { signupResult : Maybe SignupResult
+type alias RegisterUsernameResponse =
+    { registerUsernameResult : Maybe RegisterUsernameResult
     }
 
 
-{-| `SignUpResponseError` message
+{-| `RegisterUsernameResponseError` message
 -}
-type alias SignUpResponseError =
+type alias RegisterUsernameResponseError =
     { catchall : String
-    , emailAlreadyRegistered : Void
+    , usernameTaken : Void
     }
 
 
@@ -228,8 +214,7 @@ type alias MarketPrivacyEmails =
 {-| `CreateMarketRequest` message
 -}
 type alias CreateMarketRequest =
-    { auth : Maybe Auth
-    , question : String
+    { question : String
     , privacy : Maybe MarketPrivacy
     , certainty : Maybe CertaintyRange
     , maximumStakeCents : Int
@@ -256,15 +241,13 @@ type alias CreateMarketResponse =
 -}
 type alias CreateMarketResponseError =
     { catchall : String
-    , authError : Maybe AuthError
     }
 
 
 {-| `GetMarketRequest` message
 -}
 type alias GetMarketRequest =
-    { auth : Maybe Auth
-    , marketId : Int
+    { marketId : Int
     }
 
 
@@ -302,7 +285,6 @@ type alias GetMarketResponseMarket =
 -}
 type alias GetMarketResponseError =
     { catchall : String
-    , authError : Maybe AuthError
     }
 
 
@@ -316,8 +298,7 @@ type alias UserInfo =
 {-| `StakeRequest` message
 -}
 type alias StakeRequest =
-    { auth : Maybe Auth
-    , marketId : Int
+    { marketId : Int
     , expectedResolution : Bool
     , stake : Int
     }
@@ -341,15 +322,13 @@ type alias StakeResponse =
 -}
 type alias StakeResponseError =
     { catchall : String
-    , authError : Maybe AuthError
     }
 
 
 {-| `GetUserRequest` message
 -}
 type alias GetUserRequest =
-    { auth : Maybe Auth
-    , email : String
+    { email : String
     }
 
 
@@ -379,15 +358,13 @@ type alias GetUserResponseUser =
 -}
 type alias GetUserResponseError =
     { catchall : String
-    , authError : Maybe AuthError
     }
 
 
 {-| `MarkTrustedRequest` message
 -}
 type alias MarkTrustedRequest =
-    { auth : Maybe Auth
-    , emailToTrust : String
+    { emailToTrust : String
     }
 
 
@@ -409,7 +386,6 @@ type alias MarkTrustedResponse =
 -}
 type alias MarkTrustedResponseError =
     { catchall : String
-    , authError : Maybe AuthError
     }
 
 
@@ -535,59 +511,51 @@ positionDecoder =
         ]
 
 
-{-| `Auth` decoder
+{-| `WhoamiRequest` decoder
 -}
-authDecoder : Decode.Decoder Auth
-authDecoder =
-    Decode.message (Auth Nothing)
-        [ Decode.oneOf
-            [ ( 1, Decode.map AuthKindMagicToken Decode.string )
-            ]
-            setAuthKind
+whoamiRequestDecoder : Decode.Decoder WhoamiRequest
+whoamiRequestDecoder =
+    Decode.message WhoamiRequest
+        []
+
+
+{-| `WhoamiResponse` decoder
+-}
+whoamiResponseDecoder : Decode.Decoder WhoamiResponse
+whoamiResponseDecoder =
+    Decode.message (WhoamiResponse Nothing)
+        [ Decode.optional 1 (Decode.map Just authTokenDecoder) setAuth
         ]
 
 
-{-| `AuthError` decoder
+{-| `RegisterUsernameRequest` decoder
 -}
-authErrorDecoder : Decode.Decoder AuthError
-authErrorDecoder =
-    Decode.message (AuthError Nothing)
-        [ Decode.oneOf
-            [ ( 1, Decode.map AuthErrorKindInvalidToken voidDecoder )
-            ]
-            setAuthErrorKind
-        ]
-
-
-{-| `SignUpRequest` decoder
--}
-signUpRequestDecoder : Decode.Decoder SignUpRequest
-signUpRequestDecoder =
-    Decode.message (SignUpRequest "" "" "")
-        [ Decode.optional 1 Decode.string setEmail
+registerUsernameRequestDecoder : Decode.Decoder RegisterUsernameRequest
+registerUsernameRequestDecoder =
+    Decode.message (RegisterUsernameRequest "" "")
+        [ Decode.optional 1 Decode.string setUsername
         , Decode.optional 2 Decode.string setPassword
-        , Decode.optional 3 Decode.string setDisplayName
         ]
 
 
-{-| `SignUpResponse` decoder
+{-| `RegisterUsernameResponse` decoder
 -}
-signUpResponseDecoder : Decode.Decoder SignUpResponse
-signUpResponseDecoder =
-    Decode.message (SignUpResponse Nothing)
+registerUsernameResponseDecoder : Decode.Decoder RegisterUsernameResponse
+registerUsernameResponseDecoder =
+    Decode.message (RegisterUsernameResponse Nothing)
         [ Decode.oneOf
-            [ ( 1, Decode.map SignupResultOk voidDecoder )
-            , ( 2, Decode.map SignupResultError signUpResponseErrorDecoder )
+            [ ( 1, Decode.map RegisterUsernameResultOk voidDecoder )
+            , ( 2, Decode.map RegisterUsernameResultError registerUsernameResponseErrorDecoder )
             ]
-            setSignupResult
+            setRegisterUsernameResult
         ]
 
 
-signUpResponseErrorDecoder : Decode.Decoder SignUpResponseError
-signUpResponseErrorDecoder =
-    Decode.message (SignUpResponseError "" Void)
+registerUsernameResponseErrorDecoder : Decode.Decoder RegisterUsernameResponseError
+registerUsernameResponseErrorDecoder =
+    Decode.message (RegisterUsernameResponseError "" Void)
         [ Decode.optional 1 Decode.string setCatchall
-        , Decode.optional 2 voidDecoder setEmailAlreadyRegistered
+        , Decode.optional 2 voidDecoder setUsernameTaken
         ]
 
 
@@ -625,9 +593,8 @@ marketPrivacyEmailsDecoder =
 -}
 createMarketRequestDecoder : Decode.Decoder CreateMarketRequest
 createMarketRequestDecoder =
-    Decode.message (CreateMarketRequest Nothing "" Nothing Nothing 0 0 "")
-        [ Decode.optional 1 (Decode.map Just authDecoder) setAuth
-        , Decode.optional 2 Decode.string setQuestion
+    Decode.message (CreateMarketRequest "" Nothing Nothing 0 0 "")
+        [ Decode.optional 2 Decode.string setQuestion
         , Decode.optional 3 (Decode.map Just marketPrivacyDecoder) setPrivacy
         , Decode.optional 4 (Decode.map Just certaintyRangeDecoder) setCertainty
         , Decode.optional 5 Decode.uint32 setMaximumStakeCents
@@ -651,9 +618,8 @@ createMarketResponseDecoder =
 
 createMarketResponseErrorDecoder : Decode.Decoder CreateMarketResponseError
 createMarketResponseErrorDecoder =
-    Decode.message (CreateMarketResponseError "" Nothing)
+    Decode.message (CreateMarketResponseError "")
         [ Decode.optional 1 Decode.string setCatchall
-        , Decode.optional 2 (Decode.map Just authErrorDecoder) setAuthError
         ]
 
 
@@ -661,9 +627,8 @@ createMarketResponseErrorDecoder =
 -}
 getMarketRequestDecoder : Decode.Decoder GetMarketRequest
 getMarketRequestDecoder =
-    Decode.message (GetMarketRequest Nothing 0)
-        [ Decode.optional 1 (Decode.map Just authDecoder) setAuth
-        , Decode.optional 2 Decode.uint32 setMarketId
+    Decode.message (GetMarketRequest 0)
+        [ Decode.optional 2 Decode.uint32 setMarketId
         ]
 
 
@@ -698,9 +663,8 @@ getMarketResponseMarketDecoder =
 
 getMarketResponseErrorDecoder : Decode.Decoder GetMarketResponseError
 getMarketResponseErrorDecoder =
-    Decode.message (GetMarketResponseError "" Nothing)
+    Decode.message (GetMarketResponseError "")
         [ Decode.optional 1 Decode.string setCatchall
-        , Decode.optional 2 (Decode.map Just authErrorDecoder) setAuthError
         ]
 
 
@@ -717,9 +681,8 @@ userInfoDecoder =
 -}
 stakeRequestDecoder : Decode.Decoder StakeRequest
 stakeRequestDecoder =
-    Decode.message (StakeRequest Nothing 0 False 0)
-        [ Decode.optional 1 (Decode.map Just authDecoder) setAuth
-        , Decode.optional 2 Decode.uint32 setMarketId
+    Decode.message (StakeRequest 0 False 0)
+        [ Decode.optional 2 Decode.uint32 setMarketId
         , Decode.optional 3 Decode.bool setExpectedResolution
         , Decode.optional 4 Decode.uint32 setStake
         ]
@@ -740,9 +703,8 @@ stakeResponseDecoder =
 
 stakeResponseErrorDecoder : Decode.Decoder StakeResponseError
 stakeResponseErrorDecoder =
-    Decode.message (StakeResponseError "" Nothing)
+    Decode.message (StakeResponseError "")
         [ Decode.optional 1 Decode.string setCatchall
-        , Decode.optional 2 (Decode.map Just authErrorDecoder) setAuthError
         ]
 
 
@@ -750,9 +712,8 @@ stakeResponseErrorDecoder =
 -}
 getUserRequestDecoder : Decode.Decoder GetUserRequest
 getUserRequestDecoder =
-    Decode.message (GetUserRequest Nothing "")
-        [ Decode.optional 1 (Decode.map Just authDecoder) setAuth
-        , Decode.optional 2 Decode.string setEmail
+    Decode.message (GetUserRequest "")
+        [ Decode.optional 2 Decode.string setEmail
         ]
 
 
@@ -779,9 +740,8 @@ getUserResponseUserDecoder =
 
 getUserResponseErrorDecoder : Decode.Decoder GetUserResponseError
 getUserResponseErrorDecoder =
-    Decode.message (GetUserResponseError "" Nothing)
+    Decode.message (GetUserResponseError "")
         [ Decode.optional 1 Decode.string setCatchall
-        , Decode.optional 2 (Decode.map Just authErrorDecoder) setAuthError
         ]
 
 
@@ -789,9 +749,8 @@ getUserResponseErrorDecoder =
 -}
 markTrustedRequestDecoder : Decode.Decoder MarkTrustedRequest
 markTrustedRequestDecoder =
-    Decode.message (MarkTrustedRequest Nothing "")
-        [ Decode.optional 1 (Decode.map Just authDecoder) setAuth
-        , Decode.optional 2 Decode.string setEmailToTrust
+    Decode.message (MarkTrustedRequest "")
+        [ Decode.optional 2 Decode.string setEmailToTrust
         ]
 
 
@@ -810,9 +769,8 @@ markTrustedResponseDecoder =
 
 markTrustedResponseErrorDecoder : Decode.Decoder MarkTrustedResponseError
 markTrustedResponseErrorDecoder =
-    Decode.message (MarkTrustedResponseError "" Nothing)
+    Decode.message (MarkTrustedResponseError "")
         [ Decode.optional 1 Decode.string setCatchall
-        , Decode.optional 2 (Decode.map Just authErrorDecoder) setAuthError
         ]
 
 
@@ -936,73 +894,57 @@ toPositionEncoder model =
         ]
 
 
-toAuthKindEncoder : AuthKind -> ( Int, Encode.Encoder )
-toAuthKindEncoder model =
-    case model of
-        AuthKindMagicToken value ->
-            ( 1, Encode.string value )
-
-
-{-| `Auth` encoder
+{-| `WhoamiRequest` encoder
 -}
-toAuthEncoder : Auth -> Encode.Encoder
-toAuthEncoder model =
+toWhoamiRequestEncoder : WhoamiRequest -> Encode.Encoder
+toWhoamiRequestEncoder model =
     Encode.message
-        [ Maybe.withDefault ( 0, Encode.none ) <| Maybe.map toAuthKindEncoder model.authKind
+        []
+
+
+{-| `WhoamiResponse` encoder
+-}
+toWhoamiResponseEncoder : WhoamiResponse -> Encode.Encoder
+toWhoamiResponseEncoder model =
+    Encode.message
+        [ ( 1, (Maybe.withDefault Encode.none << Maybe.map toAuthTokenEncoder) model.auth )
         ]
 
 
-toAuthErrorKindEncoder : AuthErrorKind -> ( Int, Encode.Encoder )
-toAuthErrorKindEncoder model =
-    case model of
-        AuthErrorKindInvalidToken value ->
-            ( 1, toVoidEncoder value )
-
-
-{-| `AuthError` encoder
+{-| `RegisterUsernameRequest` encoder
 -}
-toAuthErrorEncoder : AuthError -> Encode.Encoder
-toAuthErrorEncoder model =
+toRegisterUsernameRequestEncoder : RegisterUsernameRequest -> Encode.Encoder
+toRegisterUsernameRequestEncoder model =
     Encode.message
-        [ Maybe.withDefault ( 0, Encode.none ) <| Maybe.map toAuthErrorKindEncoder model.authErrorKind
-        ]
-
-
-{-| `SignUpRequest` encoder
--}
-toSignUpRequestEncoder : SignUpRequest -> Encode.Encoder
-toSignUpRequestEncoder model =
-    Encode.message
-        [ ( 1, Encode.string model.email )
+        [ ( 1, Encode.string model.username )
         , ( 2, Encode.string model.password )
-        , ( 3, Encode.string model.displayName )
         ]
 
 
-toSignupResultEncoder : SignupResult -> ( Int, Encode.Encoder )
-toSignupResultEncoder model =
+toRegisterUsernameResultEncoder : RegisterUsernameResult -> ( Int, Encode.Encoder )
+toRegisterUsernameResultEncoder model =
     case model of
-        SignupResultOk value ->
+        RegisterUsernameResultOk value ->
             ( 1, toVoidEncoder value )
 
-        SignupResultError value ->
-            ( 2, toSignUpResponseErrorEncoder value )
+        RegisterUsernameResultError value ->
+            ( 2, toRegisterUsernameResponseErrorEncoder value )
 
 
-{-| `SignUpResponse` encoder
+{-| `RegisterUsernameResponse` encoder
 -}
-toSignUpResponseEncoder : SignUpResponse -> Encode.Encoder
-toSignUpResponseEncoder model =
+toRegisterUsernameResponseEncoder : RegisterUsernameResponse -> Encode.Encoder
+toRegisterUsernameResponseEncoder model =
     Encode.message
-        [ Maybe.withDefault ( 0, Encode.none ) <| Maybe.map toSignupResultEncoder model.signupResult
+        [ Maybe.withDefault ( 0, Encode.none ) <| Maybe.map toRegisterUsernameResultEncoder model.registerUsernameResult
         ]
 
 
-toSignUpResponseErrorEncoder : SignUpResponseError -> Encode.Encoder
-toSignUpResponseErrorEncoder model =
+toRegisterUsernameResponseErrorEncoder : RegisterUsernameResponseError -> Encode.Encoder
+toRegisterUsernameResponseErrorEncoder model =
     Encode.message
         [ ( 1, Encode.string model.catchall )
-        , ( 2, toVoidEncoder model.emailAlreadyRegistered )
+        , ( 2, toVoidEncoder model.usernameTaken )
         ]
 
 
@@ -1047,8 +989,7 @@ toMarketPrivacyEmailsEncoder model =
 toCreateMarketRequestEncoder : CreateMarketRequest -> Encode.Encoder
 toCreateMarketRequestEncoder model =
     Encode.message
-        [ ( 1, (Maybe.withDefault Encode.none << Maybe.map toAuthEncoder) model.auth )
-        , ( 2, Encode.string model.question )
+        [ ( 2, Encode.string model.question )
         , ( 3, (Maybe.withDefault Encode.none << Maybe.map toMarketPrivacyEncoder) model.privacy )
         , ( 4, (Maybe.withDefault Encode.none << Maybe.map toCertaintyRangeEncoder) model.certainty )
         , ( 5, Encode.uint32 model.maximumStakeCents )
@@ -1080,7 +1021,6 @@ toCreateMarketResponseErrorEncoder : CreateMarketResponseError -> Encode.Encoder
 toCreateMarketResponseErrorEncoder model =
     Encode.message
         [ ( 1, Encode.string model.catchall )
-        , ( 2, (Maybe.withDefault Encode.none << Maybe.map toAuthErrorEncoder) model.authError )
         ]
 
 
@@ -1089,8 +1029,7 @@ toCreateMarketResponseErrorEncoder model =
 toGetMarketRequestEncoder : GetMarketRequest -> Encode.Encoder
 toGetMarketRequestEncoder model =
     Encode.message
-        [ ( 1, (Maybe.withDefault Encode.none << Maybe.map toAuthEncoder) model.auth )
-        , ( 2, Encode.uint32 model.marketId )
+        [ ( 2, Encode.uint32 model.marketId )
         ]
 
 
@@ -1133,7 +1072,6 @@ toGetMarketResponseErrorEncoder : GetMarketResponseError -> Encode.Encoder
 toGetMarketResponseErrorEncoder model =
     Encode.message
         [ ( 1, Encode.string model.catchall )
-        , ( 2, (Maybe.withDefault Encode.none << Maybe.map toAuthErrorEncoder) model.authError )
         ]
 
 
@@ -1151,8 +1089,7 @@ toUserInfoEncoder model =
 toStakeRequestEncoder : StakeRequest -> Encode.Encoder
 toStakeRequestEncoder model =
     Encode.message
-        [ ( 1, (Maybe.withDefault Encode.none << Maybe.map toAuthEncoder) model.auth )
-        , ( 2, Encode.uint32 model.marketId )
+        [ ( 2, Encode.uint32 model.marketId )
         , ( 3, Encode.bool model.expectedResolution )
         , ( 4, Encode.uint32 model.stake )
         ]
@@ -1181,7 +1118,6 @@ toStakeResponseErrorEncoder : StakeResponseError -> Encode.Encoder
 toStakeResponseErrorEncoder model =
     Encode.message
         [ ( 1, Encode.string model.catchall )
-        , ( 2, (Maybe.withDefault Encode.none << Maybe.map toAuthErrorEncoder) model.authError )
         ]
 
 
@@ -1190,8 +1126,7 @@ toStakeResponseErrorEncoder model =
 toGetUserRequestEncoder : GetUserRequest -> Encode.Encoder
 toGetUserRequestEncoder model =
     Encode.message
-        [ ( 1, (Maybe.withDefault Encode.none << Maybe.map toAuthEncoder) model.auth )
-        , ( 2, Encode.string model.email )
+        [ ( 2, Encode.string model.email )
         ]
 
 
@@ -1226,7 +1161,6 @@ toGetUserResponseErrorEncoder : GetUserResponseError -> Encode.Encoder
 toGetUserResponseErrorEncoder model =
     Encode.message
         [ ( 1, Encode.string model.catchall )
-        , ( 2, (Maybe.withDefault Encode.none << Maybe.map toAuthErrorEncoder) model.authError )
         ]
 
 
@@ -1235,8 +1169,7 @@ toGetUserResponseErrorEncoder model =
 toMarkTrustedRequestEncoder : MarkTrustedRequest -> Encode.Encoder
 toMarkTrustedRequestEncoder model =
     Encode.message
-        [ ( 1, (Maybe.withDefault Encode.none << Maybe.map toAuthEncoder) model.auth )
-        , ( 2, Encode.string model.emailToTrust )
+        [ ( 2, Encode.string model.emailToTrust )
         ]
 
 
@@ -1263,7 +1196,6 @@ toMarkTrustedResponseErrorEncoder : MarkTrustedResponseError -> Encode.Encoder
 toMarkTrustedResponseErrorEncoder model =
     Encode.message
         [ ( 1, Encode.string model.catchall )
-        , ( 2, (Maybe.withDefault Encode.none << Maybe.map toAuthErrorEncoder) model.authError )
         ]
 
 
@@ -1396,19 +1328,14 @@ setWinCentsIfNo value model =
     { model | winCentsIfNo = value }
 
 
-setAuthKind : a -> { b | authKind : a } -> { b | authKind : a }
-setAuthKind value model =
-    { model | authKind = value }
+setAuth : a -> { b | auth : a } -> { b | auth : a }
+setAuth value model =
+    { model | auth = value }
 
 
-setAuthErrorKind : a -> { b | authErrorKind : a } -> { b | authErrorKind : a }
-setAuthErrorKind value model =
-    { model | authErrorKind = value }
-
-
-setEmail : a -> { b | email : a } -> { b | email : a }
-setEmail value model =
-    { model | email = value }
+setUsername : a -> { b | username : a } -> { b | username : a }
+setUsername value model =
+    { model | username = value }
 
 
 setPassword : a -> { b | password : a } -> { b | password : a }
@@ -1416,14 +1343,9 @@ setPassword value model =
     { model | password = value }
 
 
-setDisplayName : a -> { b | displayName : a } -> { b | displayName : a }
-setDisplayName value model =
-    { model | displayName = value }
-
-
-setSignupResult : a -> { b | signupResult : a } -> { b | signupResult : a }
-setSignupResult value model =
-    { model | signupResult = value }
+setRegisterUsernameResult : a -> { b | registerUsernameResult : a } -> { b | registerUsernameResult : a }
+setRegisterUsernameResult value model =
+    { model | registerUsernameResult = value }
 
 
 setCatchall : a -> { b | catchall : a } -> { b | catchall : a }
@@ -1431,9 +1353,9 @@ setCatchall value model =
     { model | catchall = value }
 
 
-setEmailAlreadyRegistered : a -> { b | emailAlreadyRegistered : a } -> { b | emailAlreadyRegistered : a }
-setEmailAlreadyRegistered value model =
-    { model | emailAlreadyRegistered = value }
+setUsernameTaken : a -> { b | usernameTaken : a } -> { b | usernameTaken : a }
+setUsernameTaken value model =
+    { model | usernameTaken = value }
 
 
 setLow : a -> { b | low : a } -> { b | low : a }
@@ -1456,11 +1378,6 @@ setEmails value model =
     { model | emails = value }
 
 
-setAuth : a -> { b | auth : a } -> { b | auth : a }
-setAuth value model =
-    { model | auth = value }
-
-
 setPrivacy : a -> { b | privacy : a } -> { b | privacy : a }
 setPrivacy value model =
     { model | privacy = value }
@@ -1474,11 +1391,6 @@ setOpenSeconds value model =
 setCreateMarketResult : a -> { b | createMarketResult : a } -> { b | createMarketResult : a }
 setCreateMarketResult value model =
     { model | createMarketResult = value }
-
-
-setAuthError : a -> { b | authError : a } -> { b | authError : a }
-setAuthError value model =
-    { model | authError = value }
 
 
 setMarketId : a -> { b | marketId : a } -> { b | marketId : a }
@@ -1501,6 +1413,11 @@ setRemainingNoStakeCents value model =
     { model | remainingNoStakeCents = value }
 
 
+setDisplayName : a -> { b | displayName : a } -> { b | displayName : a }
+setDisplayName value model =
+    { model | displayName = value }
+
+
 setStake : a -> { b | stake : a } -> { b | stake : a }
 setStake value model =
     { model | stake = value }
@@ -1509,6 +1426,11 @@ setStake value model =
 setStakeResult : a -> { b | stakeResult : a } -> { b | stakeResult : a }
 setStakeResult value model =
     { model | stakeResult = value }
+
+
+setEmail : a -> { b | email : a } -> { b | email : a }
+setEmail value model =
+    { model | email = value }
 
 
 setGetUserResult : a -> { b | getUserResult : a } -> { b | getUserResult : a }
