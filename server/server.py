@@ -16,7 +16,6 @@ from aiohttp import web
 from .protobuf import mvp_pb2
 
 MarketId = NewType('MarketId', int)
-AuthToken = NewType('AuthToken', str)
 
 class UsernameAlreadyRegisteredError(Exception): pass
 class NoSuchUserError(Exception): pass
@@ -42,7 +41,7 @@ def raise_(e: Exception) -> NoReturn: raise e
 
 class Marketplace(abc.ABC):
     def register_username(self, username: str, password: str) -> None: pass
-    def mint_auth_token_for_username(self, username: str, password: str) -> mvp_pb2.AuthToken: pass
+    def get_username_info(self, username: str) -> Optional[mvp_pb2.WorldState.UsernameInfo]: pass
     def create_market(self, market: mvp_pb2.WorldState.Market) -> MarketId: pass
     def resolve_market(self, market_id: MarketId, resolution: bool) -> None: pass
     def set_trust(self, *, truster: mvp_pb2.UserId, trusted: mvp_pb2.UserId, trusts: bool) -> None: pass
@@ -76,20 +75,8 @@ class FSMarketplace(Marketplace):
                 info=mvp_pb2.WorldState.GenericUserInfo(trusted_users=[]),
             ))
 
-    def mint_auth_token_for_username(self, username: str, password: str) -> mvp_pb2.AuthToken:
-        with self._mutate_state() as wstate:
-            if username not in wstate.username_users:
-                raise NoSuchUserError(username)
-            if not bcrypt.checkpw(password.encode('utf8'), wstate.username_users[username].password_bcrypt):
-                raise BadPasswordError()
-            token = AuthToken(secrets.token_urlsafe(16))
-            info = mvp_pb2.AuthToken(
-                owner=mvp_pb2.UserId(username=username),
-                minted_unixtime=int(self._clock()),
-                expires_unixtime=int(self._clock() + 60*60*24),
-            )
-            info.hmac_of_rest = hmac.digest(key=b'TODO super secret', msg=info.SerializeToString(), digest='sha256')
-            return info
+    def get_username_info(self, username: str) -> Optional[mvp_pb2.WorldState.UsernameInfo]:
+        return self._get_state().username_users.get(username)
 
     def create_market(self, market: mvp_pb2.WorldState.Market) -> MarketId:
         with self._mutate_state() as wstate:

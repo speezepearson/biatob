@@ -2,6 +2,7 @@ import contextlib
 from pathlib import Path
 import random
 
+import bcrypt  # type: ignore
 import pytest
 
 from .server import FSMarketplace
@@ -16,6 +17,6 @@ def temp_path():
 def test_register_username(temp_path):
   marketplace = FSMarketplace(state_path=temp_path)
 
-  assert 'potato' not in marketplace._get_state().username_users
+  assert marketplace.get_username_info('potato') is None
   marketplace.register_username(username='potato', password='secret')
-  assert 'potato' in marketplace._get_state().username_users
+  assert bcrypt.checkpw(b'secret', marketplace.get_username_info('potato').password_bcrypt)
