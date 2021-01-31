@@ -17,6 +17,7 @@ import bcrypt  # type: ignore
 from aiohttp import web
 from .protobuf import mvp_pb2
 
+MAX_JSSAFE_UINT64 = 2**50  # stupid Javascript Protobuf output uses doubles for int64s, which only have 52-bit mantissas
 MarketId = NewType('MarketId', int)
 
 class UsernameAlreadyRegisteredError(Exception): pass
@@ -94,7 +95,7 @@ class FSMarketplace(Marketplace):
 
     def create_market(self, market: mvp_pb2.WorldState.Market) -> MarketId:
         with self._mutate_state() as wstate:
-            mid = MarketId(weak_rand_not_in(self._rng, limit=2**64, xs=wstate.markets.keys()))
+            mid = MarketId(weak_rand_not_in(self._rng, limit=MAX_JSSAFE_UINT64, xs=wstate.markets.keys()))
             wstate.markets[mid].MergeFrom(market)
             return mid
 
