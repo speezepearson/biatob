@@ -7,7 +7,7 @@ import pytest
 from google.protobuf.message import Message as PbMessage
 
 from .protobuf import mvp_pb2
-from .server import ApiServer, FSMarketplace, _Req, _Resp
+from .server import ApiServer, FSMarketplace, _Req, _Resp, Authenticator
 from .test_utils import temp_path_fixture, clock_fixture
 
 SECRET_KEY = b'secret for testing'
@@ -18,7 +18,7 @@ def marketplace_fixture(temp_path_fixture, clock_fixture):
 
 @pytest.fixture
 def server_fixture(marketplace_fixture, clock_fixture):
-  return ApiServer(secret_key=SECRET_KEY, marketplace=marketplace_fixture, clock=clock_fixture.now)
+  return ApiServer(authenticator=Authenticator(secret_key=SECRET_KEY, clock=clock_fixture.now), marketplace=marketplace_fixture, clock=clock_fixture.now)
 
 @pytest.fixture
 def app_fixture(loop, server_fixture):

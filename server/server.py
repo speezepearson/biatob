@@ -52,14 +52,6 @@ def remaining_stake_cents(market: mvp_pb2.WorldState.Market) -> Tuple[int, int]:
     return (int(pool_against), int(pool_for))
 
 
-def compute_token_hmac(key: bytes, token: mvp_pb2.AuthToken) -> bytes:
-    scratchpad = copy.copy(token)
-    scratchpad.hmac_of_rest = b''
-    return hmac.digest(key=key, msg=scratchpad.SerializeToString(), digest='sha256')
-
-def sign_token(key: bytes, token: mvp_pb2.AuthToken) -> None:
-    token.hmac_of_rest = compute_token_hmac(key, token)
-
 class Marketplace(abc.ABC):
     def register_username(self, username: str, password: str) -> None: pass
     def get_username_info(self, username: str) -> Optional[mvp_pb2.WorldState.UsernameInfo]: pass
@@ -156,24 +148,46 @@ def proto_handler(req_t: Type[_Req], resp_t: Type[_Resp]):
         return wrapped
     return wrap
 
-class ApiServer:
+
+class Authenticator:
 
     _AUTH_COOKIE_NAME = 'auth'
 
-    def __init__(self, secret_key: bytes, marketplace: Marketplace, clock: Callable[[], float] = time.time) -> None:
+    def __init__(self, secret_key: bytes, clock: Callable[[], float] = time.time) -> None:
         self._secret_key = secret_key
-        self._marketplace = marketplace
         self._clock = clock
 
-    def _auth_from_headers(self, http_req: web.Request) -> Optional[mvp_pb2.AuthToken]:
-        token_header = http_req.cookies.get(self._AUTH_COOKIE_NAME)
-        if token_header is None:
+    def _compute_token_hmac(self, token: mvp_pb2.AuthToken) -> bytes:
+        scratchpad = copy.copy(token)
+        scratchpad.hmac_of_rest = b''
+        return hmac.digest(key=self._secret_key, msg=scratchpad.SerializeToString(), digest='sha256')
+
+    def _sign_token(self, token: mvp_pb2.AuthToken) -> None:
+        token.hmac_of_rest = self._compute_token_hmac(token=token)
+
+    def mint_cookie(self, owner: mvp_pb2.UserId, response: web.Response) -> None:
+        now = int(self._clock())
+        token = mvp_pb2.AuthToken(
+            owner=owner,
+            minted_unixtime=now,
+            expires_unixtime=now + 60*60*24,
+        )
+        self._sign_token(token=token)
+        response.set_cookie(self._AUTH_COOKIE_NAME, base64.b64encode(token.SerializeToString()).decode('ascii'))
+
+    def parse_cookie(self, req: web.Request) -> Optional[mvp_pb2.AuthToken]:
+        cookie = req.cookies.get(self._AUTH_COOKIE_NAME)
+        if cookie is None:
             return None
-        token_bytes = base64.b64decode(token_header)
+        try:
+            token_bytes = base64.b64decode(cookie)
+        except ValueError:
+            return None
+
         token = mvp_pb2.AuthToken()
         token.ParseFromString(token_bytes)
         alleged_hmac = token.hmac_of_rest
-        true_hmac = compute_token_hmac(self._secret_key, token)
+        true_hmac = self._compute_token_hmac(token)
         if not hmac.compare_digest(alleged_hmac, true_hmac):
             return None
         now = self._clock()
@@ -181,13 +195,21 @@ class ApiServer:
             return None
         return token
 
+
+class ApiServer:
+
+    def __init__(self, authenticator: Authenticator, marketplace: Marketplace, clock: Callable[[], float] = time.time) -> None:
+        self._authenticator = authenticator
+        self._marketplace = marketplace
+        self._clock = clock
+
     def make_routes(self) -> web.RouteTableDef:
         routes = web.RouteTableDef()
 
         @routes.post('/api/whoami')
         @proto_handler(mvp_pb2.WhoamiRequest, mvp_pb2.WhoamiResponse)
         async def api_whoami(http_req: web.Request, pb_req: mvp_pb2.WhoamiRequest) -> Tuple[web.Response, mvp_pb2.WhoamiResponse]:
-            return (web.Response(), mvp_pb2.WhoamiResponse(auth=self._auth_from_headers(http_req)))
+            return (web.Response(), mvp_pb2.WhoamiResponse(auth=self._authenticator.parse_cookie(http_req)))
 
         @routes.post('/api/register_username')
         @proto_handler(mvp_pb2.RegisterUsernameRequest, mvp_pb2.RegisterUsernameResponse)
@@ -196,22 +218,15 @@ class ApiServer:
                 self._marketplace.register_username(pb_req.username, pb_req.password)
             except UsernameAlreadyRegisteredError:
                 return (web.Response(status=404), mvp_pb2.RegisterUsernameResponse(error=mvp_pb2.RegisterUsernameResponse.Error(username_taken=mvp_pb2.VOID)))
-            now = int(self._clock())
-            token = mvp_pb2.AuthToken(
-                owner=mvp_pb2.UserId(username=pb_req.username),
-                minted_unixtime=now,
-                expires_unixtime=now + 60*60*24,
-            )
-            sign_token(self._secret_key, token)
 
             http_resp = web.Response()
-            http_resp.set_cookie(self._AUTH_COOKIE_NAME, base64.b64encode(token.SerializeToString()).decode('ascii'))
+            self._authenticator.mint_cookie(owner=mvp_pb2.UserId(username=pb_req.username), response=http_resp)
             return (http_resp, mvp_pb2.RegisterUsernameResponse(ok=mvp_pb2.VOID))
 
         @routes.post('/api/create_market')
         @proto_handler(mvp_pb2.CreateMarketRequest, mvp_pb2.CreateMarketResponse)
         async def api_create_market(http_req: web.Request, pb_req: mvp_pb2.CreateMarketRequest) -> Tuple[web.Response, mvp_pb2.CreateMarketResponse]:
-            auth = self._auth_from_headers(http_req)
+            auth = self._authenticator.parse_cookie(http_req)
             if auth is None:
                 return (web.Response(status=403), mvp_pb2.CreateMarketResponse(error=mvp_pb2.CreateMarketResponse.Error(catchall='not logged in')))
             now = int(self._clock())
@@ -234,7 +249,7 @@ class ApiServer:
         @proto_handler(mvp_pb2.GetMarketRequest, mvp_pb2.GetMarketResponse)
         async def api_get_market(http_req: web.Request, pb_req: mvp_pb2.GetMarketRequest) -> Tuple[web.Response, mvp_pb2.GetMarketResponse]:
             # TODO: ensure market should be visible to current user
-            # auth = self._auth_from_headers(http_req)
+            # auth = self._authenticator.parse_cookie(http_req)
             print('getting market', pb_req.market_id)
             ws_market = self._marketplace.get_market(market_id=MarketId(pb_req.market_id))
             if ws_market is None:
@@ -262,15 +277,16 @@ class ApiServer:
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--elm-dist", default="elm/dist")
+parser.add_argument("--elm-dist", type=Path, default="elm/dist")
 parser.add_argument("--state-path", type=Path, default="server.WorldState.pb")
 
 if __name__ == '__main__':
     args = parser.parse_args()
     app = web.Application()
     app.add_routes([web.static('/static', args.elm_dist)])
+    authenticator = Authenticator(secret_key=b'TODO super secret')
     app.add_routes(ApiServer(
-        secret_key=b'TODO super secret',
+        authenticator=authenticator,
         marketplace=FSMarketplace(state_path=args.state_path),
     ).make_routes())
 
