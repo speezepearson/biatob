@@ -2,8 +2,7 @@ module CreateMarketPageReactor exposing (main)
 
 import Browser
 
-import ViewMarketPage as Page
-import Html as H exposing (Html)
+import CreateMarketPage as Page
 import Json.Encode as JE
 
 import Bytes.Encode
