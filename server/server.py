@@ -347,7 +347,6 @@ class ApiServer:
             return http_resp
         @routes.post('/api/CreateMarket')
         async def api_CreateMarket(http_req: web.Request) -> web.Response:
-            import sys; print('client cookie:', http_req.cookies.get('auth'), file=sys.stderr)
             return proto_response(self._servicer.CreateMarket(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.CreateMarketRequest)))
         @routes.post('/api/GetMarket')
         async def api_GetMarket(http_req: web.Request) -> web.Response:
