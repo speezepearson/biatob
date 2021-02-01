@@ -7,6 +7,7 @@ import base64
 import contextlib
 import copy
 import hmac
+import json
 from pathlib import Path
 import random
 import secrets
@@ -17,7 +18,6 @@ import bcrypt  # type: ignore
 from aiohttp import web
 from .protobuf import mvp_pb2
 
-MAX_JSSAFE_UINT64 = 2**50  # stupid Javascript Protobuf output uses doubles for int64s, which only have 52-bit mantissas
 MarketId = NewType('MarketId', int)
 
 class UsernameAlreadyRegisteredError(Exception): pass
@@ -85,7 +85,7 @@ class FSMarketplace(Marketplace):
 
     def create_market(self, market: mvp_pb2.WorldState.Market) -> MarketId:
         with self._mutate_state() as wstate:
-            mid = MarketId(weak_rand_not_in(self._rng, limit=MAX_JSSAFE_UINT64, xs=wstate.markets.keys()))
+            mid = MarketId(weak_rand_not_in(self._rng, limit=2**32, xs=wstate.markets.keys()))
             wstate.markets[mid].MergeFrom(market)
             return mid
 
@@ -168,7 +168,7 @@ class Authenticator:
     def _sign_token(self, token: mvp_pb2.AuthToken) -> None:
         token.hmac_of_rest = self._compute_token_hmac(token=token)
 
-    def mint_cookie(self, owner: mvp_pb2.UserId, response: web.Response) -> None:
+    def mint_cookie(self, owner: mvp_pb2.UserId, response: web.Response) -> mvp_pb2.AuthToken:
         now = int(self._clock())
         token = mvp_pb2.AuthToken(
             owner=owner,
@@ -177,6 +177,7 @@ class Authenticator:
         )
         self._sign_token(token=token)
         response.set_cookie(self._AUTH_COOKIE_NAME, base64.b64encode(token.SerializeToString()).decode('ascii'))
+        return token
 
     def parse_cookie(self, req: web.Request) -> Optional[mvp_pb2.AuthToken]:
         cookie = req.cookies.get(self._AUTH_COOKIE_NAME)
@@ -198,6 +199,9 @@ class Authenticator:
             return None
         return token
 
+    def del_cookie(self, resp: web.Response) -> None:
+        resp.del_cookie(self._AUTH_COOKIE_NAME)
+
 
 class ApiServer:
 
@@ -214,6 +218,13 @@ class ApiServer:
         async def api_whoami(http_req: web.Request, pb_req: mvp_pb2.WhoamiRequest) -> Tuple[web.Response, mvp_pb2.WhoamiResponse]:
             return (web.Response(), mvp_pb2.WhoamiResponse(auth=self._authenticator.parse_cookie(http_req)))
 
+        @routes.post('/api/sign_out')
+        @proto_handler(mvp_pb2.SignOutRequest, mvp_pb2.SignOutResponse)
+        async def api_SignOut(http_req: web.Request, pb_req: mvp_pb2.SignOutRequest) -> Tuple[web.Response, mvp_pb2.SignOutResponse]:
+            response = web.Response()
+            self._authenticator.del_cookie(response)
+            return (response, mvp_pb2.SignOutResponse())
+
         @routes.post('/api/register_username')
         @proto_handler(mvp_pb2.RegisterUsernameRequest, mvp_pb2.RegisterUsernameResponse)
         async def api_register_username(http_req: web.Request, pb_req: mvp_pb2.RegisterUsernameRequest) -> Tuple[web.Response, mvp_pb2.RegisterUsernameResponse]:
@@ -223,8 +234,22 @@ class ApiServer:
                 return (web.Response(status=404), mvp_pb2.RegisterUsernameResponse(error=mvp_pb2.RegisterUsernameResponse.Error(username_taken=mvp_pb2.VOID)))
 
             http_resp = web.Response()
-            self._authenticator.mint_cookie(owner=mvp_pb2.UserId(username=pb_req.username), response=http_resp)
-            return (http_resp, mvp_pb2.RegisterUsernameResponse(ok=mvp_pb2.VOID))
+            token = self._authenticator.mint_cookie(owner=mvp_pb2.UserId(username=pb_req.username), response=http_resp)
+            return (http_resp, mvp_pb2.RegisterUsernameResponse(ok=token))
+
+        @routes.post('/api/log_in_username')
+        @proto_handler(mvp_pb2.LogInUsernameRequest, mvp_pb2.LogInUsernameResponse)
+        async def api_log_in_username(http_req: web.Request, pb_req: mvp_pb2.LogInUsernameRequest) -> Tuple[web.Response, mvp_pb2.LogInUsernameResponse]:
+            info = self._marketplace.get_username_info(pb_req.username)
+            if info is None:
+                return (web.Response(status=404), mvp_pb2.LogInUsernameResponse(error=mvp_pb2.LogInUsernameResponse.Error(catchall='no such user')))
+
+            if not bcrypt.checkpw(pb_req.password.encode('utf8'), info.password_bcrypt):
+                return (web.Response(status=400), mvp_pb2.LogInUsernameResponse(error=mvp_pb2.LogInUsernameResponse.Error(catchall='bad password')))
+
+            http_resp = web.Response()
+            token = self._authenticator.mint_cookie(owner=mvp_pb2.UserId(username=pb_req.username), response=http_resp)
+            return (http_resp, mvp_pb2.LogInUsernameResponse(ok=token))
 
         @routes.post('/api/create_market')
         @proto_handler(mvp_pb2.CreateMarketRequest, mvp_pb2.CreateMarketResponse)
@@ -252,7 +277,7 @@ class ApiServer:
         @proto_handler(mvp_pb2.GetMarketRequest, mvp_pb2.GetMarketResponse)
         async def api_get_market(http_req: web.Request, pb_req: mvp_pb2.GetMarketRequest) -> Tuple[web.Response, mvp_pb2.GetMarketResponse]:
             # TODO: ensure market should be visible to current user
-            # auth = self._authenticator.parse_cookie(http_req)
+            auth = self._authenticator.parse_cookie(http_req)
             print('getting market', pb_req.market_id)
             ws_market = self._marketplace.get_market(market_id=MarketId(pb_req.market_id))
             if ws_market is None:
@@ -279,10 +304,43 @@ class ApiServer:
                             transacted_unixtime=t.transacted_unixtime,
                         )
                         for t in ws_market.trades
+                        if (auth is not None) and (t.bettor == auth.owner)
                     ],
                 )),
             )
 
+
+        return routes
+
+class WebServer:
+    def __init__(self, elm_dist: Path, authenticator: Authenticator, marketplace: Marketplace) -> None:
+        self._elm_dist = elm_dist
+        self._authenticator = authenticator
+        self._marketplace = marketplace
+
+    def make_routes(self) -> web.RouteTableDef:
+        routes = web.RouteTableDef()
+
+        @routes.get('/TODO_register')
+        async def get_TODO_register(req: web.Request) -> web.Response:
+            response = web.HTTPTemporaryRedirect(req.query.get('dest', '/new'))
+            self._authenticator.mint_cookie(owner=mvp_pb2.UserId(username='TEST_USER'), response=response)
+            return response
+
+        @routes.get('/elm/{module}.js')
+        async def get_elm_module(req: web.Request) -> web.Response:
+            module = req.match_info['module']
+            return web.Response(content_type='text/javascript', body=(Path(__file__).parent.parent/f'elm/dist/{module}.js').read_text())
+
+        @routes.get('/new')
+        async def get_create_market_page(req: web.Request) -> web.Response:
+            auth = self._authenticator.parse_cookie(req)
+            auth_token_pb_b64 = json.dumps(base64.b64encode(auth.SerializeToString()).decode('ascii') if auth else None)
+            return web.Response(content_type='text/html', body=(Path(__file__).parent/'templates'/'CreateMarketPage.html').read_text().replace(r'{{auth_token_pb_b64}}', auth_token_pb_b64))
+
+        @routes.get('/market/{market_id:[0-9]+}')
+        async def get_view_market_page(req: web.Request) -> web.Response:
+            return web.Response(content_type='text/plain', body=str(self._marketplace.get_market(MarketId(int(req.match_info['market_id'])))))
 
         return routes
 
@@ -294,11 +352,16 @@ parser.add_argument("--state-path", type=Path, default="server.WorldState.pb")
 if __name__ == '__main__':
     args = parser.parse_args()
     app = web.Application()
-    app.add_routes([web.static('/static', args.elm_dist)])
     authenticator = Authenticator(secret_key=b'TODO super secret')
+    marketplace = FSMarketplace(state_path=args.state_path)
+    app.add_routes(WebServer(
+        elm_dist=args.elm_dist,
+        authenticator=authenticator,
+        marketplace=marketplace,
+    ).make_routes())
     app.add_routes(ApiServer(
         authenticator=authenticator,
-        marketplace=FSMarketplace(state_path=args.state_path),
+        marketplace=marketplace,
     ).make_routes())
 
     web.run_app(app)

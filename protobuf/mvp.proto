@@ -13,8 +13,8 @@ message UserId {
 message AuthToken {
   bytes hmac_of_rest = 1;
   UserId owner = 2;
-  uint64 minted_unixtime = 3;
-  uint64 expires_unixtime = 4;
+  uint32 minted_unixtime = 3;
+  uint32 expires_unixtime = 4;
 }
 
 // For MVP purposes, we're just gonna store the entire worldstate in a protobuf blob. "Data base"? Huh?
@@ -25,7 +25,7 @@ message WorldState {
   // map<string, GoogleOauthInfo> google_oauth_users = 5;
   // map<string, FacebookOauthInfo> facebook_oauth_users = 6;
 
-  map<uint64, Market> markets = 2;
+  map<uint32, Market> markets = 2;
 
   message GenericUserInfo {
     repeated UserId trusted_users = 1;
@@ -44,9 +44,9 @@ message WorldState {
     // Set upon creation, never changed
     string question = 1;
     CertaintyRange certainty = 2;
-    uint64 maximum_stake_cents = 3;
-    uint64 created_unixtime = 4;
-    uint64 closes_unixtime = 5;
+    uint32 maximum_stake_cents = 3;
+    uint32 created_unixtime = 4;
+    uint32 closes_unixtime = 5;
     string special_rules = 6;
     UserId creator = 7;
 
@@ -58,9 +58,9 @@ message WorldState {
   message Trade {
     UserId bettor = 1;
     bool bettor_is_a_skeptic = 2;
-    uint64 bettor_stake_cents = 3;
-    uint64 creator_stake_cents = 4;
-    uint64 transacted_unixtime = 5;
+    uint32 bettor_stake_cents = 3;
+    uint32 creator_stake_cents = 4;
+    uint32 transacted_unixtime = 5;
   }
 }
 
@@ -80,18 +80,35 @@ message WhoamiResponse {
   AuthToken auth = 1;
 }
 
+message SignOutRequest {}
+message SignOutResponse {}
+
 message RegisterUsernameRequest {
   string username = 1;
   string password = 2;
 }
 message RegisterUsernameResponse {
   oneof register_username_result {
-    Void ok = 1;
+    AuthToken ok = 1;
     Error error = 2;
   }
   message Error {
     string catchall = 1;
     Void username_taken = 2;
+  }
+}
+
+message LogInUsernameRequest {
+  string username = 1;
+  string password = 2;
+}
+message LogInUsernameResponse {
+  oneof log_in_username_result {
+    AuthToken ok = 1;
+    Error error = 2;
+  }
+  message Error {
+    string catchall = 1;
   }
 }
 
@@ -112,13 +129,13 @@ message CreateMarketRequest {
   string question = 2;
   MarketPrivacy privacy = 3;
   CertaintyRange certainty = 4;
-  uint64 maximum_stake_cents = 5;
-  uint64 open_seconds = 6;
+  uint32 maximum_stake_cents = 5;
+  uint32 open_seconds = 6;
   string special_rules = 7;
 }
 message CreateMarketResponse {
   oneof create_market_result {
-    uint64 new_market_id = 1;
+    uint32 new_market_id = 1;
     Error error = 2;
   }
   message Error {
@@ -127,7 +144,7 @@ message CreateMarketResponse {
 }
 
 message GetMarketRequest {
-  uint64 market_id = 2;
+  uint32 market_id = 2;
 }
 message GetMarketResponse {
   oneof get_market_result {
@@ -137,11 +154,11 @@ message GetMarketResponse {
   message Market {
     string question = 1;
     CertaintyRange certainty = 2;
-    uint64 maximum_stake_cents = 3;
-    uint64 remaining_stake_cents_vs_believers = 4;
-    uint64 remaining_stake_cents_vs_skeptics = 5;
-    uint64 created_unixtime = 6;
-    uint64 closes_unixtime = 7;
+    uint32 maximum_stake_cents = 3;
+    uint32 remaining_stake_cents_vs_believers = 4;
+    uint32 remaining_stake_cents_vs_skeptics = 5;
+    uint32 created_unixtime = 6;
+    uint32 closes_unixtime = 7;
     string special_rules = 8;
     UserInfo creator = 9;
     Resolution resolution = 10;
@@ -153,9 +170,9 @@ message GetMarketResponse {
   }
   message Trade {
     bool bettor_is_a_skeptic = 1;
-    uint64 creator_stake_cents = 2;
-    uint64 bettor_stake_cents = 3;
-    uint64 transacted_unixtime = 4;
+    uint32 creator_stake_cents = 2;
+    uint32 bettor_stake_cents = 3;
+    uint32 transacted_unixtime = 4;
   }
 }
 message UserInfo {
@@ -163,9 +180,9 @@ message UserInfo {
 }
 
 message StakeRequest {
-  uint64 market_id = 2;
+  uint32 market_id = 2;
   bool expected_resolution = 3;
-  uint64 stake = 4;
+  uint32 stake = 4;
 }
 message StakeResponse {
   oneof stake_result {

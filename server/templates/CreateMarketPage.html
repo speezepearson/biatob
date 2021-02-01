@@ -1,0 +1,33 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Main</title>
+  <link rel="shortcut icon"type="image/x-icon" href="data:image/x-icon;,">
+  <script type="text/javascript" src="/elm/CreateMarketPage.js"></script>
+  <script type="text/javascript" src="/elm/AuthWidget.js"></script>
+</head>
+
+<body>
+  <div id="auth"></div>
+  <main id="main"></main>
+  <script type="text/javascript">
+
+    var authTokenPbB64 = {{auth_token_pb_b64}};
+
+    var auth = Elm.AuthWidget.init({
+      node: document.getElementById('auth'),
+      flags: {authTokenPbB64},
+    })
+    auth.ports.authChanged.subscribe(() => window.location.reload());
+
+    var main = Elm.CreateMarketPage.init({
+      node: document.getElementById('main'),
+      flags: {authTokenPbB64},
+    });
+    main.ports.createdMarket.subscribe((marketId) => {
+      window.location = `/market/${marketId}`;
+    });
+  </script>
+</body>
+</html>

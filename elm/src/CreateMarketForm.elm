@@ -2,7 +2,7 @@ module CreateMarketForm exposing
   ( State
   , Config
   , view
-  , initStateForDemo
+  , init
   , question
   , stakeCents
   , lowPYes
@@ -12,6 +12,7 @@ module CreateMarketForm exposing
   , lowP
   , highP
   , main
+  , isInvalid
   )
 
 import Browser
@@ -19,12 +20,14 @@ import Html as H exposing (Html)
 import Html.Attributes as HA
 import Html.Events as HE
 import Utils
+import Html.Attributes exposing (placeholder)
 
 howToWriteGoodBetsUrl = "http://example.com/TODO"
 maxLegalStakeCents = 500000
 
 type alias Config msg =
   { setState : State -> msg
+  , disabled : Bool
   }
 
 type OpenForUnit = Days | Weeks
@@ -63,16 +66,39 @@ openForSeconds {openForNField, openForUnitField} =
 specialRules : State -> String
 specialRules {specialRulesField} = specialRulesField
 
+
+isInvalidQuestion : State -> Bool
+isInvalidQuestion state = question state == ""
+isInvalidStake : State -> Bool
+isInvalidStake state = stakeCents state |> Maybe.map (\n -> n <= 0 || n > maxLegalStakeCents) |> Maybe.withDefault True
+isInvalidLowPYes : State -> Bool
+isInvalidLowPYes state = lowPYes state |> Maybe.map (\n -> n < 0 || n > 1) |> Maybe.withDefault True
+isInvalidLowPNo : State -> Bool
+isInvalidLowPNo state = lowPNo state |> Maybe.map (\n -> n < 0 || n > 1) |> Maybe.withDefault True
+isInvalidPsRel : State -> Bool
+isInvalidPsRel state = case (lowPYes state, lowPNo state) of
+  (Just lpy, Just lpn) -> lpy + lpn >= 1
+  _ -> False
+isInvalidOpenForN : State -> Bool  
+isInvalidOpenForN state = openForSeconds state |> Maybe.map (\n -> n <= 0) |> Maybe.withDefault True
+isInvalid : State -> Bool
+isInvalid state =
+  isInvalidQuestion state
+  || isInvalidStake state
+  || isInvalidLowPYes state
+  || isInvalidLowPNo state
+  || isInvalidPsRel state
+  || isInvalidOpenForN state
+
 view : Config msg -> State -> Html msg
 view config state =
   let
-    invalidStake = stakeCents state |> Maybe.map (\n -> n <= 0 || n > maxLegalStakeCents) |> Maybe.withDefault True
-    invalidLowPYes = lowPYes state |> Maybe.map (\n -> n < 0 || n > 1) |> Maybe.withDefault True
-    invalidLowPNo = lowPNo state |> Maybe.map (\n -> n < 0 || n > 1) |> Maybe.withDefault True
-    invalidPsRel = case (lowPYes state, lowPNo state) of
-      (Just lpy, Just lpn) -> lpy + lpn >= 1
-      _ -> False
-    invalidOpenForN = openForSeconds state |> Maybe.map (\n -> n < 0) |> Maybe.withDefault True
+    outlineIfInvalid b = Utils.outlineIfInvalid (b && not config.disabled)
+    placeholders =
+      { question = "By 2021-08-01, will at least 50% of U.S. COVID-19 cases be B117 or a derivative strain, as reported by the CDC?"
+      , stake = "100"
+      , specialRules = "If the CDC doesn't publish statistics on this, I'll fall back to some other official organization, like the WHO; failing that, I'll look for journal papers on U.S. cases, and go with a consensus if I find one; failing that, the market is unresolvable."
+      }
   in
   H.div []
     [ H.ul []
@@ -84,7 +110,10 @@ view config state =
             , H.textarea
                 [ HA.style "width" "100%"
                 , HA.value state.questionField
+                , HA.placeholder placeholders.question
                 , HE.onInput (\s -> config.setState {state | questionField = s})
+                , HA.disabled config.disabled
+                , outlineIfInvalid (isInvalidQuestion state)
                 ] []
             ]
         , H.li []
@@ -92,8 +121,10 @@ view config state =
             , H.input
                 [ HA.type_ "number", HA.min "0", HA.max (String.fromInt maxLegalStakeCents)
                 , HA.value state.stakeField
+                , HA.placeholder placeholders.stake
                 , HE.onInput (\s -> config.setState {state | stakeField = s})
-                , Utils.outlineIfInvalid invalidStake
+                , HA.disabled config.disabled
+                , outlineIfInvalid (isInvalidStake state)
                 ] []
             ]
         , H.li []
@@ -109,7 +140,8 @@ view config state =
                       , HA.style "width" "5em"
                       , HA.value state.lowPYesField
                       , HE.onInput (\s -> config.setState {state | lowPYesField = s})
-                      , Utils.outlineIfInvalid invalidLowPYes
+                      , HA.disabled config.disabled
+                      , outlineIfInvalid (isInvalidLowPYes state)
                       ] []                  
                   ]
                 , H.li []
@@ -121,7 +153,8 @@ view config state =
                       , HA.style "width" "5em"
                       , HA.value state.lowPNoField
                       , HE.onInput (\s -> config.setState {state | lowPNoField = s})
-                      , Utils.outlineIfInvalid invalidLowPNo
+                      , HA.disabled config.disabled
+                      , outlineIfInvalid (isInvalidLowPNo state)
                       ] []
                   ]
                 ]
@@ -129,7 +162,7 @@ view config state =
             , case (String.toFloat state.lowPYesField, String.toFloat state.lowPNoField) of
                 (Just lpy, Just lpn) ->
                   H.strong
-                    [ Utils.outlineIfInvalid invalidPsRel
+                    [ outlineIfInvalid (isInvalidPsRel state)
                     ]
                     [ lpy                  |> round |> String.fromInt |> H.text
                     , H.text "-"
@@ -137,7 +170,7 @@ view config state =
                     , H.text "%"
                     ]
                 _ ->
-                  H.strong [Utils.outlineIfInvalid False] [H.text "???%"]
+                  H.strong [outlineIfInvalid False] [H.text "???%"]
             , H.text " likely."
             ]
         , H.li []
@@ -147,10 +180,12 @@ view config state =
                 , HA.style "width" "5em"
                 , HA.value state.openForNField
                 , HE.onInput (\s -> config.setState {state | openForNField = s})
-                , Utils.outlineIfInvalid invalidOpenForN
+                , HA.disabled config.disabled
+                , outlineIfInvalid (isInvalidOpenForN state)
                 ] []
             , H.select
                 [ HE.onInput (\s -> config.setState {state | openForUnitField = if s=="days" then Days else Weeks})
+                , HA.disabled config.disabled
                 ]
                 [ H.option [] [H.text "weeks"]
                 , H.option [] [H.text "days"]
@@ -161,29 +196,31 @@ view config state =
             , H.textarea
                 [ HA.style "width" "100%"
                 , HE.onInput (\s -> config.setState {state | specialRulesField = s})
+                , HA.value state.specialRulesField
+                , HA.placeholder placeholders.specialRules
+                , HA.disabled config.disabled
                 ]
-                [ H.text state.specialRulesField ]
+                []
             ]
         ]
     ]
 
-
-initStateForDemo : State
-initStateForDemo =
-  { questionField = "By 2021-08-01, will at least 50% of U.S. COVID-19 cases be B117 or a derivative strain, as reported by the CDC?"
-  , stakeField = "100"
-  , lowPYesField = "80"
-  , lowPNoField = "10"
+init : State
+init =
+  { questionField = ""
+  , stakeField = ""
+  , lowPYesField = ""
+  , lowPNoField = ""
   , openForNField = "2"
   , openForUnitField = Weeks
-  , specialRulesField = "If the CDC doesn't publish statistics on this, I'll fall back to some other official organization, like the WHO; failing that, I'll look for journal papers on U.S. cases, and go with a consensus if I find one; failing that, the market is unresolvable."
+  , specialRulesField = ""
   }
 
 type MsgForDemo = SetState State
 main : Program () State MsgForDemo
 main =
   Browser.sandbox
-    { init = initStateForDemo
-    , view = view {setState = SetState}
+    { init = init
+    , view = view {setState = SetState, disabled = False}
     , update = \(SetState newState) _ -> newState
     }

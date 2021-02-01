@@ -59,7 +59,9 @@ view config state =
       Just n -> (n < 0 || n > maxSkepticStakeCents, n > maxSkepticStakeCents)
 
     _ = Debug.log ""
-          { skepticStakeField = state.skepticStakeField
+          { certainty = certainty
+          , creatorStakeFactorVsSkeptics = creatorStakeFactorVsSkeptics
+          , skepticStakeField = state.skepticStakeField
           , skepticStakeCents = skepticStakeCents state
           , remainingStakeCentsVsSkeptics = state.market.remainingStakeCentsVsSkeptics
           , maxSkepticStakeCents = maxSkepticStakeCents

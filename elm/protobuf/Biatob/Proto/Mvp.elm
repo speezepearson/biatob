@@ -2,9 +2,9 @@
 
 
 module Biatob.Proto.Mvp exposing
-    ( Void(..), Resolution(..), Kind(..), UserId, AuthToken, WorldState, WorldStateGenericUserInfo, WorldStateUsernameInfo, WorldStateMarket, WorldStateTrade, WhoamiRequest, WhoamiResponse, RegisterUsernameRequest, RegisterUsernameResult(..), RegisterUsernameResponse, RegisterUsernameResponseError, CertaintyRange, PrivacyKind(..), MarketPrivacy, MarketPrivacyEmails, CreateMarketRequest, CreateMarketResult(..), CreateMarketResponse, CreateMarketResponseError, GetMarketRequest, GetMarketResult(..), GetMarketResponse, GetMarketResponseMarket, GetMarketResponseError, GetMarketResponseTrade, UserInfo, StakeRequest, StakeResult(..), StakeResponse, StakeResponseError, GetUserRequest, GetUserResult(..), GetUserResponse, GetUserResponseUser, GetUserResponseError, MarkTrustedRequest, Result(..), MarkTrustedResponse, MarkTrustedResponseError
-    , userIdDecoder, authTokenDecoder, worldStateDecoder, whoamiRequestDecoder, whoamiResponseDecoder, registerUsernameRequestDecoder, registerUsernameResponseDecoder, certaintyRangeDecoder, marketPrivacyDecoder, createMarketRequestDecoder, createMarketResponseDecoder, getMarketRequestDecoder, getMarketResponseDecoder, userInfoDecoder, stakeRequestDecoder, stakeResponseDecoder, getUserRequestDecoder, getUserResponseDecoder, markTrustedRequestDecoder, markTrustedResponseDecoder
-    , toUserIdEncoder, toAuthTokenEncoder, toWorldStateEncoder, toWhoamiRequestEncoder, toWhoamiResponseEncoder, toRegisterUsernameRequestEncoder, toRegisterUsernameResponseEncoder, toCertaintyRangeEncoder, toMarketPrivacyEncoder, toCreateMarketRequestEncoder, toCreateMarketResponseEncoder, toGetMarketRequestEncoder, toGetMarketResponseEncoder, toUserInfoEncoder, toStakeRequestEncoder, toStakeResponseEncoder, toGetUserRequestEncoder, toGetUserResponseEncoder, toMarkTrustedRequestEncoder, toMarkTrustedResponseEncoder
+    ( Void(..), Resolution(..), Kind(..), UserId, AuthToken, WorldState, WorldStateGenericUserInfo, WorldStateUsernameInfo, WorldStateMarket, WorldStateTrade, WhoamiRequest, WhoamiResponse, SignOutRequest, SignOutResponse, RegisterUsernameRequest, RegisterUsernameResult(..), RegisterUsernameResponse, RegisterUsernameResponseError, LogInUsernameRequest, LogInUsernameResult(..), LogInUsernameResponse, LogInUsernameResponseError, CertaintyRange, PrivacyKind(..), MarketPrivacy, MarketPrivacyEmails, CreateMarketRequest, CreateMarketResult(..), CreateMarketResponse, CreateMarketResponseError, GetMarketRequest, GetMarketResult(..), GetMarketResponse, GetMarketResponseMarket, GetMarketResponseError, GetMarketResponseTrade, UserInfo, StakeRequest, StakeResult(..), StakeResponse, StakeResponseError, GetUserRequest, GetUserResult(..), GetUserResponse, GetUserResponseUser, GetUserResponseError, MarkTrustedRequest, Result(..), MarkTrustedResponse, MarkTrustedResponseError
+    , userIdDecoder, authTokenDecoder, worldStateDecoder, whoamiRequestDecoder, whoamiResponseDecoder, signOutRequestDecoder, signOutResponseDecoder, registerUsernameRequestDecoder, registerUsernameResponseDecoder, logInUsernameRequestDecoder, logInUsernameResponseDecoder, certaintyRangeDecoder, marketPrivacyDecoder, createMarketRequestDecoder, createMarketResponseDecoder, getMarketRequestDecoder, getMarketResponseDecoder, userInfoDecoder, stakeRequestDecoder, stakeResponseDecoder, getUserRequestDecoder, getUserResponseDecoder, markTrustedRequestDecoder, markTrustedResponseDecoder
+    , toUserIdEncoder, toAuthTokenEncoder, toWorldStateEncoder, toWhoamiRequestEncoder, toWhoamiResponseEncoder, toSignOutRequestEncoder, toSignOutResponseEncoder, toRegisterUsernameRequestEncoder, toRegisterUsernameResponseEncoder, toLogInUsernameRequestEncoder, toLogInUsernameResponseEncoder, toCertaintyRangeEncoder, toMarketPrivacyEncoder, toCreateMarketRequestEncoder, toCreateMarketResponseEncoder, toGetMarketRequestEncoder, toGetMarketResponseEncoder, toUserInfoEncoder, toStakeRequestEncoder, toStakeResponseEncoder, toGetUserRequestEncoder, toGetUserResponseEncoder, toMarkTrustedRequestEncoder, toMarkTrustedResponseEncoder
     )
 
 {-| ProtoBuf module: `Biatob.Proto.Mvp`
@@ -20,17 +20,17 @@ To run it use [`elm-protocol-buffers`](https://package.elm-lang.org/packages/eri
 
 # Model
 
-@docs Void, Resolution, Kind, UserId, AuthToken, WorldState, WorldStateGenericUserInfo, WorldStateUsernameInfo, WorldStateMarket, WorldStateTrade, WhoamiRequest, WhoamiResponse, RegisterUsernameRequest, RegisterUsernameResult, RegisterUsernameResponse, RegisterUsernameResponseError, CertaintyRange, PrivacyKind, MarketPrivacy, MarketPrivacyEmails, CreateMarketRequest, CreateMarketResult, CreateMarketResponse, CreateMarketResponseError, GetMarketRequest, GetMarketResult, GetMarketResponse, GetMarketResponseMarket, GetMarketResponseError, GetMarketResponseTrade, UserInfo, StakeRequest, StakeResult, StakeResponse, StakeResponseError, GetUserRequest, GetUserResult, GetUserResponse, GetUserResponseUser, GetUserResponseError, MarkTrustedRequest, Result, MarkTrustedResponse, MarkTrustedResponseError
+@docs Void, Resolution, Kind, UserId, AuthToken, WorldState, WorldStateGenericUserInfo, WorldStateUsernameInfo, WorldStateMarket, WorldStateTrade, WhoamiRequest, WhoamiResponse, SignOutRequest, SignOutResponse, RegisterUsernameRequest, RegisterUsernameResult, RegisterUsernameResponse, RegisterUsernameResponseError, LogInUsernameRequest, LogInUsernameResult, LogInUsernameResponse, LogInUsernameResponseError, CertaintyRange, PrivacyKind, MarketPrivacy, MarketPrivacyEmails, CreateMarketRequest, CreateMarketResult, CreateMarketResponse, CreateMarketResponseError, GetMarketRequest, GetMarketResult, GetMarketResponse, GetMarketResponseMarket, GetMarketResponseError, GetMarketResponseTrade, UserInfo, StakeRequest, StakeResult, StakeResponse, StakeResponseError, GetUserRequest, GetUserResult, GetUserResponse, GetUserResponseUser, GetUserResponseError, MarkTrustedRequest, Result, MarkTrustedResponse, MarkTrustedResponseError
 
 
 # Decoder
 
-@docs userIdDecoder, authTokenDecoder, worldStateDecoder, whoamiRequestDecoder, whoamiResponseDecoder, registerUsernameRequestDecoder, registerUsernameResponseDecoder, certaintyRangeDecoder, marketPrivacyDecoder, createMarketRequestDecoder, createMarketResponseDecoder, getMarketRequestDecoder, getMarketResponseDecoder, userInfoDecoder, stakeRequestDecoder, stakeResponseDecoder, getUserRequestDecoder, getUserResponseDecoder, markTrustedRequestDecoder, markTrustedResponseDecoder
+@docs userIdDecoder, authTokenDecoder, worldStateDecoder, whoamiRequestDecoder, whoamiResponseDecoder, signOutRequestDecoder, signOutResponseDecoder, registerUsernameRequestDecoder, registerUsernameResponseDecoder, logInUsernameRequestDecoder, logInUsernameResponseDecoder, certaintyRangeDecoder, marketPrivacyDecoder, createMarketRequestDecoder, createMarketResponseDecoder, getMarketRequestDecoder, getMarketResponseDecoder, userInfoDecoder, stakeRequestDecoder, stakeResponseDecoder, getUserRequestDecoder, getUserResponseDecoder, markTrustedRequestDecoder, markTrustedResponseDecoder
 
 
 # Encoder
 
-@docs toUserIdEncoder, toAuthTokenEncoder, toWorldStateEncoder, toWhoamiRequestEncoder, toWhoamiResponseEncoder, toRegisterUsernameRequestEncoder, toRegisterUsernameResponseEncoder, toCertaintyRangeEncoder, toMarketPrivacyEncoder, toCreateMarketRequestEncoder, toCreateMarketResponseEncoder, toGetMarketRequestEncoder, toGetMarketResponseEncoder, toUserInfoEncoder, toStakeRequestEncoder, toStakeResponseEncoder, toGetUserRequestEncoder, toGetUserResponseEncoder, toMarkTrustedRequestEncoder, toMarkTrustedResponseEncoder
+@docs toUserIdEncoder, toAuthTokenEncoder, toWorldStateEncoder, toWhoamiRequestEncoder, toWhoamiResponseEncoder, toSignOutRequestEncoder, toSignOutResponseEncoder, toRegisterUsernameRequestEncoder, toRegisterUsernameResponseEncoder, toLogInUsernameRequestEncoder, toLogInUsernameResponseEncoder, toCertaintyRangeEncoder, toMarketPrivacyEncoder, toCreateMarketRequestEncoder, toCreateMarketResponseEncoder, toGetMarketRequestEncoder, toGetMarketResponseEncoder, toUserInfoEncoder, toStakeRequestEncoder, toStakeResponseEncoder, toGetUserRequestEncoder, toGetUserResponseEncoder, toMarkTrustedRequestEncoder, toMarkTrustedResponseEncoder
 
 -}
 
@@ -145,6 +145,18 @@ type alias WhoamiResponse =
     }
 
 
+{-| `SignOutRequest` message
+-}
+type alias SignOutRequest =
+    {}
+
+
+{-| `SignOutResponse` message
+-}
+type alias SignOutResponse =
+    {}
+
+
 {-| `RegisterUsernameRequest` message
 -}
 type alias RegisterUsernameRequest =
@@ -156,7 +168,7 @@ type alias RegisterUsernameRequest =
 {-| RegisterUsernameResult
 -}
 type RegisterUsernameResult
-    = RegisterUsernameResultOk Void
+    = RegisterUsernameResultOk AuthToken
     | RegisterUsernameResultError RegisterUsernameResponseError
 
 
@@ -172,6 +184,35 @@ type alias RegisterUsernameResponse =
 type alias RegisterUsernameResponseError =
     { catchall : String
     , usernameTaken : Void
+    }
+
+
+{-| `LogInUsernameRequest` message
+-}
+type alias LogInUsernameRequest =
+    { username : String
+    , password : String
+    }
+
+
+{-| LogInUsernameResult
+-}
+type LogInUsernameResult
+    = LogInUsernameResultOk AuthToken
+    | LogInUsernameResultError LogInUsernameResponseError
+
+
+{-| `LogInUsernameResponse` message
+-}
+type alias LogInUsernameResponse =
+    { logInUsernameResult : Maybe LogInUsernameResult
+    }
+
+
+{-| `LogInUsernameResponseError` message
+-}
+type alias LogInUsernameResponseError =
+    { catchall : String
     }
 
 
@@ -524,6 +565,22 @@ whoamiResponseDecoder =
         ]
 
 
+{-| `SignOutRequest` decoder
+-}
+signOutRequestDecoder : Decode.Decoder SignOutRequest
+signOutRequestDecoder =
+    Decode.message SignOutRequest
+        []
+
+
+{-| `SignOutResponse` decoder
+-}
+signOutResponseDecoder : Decode.Decoder SignOutResponse
+signOutResponseDecoder =
+    Decode.message SignOutResponse
+        []
+
+
 {-| `RegisterUsernameRequest` decoder
 -}
 registerUsernameRequestDecoder : Decode.Decoder RegisterUsernameRequest
@@ -540,7 +597,7 @@ registerUsernameResponseDecoder : Decode.Decoder RegisterUsernameResponse
 registerUsernameResponseDecoder =
     Decode.message (RegisterUsernameResponse Nothing)
         [ Decode.oneOf
-            [ ( 1, Decode.map RegisterUsernameResultOk voidDecoder )
+            [ ( 1, Decode.map RegisterUsernameResultOk authTokenDecoder )
             , ( 2, Decode.map RegisterUsernameResultError registerUsernameResponseErrorDecoder )
             ]
             setRegisterUsernameResult
@@ -552,6 +609,36 @@ registerUsernameResponseErrorDecoder =
     Decode.message (RegisterUsernameResponseError "" Void)
         [ Decode.optional 1 Decode.string setCatchall
         , Decode.optional 2 voidDecoder setUsernameTaken
+        ]
+
+
+{-| `LogInUsernameRequest` decoder
+-}
+logInUsernameRequestDecoder : Decode.Decoder LogInUsernameRequest
+logInUsernameRequestDecoder =
+    Decode.message (LogInUsernameRequest "" "")
+        [ Decode.optional 1 Decode.string setUsername
+        , Decode.optional 2 Decode.string setPassword
+        ]
+
+
+{-| `LogInUsernameResponse` decoder
+-}
+logInUsernameResponseDecoder : Decode.Decoder LogInUsernameResponse
+logInUsernameResponseDecoder =
+    Decode.message (LogInUsernameResponse Nothing)
+        [ Decode.oneOf
+            [ ( 1, Decode.map LogInUsernameResultOk authTokenDecoder )
+            , ( 2, Decode.map LogInUsernameResultError logInUsernameResponseErrorDecoder )
+            ]
+            setLogInUsernameResult
+        ]
+
+
+logInUsernameResponseErrorDecoder : Decode.Decoder LogInUsernameResponseError
+logInUsernameResponseErrorDecoder =
+    Decode.message (LogInUsernameResponseError "")
+        [ Decode.optional 1 Decode.string setCatchall
         ]
 
 
@@ -910,6 +997,22 @@ toWhoamiResponseEncoder model =
         ]
 
 
+{-| `SignOutRequest` encoder
+-}
+toSignOutRequestEncoder : SignOutRequest -> Encode.Encoder
+toSignOutRequestEncoder model =
+    Encode.message
+        []
+
+
+{-| `SignOutResponse` encoder
+-}
+toSignOutResponseEncoder : SignOutResponse -> Encode.Encoder
+toSignOutResponseEncoder model =
+    Encode.message
+        []
+
+
 {-| `RegisterUsernameRequest` encoder
 -}
 toRegisterUsernameRequestEncoder : RegisterUsernameRequest -> Encode.Encoder
@@ -924,7 +1027,7 @@ toRegisterUsernameResultEncoder : RegisterUsernameResult -> ( Int, Encode.Encode
 toRegisterUsernameResultEncoder model =
     case model of
         RegisterUsernameResultOk value ->
-            ( 1, toVoidEncoder value )
+            ( 1, toAuthTokenEncoder value )
 
         RegisterUsernameResultError value ->
             ( 2, toRegisterUsernameResponseErrorEncoder value )
@@ -944,6 +1047,42 @@ toRegisterUsernameResponseErrorEncoder model =
     Encode.message
         [ ( 1, Encode.string model.catchall )
         , ( 2, toVoidEncoder model.usernameTaken )
+        ]
+
+
+{-| `LogInUsernameRequest` encoder
+-}
+toLogInUsernameRequestEncoder : LogInUsernameRequest -> Encode.Encoder
+toLogInUsernameRequestEncoder model =
+    Encode.message
+        [ ( 1, Encode.string model.username )
+        , ( 2, Encode.string model.password )
+        ]
+
+
+toLogInUsernameResultEncoder : LogInUsernameResult -> ( Int, Encode.Encoder )
+toLogInUsernameResultEncoder model =
+    case model of
+        LogInUsernameResultOk value ->
+            ( 1, toAuthTokenEncoder value )
+
+        LogInUsernameResultError value ->
+            ( 2, toLogInUsernameResponseErrorEncoder value )
+
+
+{-| `LogInUsernameResponse` encoder
+-}
+toLogInUsernameResponseEncoder : LogInUsernameResponse -> Encode.Encoder
+toLogInUsernameResponseEncoder model =
+    Encode.message
+        [ Maybe.withDefault ( 0, Encode.none ) <| Maybe.map toLogInUsernameResultEncoder model.logInUsernameResult
+        ]
+
+
+toLogInUsernameResponseErrorEncoder : LogInUsernameResponseError -> Encode.Encoder
+toLogInUsernameResponseErrorEncoder model =
+    Encode.message
+        [ ( 1, Encode.string model.catchall )
         ]
 
 
@@ -1362,6 +1501,11 @@ setCatchall value model =
 setUsernameTaken : a -> { b | usernameTaken : a } -> { b | usernameTaken : a }
 setUsernameTaken value model =
     { model | usernameTaken = value }
+
+
+setLogInUsernameResult : a -> { b | logInUsernameResult : a } -> { b | logInUsernameResult : a }
+setLogInUsernameResult value model =
+    { model | logInUsernameResult = value }
 
 
 setLow : a -> { b | low : a } -> { b | low : a }
