@@ -2,7 +2,7 @@ module CreateMarketPageReactor exposing (main)
 
 import Browser
 
-import CreateMarketPage as Page
+import ViewMarketPage as Page
 import Html as H exposing (Html)
 import Json.Encode as JE
 
@@ -15,7 +15,7 @@ mockUser : Pb.UserId
 mockUser = {kind=Just <| Pb.KindUsername "testuser"}
 
 mockAuthToken : Pb.AuthToken
-mockAuthToken = 
+mockAuthToken =
   { hmacOfRest = Bytes.Encode.encode <| Bytes.Encode.string ""
   , owner = Just mockUser
   , mintedUnixtime = 0

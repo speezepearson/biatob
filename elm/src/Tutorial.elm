@@ -34,7 +34,7 @@ view config state =
             ]
         ]
     , H.p []
-        [ H.text <| 
+        [ H.text <|
             config.creator.displayName
             ++ " is willing to put their money where their mouth is."
             ++ " Good for them!"

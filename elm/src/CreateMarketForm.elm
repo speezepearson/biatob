@@ -79,7 +79,7 @@ isInvalidPsRel : State -> Bool
 isInvalidPsRel state = case (lowPYes state, lowPNo state) of
   (Just lpy, Just lpn) -> lpy + lpn >= 1
   _ -> False
-isInvalidOpenForN : State -> Bool  
+isInvalidOpenForN : State -> Bool
 isInvalidOpenForN state = openForSeconds state |> Maybe.map (\n -> n <= 0) |> Maybe.withDefault True
 isInvalid : State -> Bool
 isInvalid state =
@@ -102,7 +102,7 @@ view config state =
   in
   H.div []
     [ H.ul []
-        [ H.li [] 
+        [ H.li []
             [ H.text "What prediction are you willing to stake money on? ("
             , H.a [HA.href howToWriteGoodBetsUrl] [H.text "how to write good bets"]
             , H.text ") "
@@ -142,7 +142,7 @@ view config state =
                       , HE.onInput (\s -> config.setState {state | lowPYesField = s})
                       , HA.disabled config.disabled
                       , outlineIfInvalid (isInvalidLowPYes state)
-                      ] []                  
+                      ] []
                   ]
                 , H.li []
                   [ H.text "...$100 if this "

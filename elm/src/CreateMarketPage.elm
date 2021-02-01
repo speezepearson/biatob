@@ -58,7 +58,7 @@ postCreate req =
   Http.post
     { url = "/api/create_market"
     , body = Http.bytesBody "application/octet-stream" <| PE.encode <| Pb.toCreateMarketRequestEncoder req
-    , expect = PD.expectBytes CreateFinished Pb.createMarketResponseDecoder } 
+    , expect = PD.expectBytes CreateFinished Pb.createMarketResponseDecoder }
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
