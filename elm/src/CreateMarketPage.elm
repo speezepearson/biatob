@@ -56,7 +56,7 @@ init flags =
 postCreate : Pb.CreateMarketRequest -> Cmd Msg
 postCreate req =
   Http.post
-    { url = "/api/create_market"
+    { url = "/api/CreateMarket"
     , body = Http.bytesBody "application/octet-stream" <| PE.encode <| Pb.toCreateMarketRequestEncoder req
     , expect = PD.expectBytes CreateFinished Pb.createMarketResponseDecoder }
 

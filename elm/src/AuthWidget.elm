@@ -92,7 +92,7 @@ view model =
 postLogInUsername : Pb.LogInUsernameRequest -> Cmd Msg
 postLogInUsername req =
   Http.post
-    { url = "/api/log_in_username"
+    { url = "/api/LogInUsername"
     , body = Http.bytesBody "application/octet-stream" <| PE.encode <| Pb.toLogInUsernameRequestEncoder req
     , expect = PD.expectBytes LogInUsernameComplete Pb.logInUsernameResponseDecoder
     }
@@ -100,7 +100,7 @@ postLogInUsername req =
 postRegisterUsername : Pb.RegisterUsernameRequest -> Cmd Msg
 postRegisterUsername req =
   Http.post
-    { url = "/api/register_username"
+    { url = "/api/RegisterUsername"
     , body = Http.bytesBody "application/octet-stream" <| PE.encode <| Pb.toRegisterUsernameRequestEncoder req
     , expect = PD.expectBytes RegisterUsernameComplete Pb.registerUsernameResponseDecoder
     }
@@ -108,7 +108,7 @@ postRegisterUsername req =
 postSignOut : Cmd Msg
 postSignOut =
   Http.post
-    { url = "/api/sign_out"
+    { url = "/api/SignOut"
     , body = Http.bytesBody "application/octet-stream" <| PE.encode <| Pb.toSignOutRequestEncoder {}
     , expect = PD.expectBytes SignOutComplete Pb.signOutResponseDecoder
     }

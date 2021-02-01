@@ -1,14 +1,7 @@
-from pathlib import Path
 import random
 import pytest
 
-
-@pytest.fixture
-def temp_path_fixture():
-  result = Path(f'/tmp/test_fs_marketplace-{random.randrange(2**32)}')
-  yield result
-  if result.exists():
-    result.unlink()
+from .server import TokenMint, FsBackedServicer
 
 
 class MockClock:
@@ -20,5 +13,18 @@ class MockClock:
     self._unixtime += seconds
 
 @pytest.fixture
-def clock_fixture():
+def clock():
   return MockClock()
+
+@pytest.fixture
+def token_mint(clock):
+  return TokenMint(secret_key=b'test secret', clock=clock.now)
+
+@pytest.fixture
+def fs_servicer(tmp_path, clock, token_mint):
+  return FsBackedServicer(
+    state_path=tmp_path / 'state.WorldState.pb',
+    random_seed=0,
+    clock=clock.now,
+    token_mint=token_mint,
+  )

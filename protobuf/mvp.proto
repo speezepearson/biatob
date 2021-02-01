@@ -181,8 +181,8 @@ message UserInfo {
 
 message StakeRequest {
   uint32 market_id = 2;
-  bool expected_resolution = 3;
-  uint32 stake = 4;
+  bool bettor_is_a_skeptic = 3;
+  uint32 bettor_stake_cents = 4;
 }
 message StakeResponse {
   oneof stake_result {
@@ -194,32 +194,32 @@ message StakeResponse {
   }
 }
 
-message GetUserRequest {
-  string email = 2;
-}
-message GetUserResponse {
-  oneof get_user_result {
-    User user = 1;
-    Error error = 2;
-  }
-  message User {
-    bool trusted_by_requester = 1;
-    bool trusts_requester = 2;
-  }
-  message Error {
-    string catchall = 1;
-  }
-}
+// message GetUserRequest {
+//   string email = 2;
+// }
+// message GetUserResponse {
+//   oneof get_user_result {
+//     User user = 1;
+//     Error error = 2;
+//   }
+//   message User {
+//     bool trusted_by_requester = 1;
+//     bool trusts_requester = 2;
+//   }
+//   message Error {
+//     string catchall = 1;
+//   }
+// }
 
-message MarkTrustedRequest {
-  string email_to_trust = 2;
-}
-message MarkTrustedResponse {
-  oneof result {
-    Void ok = 1;
-    Error error = 2;
-  }
-  message Error {
-    string catchall = 1;
-  }
-}
+// message MarkTrustedRequest {
+//   string email_to_trust = 2;
+// }
+// message MarkTrustedResponse {
+//   oneof result {
+//     Void ok = 1;
+//     Error error = 2;
+//   }
+//   message Error {
+//     string catchall = 1;
+//   }
+// }

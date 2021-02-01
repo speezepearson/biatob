@@ -23,6 +23,7 @@ TODO
 - P2 [pre-beta]: consider a semi-formalized system for naming an arbiter
 - P2 [pre-beta]: figure out how users can undo accidental bets
 - P2 [pre-beta]: add "Sign in with [identity provider]"
+- P2 [pre-beta]: make "bet"/"wager"/"market"/"stake"/"bettor"/"challenger" terminology consistent
 - P3 [nice-to-have]: monetize via freemium or subscription?
 - P3 [nice-to-have]: consider allowing "soft resolutions" so a market can resolve "80% yes"
 - P3 [nice-to-have]: consider letting people download a list of all their bets

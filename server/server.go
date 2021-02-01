@@ -19,7 +19,7 @@ func createMarketHandler(w http.ResponseWriter, r *http.Request) {
 func main() {
 	staticFiles := http.FileServer(http.Dir("./elm/dist"))
 	http.Handle("/static", staticFiles)
-	http.HandleFunc("/api/create_market", createMarketHandler)
+	http.HandleFunc("/api/CreateMarket", createMarketHandler)
 
 	log.Println("got a server yo: http://localhost:8080")
 	err := http.ListenAndServe(":8080", nil)

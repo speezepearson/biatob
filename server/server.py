@@ -5,6 +5,7 @@ import abc
 import argparse
 import base64
 import contextlib
+import contextvars
 import copy
 import hmac
 import json
@@ -33,28 +34,79 @@ def weak_rand_not_in(rng: random.Random, limit: int, xs: Container[int]) -> int:
 def indent(s: str) -> str:
     return '\n'.join('  '+line for line in s.splitlines())
 
-def ensure_user_exists(wstate: mvp_pb2.WorldState, user: mvp_pb2.UserId) -> None:
+def user_exists(wstate: mvp_pb2.WorldState, user: mvp_pb2.UserId) -> bool:
     if user.WhichOneof('kind') == 'username':
-        if user.username not in wstate.username_users:
-            raise NoSuchUserError(user.username)
+        return user.username in wstate.username_users
     else:
         raise RuntimeError(f'unrecognized UserId kind: {user!r}')
 
-def raise_(e: Exception) -> NoReturn: raise e
+
+class TokenMint:
+
+    def __init__(self, secret_key: bytes, clock: Callable[[], float] = time.time) -> None:
+        self._secret_key = secret_key
+        self._clock = clock
+
+    def _compute_token_hmac(self, token: mvp_pb2.AuthToken) -> bytes:
+        scratchpad = copy.copy(token)
+        scratchpad.hmac_of_rest = b''
+        return hmac.digest(key=self._secret_key, msg=scratchpad.SerializeToString(), digest='sha256')
+
+    def _sign_token(self, token: mvp_pb2.AuthToken) -> None:
+        token.hmac_of_rest = self._compute_token_hmac(token=token)
+
+    def mint_token(self, owner: mvp_pb2.UserId, ttl_seconds: int) -> mvp_pb2.AuthToken:
+        now = int(self._clock())
+        token = mvp_pb2.AuthToken(
+            owner=owner,
+            minted_unixtime=now,
+            expires_unixtime=now + ttl_seconds,
+        )
+        self._sign_token(token=token)
+        return token
+
+    def check_token(self, token: Optional[mvp_pb2.AuthToken]) -> Optional[mvp_pb2.AuthToken]:
+        if token is None:
+            return None
+        now = int(self._clock())
+        if not (token.minted_unixtime <= now < token.expires_unixtime):
+            return None
+
+        alleged_hmac = token.hmac_of_rest
+        true_hmac = self._compute_token_hmac(token)
+        if not hmac.compare_digest(alleged_hmac, true_hmac):
+            return None
+
+        return token
+
+    def revoke_token(self, token: mvp_pb2.AuthToken) -> None:
+        raise NotImplementedError()
 
 
-class Marketplace(abc.ABC):
-    def register_username(self, username: str, password: str) -> None: pass
-    def get_username_info(self, username: str) -> Optional[mvp_pb2.WorldState.UsernameInfo]: pass
-    def create_market(self, market: mvp_pb2.WorldState.Market) -> MarketId: pass
-    def get_market(self, market_id: MarketId) -> Optional[mvp_pb2.WorldState.Market]: pass
-    def resolve_market(self, market_id: MarketId, resolution: bool) -> None: pass
-    def set_trust(self, *, truster: mvp_pb2.UserId, trusted: mvp_pb2.UserId, trusts: bool) -> None: pass
-    def bet(self, market_id: MarketId, bettor: mvp_pb2.UserId, bettor_is_a_skeptic: bool, bettor_stake_cents: int) -> None: pass
+class Servicer(abc.ABC):
+    def Whoami(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.WhoamiRequest) -> mvp_pb2.WhoamiResponse: pass
+    def SignOut(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.SignOutRequest) -> mvp_pb2.SignOutResponse: pass
+    def RegisterUsername(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.RegisterUsernameRequest) -> mvp_pb2.RegisterUsernameResponse: pass
+    def LogInUsername(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.LogInUsernameRequest) -> mvp_pb2.LogInUsernameResponse: pass
+    def CreateMarket(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.CreateMarketRequest) -> mvp_pb2.CreateMarketResponse: pass
+    def GetMarket(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.GetMarketRequest) -> mvp_pb2.GetMarketResponse: pass
+    def Stake(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.StakeRequest) -> mvp_pb2.StakeResponse: pass
 
-class FSMarketplace(Marketplace):
-    def __init__(self, state_path: Path, random_seed: Optional[int] = None, clock: Callable[[], int] = lambda: int(time.time())) -> None:
+
+def checks_token(f):
+    import functools
+    @functools.wraps(f)
+    def wrapped(self: 'FsBackedServicer', token: Optional[mvp_pb2.AuthToken], *args, **kwargs):
+        token = self._token_mint.check_token(token)
+        if (token is not None) and not user_exists(self._get_state(), token.owner):
+            raise RuntimeError('got valid token for nonexistent user!?', token)
+        return f(self, token, *args, **kwargs)
+    return wrapped
+
+class FsBackedServicer(Servicer):
+    def __init__(self, state_path: Path, token_mint: TokenMint, random_seed: Optional[int] = None, clock: Callable[[], float] = time.time) -> None:
         self._state_path = state_path
+        self._token_mint = token_mint
         self._rng = random.Random(random_seed)
         self._clock = clock
 
@@ -71,68 +123,123 @@ class FSMarketplace(Marketplace):
         yield wstate
         self._set_state(wstate)
 
-    def register_username(self, username: str, password: str) -> None:
+    @checks_token
+    def Whoami(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.WhoamiRequest) -> mvp_pb2.WhoamiResponse:
+        return mvp_pb2.WhoamiResponse(auth=token)
+
+    @checks_token
+    def SignOut(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.SignOutRequest) -> mvp_pb2.SignOutResponse:
+        if token is not None:
+            pass # self._token_mint.revoke_token(token)  # TODO: implement
+        return mvp_pb2.SignOutResponse()
+
+    @checks_token
+    def RegisterUsername(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.RegisterUsernameRequest) -> mvp_pb2.RegisterUsernameResponse:
+        if token is not None:
+            return mvp_pb2.RegisterUsernameResponse(error=mvp_pb2.RegisterUsernameResponse.Error(catchall='already authenticated; first, log out'))
+
         with self._mutate_state() as wstate:
-            if username in wstate.username_users:
-                raise UsernameAlreadyRegisteredError(username)
-            wstate.username_users[username].MergeFrom(mvp_pb2.WorldState.UsernameInfo(
-                password_bcrypt=bcrypt.hashpw(password.encode('utf8'), bcrypt.gensalt()),
+            if request.username in wstate.username_users:
+                return mvp_pb2.RegisterUsernameResponse(error=mvp_pb2.RegisterUsernameResponse.Error(catchall='username taken'))
+            wstate.username_users[request.username].MergeFrom(mvp_pb2.WorldState.UsernameInfo(
+                password_bcrypt=bcrypt.hashpw(request.password.encode('utf8'), bcrypt.gensalt()),
                 info=mvp_pb2.WorldState.GenericUserInfo(trusted_users=[]),
             ))
+            return mvp_pb2.RegisterUsernameResponse(ok=self._token_mint.mint_token(owner=mvp_pb2.UserId(username=request.username), ttl_seconds=60*60*24*7))
 
-    def get_username_info(self, username: str) -> Optional[mvp_pb2.WorldState.UsernameInfo]:
-        return self._get_state().username_users.get(username)
+    @checks_token
+    def LogInUsername(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.LogInUsernameRequest) -> mvp_pb2.LogInUsernameResponse:
+        if token is not None:
+            return mvp_pb2.LogInUsernameResponse(error=mvp_pb2.LogInUsernameResponse.Error(catchall='already authenticated; first, log out'))
 
-    def create_market(self, market: mvp_pb2.WorldState.Market) -> MarketId:
+        info = self._get_state().username_users.get(request.username)
+        if info is None:
+            return mvp_pb2.LogInUsernameResponse(error=mvp_pb2.LogInUsernameResponse.Error(catchall='no such user'))
+        if not bcrypt.checkpw(request.password.encode('utf8'), info.password_bcrypt):
+            return mvp_pb2.LogInUsernameResponse(error=mvp_pb2.LogInUsernameResponse.Error(catchall='bad password'))
+
+        token = self._token_mint.mint_token(owner=mvp_pb2.UserId(username=request.username), ttl_seconds=86400)
+        return mvp_pb2.LogInUsernameResponse(ok=token)
+
+    @checks_token
+    def CreateMarket(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.CreateMarketRequest) -> mvp_pb2.CreateMarketResponse:
+        if token is None:
+            return mvp_pb2.CreateMarketResponse(error=mvp_pb2.CreateMarketResponse.Error(catchall='must log in to create markets'))
+        now = int(self._clock())
         with self._mutate_state() as wstate:
             mid = MarketId(weak_rand_not_in(self._rng, limit=2**32, xs=wstate.markets.keys()))
+            market = mvp_pb2.WorldState.Market(
+                question=request.question,
+                certainty=request.certainty,
+                maximum_stake_cents=request.maximum_stake_cents,
+                created_unixtime=now,
+                closes_unixtime=now + request.open_seconds,
+                special_rules=request.special_rules,
+                creator=token.owner,
+                trades=[],
+                resolution=mvp_pb2.RESOLUTION_NONE_YET,
+            )
             wstate.markets[mid].MergeFrom(market)
-            return mid
+            return mvp_pb2.CreateMarketResponse(new_market_id=mid)
 
-    def get_market(self, market_id: MarketId) -> Optional[mvp_pb2.WorldState.Market]:
-        wstate = self._get_state()
-        return wstate.markets.get(market_id)
+    @checks_token
+    def GetMarket(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.GetMarketRequest) -> mvp_pb2.GetMarketResponse:
+        ws_market = self._get_state().markets.get(request.market_id)
+        if ws_market is None:
+            return mvp_pb2.GetMarketResponse(error=mvp_pb2.GetMarketResponse.Error(no_such_market=mvp_pb2.VOID))
 
-    def resolve_market(self, market_id: MarketId, resolution: bool) -> None:
+        return mvp_pb2.GetMarketResponse(market=mvp_pb2.GetMarketResponse.Market(
+            question=ws_market.question,
+            certainty=ws_market.certainty,
+            maximum_stake_cents=ws_market.maximum_stake_cents,
+            remaining_stake_cents_vs_believers=ws_market.maximum_stake_cents - sum(t.creator_stake_cents for t in ws_market.trades if not t.bettor_is_a_skeptic),
+            remaining_stake_cents_vs_skeptics=ws_market.maximum_stake_cents - sum(t.creator_stake_cents for t in ws_market.trades if t.bettor_is_a_skeptic),
+            created_unixtime=ws_market.created_unixtime,
+            closes_unixtime=ws_market.closes_unixtime,
+            special_rules=ws_market.special_rules,
+            creator=mvp_pb2.UserInfo(display_name='TODO'),
+            resolution=ws_market.resolution,
+            your_trades=[
+                mvp_pb2.GetMarketResponse.Trade(
+                    bettor_is_a_skeptic=t.bettor_is_a_skeptic,
+                    creator_stake_cents=t.creator_stake_cents,
+                    bettor_stake_cents=t.bettor_stake_cents,
+                    transacted_unixtime=t.transacted_unixtime,
+                )
+                for t in ws_market.trades
+                if (token is not None) and (t.bettor == token.owner)
+            ],
+        ))
+
+    @checks_token
+    def Stake(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.StakeRequest) -> mvp_pb2.StakeResponse:
+        if token is None:
+            return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall='must log in to bet'))
+
         with self._mutate_state() as wstate:
-            if market_id not in wstate.markets:
-                raise KeyError(market_id)
-            wstate.markets[market_id].resolution = mvp_pb2.RESOLUTION_YES if resolution else mvp_pb2.RESOLUTION_NO
-
-    def set_trust(self, *, truster: mvp_pb2.UserId, trusted: mvp_pb2.UserId, trusts: bool) -> None:
-        with self._mutate_state() as wstate:
-            ensure_user_exists(wstate, truster)
-            ensure_user_exists(wstate, trusted)
-            info: mvp_pb2.WorldState.GenericUserInfo = (wstate.username_users[truster.username] if truster.WhichOneof('kind')=='username' else raise_(RuntimeError(truster))).info
-            if trusts:
-                info.trusted_users.append(trusted)
-            else:
-                info.trusted_users.remove(trusted)
-
-    def bet(self, market_id: MarketId, bettor: mvp_pb2.UserId, bettor_is_a_skeptic: bool, bettor_stake_cents: int) -> None:
-        with self._mutate_state() as wstate:
-            if market_id not in wstate.markets:
-                raise KeyError(market_id)
-            ensure_user_exists(wstate, bettor)
-            # TODO: more validity-checking?
-            market = wstate.markets[market_id]
-            if bettor_is_a_skeptic:
+            market = wstate.markets.get(request.market_id)
+            if market is None:
+                return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall='no such market'))
+            if request.bettor_is_a_skeptic:
                 lowP = market.certainty.low
-                creator_stake_cents = int(bettor_stake_cents * lowP/(1-lowP))
-                if sum(t.creator_stake_cents for t in market.trades if t.bettor_is_a_skeptic) + creator_stake_cents > market.maximum_stake_cents:
-                    raise ValueError()
+                creator_stake_cents = int(request.bettor_stake_cents * lowP/(1-lowP))
+                existing_stake = sum(t.creator_stake_cents for t in market.trades if t.bettor_is_a_skeptic)
+                if existing_stake + creator_stake_cents > market.maximum_stake_cents:
+                    return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall='bet would exceed creator tolerance'))
             else:
                 highP = market.certainty.high
-                creator_stake_cents = int(bettor_stake_cents * (1-highP)/highP)
-                if sum(t.creator_stake_cents for t in market.trades if not t.bettor_is_a_skeptic) + creator_stake_cents > market.maximum_stake_cents:
-                    raise ValueError()
+                creator_stake_cents = int(request.bettor_stake_cents * (1-highP)/highP)
+                existing_stake = sum(t.creator_stake_cents for t in market.trades if not t.bettor_is_a_skeptic)
+            if existing_stake + creator_stake_cents > market.maximum_stake_cents:
+                return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall=f'bet would exceed creator tolerance ({existing_stake} existing + {creator_stake_cents} new stake > {market.maximum_stake_cents} max)'))
             market.trades.append(mvp_pb2.WorldState.Trade(
-                bettor=bettor,
-                bettor_is_a_skeptic=bettor_is_a_skeptic,
+                bettor=token.owner,
+                bettor_is_a_skeptic=request.bettor_is_a_skeptic,
                 creator_stake_cents=creator_stake_cents,
-                bettor_stake_cents=bettor_stake_cents,
-                transacted_unixtime=self._clock(),
+                bettor_stake_cents=request.bettor_stake_cents,
+                transacted_unixtime=int(self._clock()),
             ))
+            return mvp_pb2.StakeResponse(ok=mvp_pb2.VOID)
 
 
 from typing import TypeVar, Type, Tuple, Union, Awaitable
@@ -151,33 +258,46 @@ def proto_handler(req_t: Type[_Req], resp_t: Type[_Resp]):
         return wrapped
     return wrap
 
+async def parse_proto(http_req: web.Request, pb_req_cls: Type[_Req]) -> _Req:
+    req = pb_req_cls()
+    req.ParseFromString(await http_req.content.read())
+    return req
+def proto_response(pb_resp: _Resp) -> web.Response:
+    return web.Response(status=200, headers={'Content-Type':'application/octet-stream'}, body=pb_resp.SerializeToString())
 
-class Authenticator:
 
+class HttpTokenGlue:
+    
     _AUTH_COOKIE_NAME = 'auth'
 
-    def __init__(self, secret_key: bytes, clock: Callable[[], float] = time.time) -> None:
-        self._secret_key = secret_key
-        self._clock = clock
+    def __init__(self, token_mint: TokenMint):
+        self._mint = token_mint
+        self._ctxvar: contextvars.ContextVar[Optional[mvp_pb2.AuthToken]] = contextvars.ContextVar('token', default=None)
 
-    def _compute_token_hmac(self, token: mvp_pb2.AuthToken) -> bytes:
-        scratchpad = copy.copy(token)
-        scratchpad.hmac_of_rest = b''
-        return hmac.digest(key=self._secret_key, msg=scratchpad.SerializeToString(), digest='sha256')
+    def add_to_app(self, app: web.Application) -> None:
+        if self.middleware not in app.middlewares:
+            app.middlewares.append(self.middleware)
 
-    def _sign_token(self, token: mvp_pb2.AuthToken) -> None:
-        token.hmac_of_rest = self._compute_token_hmac(token=token)
+    def get(self):
+        return self._ctxvar.get()
 
-    def mint_cookie(self, owner: mvp_pb2.UserId, response: web.Response) -> mvp_pb2.AuthToken:
-        now = int(self._clock())
-        token = mvp_pb2.AuthToken(
-            owner=owner,
-            minted_unixtime=now,
-            expires_unixtime=now + 60*60*24,
-        )
-        self._sign_token(token=token)
+    @web.middleware
+    async def middleware(self, request, handler):
+        ctxtok = self._ctxvar.set(self.parse_cookie(request))
+        try:
+            return await handler(request)
+        finally:
+            self._ctxvar.reset(ctxtok)
+
+    def set_cookie(self, token: mvp_pb2.AuthToken, response: web.Response) -> mvp_pb2.AuthToken:
         response.set_cookie(self._AUTH_COOKIE_NAME, base64.b64encode(token.SerializeToString()).decode('ascii'))
         return token
+
+    def del_cookie(self, req: web.Request, resp: web.Response) -> None:
+        token = self.parse_cookie(req)
+        if token is not None:
+            self._mint.revoke_token(token)
+        resp.del_cookie(self._AUTH_COOKIE_NAME)
 
     def parse_cookie(self, req: web.Request) -> Optional[mvp_pb2.AuthToken]:
         cookie = req.cookies.get(self._AUTH_COOKIE_NAME)
@@ -190,142 +310,63 @@ class Authenticator:
 
         token = mvp_pb2.AuthToken()
         token.ParseFromString(token_bytes)
-        alleged_hmac = token.hmac_of_rest
-        true_hmac = self._compute_token_hmac(token)
-        if not hmac.compare_digest(alleged_hmac, true_hmac):
-            return None
-        now = self._clock()
-        if not (token.minted_unixtime <= now <= token.expires_unixtime):
-            return None
-        return token
-
-    def del_cookie(self, resp: web.Response) -> None:
-        resp.del_cookie(self._AUTH_COOKIE_NAME)
+        return self._mint.check_token(token)
 
 
 class ApiServer:
 
-    def __init__(self, authenticator: Authenticator, marketplace: Marketplace, clock: Callable[[], float] = time.time) -> None:
-        self._authenticator = authenticator
-        self._marketplace = marketplace
+    def __init__(self, token_glue: HttpTokenGlue, servicer: Servicer, clock: Callable[[], float] = time.time) -> None:
+        self._token_glue = token_glue
+        self._servicer = servicer
         self._clock = clock
 
-    def make_routes(self) -> web.RouteTableDef:
+    def add_to_app(self, app: web.Application) -> None:
         routes = web.RouteTableDef()
 
-        @routes.post('/api/whoami')
-        @proto_handler(mvp_pb2.WhoamiRequest, mvp_pb2.WhoamiResponse)
-        async def api_whoami(http_req: web.Request, pb_req: mvp_pb2.WhoamiRequest) -> Tuple[web.Response, mvp_pb2.WhoamiResponse]:
-            return (web.Response(), mvp_pb2.WhoamiResponse(auth=self._authenticator.parse_cookie(http_req)))
+        @routes.post('/api/Whoami')
+        async def api_Whoami(http_req: web.Request) -> web.Response:
+            return proto_response(self._servicer.Whoami(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.WhoamiRequest)))
+        @routes.post('/api/SignOut')
+        async def api_SignOut(http_req: web.Request) -> web.Response:
+            http_resp = proto_response(self._servicer.SignOut(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.SignOutRequest)))
+            self._token_glue.del_cookie(http_req, http_resp)
+            return http_resp
+        @routes.post('/api/RegisterUsername')
+        async def api_RegisterUsername(http_req: web.Request) -> web.Response:
+            pb_resp = self._servicer.RegisterUsername(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.RegisterUsernameRequest))
+            http_resp = proto_response(pb_resp)
+            if pb_resp.WhichOneof('register_username_result') == 'ok':
+                self._token_glue.set_cookie(pb_resp.ok, http_resp)
+            return http_resp
+        @routes.post('/api/LogInUsername')
+        async def api_LogInUsername(http_req: web.Request) -> web.Response:
+            pb_resp = self._servicer.LogInUsername(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.LogInUsernameRequest))
+            http_resp = proto_response(pb_resp)
+            if pb_resp.WhichOneof('log_in_username_result') == 'ok':
+                self._token_glue.set_cookie(pb_resp.ok, http_resp)
+            return http_resp
+        @routes.post('/api/CreateMarket')
+        async def api_CreateMarket(http_req: web.Request) -> web.Response:
+            import sys; print('client cookie:', http_req.cookies.get('auth'), file=sys.stderr)
+            return proto_response(self._servicer.CreateMarket(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.CreateMarketRequest)))
+        @routes.post('/api/GetMarket')
+        async def api_GetMarket(http_req: web.Request) -> web.Response:
+            return proto_response(self._servicer.GetMarket(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.GetMarketRequest)))
+        @routes.post('/api/Stake')
+        async def api_Stake(http_req: web.Request) -> web.Response:
+            return proto_response(self._servicer.Stake(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.StakeRequest)))
 
-        @routes.post('/api/sign_out')
-        @proto_handler(mvp_pb2.SignOutRequest, mvp_pb2.SignOutResponse)
-        async def api_SignOut(http_req: web.Request, pb_req: mvp_pb2.SignOutRequest) -> Tuple[web.Response, mvp_pb2.SignOutResponse]:
-            response = web.Response()
-            self._authenticator.del_cookie(response)
-            return (response, mvp_pb2.SignOutResponse())
-
-        @routes.post('/api/register_username')
-        @proto_handler(mvp_pb2.RegisterUsernameRequest, mvp_pb2.RegisterUsernameResponse)
-        async def api_register_username(http_req: web.Request, pb_req: mvp_pb2.RegisterUsernameRequest) -> Tuple[web.Response, mvp_pb2.RegisterUsernameResponse]:
-            try:
-                self._marketplace.register_username(pb_req.username, pb_req.password)
-            except UsernameAlreadyRegisteredError:
-                return (web.Response(status=404), mvp_pb2.RegisterUsernameResponse(error=mvp_pb2.RegisterUsernameResponse.Error(username_taken=mvp_pb2.VOID)))
-
-            http_resp = web.Response()
-            token = self._authenticator.mint_cookie(owner=mvp_pb2.UserId(username=pb_req.username), response=http_resp)
-            return (http_resp, mvp_pb2.RegisterUsernameResponse(ok=token))
-
-        @routes.post('/api/log_in_username')
-        @proto_handler(mvp_pb2.LogInUsernameRequest, mvp_pb2.LogInUsernameResponse)
-        async def api_log_in_username(http_req: web.Request, pb_req: mvp_pb2.LogInUsernameRequest) -> Tuple[web.Response, mvp_pb2.LogInUsernameResponse]:
-            info = self._marketplace.get_username_info(pb_req.username)
-            if info is None:
-                return (web.Response(status=404), mvp_pb2.LogInUsernameResponse(error=mvp_pb2.LogInUsernameResponse.Error(catchall='no such user')))
-
-            if not bcrypt.checkpw(pb_req.password.encode('utf8'), info.password_bcrypt):
-                return (web.Response(status=400), mvp_pb2.LogInUsernameResponse(error=mvp_pb2.LogInUsernameResponse.Error(catchall='bad password')))
-
-            http_resp = web.Response()
-            token = self._authenticator.mint_cookie(owner=mvp_pb2.UserId(username=pb_req.username), response=http_resp)
-            return (http_resp, mvp_pb2.LogInUsernameResponse(ok=token))
-
-        @routes.post('/api/create_market')
-        @proto_handler(mvp_pb2.CreateMarketRequest, mvp_pb2.CreateMarketResponse)
-        async def api_create_market(http_req: web.Request, pb_req: mvp_pb2.CreateMarketRequest) -> Tuple[web.Response, mvp_pb2.CreateMarketResponse]:
-            auth = self._authenticator.parse_cookie(http_req)
-            if auth is None:
-                return (web.Response(status=403), mvp_pb2.CreateMarketResponse(error=mvp_pb2.CreateMarketResponse.Error(catchall='not logged in')))
-            now = int(self._clock())
-            market = mvp_pb2.WorldState.Market(
-                question=pb_req.question,
-                certainty=pb_req.certainty,
-                maximum_stake_cents=pb_req.maximum_stake_cents,
-                created_unixtime=now,
-                closes_unixtime=now + pb_req.open_seconds,
-                special_rules=pb_req.special_rules,
-                creator=auth.owner,
-                trades=[],
-                resolution=mvp_pb2.RESOLUTION_NONE_YET,
-            )
-            market_id = self._marketplace.create_market(market)
-            print(f'market id {market_id} =>\n{indent(str(market))}')
-            return (web.Response(), mvp_pb2.CreateMarketResponse(new_market_id=market_id))
-
-        @routes.post('/api/get_market')
-        @proto_handler(mvp_pb2.GetMarketRequest, mvp_pb2.GetMarketResponse)
-        async def api_get_market(http_req: web.Request, pb_req: mvp_pb2.GetMarketRequest) -> Tuple[web.Response, mvp_pb2.GetMarketResponse]:
-            # TODO: ensure market should be visible to current user
-            auth = self._authenticator.parse_cookie(http_req)
-            print('getting market', pb_req.market_id)
-            ws_market = self._marketplace.get_market(market_id=MarketId(pb_req.market_id))
-            if ws_market is None:
-                return (web.Response(status=404), mvp_pb2.GetMarketResponse(error=mvp_pb2.GetMarketResponse.Error(no_such_market=mvp_pb2.VOID)))
-
-            return (
-                web.Response(),
-                mvp_pb2.GetMarketResponse(market=mvp_pb2.GetMarketResponse.Market(
-                    question=ws_market.question,
-                    certainty=ws_market.certainty,
-                    maximum_stake_cents=ws_market.maximum_stake_cents,
-                    remaining_stake_cents_vs_believers=ws_market.maximum_stake_cents - sum(t.creator_stake_cents for t in ws_market.trades if not t.bettor_is_a_skeptic),
-                    remaining_stake_cents_vs_skeptics=ws_market.maximum_stake_cents - sum(t.creator_stake_cents for t in ws_market.trades if t.bettor_is_a_skeptic),
-                    created_unixtime=ws_market.created_unixtime,
-                    closes_unixtime=ws_market.closes_unixtime,
-                    special_rules=ws_market.special_rules,
-                    creator=mvp_pb2.UserInfo(display_name='TODO'),
-                    resolution=ws_market.resolution,
-                    your_trades=[
-                        mvp_pb2.GetMarketResponse.Trade(
-                            bettor_is_a_skeptic=t.bettor_is_a_skeptic,
-                            creator_stake_cents=t.creator_stake_cents,
-                            bettor_stake_cents=t.bettor_stake_cents,
-                            transacted_unixtime=t.transacted_unixtime,
-                        )
-                        for t in ws_market.trades
-                        if (auth is not None) and (t.bettor == auth.owner)
-                    ],
-                )),
-            )
-
-
-        return routes
+        self._token_glue.add_to_app(app)
+        app.add_routes(routes)
 
 class WebServer:
-    def __init__(self, elm_dist: Path, authenticator: Authenticator, marketplace: Marketplace) -> None:
+    def __init__(self, servicer: Servicer, elm_dist: Path, token_glue: HttpTokenGlue) -> None:
+        self._servicer = servicer
         self._elm_dist = elm_dist
-        self._authenticator = authenticator
-        self._marketplace = marketplace
+        self._token_glue = token_glue
 
-    def make_routes(self) -> web.RouteTableDef:
+    def add_to_app(self, app: web.Application) -> None:
         routes = web.RouteTableDef()
-
-        @routes.get('/TODO_register')
-        async def get_TODO_register(req: web.Request) -> web.Response:
-            response = web.HTTPTemporaryRedirect(req.query.get('dest', '/new'))
-            self._authenticator.mint_cookie(owner=mvp_pb2.UserId(username='TEST_USER'), response=response)
-            return response
 
         @routes.get('/elm/{module}.js')
         async def get_elm_module(req: web.Request) -> web.Response:
@@ -334,15 +375,16 @@ class WebServer:
 
         @routes.get('/new')
         async def get_create_market_page(req: web.Request) -> web.Response:
-            auth = self._authenticator.parse_cookie(req)
+            auth = self._token_glue.get()
             auth_token_pb_b64 = json.dumps(base64.b64encode(auth.SerializeToString()).decode('ascii') if auth else None)
             return web.Response(content_type='text/html', body=(Path(__file__).parent/'templates'/'CreateMarketPage.html').read_text().replace(r'{{auth_token_pb_b64}}', auth_token_pb_b64))
 
         @routes.get('/market/{market_id:[0-9]+}')
         async def get_view_market_page(req: web.Request) -> web.Response:
-            return web.Response(content_type='text/plain', body=str(self._marketplace.get_market(MarketId(int(req.match_info['market_id'])))))
+            return web.Response(content_type='text/plain', body=str(self._servicer.GetMarket(self._token_glue.get(), mvp_pb2.GetMarketRequest(market_id=int(req.match_info['market_id'])))))
 
-        return routes
+        self._token_glue.add_to_app(app)
+        app.add_routes(routes)
 
 
 parser = argparse.ArgumentParser()
@@ -352,16 +394,19 @@ parser.add_argument("--state-path", type=Path, default="server.WorldState.pb")
 if __name__ == '__main__':
     args = parser.parse_args()
     app = web.Application()
-    authenticator = Authenticator(secret_key=b'TODO super secret')
-    marketplace = FSMarketplace(state_path=args.state_path)
-    app.add_routes(WebServer(
+    token_mint = TokenMint(secret_key=b'TODO super secret')
+    token_glue = HttpTokenGlue(token_mint=token_mint)
+    servicer = FsBackedServicer(state_path=args.state_path, token_mint=token_mint)
+
+    token_glue.add_to_app(app)
+    WebServer(
+        token_glue=token_glue,
         elm_dist=args.elm_dist,
-        authenticator=authenticator,
-        marketplace=marketplace,
-    ).make_routes())
-    app.add_routes(ApiServer(
-        authenticator=authenticator,
-        marketplace=marketplace,
-    ).make_routes())
+        servicer=servicer,
+    ).add_to_app(app)
+    ApiServer(
+        token_glue=token_glue,
+        servicer=servicer,
+    ).add_to_app(app)
 
     web.run_app(app)
