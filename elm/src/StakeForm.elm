@@ -74,6 +74,7 @@ view config state =
         Pb.ResolutionYes ->
           if winCentsIfYes == 0 then H.text "" else
           H.div []
+            -- TODO: what should we display to the _owner_ of the market, when they view it?
             [ H.text "This market has resolved YES. "
             , H.text <| if winCentsIfYes > 0 then creator.displayName ++ " owes you " else ("you owe " ++ creator.displayName ++ " ")
             , H.text <| Utils.formatCents <| abs winCentsIfYes
