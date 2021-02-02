@@ -2,6 +2,7 @@ aiohttp
 protobuf
 bcrypt
 requests
+Pillow
 
 # testing
 pytest-aiohttp

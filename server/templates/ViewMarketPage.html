@@ -16,6 +16,7 @@
     var authTokenPbB64 = {{auth_token_pb_b64}};
     var marketPbB64 = {{market_pb_b64}};
     var marketId = {{market_id}};
+    var linkToAuthority = window.location.origin;
 
     var auth = Elm.AuthWidget.init({
       node: document.getElementById('auth'),
@@ -25,7 +26,12 @@
 
     var main = Elm.ViewMarketPage.init({
       node: document.getElementById('main'),
-      flags: {authTokenPbB64, marketPbB64, marketId},
+      flags: {authTokenPbB64, marketPbB64, marketId, linkToAuthority},
+    });
+    main.ports.copy.subscribe((id) => {
+      console.log('copy');
+      document.getElementById(id).select();
+      document.execCommand('copy');
     });
     main.ports.staked.subscribe((marketId) => {
       window.location.reload();

@@ -8,6 +8,7 @@ import contextlib
 import contextvars
 import copy
 import hmac
+import io
 import json
 from pathlib import Path
 import random
@@ -15,11 +16,14 @@ import secrets
 import time
 from typing import Iterator, Optional, Container, NewType, Callable, NoReturn, Tuple
 
+from PIL import Image, ImageDraw, ImageFont  # type: ignore
 import bcrypt  # type: ignore
 from aiohttp import web
 from .protobuf import mvp_pb2
 
 MarketId = NewType('MarketId', int)
+
+IMAGE_EMBED_FONT = ImageFont.truetype('FreeSans.ttf', 18)
 
 class UsernameAlreadyRegisteredError(Exception): pass
 class NoSuchUserError(Exception): pass
@@ -271,7 +275,7 @@ def proto_response(pb_resp: _Resp) -> web.Response:
 
 
 class HttpTokenGlue:
-    
+
     _AUTH_COOKIE_NAME = 'auth'
 
     def __init__(self, token_mint: TokenMint):
@@ -393,6 +397,28 @@ class WebServer:
                 return web.Response(content_type='text/html', body=(Path(__file__).parent/'templates'/'ViewMarketPage.html').read_text().replace(r'{{auth_token_pb_b64}}', auth_token_pb_b64).replace(r'{{market_pb_b64}}', market_pb_b64).replace(r'{{market_id}}', str(market_id)))
             else:
                 return web.Response(status=404)
+
+        @routes.get('/market/{market_id:[0-9]+}/embed.png')
+        async def get_market_img_embed(req: web.Request) -> web.Response:
+            auth = self._token_glue.get()
+            market_id = int(req.match_info['market_id'])
+            get_market_resp = self._servicer.GetMarket(auth, mvp_pb2.GetMarketRequest(market_id=market_id))
+            if get_market_resp.WhichOneof('get_market_result') == 'market':
+                def format_cents(n: int) -> str:
+                    if n < 0: return '-' + format_cents(-n)
+                    return f'${n//100}' + ('' if n%100 == 0 else f'.{n%100 :02d}')
+                market = get_market_resp.market
+                text = f'[{format_cents(market.maximum_stake_cents)} @ {round(market.certainty.low*100)}-{round(market.certainty.high*100)}%]'
+                size = IMAGE_EMBED_FONT.getsize(text)
+                img = Image.new('RGBA', size, color=(255,255,255,0))
+                ImageDraw.Draw(img).text((0,0), text, fill=(0,128,0,255), font=IMAGE_EMBED_FONT)
+                buf = io.BytesIO()
+                img.save(buf, format='png')
+                return web.Response(content_type='image/png', body=buf.getvalue())
+
+            else:
+                return web.Response(status=404)
+
 
         self._token_glue.add_to_app(app)
         app.add_routes(routes)
