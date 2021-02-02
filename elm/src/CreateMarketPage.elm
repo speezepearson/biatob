@@ -57,8 +57,7 @@ init flags =
   ( { form = Form.init
     , preview = previewModel
     , auth = flags |> JD.decodeValue (JD.field "authTokenPbB64" JD.string)
-        |> Result.map (Debug.log "init auth token")
-        |> Result.mapError (Debug.log "error decoding initial auth token")
+        |> Debug.log "init auth token"
         |> Result.toMaybe
         |> Maybe.andThen (Utils.decodePbB64 Pb.authTokenDecoder)
     , working = False
@@ -75,11 +74,13 @@ postCreate req =
     , body = Http.bytesBody "application/octet-stream" <| PE.encode <| Pb.toCreateMarketRequestEncoder req
     , expect = PD.expectBytes CreateFinished Pb.createMarketResponseDecoder }
 
+-- updateModel
+
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
     SetFormState newState ->
-      ({ model | form = newState , preview = model.preview |> ViewMarketPage.setMarket (formStateToProto model.now model.form) }, Cmd.none)
+      ({ model | form = newState , preview = model.preview |> ViewMarketPage.setMarket (formStateToProto model.now newState) }, Cmd.none)
     Create ->
       ( { model | working = True , createError = Nothing }
       , postCreate
@@ -118,7 +119,7 @@ update msg model =
       ( { model | preview = newPreview }, Cmd.map PreviewMsg cmd)
 
     Tick t ->
-      ( { model | now = Debug.log "now" t , preview = model.preview |> ViewMarketPage.update (ViewMarketPage.Tick t) |> Tuple.first } , Cmd.none )
+      ( { model | now = t } , Cmd.none )
 
     TodoIgnore ->
       (model, Cmd.none)
@@ -150,7 +151,7 @@ formConfig model =
 
 formStateToProto : Time.Posix -> Form.State -> Pb.UserMarketView
 formStateToProto now form =
-  { question = Debug.log "question" <| Form.question form
+  { question = Form.question form
   , certainty = Just
       { low = Form.lowP form |> Maybe.withDefault 0
       , high = Form.highP form |> Maybe.withDefault 1
@@ -167,7 +168,11 @@ formStateToProto now form =
   }
 
 subscriptions : Model -> Sub Msg
-subscriptions _ = Time.every 1000 Tick
+subscriptions model =
+  Sub.batch
+    [ Time.every 1000 Tick
+    , Sub.map PreviewMsg <| ViewMarketPage.subscriptions model.preview
+    ]
 
 main : Program JD.Value Model Msg
 main =

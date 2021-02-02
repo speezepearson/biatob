@@ -279,11 +279,14 @@ stakeFormConfig model =
   , market = model.market
   }
 
+subscriptions : Model -> Sub Msg
+subscriptions _ = Time.every 1000 Tick
+
 main : Program JD.Value Model Msg
 main =
   Browser.element
     { init = init
-    , subscriptions = \_ -> Time.every 1000 Tick
+    , subscriptions = subscriptions
     , view = view
     , update = update
     }
