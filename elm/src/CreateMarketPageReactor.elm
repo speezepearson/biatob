@@ -24,7 +24,7 @@ mockAuthToken =
 main =
   Browser.element
     { init = \() -> Page.init (JE.object [("authTokenPbB64", JE.string <| Utils.encodePbB64 <| Pb.toAuthTokenEncoder mockAuthToken)])
-    , subscriptions = \_ -> Sub.none
+    , subscriptions = Page.subscriptions
     , view = Page.view
     , update = Page.update
     }

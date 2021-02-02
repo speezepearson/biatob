@@ -69,62 +69,12 @@ view config state =
           }
   in
   H.div []
-    [ H.h2 [] [H.text config.market.question]
-    , case config.market.resolution of
-        Pb.ResolutionYes ->
-          if winCentsIfYes == 0 then H.text "" else
-          H.div []
-            -- TODO: what should we display to the _owner_ of the market, when they view it?
-            [ H.text "This market has resolved YES. "
-            , H.text <| if winCentsIfYes > 0 then creator.displayName ++ " owes you " else ("you owe " ++ creator.displayName ++ " ")
-            , H.text <| Utils.formatCents <| abs winCentsIfYes
-            , H.text <| "."
-            ]
-        Pb.ResolutionNo ->
-          if winCentsIfNo == 0 then H.text "" else
-          H.div []
-            [ H.text "This market has resolved NO. "
-            , H.text <| if winCentsIfNo > 0 then creator.displayName ++ " owes you " else ("you owe " ++ creator.displayName ++ " ")
-            , H.text <| Utils.formatCents <| abs winCentsIfNo
-            , H.text <| "."
-            ]
-        Pb.ResolutionNoneYet ->
-          H.div []
-            [ H.text <| "This market " ++ (if isClosed then "has closed, but " else "") ++ "hasn't resolved yet. If it resolves Yes, "
-            , H.text <| if winCentsIfYes > 0 then creator.displayName ++ " will owe you " else ("you will owe " ++ creator.displayName ++ " ")
-            , H.text <| Utils.formatCents <| abs winCentsIfYes
-            , H.text <| "; if No, "
-            , H.text <| if winCentsIfNo > 0 then creator.displayName ++ " will owe you " else ("you will owe " ++ creator.displayName ++ " ")
-            , H.text <| Utils.formatCents <| abs winCentsIfNo
-            , H.text <| "."
-            ]
-        Pb.ResolutionUnrecognized_ _ ->
-          H.span [HA.style "color" "red"]
-            [H.text "Oh dear, something has gone very strange with this market. Please email TODO with this URL to report it!"]
-    , H.hr [] []
-    , H.p []
-        [ H.text creator.displayName
-        , H.text " assigned this a "
-        , certainty.low |> (*) 100 |> round |> String.fromInt |> H.text
-        , H.text "-"
-        , certainty.high |> (*) 100 |> round |> String.fromInt |> H.text
-        , H.text "% chance, and staked "
-        , config.market.maximumStakeCents |> Utils.formatCents |> H.text
-        , H.text "."
-        , H.br [] []
-        , H.strong [Utils.outlineIfInvalid emphasizeRemainingStakeVsSkeptics] [config.market.remainingStakeCentsVsSkeptics |> Utils.formatCents |> H.text]
+    [ H.p []
+        [ H.strong [Utils.outlineIfInvalid emphasizeRemainingStakeVsSkeptics] [config.market.remainingStakeCentsVsSkeptics |> Utils.formatCents |> H.text]
         , H.text " remain staked against skeptics, "
         , H.strong [Utils.outlineIfInvalid emphasizeRemainingStakeVsBelievers] [config.market.remainingStakeCentsVsBelievers |> Utils.formatCents |> H.text]
         , H.text " remain staked against believers."
         , H.br [] []
-        , H.text "Market opened "
-        , config.market.createdUnixtime |> (*) 1000 |> Time.millisToPosix
-            |> (\t -> "[TODO: " ++ Debug.toString t ++ "]")
-            |> H.text
-        , H.text ", closes "
-        , config.market.closesUnixtime |> (*) 1000 |> Time.millisToPosix
-            |> (\t -> "[TODO: " ++ Debug.toString t ++ "]")
-            |> H.text
         ]
     , H.p []
         [ H.text "Bet $"
@@ -136,7 +86,7 @@ view config state =
             , HA.disabled disableInputs
             , Utils.outlineIfInvalid invalidSkepticStake
             ] []
-        , H.text " that this will resolve No, against Spencer's "
+        , H.text <| " that this will resolve No, against " ++ creator.displayName ++ "'s "
         , H.strong [Utils.outlineIfInvalid emphasizeRemainingStakeVsSkeptics] [skepticStakeCents state |>  Maybe.map (toFloat >> (*) creatorStakeFactorVsSkeptics >> round >> Utils.formatCents) |> Maybe.withDefault "???" |> H.text]
         , H.text "? "
         , H.button
@@ -157,7 +107,7 @@ view config state =
             , HA.disabled disableInputs
             , Utils.outlineIfInvalid invalidBelieverStake
             ] []
-        , H.text " that this will resolve Yes, against Spencer's "
+        , H.text <| " that this will resolve Yes, against " ++ creator.displayName ++ "'s "
         , H.strong [Utils.outlineIfInvalid emphasizeRemainingStakeVsBelievers] [believerStakeCents state |>  Maybe.map (toFloat >> (*) creatorStakeFactorVsBelievers >> round >> Utils.formatCents) |> Maybe.withDefault "???" |> H.text]
         , H.text "? "
         , H.button
