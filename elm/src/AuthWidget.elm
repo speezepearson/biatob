@@ -14,6 +14,7 @@ import Protobuf.Encode as PE
 import Biatob.Proto.Mvp as Pb
 import Utils
 import Http
+import Task
 
 port authChanged : () -> Cmd msg
 
@@ -63,7 +64,7 @@ init flags =
   ( case flags |> JD.decodeValue (JD.field "authTokenPbB64" JD.string) |> Result.toMaybe |> Maybe.andThen (Utils.decodePbB64 Pb.authTokenDecoder) of
       Just token -> initHasToken token
       Nothing -> initNoToken
-  , Cmd.none
+  , Task.perform Tick Time.now
   )
 
 view : Model -> Html Msg
