@@ -14,13 +14,13 @@ import Biatob.Proto.Mvp as Pb
 import CreateMarketForm as Form
 import Utils
 
-import Market
+import StakeForm
 
 port createdMarket : Int -> Cmd msg
 
 type alias Model =
   { form : Form.State
-  , preview : Market.State
+  , preview : StakeForm.State
   , auth : Maybe Pb.AuthToken
   , working : Bool
   , createError : Maybe String
@@ -28,7 +28,7 @@ type alias Model =
 
 type Msg
   = SetFormState Form.State
-  | SetMarketPreviewState Market.State
+  | SetMarketPreviewState StakeForm.State
   | Create
   | CreateFinished (Result Http.Error Pb.CreateMarketResponse)
   | TodoIgnore
@@ -119,7 +119,7 @@ view model =
     , H.hr [] []
     , H.text "Preview:"
     , H.div [HA.style "border" "1px solid black", HA.style "padding" "1em", HA.style "margin" "1em"]
-        [Market.view previewConfig model.preview]
+        [StakeForm.view previewConfig model.preview]
     ]
 
 formConfig : Model -> Form.Config Msg
@@ -128,7 +128,7 @@ formConfig model =
   , disabled = (model.auth == Nothing)
   }
 
-previewConfig : Market.Config Msg
+previewConfig : StakeForm.Config Msg
 previewConfig =
   { setState = SetMarketPreviewState
   , onStake = (\_ -> TodoIgnore)

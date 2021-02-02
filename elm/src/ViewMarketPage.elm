@@ -12,12 +12,12 @@ import Protobuf.Decode as PD
 import Biatob.Proto.Mvp as Pb
 import Utils
 
-import Market
+import StakeForm
 
 port staked : () -> Cmd msg
 
 type alias Model =
-  { market : Market.State
+  { market : StakeForm.State
   , marketId : Int
   , auth : Maybe Pb.AuthToken
   , working : Bool
@@ -25,7 +25,7 @@ type alias Model =
   }
 
 type Msg
-  = SetMarketState Market.State
+  = SetMarketState StakeForm.State
   | Stake {bettorIsASkeptic:Bool, bettorStakeCents:Int}
   | StakeFinished (Result Http.Error Pb.StakeResponse)
   | Ignore
@@ -38,7 +38,7 @@ init flags =
         |> Result.toMaybe
         |> Maybe.andThen (Utils.decodePbB64 Pb.userMarketViewDecoder)
         |> Utils.must "no/invalid market from server"
-        |> Market.init
+        |> StakeForm.init
     , marketId = flags |> JD.decodeValue (JD.field "marketId" JD.int)
         |> Result.map (Debug.log "init auth token")
         |> Result.mapError (Debug.log "error decoding initial auth token")
@@ -95,9 +95,9 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-  Market.view (marketConfig model) model.market
+  StakeForm.view (marketConfig model) model.market
 
-marketConfig : Model -> Market.Config Msg
+marketConfig : Model -> StakeForm.Config Msg
 marketConfig model =
   { setState = SetMarketState
   , onStake = Stake

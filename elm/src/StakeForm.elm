@@ -1,4 +1,4 @@
-module Market exposing
+module StakeForm exposing
   ( Config
   , State
   , view
