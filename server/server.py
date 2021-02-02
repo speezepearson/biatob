@@ -380,6 +380,10 @@ class WebServer:
             module = req.match_info['module']
             return web.Response(content_type='text/javascript', body=(Path(__file__).parent.parent/f'elm/dist/{module}.js').read_text())
 
+        @routes.get('/')
+        async def get_index(req: web.Request) -> web.Response:
+            return web.HTTPTemporaryRedirect('/new')
+
         @routes.get('/new')
         async def get_create_market_page(req: web.Request) -> web.Response:
             auth = self._token_glue.get()
