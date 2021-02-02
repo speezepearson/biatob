@@ -80,7 +80,7 @@ class TokenMint:
         return token
 
     def revoke_token(self, token: mvp_pb2.AuthToken) -> None:
-        raise NotImplementedError()
+        pass  # TODO
 
 
 class Servicer(abc.ABC):
@@ -130,7 +130,7 @@ class FsBackedServicer(Servicer):
     @checks_token
     def SignOut(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.SignOutRequest) -> mvp_pb2.SignOutResponse:
         if token is not None:
-            pass # self._token_mint.revoke_token(token)  # TODO: implement
+            self._token_mint.revoke_token(token)
         return mvp_pb2.SignOutResponse()
 
     @checks_token
@@ -188,7 +188,7 @@ class FsBackedServicer(Servicer):
         if ws_market is None:
             return mvp_pb2.GetMarketResponse(error=mvp_pb2.GetMarketResponse.Error(no_such_market=mvp_pb2.VOID))
 
-        return mvp_pb2.GetMarketResponse(market=mvp_pb2.GetMarketResponse.Market(
+        return mvp_pb2.GetMarketResponse(market=mvp_pb2.UserMarketView(
             question=ws_market.question,
             certainty=ws_market.certainty,
             maximum_stake_cents=ws_market.maximum_stake_cents,
@@ -200,7 +200,7 @@ class FsBackedServicer(Servicer):
             creator=mvp_pb2.UserInfo(display_name='TODO'),
             resolution=ws_market.resolution,
             your_trades=[
-                mvp_pb2.GetMarketResponse.Trade(
+                mvp_pb2.UserMarketView.Trade(
                     bettor_is_a_skeptic=t.bettor_is_a_skeptic,
                     creator_stake_cents=t.creator_stake_cents,
                     bettor_stake_cents=t.bettor_stake_cents,
@@ -380,7 +380,15 @@ class WebServer:
 
         @routes.get('/market/{market_id:[0-9]+}')
         async def get_view_market_page(req: web.Request) -> web.Response:
-            return web.Response(content_type='text/plain', body=str(self._servicer.GetMarket(self._token_glue.get(), mvp_pb2.GetMarketRequest(market_id=int(req.match_info['market_id'])))))
+            auth = self._token_glue.get()
+            market_id = int(req.match_info['market_id'])
+            get_market_resp = self._servicer.GetMarket(auth, mvp_pb2.GetMarketRequest(market_id=market_id))
+            auth_token_pb_b64 = json.dumps(base64.b64encode(auth.SerializeToString()).decode('ascii') if auth else None)
+            if get_market_resp.WhichOneof('get_market_result') == 'market':
+                market_pb_b64 = json.dumps(base64.b64encode(get_market_resp.market.SerializeToString()).decode('ascii'))
+                return web.Response(content_type='text/html', body=(Path(__file__).parent/'templates'/'ViewMarketPage.html').read_text().replace(r'{{auth_token_pb_b64}}', auth_token_pb_b64).replace(r'{{market_pb_b64}}', market_pb_b64).replace(r'{{market_id}}', str(market_id)))
+            else:
+                return web.Response(status=404)
 
         self._token_glue.add_to_app(app)
         app.add_routes(routes)

@@ -148,26 +148,26 @@ message GetMarketRequest {
 }
 message GetMarketResponse {
   oneof get_market_result {
-    Market market = 1;
+    UserMarketView market = 1;
     Error error = 2;
-  }
-  message Market {
-    string question = 1;
-    CertaintyRange certainty = 2;
-    uint32 maximum_stake_cents = 3;
-    uint32 remaining_stake_cents_vs_believers = 4;
-    uint32 remaining_stake_cents_vs_skeptics = 5;
-    uint32 created_unixtime = 6;
-    uint32 closes_unixtime = 7;
-    string special_rules = 8;
-    UserInfo creator = 9;
-    Resolution resolution = 10;
-    repeated Trade your_trades = 11;
   }
   message Error {
     string catchall = 1;
     Void no_such_market = 2;
   }
+}
+message UserMarketView {
+  string question = 1;
+  CertaintyRange certainty = 2;
+  uint32 maximum_stake_cents = 3;
+  uint32 remaining_stake_cents_vs_believers = 4;
+  uint32 remaining_stake_cents_vs_skeptics = 5;
+  uint32 created_unixtime = 6;
+  uint32 closes_unixtime = 7;
+  string special_rules = 8;
+  UserInfo creator = 9;
+  Resolution resolution = 10;
+  repeated Trade your_trades = 11;
   message Trade {
     bool bettor_is_a_skeptic = 1;
     uint32 creator_stake_cents = 2;

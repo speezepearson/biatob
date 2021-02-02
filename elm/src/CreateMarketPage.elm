@@ -80,7 +80,9 @@ update msg model =
           }
       )
     CreateFinished (Err e) ->
-      Debug.todo <| "failed to create: " ++ Debug.toString e
+      ( { model | working = False , createError = Just (Debug.toString e) }
+      , Cmd.none
+      )
     CreateFinished (Ok resp) ->
       case resp.createMarketResult of
         Just (Pb.CreateMarketResultNewMarketId id) ->
@@ -134,7 +136,7 @@ previewConfig =
   , disableCommit = True
   }
 
-formStateToProto : Form.State -> Pb.GetMarketResponseMarket
+formStateToProto : Form.State -> Pb.UserMarketView
 formStateToProto form =
   { question = Form.question form
   , certainty = Just

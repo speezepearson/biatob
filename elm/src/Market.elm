@@ -2,6 +2,7 @@ module Market exposing
   ( Config
   , State
   , view
+  , init
   , main
   )
 
@@ -19,13 +20,13 @@ epsilon = 0.0000001 -- 🎵 I hate floating-point arithmetic 🎶
 
 type alias Config msg =
   { setState : State -> msg
-  , onStake : {bettorIsASkeptic:Bool, betterStakeCents:Int} -> msg
+  , onStake : {bettorIsASkeptic:Bool, bettorStakeCents:Int} -> msg
   , nevermind : msg
   , disableCommit : Bool
   }
 
 type alias State =
-  { market : Pb.GetMarketResponseMarket
+  { market : Pb.UserMarketView
   , believerStakeField : String
   , skepticStakeField : String
   , now : Time.Posix
@@ -49,8 +50,8 @@ view config state =
     winCentsIfNo = state.market.yourTrades |> List.map (\t -> if t.bettorIsASkeptic then t.creatorStakeCents else -t.bettorStakeCents) |> List.sum
     creatorStakeFactorVsBelievers = (1 - certainty.high) / certainty.high
     creatorStakeFactorVsSkeptics = certainty.low / (1 - certainty.low)
-    maxBelieverStakeCents = toFloat state.market.remainingStakeCentsVsBelievers / creatorStakeFactorVsBelievers |> floor
-    maxSkepticStakeCents = toFloat state.market.remainingStakeCentsVsSkeptics / creatorStakeFactorVsSkeptics |> floor
+    maxBelieverStakeCents = toFloat state.market.remainingStakeCentsVsBelievers / creatorStakeFactorVsBelievers + 0.001 |> floor
+    maxSkepticStakeCents = toFloat state.market.remainingStakeCentsVsSkeptics / creatorStakeFactorVsSkeptics + 0.001 |> floor
     (invalidBelieverStake, emphasizeRemainingStakeVsBelievers) = case believerStakeCents state of
       Nothing -> (True, False)
       Just n -> (n < 0 || n > maxBelieverStakeCents, n > maxBelieverStakeCents)
@@ -141,7 +142,7 @@ view config state =
           [ HA.disabled (invalidSkepticStake || disableCommit)
           , HE.onClick <|
               case skepticStakeCents state of
-                Just stake -> config.onStake {bettorIsASkeptic=True, betterStakeCents=stake}
+                Just stake -> config.onStake {bettorIsASkeptic=True, bettorStakeCents=stake}
                 Nothing -> config.nevermind
           ]
           [H.text "Commit"]
@@ -162,14 +163,14 @@ view config state =
           [ HA.disabled (invalidBelieverStake || disableCommit)
           , HE.onClick <|
               case believerStakeCents state of
-                Just stake -> config.onStake {bettorIsASkeptic=False, betterStakeCents=stake}
+                Just stake -> config.onStake {bettorIsASkeptic=False, bettorStakeCents=stake}
                 Nothing -> config.nevermind
           ]
           [H.text "Commit"]
         ]
     ]
 
-init : Pb.GetMarketResponseMarket -> State
+init : Pb.UserMarketView -> State
 init market =
   { market = market
   , believerStakeField = "0"
