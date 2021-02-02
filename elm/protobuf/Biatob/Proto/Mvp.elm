@@ -2,9 +2,9 @@
 
 
 module Biatob.Proto.Mvp exposing
-    ( Void(..), Resolution(..), Kind(..), UserId, AuthToken, WorldState, WorldStateGenericUserInfo, WorldStateUsernameInfo, WorldStateMarket, WorldStateTrade, WhoamiRequest, WhoamiResponse, SignOutRequest, SignOutResponse, RegisterUsernameRequest, RegisterUsernameResult(..), RegisterUsernameResponse, RegisterUsernameResponseError, LogInUsernameRequest, LogInUsernameResult(..), LogInUsernameResponse, LogInUsernameResponseError, CertaintyRange, PrivacyKind(..), MarketPrivacy, MarketPrivacyEmails, CreateMarketRequest, CreateMarketResult(..), CreateMarketResponse, CreateMarketResponseError, GetMarketRequest, GetMarketResult(..), GetMarketResponse, GetMarketResponseError, UserMarketView, UserMarketViewTrade, UserInfo, StakeRequest, StakeResult(..), StakeResponse, StakeResponseError
-    , userIdDecoder, authTokenDecoder, worldStateDecoder, whoamiRequestDecoder, whoamiResponseDecoder, signOutRequestDecoder, signOutResponseDecoder, registerUsernameRequestDecoder, registerUsernameResponseDecoder, logInUsernameRequestDecoder, logInUsernameResponseDecoder, certaintyRangeDecoder, marketPrivacyDecoder, createMarketRequestDecoder, createMarketResponseDecoder, getMarketRequestDecoder, getMarketResponseDecoder, userMarketViewDecoder, userInfoDecoder, stakeRequestDecoder, stakeResponseDecoder
-    , toUserIdEncoder, toAuthTokenEncoder, toWorldStateEncoder, toWhoamiRequestEncoder, toWhoamiResponseEncoder, toSignOutRequestEncoder, toSignOutResponseEncoder, toRegisterUsernameRequestEncoder, toRegisterUsernameResponseEncoder, toLogInUsernameRequestEncoder, toLogInUsernameResponseEncoder, toCertaintyRangeEncoder, toMarketPrivacyEncoder, toCreateMarketRequestEncoder, toCreateMarketResponseEncoder, toGetMarketRequestEncoder, toGetMarketResponseEncoder, toUserMarketViewEncoder, toUserInfoEncoder, toStakeRequestEncoder, toStakeResponseEncoder
+    ( Void(..), Resolution(..), Kind(..), UserId, AuthToken, WorldState, WorldStateGenericUserInfo, WorldStateUsernameInfo, WorldStateMarket, WorldStateTrade, WhoamiRequest, WhoamiResponse, SignOutRequest, SignOutResponse, RegisterUsernameRequest, RegisterUsernameResult(..), RegisterUsernameResponse, RegisterUsernameResponseError, LogInUsernameRequest, LogInUsernameResult(..), LogInUsernameResponse, LogInUsernameResponseError, CertaintyRange, PrivacyKind(..), MarketPrivacy, MarketPrivacyEmails, CreateMarketRequest, CreateMarketResult(..), CreateMarketResponse, CreateMarketResponseError, GetMarketRequest, GetMarketResult(..), GetMarketResponse, GetMarketResponseError, UserMarketView, UserMarketViewTrade, UserUserView, StakeRequest, StakeResult(..), StakeResponse, StakeResponseError
+    , userIdDecoder, authTokenDecoder, worldStateDecoder, whoamiRequestDecoder, whoamiResponseDecoder, signOutRequestDecoder, signOutResponseDecoder, registerUsernameRequestDecoder, registerUsernameResponseDecoder, logInUsernameRequestDecoder, logInUsernameResponseDecoder, certaintyRangeDecoder, marketPrivacyDecoder, createMarketRequestDecoder, createMarketResponseDecoder, getMarketRequestDecoder, getMarketResponseDecoder, userMarketViewDecoder, userUserViewDecoder, stakeRequestDecoder, stakeResponseDecoder
+    , toUserIdEncoder, toAuthTokenEncoder, toWorldStateEncoder, toWhoamiRequestEncoder, toWhoamiResponseEncoder, toSignOutRequestEncoder, toSignOutResponseEncoder, toRegisterUsernameRequestEncoder, toRegisterUsernameResponseEncoder, toLogInUsernameRequestEncoder, toLogInUsernameResponseEncoder, toCertaintyRangeEncoder, toMarketPrivacyEncoder, toCreateMarketRequestEncoder, toCreateMarketResponseEncoder, toGetMarketRequestEncoder, toGetMarketResponseEncoder, toUserMarketViewEncoder, toUserUserViewEncoder, toStakeRequestEncoder, toStakeResponseEncoder
     )
 
 {-| ProtoBuf module: `Biatob.Proto.Mvp`
@@ -20,17 +20,17 @@ To run it use [`elm-protocol-buffers`](https://package.elm-lang.org/packages/eri
 
 # Model
 
-@docs Void, Resolution, Kind, UserId, AuthToken, WorldState, WorldStateGenericUserInfo, WorldStateUsernameInfo, WorldStateMarket, WorldStateTrade, WhoamiRequest, WhoamiResponse, SignOutRequest, SignOutResponse, RegisterUsernameRequest, RegisterUsernameResult, RegisterUsernameResponse, RegisterUsernameResponseError, LogInUsernameRequest, LogInUsernameResult, LogInUsernameResponse, LogInUsernameResponseError, CertaintyRange, PrivacyKind, MarketPrivacy, MarketPrivacyEmails, CreateMarketRequest, CreateMarketResult, CreateMarketResponse, CreateMarketResponseError, GetMarketRequest, GetMarketResult, GetMarketResponse, GetMarketResponseError, UserMarketView, UserMarketViewTrade, UserInfo, StakeRequest, StakeResult, StakeResponse, StakeResponseError
+@docs Void, Resolution, Kind, UserId, AuthToken, WorldState, WorldStateGenericUserInfo, WorldStateUsernameInfo, WorldStateMarket, WorldStateTrade, WhoamiRequest, WhoamiResponse, SignOutRequest, SignOutResponse, RegisterUsernameRequest, RegisterUsernameResult, RegisterUsernameResponse, RegisterUsernameResponseError, LogInUsernameRequest, LogInUsernameResult, LogInUsernameResponse, LogInUsernameResponseError, CertaintyRange, PrivacyKind, MarketPrivacy, MarketPrivacyEmails, CreateMarketRequest, CreateMarketResult, CreateMarketResponse, CreateMarketResponseError, GetMarketRequest, GetMarketResult, GetMarketResponse, GetMarketResponseError, UserMarketView, UserMarketViewTrade, UserUserView, StakeRequest, StakeResult, StakeResponse, StakeResponseError
 
 
 # Decoder
 
-@docs userIdDecoder, authTokenDecoder, worldStateDecoder, whoamiRequestDecoder, whoamiResponseDecoder, signOutRequestDecoder, signOutResponseDecoder, registerUsernameRequestDecoder, registerUsernameResponseDecoder, logInUsernameRequestDecoder, logInUsernameResponseDecoder, certaintyRangeDecoder, marketPrivacyDecoder, createMarketRequestDecoder, createMarketResponseDecoder, getMarketRequestDecoder, getMarketResponseDecoder, userMarketViewDecoder, userInfoDecoder, stakeRequestDecoder, stakeResponseDecoder
+@docs userIdDecoder, authTokenDecoder, worldStateDecoder, whoamiRequestDecoder, whoamiResponseDecoder, signOutRequestDecoder, signOutResponseDecoder, registerUsernameRequestDecoder, registerUsernameResponseDecoder, logInUsernameRequestDecoder, logInUsernameResponseDecoder, certaintyRangeDecoder, marketPrivacyDecoder, createMarketRequestDecoder, createMarketResponseDecoder, getMarketRequestDecoder, getMarketResponseDecoder, userMarketViewDecoder, userUserViewDecoder, stakeRequestDecoder, stakeResponseDecoder
 
 
 # Encoder
 
-@docs toUserIdEncoder, toAuthTokenEncoder, toWorldStateEncoder, toWhoamiRequestEncoder, toWhoamiResponseEncoder, toSignOutRequestEncoder, toSignOutResponseEncoder, toRegisterUsernameRequestEncoder, toRegisterUsernameResponseEncoder, toLogInUsernameRequestEncoder, toLogInUsernameResponseEncoder, toCertaintyRangeEncoder, toMarketPrivacyEncoder, toCreateMarketRequestEncoder, toCreateMarketResponseEncoder, toGetMarketRequestEncoder, toGetMarketResponseEncoder, toUserMarketViewEncoder, toUserInfoEncoder, toStakeRequestEncoder, toStakeResponseEncoder
+@docs toUserIdEncoder, toAuthTokenEncoder, toWorldStateEncoder, toWhoamiRequestEncoder, toWhoamiResponseEncoder, toSignOutRequestEncoder, toSignOutResponseEncoder, toRegisterUsernameRequestEncoder, toRegisterUsernameResponseEncoder, toLogInUsernameRequestEncoder, toLogInUsernameResponseEncoder, toCertaintyRangeEncoder, toMarketPrivacyEncoder, toCreateMarketRequestEncoder, toCreateMarketResponseEncoder, toGetMarketRequestEncoder, toGetMarketResponseEncoder, toUserMarketViewEncoder, toUserUserViewEncoder, toStakeRequestEncoder, toStakeResponseEncoder
 
 -}
 
@@ -318,7 +318,7 @@ type alias UserMarketView =
     , createdUnixtime : Int
     , closesUnixtime : Int
     , specialRules : String
-    , creator : Maybe UserInfo
+    , creator : Maybe UserUserView
     , resolution : Resolution
     , yourTrades : List UserMarketViewTrade
     }
@@ -334,10 +334,11 @@ type alias UserMarketViewTrade =
     }
 
 
-{-| `UserInfo` message
+{-| `UserUserView` message
 -}
-type alias UserInfo =
+type alias UserUserView =
     { displayName : String
+    , isSelf : Bool
     }
 
 
@@ -685,7 +686,7 @@ userMarketViewDecoder =
         , Decode.optional 6 Decode.uint32 setCreatedUnixtime
         , Decode.optional 7 Decode.uint32 setClosesUnixtime
         , Decode.optional 8 Decode.string setSpecialRules
-        , Decode.optional 9 (Decode.map Just userInfoDecoder) setCreator
+        , Decode.optional 9 (Decode.map Just userUserViewDecoder) setCreator
         , Decode.optional 10 resolutionDecoder setResolution
         , Decode.repeated 11 userMarketViewTradeDecoder .yourTrades setYourTrades
         ]
@@ -701,12 +702,13 @@ userMarketViewTradeDecoder =
         ]
 
 
-{-| `UserInfo` decoder
+{-| `UserUserView` decoder
 -}
-userInfoDecoder : Decode.Decoder UserInfo
-userInfoDecoder =
-    Decode.message (UserInfo "")
+userUserViewDecoder : Decode.Decoder UserUserView
+userUserViewDecoder =
+    Decode.message (UserUserView "" False)
         [ Decode.optional 1 Decode.string setDisplayName
+        , Decode.optional 2 Decode.bool setIsSelf
         ]
 
 
@@ -1083,7 +1085,7 @@ toUserMarketViewEncoder model =
         , ( 6, Encode.uint32 model.createdUnixtime )
         , ( 7, Encode.uint32 model.closesUnixtime )
         , ( 8, Encode.string model.specialRules )
-        , ( 9, (Maybe.withDefault Encode.none << Maybe.map toUserInfoEncoder) model.creator )
+        , ( 9, (Maybe.withDefault Encode.none << Maybe.map toUserUserViewEncoder) model.creator )
         , ( 10, toResolutionEncoder model.resolution )
         , ( 11, Encode.list toUserMarketViewTradeEncoder model.yourTrades )
         ]
@@ -1099,12 +1101,13 @@ toUserMarketViewTradeEncoder model =
         ]
 
 
-{-| `UserInfo` encoder
+{-| `UserUserView` encoder
 -}
-toUserInfoEncoder : UserInfo -> Encode.Encoder
-toUserInfoEncoder model =
+toUserUserViewEncoder : UserUserView -> Encode.Encoder
+toUserUserViewEncoder model =
     Encode.message
         [ ( 1, Encode.string model.displayName )
+        , ( 2, Encode.bool model.isSelf )
         ]
 
 
@@ -1372,6 +1375,11 @@ setYourTrades value model =
 setDisplayName : a -> { b | displayName : a } -> { b | displayName : a }
 setDisplayName value model =
     { model | displayName = value }
+
+
+setIsSelf : a -> { b | isSelf : a } -> { b | isSelf : a }
+setIsSelf value model =
+    { model | isSelf = value }
 
 
 setStakeResult : a -> { b | stakeResult : a } -> { b | stakeResult : a }

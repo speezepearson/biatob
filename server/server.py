@@ -188,6 +188,7 @@ class FsBackedServicer(Servicer):
         if ws_market is None:
             return mvp_pb2.GetMarketResponse(error=mvp_pb2.GetMarketResponse.Error(no_such_market=mvp_pb2.VOID))
 
+        creator_is_self = (token is not None) and (token.owner == ws_market.creator)
         return mvp_pb2.GetMarketResponse(market=mvp_pb2.UserMarketView(
             question=ws_market.question,
             certainty=ws_market.certainty,
@@ -197,7 +198,10 @@ class FsBackedServicer(Servicer):
             created_unixtime=ws_market.created_unixtime,
             closes_unixtime=ws_market.closes_unixtime,
             special_rules=ws_market.special_rules,
-            creator=mvp_pb2.UserInfo(display_name='TODO'),
+            creator=mvp_pb2.UserUserView(
+                display_name='You' if creator_is_self else ws_market.creator.username if ws_market.creator.WhichOneof('kind')=='username' else 'TODO',
+                is_self=creator_is_self,
+            ),
             resolution=ws_market.resolution,
             your_trades=[
                 mvp_pb2.UserMarketView.Trade(

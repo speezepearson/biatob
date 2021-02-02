@@ -11,7 +11,7 @@ type alias Config msg =
   { setState : State -> msg
   , onSignUp : {email:String, password:String} -> msg
   , onHideTutorial : msg
-  , creator : Pb.UserInfo
+  , creator : Pb.UserUserView
   }
 
 type alias State =
@@ -86,7 +86,7 @@ main : Program () State MsgForDemo
 main =
   Browser.sandbox
     { init = initStateForDemo
-    , view = view {setState=SetState, onSignUp=always Ignore, onHideTutorial=Ignore, creator={displayName="Spencer"}}
+    , view = view {setState=SetState, onSignUp=always Ignore, onHideTutorial=Ignore, creator={displayName="Spencer", isSelf=False}}
     , update = \msg model -> case msg of
         Ignore -> model
         SetState newState -> newState

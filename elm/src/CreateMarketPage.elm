@@ -40,7 +40,6 @@ init flags =
         { now = Time.millisToPosix 0
         , believerStakeField = "0"
         , skepticStakeField = "0"
-        , market = formStateToProto Form.init
         }
     , auth = flags |> JD.decodeValue (JD.field "authTokenPbB64" JD.string)
         |> Result.map (Debug.log "init auth token")
@@ -64,7 +63,7 @@ update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
     SetFormState newState ->
-      ({ model | form = newState , preview = model.preview |> (\p -> { p | market = formStateToProto newState }) }, Cmd.none)
+      ({ model | form = newState }, Cmd.none)
     Create ->
       ( { model | working = True , createError = Nothing }
       , postCreate
@@ -119,7 +118,7 @@ view model =
     , H.hr [] []
     , H.text "Preview:"
     , H.div [HA.style "border" "1px solid black", HA.style "padding" "1em", HA.style "margin" "1em"]
-        [StakeForm.view previewConfig model.preview]
+        [StakeForm.view (previewConfig model) model.preview]
     ]
 
 formConfig : Model -> Form.Config Msg
@@ -128,12 +127,13 @@ formConfig model =
   , disabled = (model.auth == Nothing)
   }
 
-previewConfig : StakeForm.Config Msg
-previewConfig =
+previewConfig : Model -> StakeForm.Config Msg
+previewConfig model =
   { setState = SetMarketPreviewState
   , onStake = (\_ -> TodoIgnore)
   , nevermind = TodoIgnore
   , disableCommit = True
+  , market = (formStateToProto model.form)
   }
 
 formStateToProto : Form.State -> Pb.UserMarketView
@@ -149,7 +149,7 @@ formStateToProto form =
   , createdUnixtime = 0 -- TODO
   , closesUnixtime = 0 + (Form.openForSeconds form |> Maybe.withDefault 0) -- TODO
   , specialRules = form.specialRulesField
-  , creator = Just {displayName = "Spencer"} -- TODO
+  , creator = Just {displayName = "You", isSelf=True}
   , resolution = Pb.ResolutionNoneYet
   , yourTrades = []
   }

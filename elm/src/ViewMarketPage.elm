@@ -13,11 +13,13 @@ import Biatob.Proto.Mvp as Pb
 import Utils
 
 import StakeForm
+import Biatob.Proto.Mvp exposing (StakeResult(..))
 
 port staked : () -> Cmd msg
 
 type alias Model =
-  { market : StakeForm.State
+  { stakeForm : StakeForm.State
+  , market : Pb.UserMarketView
   , marketId : Int
   , auth : Maybe Pb.AuthToken
   , working : Bool
@@ -30,15 +32,18 @@ type Msg
   | StakeFinished (Result Http.Error Pb.StakeResponse)
   | Ignore
 
+creator : Model -> Pb.UserUserView
+creator model = model.market.creator |> Utils.must "all markets must have creators"
+
 init : JD.Value -> (Model, Cmd msg)
 init flags =
-  ( { market = flags |> JD.decodeValue (JD.field "marketPbB64" JD.string)
+  ( { stakeForm = StakeForm.init
+    , market = flags |> JD.decodeValue (JD.field "marketPbB64" JD.string)
         |> Result.map (Debug.log "init market")
         |> Result.mapError (Debug.log "error decoding initial market")
         |> Result.toMaybe
         |> Maybe.andThen (Utils.decodePbB64 Pb.userMarketViewDecoder)
         |> Utils.must "no/invalid market from server"
-        |> StakeForm.init
     , marketId = flags |> JD.decodeValue (JD.field "marketId" JD.int)
         |> Result.map (Debug.log "init auth token")
         |> Result.mapError (Debug.log "error decoding initial auth token")
@@ -66,7 +71,7 @@ update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
     SetMarketState newState ->
-      ({ model | market = newState }, Cmd.none)
+      ({ model | stakeForm = newState }, Cmd.none)
     Stake {bettorIsASkeptic, bettorStakeCents} ->
       ( { model | working = True , stakeError = Nothing }
       , postStake {marketId=model.marketId, bettorIsASkeptic=bettorIsASkeptic, bettorStakeCents=bettorStakeCents}
@@ -95,14 +100,27 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-  StakeForm.view (marketConfig model) model.market
+  H.div []
+    [ StakeForm.view (marketConfig model) model.stakeForm
+    , case model.stakeError of
+        Just e -> H.div [HA.style "color" "red"] [H.text e]
+        Nothing -> H.text ""
+    , if (creator model).isSelf then
+        H.div []
+          [ H.hr [] []
+          , H.text "creator stuff..."
+          ]
+      else
+        H.text ""
+    ]
 
 marketConfig : Model -> StakeForm.Config Msg
 marketConfig model =
   { setState = SetMarketState
   , onStake = Stake
   , nevermind = Ignore
-  , disableCommit = (model.auth == Nothing)
+  , disableCommit = (model.auth == Nothing || (creator model).isSelf)
+  , market = model.market
   }
 
 main : Program JD.Value Model Msg

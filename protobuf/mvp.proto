@@ -165,7 +165,7 @@ message UserMarketView {
   uint32 created_unixtime = 6;
   uint32 closes_unixtime = 7;
   string special_rules = 8;
-  UserInfo creator = 9;
+  UserUserView creator = 9;
   Resolution resolution = 10;
   repeated Trade your_trades = 11;
   message Trade {
@@ -175,8 +175,9 @@ message UserMarketView {
     uint32 transacted_unixtime = 4;
   }
 }
-message UserInfo {
+message UserUserView {
   string display_name = 1;
+  bool is_self = 2;
 }
 
 message StakeRequest {

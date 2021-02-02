@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='protobuf/mvp.proto',
   package='biatob.proto.mvp',
   syntax='proto3',
-  serialized_pb=_b('\n\x12protobuf/mvp.proto\x12\x10\x62iatob.proto.mvp\"$\n\x06UserId\x12\x12\n\x08username\x18\x01 \x01(\tH\x00\x42\x06\n\x04kind\"}\n\tAuthToken\x12\x14\n\x0chmac_of_rest\x18\x01 \x01(\x0c\x12\'\n\x05owner\x18\x02 \x01(\x0b\x32\x18.biatob.proto.mvp.UserId\x12\x17\n\x0fminted_unixtime\x18\x03 \x01(\r\x12\x18\n\x10\x65xpires_unixtime\x18\x04 \x01(\r\"\xe1\x07\n\nWorldState\x12G\n\x0eusername_users\x18\x01 \x03(\x0b\x32/.biatob.proto.mvp.WorldState.UsernameUsersEntry\x12:\n\x07markets\x18\x02 \x03(\x0b\x32).biatob.proto.mvp.WorldState.MarketsEntry\x1a_\n\x12UsernameUsersEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x38\n\x05value\x18\x02 \x01(\x0b\x32).biatob.proto.mvp.WorldState.UsernameInfo:\x02\x38\x01\x1aS\n\x0cMarketsEntry\x12\x0b\n\x03key\x18\x01 \x01(\r\x12\x32\n\x05value\x18\x02 \x01(\x0b\x32#.biatob.proto.mvp.WorldState.Market:\x02\x38\x01\x1a\x42\n\x0fGenericUserInfo\x12/\n\rtrusted_users\x18\x01 \x03(\x0b\x32\x18.biatob.proto.mvp.UserId\x1a\x63\n\x0cUsernameInfo\x12:\n\x04info\x18\x01 \x01(\x0b\x32,.biatob.proto.mvp.WorldState.GenericUserInfo\x12\x17\n\x0fpassword_bcrypt\x18\x02 \x01(\x0c\x1a\xc7\x02\n\x06Market\x12\x10\n\x08question\x18\x01 \x01(\t\x12\x33\n\tcertainty\x18\x02 \x01(\x0b\x32 .biatob.proto.mvp.CertaintyRange\x12\x1b\n\x13maximum_stake_cents\x18\x03 \x01(\r\x12\x18\n\x10\x63reated_unixtime\x18\x04 \x01(\r\x12\x17\n\x0f\x63loses_unixtime\x18\x05 \x01(\r\x12\x15\n\rspecial_rules\x18\x06 \x01(\t\x12)\n\x07\x63reator\x18\x07 \x01(\x0b\x32\x18.biatob.proto.mvp.UserId\x12\x32\n\x06trades\x18\x08 \x03(\x0b\x32\".biatob.proto.mvp.WorldState.Trade\x12\x30\n\nresolution\x18\t \x01(\x0e\x32\x1c.biatob.proto.mvp.Resolution\x1a\xa4\x01\n\x05Trade\x12(\n\x06\x62\x65ttor\x18\x01 \x01(\x0b\x32\x18.biatob.proto.mvp.UserId\x12\x1b\n\x13\x62\x65ttor_is_a_skeptic\x18\x02 \x01(\x08\x12\x1a\n\x12\x62\x65ttor_stake_cents\x18\x03 \x01(\r\x12\x1b\n\x13\x63reator_stake_cents\x18\x04 \x01(\r\x12\x1b\n\x13transacted_unixtime\x18\x05 \x01(\r\"\x0f\n\rWhoamiRequest\";\n\x0eWhoamiResponse\x12)\n\x04\x61uth\x18\x01 \x01(\x0b\x32\x1b.biatob.proto.mvp.AuthToken\"\x10\n\x0eSignOutRequest\"\x11\n\x0fSignOutResponse\"=\n\x17RegisterUsernameRequest\x12\x10\n\x08username\x18\x01 \x01(\t\x12\x10\n\x08password\x18\x02 \x01(\t\"\xef\x01\n\x18RegisterUsernameResponse\x12)\n\x02ok\x18\x01 \x01(\x0b\x32\x1b.biatob.proto.mvp.AuthTokenH\x00\x12\x41\n\x05\x65rror\x18\x02 \x01(\x0b\x32\x30.biatob.proto.mvp.RegisterUsernameResponse.ErrorH\x00\x1aI\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\t\x12.\n\x0eusername_taken\x18\x02 \x01(\x0e\x32\x16.biatob.proto.mvp.VoidB\x1a\n\x18register_username_result\":\n\x14LogInUsernameRequest\x12\x10\n\x08username\x18\x01 \x01(\t\x12\x10\n\x08password\x18\x02 \x01(\t\"\xb7\x01\n\x15LogInUsernameResponse\x12)\n\x02ok\x18\x01 \x01(\x0b\x32\x1b.biatob.proto.mvp.AuthTokenH\x00\x12>\n\x05\x65rror\x18\x02 \x01(\x0b\x32-.biatob.proto.mvp.LogInUsernameResponse.ErrorH\x00\x1a\x19\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\tB\x18\n\x16log_in_username_result\"+\n\x0e\x43\x65rtaintyRange\x12\x0b\n\x03low\x18\x01 \x01(\x02\x12\x0c\n\x04high\x18\x02 \x01(\x02\"\xb4\x01\n\rMarketPrivacy\x12\x37\n\x15\x61ll_trusted_by_author\x18\x01 \x01(\x0e\x32\x16.biatob.proto.mvp.VoidH\x00\x12@\n\x0especific_users\x18\x02 \x01(\x0b\x32&.biatob.proto.mvp.MarketPrivacy.EmailsH\x00\x1a\x18\n\x06\x45mails\x12\x0e\n\x06\x65mails\x18\x01 \x03(\tB\x0e\n\x0cprivacy_kind\"\xd8\x01\n\x13\x43reateMarketRequest\x12\x10\n\x08question\x18\x02 \x01(\t\x12\x30\n\x07privacy\x18\x03 \x01(\x0b\x32\x1f.biatob.proto.mvp.MarketPrivacy\x12\x33\n\tcertainty\x18\x04 \x01(\x0b\x32 .biatob.proto.mvp.CertaintyRange\x12\x1b\n\x13maximum_stake_cents\x18\x05 \x01(\r\x12\x14\n\x0copen_seconds\x18\x06 \x01(\r\x12\x15\n\rspecial_rules\x18\x07 \x01(\t\"\xa1\x01\n\x14\x43reateMarketResponse\x12\x17\n\rnew_market_id\x18\x01 \x01(\rH\x00\x12=\n\x05\x65rror\x18\x02 \x01(\x0b\x32,.biatob.proto.mvp.CreateMarketResponse.ErrorH\x00\x1a\x19\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\tB\x16\n\x14\x63reate_market_result\"%\n\x10GetMarketRequest\x12\x11\n\tmarket_id\x18\x02 \x01(\r\"\xe3\x01\n\x11GetMarketResponse\x12\x32\n\x06market\x18\x01 \x01(\x0b\x32 .biatob.proto.mvp.UserMarketViewH\x00\x12:\n\x05\x65rror\x18\x02 \x01(\x0b\x32).biatob.proto.mvp.GetMarketResponse.ErrorH\x00\x1aI\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\t\x12.\n\x0eno_such_market\x18\x02 \x01(\x0e\x32\x16.biatob.proto.mvp.VoidB\x13\n\x11get_market_result\"\xad\x04\n\x0eUserMarketView\x12\x10\n\x08question\x18\x01 \x01(\t\x12\x33\n\tcertainty\x18\x02 \x01(\x0b\x32 .biatob.proto.mvp.CertaintyRange\x12\x1b\n\x13maximum_stake_cents\x18\x03 \x01(\r\x12*\n\"remaining_stake_cents_vs_believers\x18\x04 \x01(\r\x12)\n!remaining_stake_cents_vs_skeptics\x18\x05 \x01(\r\x12\x18\n\x10\x63reated_unixtime\x18\x06 \x01(\r\x12\x17\n\x0f\x63loses_unixtime\x18\x07 \x01(\r\x12\x15\n\rspecial_rules\x18\x08 \x01(\t\x12+\n\x07\x63reator\x18\t \x01(\x0b\x32\x1a.biatob.proto.mvp.UserInfo\x12\x30\n\nresolution\x18\n \x01(\x0e\x32\x1c.biatob.proto.mvp.Resolution\x12;\n\x0byour_trades\x18\x0b \x03(\x0b\x32&.biatob.proto.mvp.UserMarketView.Trade\x1az\n\x05Trade\x12\x1b\n\x13\x62\x65ttor_is_a_skeptic\x18\x01 \x01(\x08\x12\x1b\n\x13\x63reator_stake_cents\x18\x02 \x01(\r\x12\x1a\n\x12\x62\x65ttor_stake_cents\x18\x03 \x01(\r\x12\x1b\n\x13transacted_unixtime\x18\x04 \x01(\r\" \n\x08UserInfo\x12\x14\n\x0c\x64isplay_name\x18\x01 \x01(\t\"Z\n\x0cStakeRequest\x12\x11\n\tmarket_id\x18\x02 \x01(\r\x12\x1b\n\x13\x62\x65ttor_is_a_skeptic\x18\x03 \x01(\x08\x12\x1a\n\x12\x62\x65ttor_stake_cents\x18\x04 \x01(\r\"\x98\x01\n\rStakeResponse\x12$\n\x02ok\x18\x01 \x01(\x0e\x32\x16.biatob.proto.mvp.VoidH\x00\x12\x36\n\x05\x65rror\x18\x02 \x01(\x0b\x32%.biatob.proto.mvp.StakeResponse.ErrorH\x00\x1a\x19\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\tB\x0e\n\x0cstake_result*\x10\n\x04Void\x12\x08\n\x04VOID\x10\x00*L\n\nResolution\x12\x17\n\x13RESOLUTION_NONE_YET\x10\x00\x12\x12\n\x0eRESOLUTION_YES\x10\x01\x12\x11\n\rRESOLUTION_NO\x10\x02\x62\x06proto3')
+  serialized_pb=_b('\n\x12protobuf/mvp.proto\x12\x10\x62iatob.proto.mvp\"$\n\x06UserId\x12\x12\n\x08username\x18\x01 \x01(\tH\x00\x42\x06\n\x04kind\"}\n\tAuthToken\x12\x14\n\x0chmac_of_rest\x18\x01 \x01(\x0c\x12\'\n\x05owner\x18\x02 \x01(\x0b\x32\x18.biatob.proto.mvp.UserId\x12\x17\n\x0fminted_unixtime\x18\x03 \x01(\r\x12\x18\n\x10\x65xpires_unixtime\x18\x04 \x01(\r\"\xe1\x07\n\nWorldState\x12G\n\x0eusername_users\x18\x01 \x03(\x0b\x32/.biatob.proto.mvp.WorldState.UsernameUsersEntry\x12:\n\x07markets\x18\x02 \x03(\x0b\x32).biatob.proto.mvp.WorldState.MarketsEntry\x1a_\n\x12UsernameUsersEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x38\n\x05value\x18\x02 \x01(\x0b\x32).biatob.proto.mvp.WorldState.UsernameInfo:\x02\x38\x01\x1aS\n\x0cMarketsEntry\x12\x0b\n\x03key\x18\x01 \x01(\r\x12\x32\n\x05value\x18\x02 \x01(\x0b\x32#.biatob.proto.mvp.WorldState.Market:\x02\x38\x01\x1a\x42\n\x0fGenericUserInfo\x12/\n\rtrusted_users\x18\x01 \x03(\x0b\x32\x18.biatob.proto.mvp.UserId\x1a\x63\n\x0cUsernameInfo\x12:\n\x04info\x18\x01 \x01(\x0b\x32,.biatob.proto.mvp.WorldState.GenericUserInfo\x12\x17\n\x0fpassword_bcrypt\x18\x02 \x01(\x0c\x1a\xc7\x02\n\x06Market\x12\x10\n\x08question\x18\x01 \x01(\t\x12\x33\n\tcertainty\x18\x02 \x01(\x0b\x32 .biatob.proto.mvp.CertaintyRange\x12\x1b\n\x13maximum_stake_cents\x18\x03 \x01(\r\x12\x18\n\x10\x63reated_unixtime\x18\x04 \x01(\r\x12\x17\n\x0f\x63loses_unixtime\x18\x05 \x01(\r\x12\x15\n\rspecial_rules\x18\x06 \x01(\t\x12)\n\x07\x63reator\x18\x07 \x01(\x0b\x32\x18.biatob.proto.mvp.UserId\x12\x32\n\x06trades\x18\x08 \x03(\x0b\x32\".biatob.proto.mvp.WorldState.Trade\x12\x30\n\nresolution\x18\t \x01(\x0e\x32\x1c.biatob.proto.mvp.Resolution\x1a\xa4\x01\n\x05Trade\x12(\n\x06\x62\x65ttor\x18\x01 \x01(\x0b\x32\x18.biatob.proto.mvp.UserId\x12\x1b\n\x13\x62\x65ttor_is_a_skeptic\x18\x02 \x01(\x08\x12\x1a\n\x12\x62\x65ttor_stake_cents\x18\x03 \x01(\r\x12\x1b\n\x13\x63reator_stake_cents\x18\x04 \x01(\r\x12\x1b\n\x13transacted_unixtime\x18\x05 \x01(\r\"\x0f\n\rWhoamiRequest\";\n\x0eWhoamiResponse\x12)\n\x04\x61uth\x18\x01 \x01(\x0b\x32\x1b.biatob.proto.mvp.AuthToken\"\x10\n\x0eSignOutRequest\"\x11\n\x0fSignOutResponse\"=\n\x17RegisterUsernameRequest\x12\x10\n\x08username\x18\x01 \x01(\t\x12\x10\n\x08password\x18\x02 \x01(\t\"\xef\x01\n\x18RegisterUsernameResponse\x12)\n\x02ok\x18\x01 \x01(\x0b\x32\x1b.biatob.proto.mvp.AuthTokenH\x00\x12\x41\n\x05\x65rror\x18\x02 \x01(\x0b\x32\x30.biatob.proto.mvp.RegisterUsernameResponse.ErrorH\x00\x1aI\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\t\x12.\n\x0eusername_taken\x18\x02 \x01(\x0e\x32\x16.biatob.proto.mvp.VoidB\x1a\n\x18register_username_result\":\n\x14LogInUsernameRequest\x12\x10\n\x08username\x18\x01 \x01(\t\x12\x10\n\x08password\x18\x02 \x01(\t\"\xb7\x01\n\x15LogInUsernameResponse\x12)\n\x02ok\x18\x01 \x01(\x0b\x32\x1b.biatob.proto.mvp.AuthTokenH\x00\x12>\n\x05\x65rror\x18\x02 \x01(\x0b\x32-.biatob.proto.mvp.LogInUsernameResponse.ErrorH\x00\x1a\x19\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\tB\x18\n\x16log_in_username_result\"+\n\x0e\x43\x65rtaintyRange\x12\x0b\n\x03low\x18\x01 \x01(\x02\x12\x0c\n\x04high\x18\x02 \x01(\x02\"\xb4\x01\n\rMarketPrivacy\x12\x37\n\x15\x61ll_trusted_by_author\x18\x01 \x01(\x0e\x32\x16.biatob.proto.mvp.VoidH\x00\x12@\n\x0especific_users\x18\x02 \x01(\x0b\x32&.biatob.proto.mvp.MarketPrivacy.EmailsH\x00\x1a\x18\n\x06\x45mails\x12\x0e\n\x06\x65mails\x18\x01 \x03(\tB\x0e\n\x0cprivacy_kind\"\xd8\x01\n\x13\x43reateMarketRequest\x12\x10\n\x08question\x18\x02 \x01(\t\x12\x30\n\x07privacy\x18\x03 \x01(\x0b\x32\x1f.biatob.proto.mvp.MarketPrivacy\x12\x33\n\tcertainty\x18\x04 \x01(\x0b\x32 .biatob.proto.mvp.CertaintyRange\x12\x1b\n\x13maximum_stake_cents\x18\x05 \x01(\r\x12\x14\n\x0copen_seconds\x18\x06 \x01(\r\x12\x15\n\rspecial_rules\x18\x07 \x01(\t\"\xa1\x01\n\x14\x43reateMarketResponse\x12\x17\n\rnew_market_id\x18\x01 \x01(\rH\x00\x12=\n\x05\x65rror\x18\x02 \x01(\x0b\x32,.biatob.proto.mvp.CreateMarketResponse.ErrorH\x00\x1a\x19\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\tB\x16\n\x14\x63reate_market_result\"%\n\x10GetMarketRequest\x12\x11\n\tmarket_id\x18\x02 \x01(\r\"\xe3\x01\n\x11GetMarketResponse\x12\x32\n\x06market\x18\x01 \x01(\x0b\x32 .biatob.proto.mvp.UserMarketViewH\x00\x12:\n\x05\x65rror\x18\x02 \x01(\x0b\x32).biatob.proto.mvp.GetMarketResponse.ErrorH\x00\x1aI\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\t\x12.\n\x0eno_such_market\x18\x02 \x01(\x0e\x32\x16.biatob.proto.mvp.VoidB\x13\n\x11get_market_result\"\xb1\x04\n\x0eUserMarketView\x12\x10\n\x08question\x18\x01 \x01(\t\x12\x33\n\tcertainty\x18\x02 \x01(\x0b\x32 .biatob.proto.mvp.CertaintyRange\x12\x1b\n\x13maximum_stake_cents\x18\x03 \x01(\r\x12*\n\"remaining_stake_cents_vs_believers\x18\x04 \x01(\r\x12)\n!remaining_stake_cents_vs_skeptics\x18\x05 \x01(\r\x12\x18\n\x10\x63reated_unixtime\x18\x06 \x01(\r\x12\x17\n\x0f\x63loses_unixtime\x18\x07 \x01(\r\x12\x15\n\rspecial_rules\x18\x08 \x01(\t\x12/\n\x07\x63reator\x18\t \x01(\x0b\x32\x1e.biatob.proto.mvp.UserUserView\x12\x30\n\nresolution\x18\n \x01(\x0e\x32\x1c.biatob.proto.mvp.Resolution\x12;\n\x0byour_trades\x18\x0b \x03(\x0b\x32&.biatob.proto.mvp.UserMarketView.Trade\x1az\n\x05Trade\x12\x1b\n\x13\x62\x65ttor_is_a_skeptic\x18\x01 \x01(\x08\x12\x1b\n\x13\x63reator_stake_cents\x18\x02 \x01(\r\x12\x1a\n\x12\x62\x65ttor_stake_cents\x18\x03 \x01(\r\x12\x1b\n\x13transacted_unixtime\x18\x04 \x01(\r\"5\n\x0cUserUserView\x12\x14\n\x0c\x64isplay_name\x18\x01 \x01(\t\x12\x0f\n\x07is_self\x18\x02 \x01(\x08\"Z\n\x0cStakeRequest\x12\x11\n\tmarket_id\x18\x02 \x01(\r\x12\x1b\n\x13\x62\x65ttor_is_a_skeptic\x18\x03 \x01(\x08\x12\x1a\n\x12\x62\x65ttor_stake_cents\x18\x04 \x01(\r\"\x98\x01\n\rStakeResponse\x12$\n\x02ok\x18\x01 \x01(\x0e\x32\x16.biatob.proto.mvp.VoidH\x00\x12\x36\n\x05\x65rror\x18\x02 \x01(\x0b\x32%.biatob.proto.mvp.StakeResponse.ErrorH\x00\x1a\x19\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\tB\x0e\n\x0cstake_result*\x10\n\x04Void\x12\x08\n\x04VOID\x10\x00*L\n\nResolution\x12\x17\n\x13RESOLUTION_NONE_YET\x10\x00\x12\x12\n\x0eRESOLUTION_YES\x10\x01\x12\x11\n\rRESOLUTION_NO\x10\x02\x62\x06proto3')
 )
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
@@ -37,8 +37,8 @@ _VOID = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=3588,
-  serialized_end=3604,
+  serialized_start=3613,
+  serialized_end=3629,
 )
 _sym_db.RegisterEnumDescriptor(_VOID)
 
@@ -64,8 +64,8 @@ _RESOLUTION = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=3606,
-  serialized_end=3682,
+  serialized_start=3631,
+  serialized_end=3707,
 )
 _sym_db.RegisterEnumDescriptor(_RESOLUTION)
 
@@ -1216,8 +1216,8 @@ _USERMARKETVIEW_TRADE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3183,
-  serialized_end=3305,
+  serialized_start=3187,
+  serialized_end=3309,
 )
 
 _USERMARKETVIEW = _descriptor.Descriptor(
@@ -1317,21 +1317,28 @@ _USERMARKETVIEW = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=2748,
-  serialized_end=3305,
+  serialized_end=3309,
 )
 
 
-_USERINFO = _descriptor.Descriptor(
-  name='UserInfo',
-  full_name='biatob.proto.mvp.UserInfo',
+_USERUSERVIEW = _descriptor.Descriptor(
+  name='UserUserView',
+  full_name='biatob.proto.mvp.UserUserView',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='display_name', full_name='biatob.proto.mvp.UserInfo.display_name', index=0,
+      name='display_name', full_name='biatob.proto.mvp.UserUserView.display_name', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='is_self', full_name='biatob.proto.mvp.UserUserView.is_self', index=1,
+      number=2, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
@@ -1347,8 +1354,8 @@ _USERINFO = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3307,
-  serialized_end=3339,
+  serialized_start=3311,
+  serialized_end=3364,
 )
 
 
@@ -1392,8 +1399,8 @@ _STAKEREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3341,
-  serialized_end=3431,
+  serialized_start=3366,
+  serialized_end=3456,
 )
 
 
@@ -1463,8 +1470,8 @@ _STAKERESPONSE = _descriptor.Descriptor(
       name='stake_result', full_name='biatob.proto.mvp.StakeResponse.stake_result',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=3434,
-  serialized_end=3586,
+  serialized_start=3459,
+  serialized_end=3611,
 )
 
 _USERID.oneofs_by_name['kind'].fields.append(
@@ -1539,7 +1546,7 @@ _GETMARKETRESPONSE.oneofs_by_name['get_market_result'].fields.append(
 _GETMARKETRESPONSE.fields_by_name['error'].containing_oneof = _GETMARKETRESPONSE.oneofs_by_name['get_market_result']
 _USERMARKETVIEW_TRADE.containing_type = _USERMARKETVIEW
 _USERMARKETVIEW.fields_by_name['certainty'].message_type = _CERTAINTYRANGE
-_USERMARKETVIEW.fields_by_name['creator'].message_type = _USERINFO
+_USERMARKETVIEW.fields_by_name['creator'].message_type = _USERUSERVIEW
 _USERMARKETVIEW.fields_by_name['resolution'].enum_type = _RESOLUTION
 _USERMARKETVIEW.fields_by_name['your_trades'].message_type = _USERMARKETVIEW_TRADE
 _STAKERESPONSE_ERROR.containing_type = _STAKERESPONSE
@@ -1569,7 +1576,7 @@ DESCRIPTOR.message_types_by_name['CreateMarketResponse'] = _CREATEMARKETRESPONSE
 DESCRIPTOR.message_types_by_name['GetMarketRequest'] = _GETMARKETREQUEST
 DESCRIPTOR.message_types_by_name['GetMarketResponse'] = _GETMARKETRESPONSE
 DESCRIPTOR.message_types_by_name['UserMarketView'] = _USERMARKETVIEW
-DESCRIPTOR.message_types_by_name['UserInfo'] = _USERINFO
+DESCRIPTOR.message_types_by_name['UserUserView'] = _USERUSERVIEW
 DESCRIPTOR.message_types_by_name['StakeRequest'] = _STAKEREQUEST
 DESCRIPTOR.message_types_by_name['StakeResponse'] = _STAKERESPONSE
 DESCRIPTOR.enum_types_by_name['Void'] = _VOID
@@ -1797,12 +1804,12 @@ UserMarketView = _reflection.GeneratedProtocolMessageType('UserMarketView', (_me
 _sym_db.RegisterMessage(UserMarketView)
 _sym_db.RegisterMessage(UserMarketView.Trade)
 
-UserInfo = _reflection.GeneratedProtocolMessageType('UserInfo', (_message.Message,), dict(
-  DESCRIPTOR = _USERINFO,
+UserUserView = _reflection.GeneratedProtocolMessageType('UserUserView', (_message.Message,), dict(
+  DESCRIPTOR = _USERUSERVIEW,
   __module__ = 'protobuf.mvp_pb2'
-  # @@protoc_insertion_point(class_scope:biatob.proto.mvp.UserInfo)
+  # @@protoc_insertion_point(class_scope:biatob.proto.mvp.UserUserView)
   ))
-_sym_db.RegisterMessage(UserInfo)
+_sym_db.RegisterMessage(UserUserView)
 
 StakeRequest = _reflection.GeneratedProtocolMessageType('StakeRequest', (_message.Message,), dict(
   DESCRIPTOR = _STAKEREQUEST,
