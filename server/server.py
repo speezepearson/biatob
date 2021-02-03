@@ -442,21 +442,26 @@ class WebServer:
         @routes.get('/new')
         async def get_create_market_page(req: web.Request) -> web.Response:
             auth = self._token_glue.get()
-            auth_token_pb_b64 = json.dumps(base64.b64encode(auth.SerializeToString()).decode('ascii') if auth else None)
-            return web.Response(content_type='text/html', body=(Path(__file__).parent/'templates'/'CreateMarketPage.html').read_text().replace(r'{{auth_token_pb_b64}}', auth_token_pb_b64))
+            return web.Response(
+                content_type='text/html',
+                body=(Path(__file__).parent/'templates'/'CreateMarketPage.html').read_text()
+                        .replace(r'{{auth_token_pb_b64}}', pb_b64_json(auth) if auth else 'null'))
 
         @routes.get('/market/{market_id:[0-9]+}')
         async def get_view_market_page(req: web.Request) -> web.Response:
             auth = self._token_glue.get()
             market_id = int(req.match_info['market_id'])
             get_market_resp = self._servicer.GetMarket(auth, mvp_pb2.GetMarketRequest(market_id=market_id))
-            auth_token_pb_b64 = json.dumps(base64.b64encode(auth.SerializeToString()).decode('ascii') if auth else None)
             if get_market_resp.WhichOneof('get_market_result') == 'error':
                 return web.Response(status=404, body=str(get_market_resp.error))
 
             assert get_market_resp.WhichOneof('get_market_result') == 'market'
-            market_pb_b64 = json.dumps(base64.b64encode(get_market_resp.market.SerializeToString()).decode('ascii'))
-            return web.Response(content_type='text/html', body=(Path(__file__).parent/'templates'/'ViewMarketPage.html').read_text().replace(r'{{auth_token_pb_b64}}', auth_token_pb_b64).replace(r'{{market_pb_b64}}', market_pb_b64).replace(r'{{market_id}}', str(market_id)))
+            return web.Response(
+                content_type='text/html',
+                body=(Path(__file__).parent/'templates'/'ViewMarketPage.html').read_text()
+                        .replace(r'{{auth_token_pb_b64}}', pb_b64_json(auth) if auth else 'null')
+                        .replace(r'{{market_pb_b64}}', pb_b64_json(get_market_resp.market))
+                        .replace(r'{{market_id}}', str(market_id)))
 
         @routes.get('/market/{market_id:[0-9]+}/embed.png')
         async def get_market_img_embed(req: web.Request) -> web.Response:
@@ -482,20 +487,24 @@ class WebServer:
         @routes.get('/username/{username:[a-zA-Z0-9_-]+}')
         async def get_username(req: web.Request) -> web.Response:
             auth = self._token_glue.get()
-            auth_token_pb_b64 = json.dumps(base64.b64encode(auth.SerializeToString()).decode('ascii') if auth else None)
             user_id = mvp_pb2.UserId(username=req.match_info['username'])
             get_user_resp = self._servicer.GetUser(auth, mvp_pb2.GetUserRequest(who=user_id))
             if get_user_resp.WhichOneof('get_user_result') == 'error':
                 return web.Response(status=400, body=str(get_user_resp.error))
             assert get_user_resp.WhichOneof('get_user_result') == 'ok'
-            userIdPbB64 = json.dumps(base64.b64encode(user_id.SerializeToString()).decode('ascii'))
-            userViewPbB64 = json.dumps(base64.b64encode(get_user_resp.ok.SerializeToString()).decode('ascii'))
-            return web.Response(content_type='text/html', body=(Path(__file__).parent/'templates'/'ViewUserPage.html').read_text().replace(r'{{auth_token_pb_b64}}', auth_token_pb_b64).replace(r'{{userViewPbB64}}', userViewPbB64).replace(r'{{userIdPbB64}}', userIdPbB64))
+            return web.Response(
+                content_type='text/html',
+                body=(Path(__file__).parent/'templates'/'ViewUserPage.html').read_text()
+                            .replace(r'{{auth_token_pb_b64}}', pb_b64_json(auth) if auth else 'null')
+                            .replace(r'{{userViewPbB64}}', pb_b64_json(get_user_resp.ok))
+                            .replace(r'{{userIdPbB64}}', pb_b64_json(user_id)))
 
 
         self._token_glue.add_to_app(app)
         app.add_routes(routes)
 
+def pb_b64_json(message: Message) -> str:
+    return json.dumps(base64.b64encode(message.SerializeToString()).decode('ascii'))
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--elm-dist", type=Path, default="elm/dist")
