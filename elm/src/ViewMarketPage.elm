@@ -9,6 +9,7 @@ import Json.Decode as JD
 import Protobuf.Encode as PE
 import Protobuf.Decode as PD
 import Time
+import Dict as D exposing (Dict)
 
 import Biatob.Proto.Mvp as Pb
 import Utils
@@ -145,8 +146,8 @@ view model =
     expired = secondsToClose <= 0
     openTime = model.market.createdUnixtime |> (*) 1000 |> Time.millisToPosix
     closeTime = model.market.closesUnixtime |> (*) 1000 |> Time.millisToPosix
-    winCentsIfYes = model.market.yourTrades |> List.map (\t -> if t.bettorIsASkeptic then -t.bettorStakeCents else t.creatorStakeCents) |> List.sum
-    winCentsIfNo = model.market.yourTrades |> List.map (\t -> if t.bettorIsASkeptic then t.creatorStakeCents else -t.bettorStakeCents) |> List.sum
+    winCentsIfYes = model.market.yourTrades |> List.map (\t -> if t.bettorIsASkeptic then -t.bettorStakeCents else t.creatorStakeCents) |> List.sum |> (*) (if creator_.isSelf then -1 else 1)
+    winCentsIfNo = model.market.yourTrades |> List.map (\t -> if t.bettorIsASkeptic then t.creatorStakeCents else -t.bettorStakeCents) |> List.sum |> (*) (if creator_.isSelf then -1 else 1)
   in
   H.div []
     [ H.h2 [] [H.text model.market.question]
@@ -155,10 +156,18 @@ view model =
           H.div []
             [ H.text "This market has resolved YES. "
             , if creator_.isSelf then
-                H.text "[TODO: show the creator how much they owe / are owed]"
+                H.ul [] <| (
+                  model.market.yourTrades
+                  |> Debug.log "trades"
+                  -- TODO: avoid key collisions on Utils.renderUser
+                  |> List.foldl (\t d -> D.update (Utils.renderUser <| Utils.must "trades must have bettors" t.bettor) (Maybe.withDefault 0 >> ((+) (if t.bettorIsASkeptic then t.bettorStakeCents else -t.creatorStakeCents)) >> Just) d) D.empty
+                  |> D.toList
+                  |> List.sortBy (\(b, win) -> b)
+                  |> List.map (\(b, win) -> H.li [] [H.text <| (if win > 0 then b ++ " owes you" else "You owe " ++ b) ++ " " ++ Utils.formatCents win ++ "."])
+                  )
               else if winCentsIfYes /= 0 then
                 H.span []
-                  [ H.text <| if winCentsIfYes > 0 then creator_.displayName ++ " owes you " else ("you owe " ++ creator_.displayName ++ " ")
+                  [ H.text <| if winCentsIfYes > 0 then creator_.displayName ++ " owes you " else ("You owe " ++ creator_.displayName ++ " ")
                   , H.text <| Utils.formatCents <| abs winCentsIfYes
                   , H.text <| "."
                   ]
@@ -169,10 +178,18 @@ view model =
           H.div []
             [ H.text "This market has resolved NO. "
             , if creator_.isSelf then
-                H.text "[TODO: show the creator how much they owe / are owed]"
+                H.ul [] <| (
+                  model.market.yourTrades
+                  |> Debug.log "trades"
+                  -- TODO: avoid key collisions on Utils.renderUser
+                  |> List.foldl (\t d -> D.update (Utils.renderUser <| Utils.must "trades must have bettors" t.bettor) (Maybe.withDefault 0 >> ((+) (if t.bettorIsASkeptic then -t.bettorStakeCents else t.creatorStakeCents)) >> Just) d) D.empty
+                  |> D.toList
+                  |> List.sortBy (\(b, win) -> b)
+                  |> List.map (\(b, win) -> H.li [] [H.text <| (if win > 0 then b ++ " owes you" else "You owe " ++ b) ++ " " ++ Utils.formatCents win ++ "."])
+                  )
               else if winCentsIfNo /= 0 then
                 H.span []
-                  [ H.text <| if winCentsIfYes > 0 then creator_.displayName ++ " owes you " else ("you owe " ++ creator_.displayName ++ " ")
+                  [ H.text <| if winCentsIfYes > 0 then creator_.displayName ++ " owes you " else ("You owe " ++ creator_.displayName ++ " ")
                   , H.text <| Utils.formatCents <| abs winCentsIfYes
                   , H.text <| "."
                   ]
@@ -209,7 +226,7 @@ view model =
             [H.text "Oh dear, something has gone very strange with this market. Please email TODO with this URL to report it!"]
     , case model.market.resolution of
         Pb.ResolutionYes ->
-          H.text "This market has resolved YES."
+          H.text "This market has resolved YES." --  TODO: this is a duplicate
         Pb.ResolutionNo ->
           H.text "This market has resolved NO."
         Pb.ResolutionNoneYet ->

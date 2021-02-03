@@ -54,14 +54,14 @@ message WorldState {
     repeated Trade trades = 8;
     Resolution resolution = 9;
   }
+}
 
-  message Trade {
-    UserId bettor = 1;
-    bool bettor_is_a_skeptic = 2;
-    uint32 bettor_stake_cents = 3;
-    uint32 creator_stake_cents = 4;
-    uint32 transacted_unixtime = 5;
-  }
+message Trade {
+  UserId bettor = 1;
+  bool bettor_is_a_skeptic = 2;
+  uint32 bettor_stake_cents = 3;
+  uint32 creator_stake_cents = 4;
+  uint32 transacted_unixtime = 5;
 }
 
 
@@ -168,12 +168,6 @@ message UserMarketView {
   UserUserView creator = 9;
   Resolution resolution = 10;
   repeated Trade your_trades = 11;
-  message Trade {
-    bool bettor_is_a_skeptic = 1;
-    uint32 creator_stake_cents = 2;
-    uint32 bettor_stake_cents = 3;
-    uint32 transacted_unixtime = 4;
-  }
 }
 message UserUserView {
   string display_name = 1;

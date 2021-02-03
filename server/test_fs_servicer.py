@@ -54,14 +54,14 @@ def test_Stake(fs_servicer, clock):
     bettor_stake_cents=90_00,
   ))
   assert list(fs_servicer._get_state().markets.get(market_id).trades) == [
-    mvp_pb2.WorldState.Trade(
+    mvp_pb2.Trade(
       bettor=mvp_pb2.UserId(username='bettor'),
       bettor_is_a_skeptic=True,
       bettor_stake_cents=20_00,
       creator_stake_cents=80_00,
       transacted_unixtime=clock.now(),
     ),
-    mvp_pb2.WorldState.Trade(
+    mvp_pb2.Trade(
       bettor=mvp_pb2.UserId(username='bettor'),
       bettor_is_a_skeptic=False,
       bettor_stake_cents=90_00,

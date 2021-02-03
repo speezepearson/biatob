@@ -9,6 +9,8 @@ import Base64
 import Protobuf.Decode as PD
 import Protobuf.Encode as PE
 
+import Biatob.Proto.Mvp as Pb
+
 formatCents : Int -> String
 formatCents n =
   if n < 0 then "-" ++ formatCents (-n) else
@@ -25,6 +27,12 @@ must errmsg mx =
   case mx of
     Just x -> x
     Nothing -> Debug.todo errmsg
+
+renderUser : Pb.UserId -> String
+renderUser user =
+  user.kind |> must "all users have kinds" |> (\k -> case k of
+    Pb.KindUsername username -> username
+  )
 
 outlineIfInvalid : Bool -> H.Attribute msg
 outlineIfInvalid isInvalid =

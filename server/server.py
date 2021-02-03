@@ -220,14 +220,15 @@ class FsBackedServicer(Servicer):
             ),
             resolution=ws_market.resolution,
             your_trades=[
-                mvp_pb2.UserMarketView.Trade(
+                mvp_pb2.Trade(
+                    bettor=t.bettor,
                     bettor_is_a_skeptic=t.bettor_is_a_skeptic,
                     creator_stake_cents=t.creator_stake_cents,
                     bettor_stake_cents=t.bettor_stake_cents,
                     transacted_unixtime=t.transacted_unixtime,
                 )
                 for t in ws_market.trades
-                if (token is not None) and (t.bettor == token.owner)
+                if (token is not None) and (t.bettor == token.owner or creator_is_self)
             ],
         ))
 
@@ -256,7 +257,7 @@ class FsBackedServicer(Servicer):
                 existing_stake = sum(t.creator_stake_cents for t in market.trades if not t.bettor_is_a_skeptic)
             if existing_stake + creator_stake_cents > market.maximum_stake_cents:
                 return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall=f'bet would exceed creator tolerance ({existing_stake} existing + {creator_stake_cents} new stake > {market.maximum_stake_cents} max)'))
-            market.trades.append(mvp_pb2.WorldState.Trade(
+            market.trades.append(mvp_pb2.Trade(
                 bettor=token.owner,
                 bettor_is_a_skeptic=request.bettor_is_a_skeptic,
                 creator_stake_cents=creator_stake_cents,

@@ -44,11 +44,8 @@ authName : Maybe Pb.AuthToken -> String
 authName auth =
   auth
   |> Maybe.andThen .owner
-  |> Maybe.andThen .kind
-  |> Maybe.andThen (\k -> case k of
-        Pb.KindUsername u -> Just u
-        )
-  |> Maybe.withDefault "[You!]"
+  |> Maybe.map Utils.renderUser
+  |> Maybe.withDefault "[Creator]"
 
 dummyAuthToken : Pb.AuthToken
 dummyAuthToken =

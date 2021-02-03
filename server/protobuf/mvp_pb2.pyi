@@ -237,7 +237,7 @@ class WorldState(google___protobuf___message___Message):
         def creator(self) -> global___UserId: ...
 
         @property
-        def trades(self) -> google___protobuf___internal___containers___RepeatedCompositeFieldContainer[global___WorldState.Trade]: ...
+        def trades(self) -> google___protobuf___internal___containers___RepeatedCompositeFieldContainer[global___Trade]: ...
 
         def __init__(self,
             *,
@@ -248,7 +248,7 @@ class WorldState(google___protobuf___message___Message):
             closes_unixtime : typing___Optional[builtin___int] = None,
             special_rules : typing___Optional[typing___Text] = None,
             creator : typing___Optional[global___UserId] = None,
-            trades : typing___Optional[typing___Iterable[global___WorldState.Trade]] = None,
+            trades : typing___Optional[typing___Iterable[global___Trade]] = None,
             resolution : typing___Optional[global___Resolution] = None,
             ) -> None: ...
         if sys.version_info >= (3,):
@@ -262,36 +262,6 @@ class WorldState(google___protobuf___message___Message):
         def HasField(self, field_name: typing_extensions___Literal[u"certainty",b"certainty",u"creator",b"creator"]) -> builtin___bool: ...
         def ClearField(self, field_name: typing_extensions___Literal[u"certainty",b"certainty",u"closes_unixtime",b"closes_unixtime",u"created_unixtime",b"created_unixtime",u"creator",b"creator",u"maximum_stake_cents",b"maximum_stake_cents",u"question",b"question",u"resolution",b"resolution",u"special_rules",b"special_rules",u"trades",b"trades"]) -> None: ...
     global___Market = Market
-
-    class Trade(google___protobuf___message___Message):
-        DESCRIPTOR: google___protobuf___descriptor___Descriptor = ...
-        bettor_is_a_skeptic = ... # type: builtin___bool
-        bettor_stake_cents = ... # type: builtin___int
-        creator_stake_cents = ... # type: builtin___int
-        transacted_unixtime = ... # type: builtin___int
-
-        @property
-        def bettor(self) -> global___UserId: ...
-
-        def __init__(self,
-            *,
-            bettor : typing___Optional[global___UserId] = None,
-            bettor_is_a_skeptic : typing___Optional[builtin___bool] = None,
-            bettor_stake_cents : typing___Optional[builtin___int] = None,
-            creator_stake_cents : typing___Optional[builtin___int] = None,
-            transacted_unixtime : typing___Optional[builtin___int] = None,
-            ) -> None: ...
-        if sys.version_info >= (3,):
-            @classmethod
-            def FromString(cls, s: builtin___bytes) -> WorldState.Trade: ...
-        else:
-            @classmethod
-            def FromString(cls, s: typing___Union[builtin___bytes, builtin___buffer, builtin___unicode]) -> WorldState.Trade: ...
-        def MergeFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
-        def CopyFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
-        def HasField(self, field_name: typing_extensions___Literal[u"bettor",b"bettor"]) -> builtin___bool: ...
-        def ClearField(self, field_name: typing_extensions___Literal[u"bettor",b"bettor",u"bettor_is_a_skeptic",b"bettor_is_a_skeptic",u"bettor_stake_cents",b"bettor_stake_cents",u"creator_stake_cents",b"creator_stake_cents",u"transacted_unixtime",b"transacted_unixtime"]) -> None: ...
-    global___Trade = Trade
 
 
     @property
@@ -315,6 +285,36 @@ class WorldState(google___protobuf___message___Message):
     def CopyFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
     def ClearField(self, field_name: typing_extensions___Literal[u"markets",b"markets",u"username_users",b"username_users"]) -> None: ...
 global___WorldState = WorldState
+
+class Trade(google___protobuf___message___Message):
+    DESCRIPTOR: google___protobuf___descriptor___Descriptor = ...
+    bettor_is_a_skeptic = ... # type: builtin___bool
+    bettor_stake_cents = ... # type: builtin___int
+    creator_stake_cents = ... # type: builtin___int
+    transacted_unixtime = ... # type: builtin___int
+
+    @property
+    def bettor(self) -> global___UserId: ...
+
+    def __init__(self,
+        *,
+        bettor : typing___Optional[global___UserId] = None,
+        bettor_is_a_skeptic : typing___Optional[builtin___bool] = None,
+        bettor_stake_cents : typing___Optional[builtin___int] = None,
+        creator_stake_cents : typing___Optional[builtin___int] = None,
+        transacted_unixtime : typing___Optional[builtin___int] = None,
+        ) -> None: ...
+    if sys.version_info >= (3,):
+        @classmethod
+        def FromString(cls, s: builtin___bytes) -> Trade: ...
+    else:
+        @classmethod
+        def FromString(cls, s: typing___Union[builtin___bytes, builtin___buffer, builtin___unicode]) -> Trade: ...
+    def MergeFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
+    def CopyFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
+    def HasField(self, field_name: typing_extensions___Literal[u"bettor",b"bettor"]) -> builtin___bool: ...
+    def ClearField(self, field_name: typing_extensions___Literal[u"bettor",b"bettor",u"bettor_is_a_skeptic",b"bettor_is_a_skeptic",u"bettor_stake_cents",b"bettor_stake_cents",u"creator_stake_cents",b"creator_stake_cents",u"transacted_unixtime",b"transacted_unixtime"]) -> None: ...
+global___Trade = Trade
 
 class WhoamiRequest(google___protobuf___message___Message):
     DESCRIPTOR: google___protobuf___descriptor___Descriptor = ...
@@ -731,31 +731,6 @@ global___GetMarketResponse = GetMarketResponse
 
 class UserMarketView(google___protobuf___message___Message):
     DESCRIPTOR: google___protobuf___descriptor___Descriptor = ...
-    class Trade(google___protobuf___message___Message):
-        DESCRIPTOR: google___protobuf___descriptor___Descriptor = ...
-        bettor_is_a_skeptic = ... # type: builtin___bool
-        creator_stake_cents = ... # type: builtin___int
-        bettor_stake_cents = ... # type: builtin___int
-        transacted_unixtime = ... # type: builtin___int
-
-        def __init__(self,
-            *,
-            bettor_is_a_skeptic : typing___Optional[builtin___bool] = None,
-            creator_stake_cents : typing___Optional[builtin___int] = None,
-            bettor_stake_cents : typing___Optional[builtin___int] = None,
-            transacted_unixtime : typing___Optional[builtin___int] = None,
-            ) -> None: ...
-        if sys.version_info >= (3,):
-            @classmethod
-            def FromString(cls, s: builtin___bytes) -> UserMarketView.Trade: ...
-        else:
-            @classmethod
-            def FromString(cls, s: typing___Union[builtin___bytes, builtin___buffer, builtin___unicode]) -> UserMarketView.Trade: ...
-        def MergeFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
-        def CopyFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
-        def ClearField(self, field_name: typing_extensions___Literal[u"bettor_is_a_skeptic",b"bettor_is_a_skeptic",u"bettor_stake_cents",b"bettor_stake_cents",u"creator_stake_cents",b"creator_stake_cents",u"transacted_unixtime",b"transacted_unixtime"]) -> None: ...
-    global___Trade = Trade
-
     question = ... # type: typing___Text
     maximum_stake_cents = ... # type: builtin___int
     remaining_stake_cents_vs_believers = ... # type: builtin___int
@@ -772,7 +747,7 @@ class UserMarketView(google___protobuf___message___Message):
     def creator(self) -> global___UserUserView: ...
 
     @property
-    def your_trades(self) -> google___protobuf___internal___containers___RepeatedCompositeFieldContainer[global___UserMarketView.Trade]: ...
+    def your_trades(self) -> google___protobuf___internal___containers___RepeatedCompositeFieldContainer[global___Trade]: ...
 
     def __init__(self,
         *,
@@ -786,7 +761,7 @@ class UserMarketView(google___protobuf___message___Message):
         special_rules : typing___Optional[typing___Text] = None,
         creator : typing___Optional[global___UserUserView] = None,
         resolution : typing___Optional[global___Resolution] = None,
-        your_trades : typing___Optional[typing___Iterable[global___UserMarketView.Trade]] = None,
+        your_trades : typing___Optional[typing___Iterable[global___Trade]] = None,
         ) -> None: ...
     if sys.version_info >= (3,):
         @classmethod
