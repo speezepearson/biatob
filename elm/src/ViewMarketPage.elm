@@ -115,13 +115,36 @@ update msg model =
     Ignore ->
       ( model , Cmd.none )
 
+dateStr : Time.Zone -> Time.Posix -> String
+dateStr zone t =
+  String.fromInt (Time.toYear zone t)
+  ++ "-"
+  ++ String.padLeft 2 '0' (String.fromInt (case Time.toMonth zone t of
+      Time.Jan -> 1
+      Time.Feb -> 2
+      Time.Mar -> 3
+      Time.Apr -> 4
+      Time.May -> 5
+      Time.Jun -> 6
+      Time.Jul -> 7
+      Time.Aug -> 8
+      Time.Sep -> 9
+      Time.Oct -> 10
+      Time.Nov -> 11
+      Time.Dec -> 12
+     ))
+  ++ "-"
+  ++ String.padLeft 2 '0' (String.fromInt (Time.toDay zone t))
+
 view : Model -> Html Msg
 view model =
   let
     creator_ = creator model
+    secondsToClose = model.market.closesUnixtime - Time.posixToMillis model.now // 1000
     resolved = (model.market.resolution /= Pb.ResolutionNoneYet)
-    expired = Time.posixToMillis model.now >= model.market.closesUnixtime*1000
-    closeTimeString = model.market.closesUnixtime |> (*) 1000 |> Time.millisToPosix |> (\t -> "[TODO: " ++ Debug.toString t ++ "]")
+    expired = secondsToClose <= 0
+    openTime = model.market.createdUnixtime |> (*) 1000 |> Time.millisToPosix
+    closeTime = model.market.closesUnixtime |> (*) 1000 |> Time.millisToPosix
     winCentsIfYes = model.market.yourTrades |> List.map (\t -> if t.bettorIsASkeptic then -t.bettorStakeCents else t.creatorStakeCents) |> List.sum
     winCentsIfNo = model.market.yourTrades |> List.map (\t -> if t.bettorIsASkeptic then t.creatorStakeCents else -t.bettorStakeCents) |> List.sum
   in
@@ -191,19 +214,33 @@ view model =
           H.text "This market has resolved NO."
         Pb.ResolutionNoneYet ->
           if expired then
-            H.text <| "This market will close at " ++ closeTimeString
+            H.text <| "This market closed on " ++ dateStr Time.utc closeTime ++ ", but hasn't yet resolved."
           else
-            H.text ""
+            let
+              divmod : Int -> Int -> (Int, Int)
+              divmod n div = (n // div , n |> modBy div)
+              t0 = secondsToClose
+              (w,t1) = divmod t0 (60*60*24*7)
+              (d,t2) = divmod t1 (60*60*24)
+              (h,t3) = divmod t2 (60*60)
+              (m,s) = divmod t3 (60)
+            in
+            H.text <| "This market will close on "
+              ++ dateStr Time.utc closeTime ++ " UTC, in "
+              ++ (
+                if w /= 0 then String.fromInt w ++ "w " ++ String.fromInt d ++ "d" else
+                if d /= 0 then String.fromInt d ++ "d " ++ String.fromInt h ++ "h" else
+                if h /= 0 then String.fromInt h ++ "h " ++ String.fromInt m ++ "m" else
+                if m /= 0 then String.fromInt m ++ "m " ++ String.fromInt s ++ "s" else
+                String.fromInt s ++ "s"
+                )
+              ++ "."
         Pb.ResolutionUnrecognized_ _ ->
           H.span [HA.style "color" "red"]
             [H.text "Oh dear, something has gone very strange with this market. Please email TODO with this URL to report it!"]
     , H.hr [] []
     , H.p []
-        [ H.text "On "
-        , model.market.createdUnixtime |> (*) 1000 |> Time.millisToPosix
-            |> (\t -> "[TODO: " ++ Debug.toString t ++ "]")
-            |> H.text
-        , H.text ", "
+        [ H.text <| "On " ++ dateStr Time.utc openTime ++ " UTC, "
         , H.strong [] [H.text (creator model).displayName]
         , H.text " assigned this a "
         , (certainty model).low |> (*) 100 |> round |> String.fromInt |> H.text
@@ -216,7 +253,7 @@ view model =
     , if resolved then
         H.text ""
       else if expired then
-        H.text <| "This market closed at " ++ closeTimeString
+        H.text <| "This market closed on " ++ dateStr Time.utc closeTime ++ " UTC."
       else case model.auth of
         Nothing ->
           H.div []
@@ -228,9 +265,13 @@ view model =
             H.text ""
           else if not creator_.trustsYou then
             let
-              userPagePath = case auth_.owner |> Maybe.andThen .kind of
-                Just (Pb.KindUsername username) -> "/username/" ++ username
-                Nothing -> Debug.todo "unknown kind of user"
+              userPagePath =
+                auth_.owner
+                |> Maybe.andThen .kind
+                |> Maybe.map (\k -> case k of
+                    Pb.KindUsername username -> "/username/" ++ username
+                    )
+                |> Utils.must "auths must have owners; users must have kinds"
               userPageUrl = model.linkToAuthority ++ userPagePath
             in
               H.span []
