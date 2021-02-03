@@ -179,7 +179,7 @@ view model =
                         ++ ". "
                     else
                       H.text ""
-                  ] 
+                  ]
             ]
         Pb.ResolutionUnrecognized_ _ ->
           H.span [HA.style "color" "red"]

@@ -127,15 +127,15 @@ def test_Stake_enforces_trust(fs_servicer):
 
   rando_token = fs_servicer.RegisterUsername(token=None, request=mvp_pb2.RegisterUsernameRequest(username='rando', password='secret')).ok
   assert fs_servicer.Stake(rando_token, stake_req).WhichOneof('stake_result') == 'error'
-  
+
   truster_token = fs_servicer.RegisterUsername(token=None, request=mvp_pb2.RegisterUsernameRequest(username='truster', password='secret')).ok
   fs_servicer.SetTrusted(truster_token, mvp_pb2.SetTrustedRequest(who=creator_token.owner, trusted=True))
   assert fs_servicer.Stake(truster_token, stake_req).WhichOneof('stake_result') == 'error'
-  
+
   trustee_token = fs_servicer.RegisterUsername(token=None, request=mvp_pb2.RegisterUsernameRequest(username='trustee', password='secret')).ok
   fs_servicer.SetTrusted(creator_token, mvp_pb2.SetTrustedRequest(who=trustee_token.owner, trusted=True))
   assert fs_servicer.Stake(trustee_token, stake_req).WhichOneof('stake_result') == 'error'
-  
+
   friend_token = fs_servicer.RegisterUsername(token=None, request=mvp_pb2.RegisterUsernameRequest(username='friend', password='secret')).ok
   fs_servicer.SetTrusted(friend_token, mvp_pb2.SetTrustedRequest(who=creator_token.owner, trusted=True))
   fs_servicer.SetTrusted(creator_token, mvp_pb2.SetTrustedRequest(who=friend_token.owner, trusted=True))

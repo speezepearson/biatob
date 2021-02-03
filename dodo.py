@@ -11,7 +11,7 @@ def task_proto():
     'file_dep': protos,
     'targets':
       ['server/protobuf/__init__.py']
-      + [Path('server/protobuf/')/(p.with_suffix('').name+'_pb2.py')  for p in protos]
+      + [Path('server/protobuf/')/(p.with_suffix('').name+'_pb2.py') for p in protos]
       ,
     'actions': [
       'mkdir -p server/protobuf',
