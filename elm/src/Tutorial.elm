@@ -86,7 +86,7 @@ main : Program () State MsgForDemo
 main =
   Browser.sandbox
     { init = initStateForDemo
-    , view = view {setState=SetState, onSignUp=always Ignore, onHideTutorial=Ignore, creator={displayName="Spencer", isSelf=False}}
+    , view = view {setState=SetState, onSignUp=always Ignore, onHideTutorial=Ignore, creator={displayName="Spencer", isSelf=False, isTrusted=True, trustsYou=True}}
     , update = \msg model -> case msg of
         Ignore -> model
         SetState newState -> newState

@@ -217,9 +217,34 @@ view model =
         H.text ""
       else if expired then
         H.text <| "This market closed at " ++ closeTimeString
-      else
-        StakeForm.view (stakeFormConfig model) model.stakeForm
-
+      else case model.auth of
+        Nothing ->
+          H.div []
+            [ H.text "You must be logged in to participate in this market!"
+            , StakeForm.view (stakeFormConfig model) model.stakeForm
+            ]
+        Just auth_ ->
+          if not creator_.trustsYou then
+            let
+              userPagePath = case auth_.owner |> Maybe.andThen .kind of
+                Just (Pb.KindUsername username) -> "/username/" ++ username
+                Nothing -> Debug.todo "unknown kind of user"
+              userPageUrl = model.linkToAuthority ++ userPagePath
+            in
+              H.span []
+                [ H.text <|
+                    "The market creator doesn't trust you!"
+                    ++ " If you think that they *do* trust you in real life, then send them this link to your user page,"
+                    ++ " and ask them to mark you as trusted: "
+                , H.a [HA.href userPageUrl] [H.text userPageUrl]
+                ]
+          else if not creator_.isTrusted then
+            H.text <|
+              "You don't trust the market creator!"
+              ++ " If you think that you *do* trust them in real life, ask them for a link to their user page,"
+              ++ " and mark them as trusted."
+          else
+            StakeForm.view (stakeFormConfig model) model.stakeForm
     , case model.stakeError of
         Just e -> H.div [HA.style "color" "red"] [H.text e]
         Nothing -> H.text ""

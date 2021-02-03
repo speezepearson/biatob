@@ -178,6 +178,8 @@ message UserMarketView {
 message UserUserView {
   string display_name = 1;
   bool is_self = 2;
+  bool is_trusted = 3;
+  bool trusts_you = 4;
 }
 
 message StakeRequest {
@@ -188,6 +190,33 @@ message StakeRequest {
 message StakeResponse {
   oneof stake_result {
     Void ok = 1;
+    Error error = 2;
+  }
+  message Error {
+    string catchall = 1;
+  }
+}
+
+message SetTrustedRequest {
+  UserId who = 1;
+  bool trusted = 2;
+}
+message SetTrustedResponse {
+  oneof set_trusted_result {
+    Void ok = 1;
+    Error error = 2;
+  }
+  message Error {
+    string catchall = 1;
+  }
+}
+
+message GetUserRequest {
+  UserId who = 1;
+}
+message GetUserResponse {
+  oneof get_user_result {
+    UserUserView ok = 1;
     Error error = 2;
   }
   message Error {

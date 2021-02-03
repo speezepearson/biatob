@@ -74,7 +74,6 @@ postCreate req =
     , body = Http.bytesBody "application/octet-stream" <| PE.encode <| Pb.toCreateMarketRequestEncoder req
     , expect = PD.expectBytes CreateFinished Pb.createMarketResponseDecoder }
 
--- updateModel
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
@@ -119,7 +118,8 @@ update msg model =
       ( { model | preview = newPreview }, Cmd.map PreviewMsg cmd)
 
     Tick t ->
-      ( { model | now = t } , Cmd.none )
+      let (newPreview, cmd) = ViewMarketPage.update (ViewMarketPage.Tick t) model.preview in
+      ( { model | now = t, preview = newPreview } , Cmd.map PreviewMsg cmd )
 
     TodoIgnore ->
       (model, Cmd.none)
@@ -162,7 +162,7 @@ formStateToProto now form =
   , createdUnixtime = Time.posixToMillis now // 1000 -- TODO
   , closesUnixtime = Time.posixToMillis now // 1000 + (Form.openForSeconds form |> Maybe.withDefault 0) -- TODO
   , specialRules = form.specialRulesField
-  , creator = Just {displayName = "[TODO]", isSelf=False}
+  , creator = Just {displayName = "[TODO]", isSelf=False, trustsYou=True, isTrusted=True}
   , resolution = Pb.ResolutionNoneYet
   , yourTrades = []
   }

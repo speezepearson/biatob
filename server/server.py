@@ -38,12 +38,19 @@ def weak_rand_not_in(rng: random.Random, limit: int, xs: Container[int]) -> int:
 def indent(s: str) -> str:
     return '\n'.join('  '+line for line in s.splitlines())
 
-def user_exists(wstate: mvp_pb2.WorldState, user: mvp_pb2.UserId) -> bool:
+def get_generic_user_info(wstate: mvp_pb2.WorldState, user: mvp_pb2.UserId) -> Optional[mvp_pb2.WorldState.GenericUserInfo]:
     if user.WhichOneof('kind') == 'username':
-        return user.username in wstate.username_users
+        username_info = wstate.username_users.get(user.username)
+        return username_info.info if (username_info is not None) else None
     else:
         raise RuntimeError(f'unrecognized UserId kind: {user!r}')
 
+def user_exists(wstate: mvp_pb2.WorldState, user: mvp_pb2.UserId) -> bool:
+    return get_generic_user_info(wstate, user) is not None
+
+def trusts(wstate: mvp_pb2.WorldState, a: mvp_pb2.UserId, b: mvp_pb2.UserId) -> bool:
+    a_info = get_generic_user_info(wstate, a)
+    return (a_info is not None) and b in a_info.trusted_users
 
 class TokenMint:
 
@@ -95,6 +102,8 @@ class Servicer(abc.ABC):
     def CreateMarket(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.CreateMarketRequest) -> mvp_pb2.CreateMarketResponse: pass
     def GetMarket(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.GetMarketRequest) -> mvp_pb2.GetMarketResponse: pass
     def Stake(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.StakeRequest) -> mvp_pb2.StakeResponse: pass
+    def SetTrusted(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.SetTrustedRequest) -> mvp_pb2.SetTrustedResponse: pass
+    def GetUser(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.GetUserRequest) -> mvp_pb2.GetUserResponse: pass
 
 
 def checks_token(f):
@@ -188,7 +197,8 @@ class FsBackedServicer(Servicer):
 
     @checks_token
     def GetMarket(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.GetMarketRequest) -> mvp_pb2.GetMarketResponse:
-        ws_market = self._get_state().markets.get(request.market_id)
+        wstate = self._get_state()
+        ws_market = wstate.markets.get(request.market_id)
         if ws_market is None:
             return mvp_pb2.GetMarketResponse(error=mvp_pb2.GetMarketResponse.Error(no_such_market=mvp_pb2.VOID))
 
@@ -205,6 +215,8 @@ class FsBackedServicer(Servicer):
             creator=mvp_pb2.UserUserView(
                 display_name='You' if creator_is_self else ws_market.creator.username if ws_market.creator.WhichOneof('kind')=='username' else 'TODO',
                 is_self=creator_is_self,
+                is_trusted=trusts(wstate, token.owner, ws_market.creator) if (token is not None) else False,
+                trusts_you=trusts(wstate, ws_market.creator, token.owner) if (token is not None) else False,
             ),
             resolution=ws_market.resolution,
             your_trades=[
@@ -228,6 +240,10 @@ class FsBackedServicer(Servicer):
             market = wstate.markets.get(request.market_id)
             if market is None:
                 return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall='no such market'))
+            if not trusts(wstate, market.creator, token.owner):
+                return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall="creator doesn't trust you"))
+            if not trusts(wstate, token.owner, market.creator):
+                return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall="you don't trust the creator"))
             if request.bettor_is_a_skeptic:
                 lowP = market.certainty.low
                 creator_stake_cents = int(request.bettor_stake_cents * lowP/(1-lowP))
@@ -248,6 +264,39 @@ class FsBackedServicer(Servicer):
                 transacted_unixtime=int(self._clock()),
             ))
             return mvp_pb2.StakeResponse(ok=mvp_pb2.VOID)
+
+    @checks_token
+    def SetTrusted(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.SetTrustedRequest) -> mvp_pb2.SetTrustedResponse:
+        if token is None:
+            return mvp_pb2.SetTrustedResponse(error=mvp_pb2.SetTrustedResponse.Error(catchall='must log in to trust folks'))
+
+        with self._mutate_state() as wstate:
+            requester_info = get_generic_user_info(wstate, token.owner)
+            if requester_info is None:
+                raise RuntimeError('got valid token for nonexistent user!?', token)
+            if not user_exists(wstate, request.who):
+                return mvp_pb2.SetTrustedResponse(error=mvp_pb2.SetTrustedResponse.Error(catchall='no such user'))
+            if request.trusted and request.who not in requester_info.trusted_users:
+                requester_info.trusted_users.append(request.who)
+            elif not request.trusted and request.who in requester_info.trusted_users:
+                requester_info.trusted_users.remove(request.who)
+            return mvp_pb2.SetTrustedResponse(ok=mvp_pb2.VOID)
+
+    @checks_token
+    def GetUser(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.GetUserRequest) -> mvp_pb2.GetUserResponse:
+        wstate = self._get_state()
+        if not user_exists(wstate, request.who):
+            return mvp_pb2.GetUserResponse(error=mvp_pb2.GetUserResponse.Error(catchall='no such user'))
+
+        assert request.who.WhichOneof('kind') == 'username'  # TODO: add oauth
+        display_name = request.who.username
+
+        return mvp_pb2.GetUserResponse(ok=mvp_pb2.UserUserView(
+            display_name=display_name,
+            is_self=(token is not None) and (token.owner == request.who),
+            is_trusted=trusts(wstate, token.owner, request.who) if (token is not None) else False,
+            trusts_you=trusts(wstate, request.who, token.owner) if (token is not None) else False,
+        ))
 
 
 from typing import TypeVar, Type, Tuple, Union, Awaitable
@@ -362,6 +411,12 @@ class ApiServer:
         @routes.post('/api/Stake')
         async def api_Stake(http_req: web.Request) -> web.Response:
             return proto_response(self._servicer.Stake(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.StakeRequest)))
+        @routes.post('/api/SetTrusted')
+        async def api_SetTrusted(http_req: web.Request) -> web.Response:
+            return proto_response(self._servicer.SetTrusted(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.SetTrustedRequest)))
+        @routes.post('/api/GetUser')
+        async def api_GetUser(http_req: web.Request) -> web.Response:
+            return proto_response(self._servicer.GetUser(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.GetUserRequest)))
 
         self._token_glue.add_to_app(app)
         app.add_routes(routes)
@@ -396,32 +451,46 @@ class WebServer:
             market_id = int(req.match_info['market_id'])
             get_market_resp = self._servicer.GetMarket(auth, mvp_pb2.GetMarketRequest(market_id=market_id))
             auth_token_pb_b64 = json.dumps(base64.b64encode(auth.SerializeToString()).decode('ascii') if auth else None)
-            if get_market_resp.WhichOneof('get_market_result') == 'market':
-                market_pb_b64 = json.dumps(base64.b64encode(get_market_resp.market.SerializeToString()).decode('ascii'))
-                return web.Response(content_type='text/html', body=(Path(__file__).parent/'templates'/'ViewMarketPage.html').read_text().replace(r'{{auth_token_pb_b64}}', auth_token_pb_b64).replace(r'{{market_pb_b64}}', market_pb_b64).replace(r'{{market_id}}', str(market_id)))
-            else:
-                return web.Response(status=404)
+            if get_market_resp.WhichOneof('get_market_result') == 'error':
+                return web.Response(status=404, body=str(get_market_resp.error))
+
+            assert get_market_resp.WhichOneof('get_market_result') == 'market'
+            market_pb_b64 = json.dumps(base64.b64encode(get_market_resp.market.SerializeToString()).decode('ascii'))
+            return web.Response(content_type='text/html', body=(Path(__file__).parent/'templates'/'ViewMarketPage.html').read_text().replace(r'{{auth_token_pb_b64}}', auth_token_pb_b64).replace(r'{{market_pb_b64}}', market_pb_b64).replace(r'{{market_id}}', str(market_id)))
 
         @routes.get('/market/{market_id:[0-9]+}/embed.png')
         async def get_market_img_embed(req: web.Request) -> web.Response:
             auth = self._token_glue.get()
             market_id = int(req.match_info['market_id'])
             get_market_resp = self._servicer.GetMarket(auth, mvp_pb2.GetMarketRequest(market_id=market_id))
-            if get_market_resp.WhichOneof('get_market_result') == 'market':
-                def format_cents(n: int) -> str:
-                    if n < 0: return '-' + format_cents(-n)
-                    return f'${n//100}' + ('' if n%100 == 0 else f'.{n%100 :02d}')
-                market = get_market_resp.market
-                text = f'[{format_cents(market.maximum_stake_cents)} @ {round(market.certainty.low*100)}-{round(market.certainty.high*100)}%]'
-                size = IMAGE_EMBED_FONT.getsize(text)
-                img = Image.new('RGBA', size, color=(255,255,255,0))
-                ImageDraw.Draw(img).text((0,0), text, fill=(0,128,0,255), font=IMAGE_EMBED_FONT)
-                buf = io.BytesIO()
-                img.save(buf, format='png')
-                return web.Response(content_type='image/png', body=buf.getvalue())
+            if get_market_resp.WhichOneof('get_market_result') == 'error':
+                return web.Response(status=404, body=str(get_market_resp.error))
 
-            else:
-                return web.Response(status=404)
+            assert get_market_resp.WhichOneof('get_market_result') == 'market'
+            def format_cents(n: int) -> str:
+                if n < 0: return '-' + format_cents(-n)
+                return f'${n//100}' + ('' if n%100 == 0 else f'.{n%100 :02d}')
+            market = get_market_resp.market
+            text = f'[{format_cents(market.maximum_stake_cents)} @ {round(market.certainty.low*100)}-{round(market.certainty.high*100)}%]'
+            size = IMAGE_EMBED_FONT.getsize(text)
+            img = Image.new('RGBA', size, color=(255,255,255,0))
+            ImageDraw.Draw(img).text((0,0), text, fill=(0,128,0,255), font=IMAGE_EMBED_FONT)
+            buf = io.BytesIO()
+            img.save(buf, format='png')
+            return web.Response(content_type='image/png', body=buf.getvalue())
+
+        @routes.get('/username/{username:[a-zA-Z0-9_-]+}')
+        async def get_username(req: web.Request) -> web.Response:
+            auth = self._token_glue.get()
+            auth_token_pb_b64 = json.dumps(base64.b64encode(auth.SerializeToString()).decode('ascii') if auth else None)
+            user_id = mvp_pb2.UserId(username=req.match_info['username'])
+            get_user_resp = self._servicer.GetUser(auth, mvp_pb2.GetUserRequest(who=user_id))
+            if get_user_resp.WhichOneof('get_user_result') == 'error':
+                return web.Response(status=400, body=str(get_user_resp.error))
+            assert get_user_resp.WhichOneof('get_user_result') == 'ok'
+            userIdPbB64 = json.dumps(base64.b64encode(user_id.SerializeToString()).decode('ascii'))
+            userViewPbB64 = json.dumps(base64.b64encode(get_user_resp.ok.SerializeToString()).decode('ascii'))
+            return web.Response(content_type='text/html', body=(Path(__file__).parent/'templates'/'ViewUserPage.html').read_text().replace(r'{{auth_token_pb_b64}}', auth_token_pb_b64).replace(r'{{userViewPbB64}}', userViewPbB64).replace(r'{{userIdPbB64}}', userIdPbB64))
 
 
         self._token_glue.add_to_app(app)

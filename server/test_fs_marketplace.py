@@ -39,14 +39,16 @@ def test_Stake(fs_servicer, clock):
   ).new_market_id
   assert market_id != 0
 
-  token = fs_servicer.RegisterUsername(token=None, request=mvp_pb2.RegisterUsernameRequest(username='bettor', password='secret')).ok
+  bettor_token = fs_servicer.RegisterUsername(token=None, request=mvp_pb2.RegisterUsernameRequest(username='bettor', password='secret')).ok
+  fs_servicer.SetTrusted(bettor_token, mvp_pb2.SetTrustedRequest(who=creator_token.owner, trusted=True))
+  fs_servicer.SetTrusted(creator_token, mvp_pb2.SetTrustedRequest(who=bettor_token.owner, trusted=True))
 
-  fs_servicer.Stake(token=token, request=mvp_pb2.StakeRequest(
+  fs_servicer.Stake(token=bettor_token, request=mvp_pb2.StakeRequest(
     market_id=market_id,
     bettor_is_a_skeptic=True,
     bettor_stake_cents=20_00,
   ))
-  fs_servicer.Stake(token=token, request=mvp_pb2.StakeRequest(
+  fs_servicer.Stake(token=bettor_token, request=mvp_pb2.StakeRequest(
     market_id=market_id,
     bettor_is_a_skeptic=False,
     bettor_stake_cents=90_00,
@@ -79,26 +81,62 @@ def test_Stake_protects_against_overpromising(fs_servicer):
   ).new_market_id
   assert market_id != 0
 
-  token = fs_servicer.RegisterUsername(token=None, request=mvp_pb2.RegisterUsernameRequest(username='potato', password='secret')).ok
+  bettor_token = fs_servicer.RegisterUsername(token=None, request=mvp_pb2.RegisterUsernameRequest(username='bettor', password='secret')).ok
+  fs_servicer.SetTrusted(bettor_token, mvp_pb2.SetTrustedRequest(who=creator_token.owner, trusted=True))
+  fs_servicer.SetTrusted(creator_token, mvp_pb2.SetTrustedRequest(who=bettor_token.owner, trusted=True))
 
-  fs_servicer.Stake(token=token, request=mvp_pb2.StakeRequest(
+  fs_servicer.Stake(token=bettor_token, request=mvp_pb2.StakeRequest(
     market_id=market_id,
     bettor_is_a_skeptic=True,
     bettor_stake_cents=25_00,
   ))
-  fs_servicer.Stake(token=token, request=mvp_pb2.StakeRequest(
+  fs_servicer.Stake(token=bettor_token, request=mvp_pb2.StakeRequest(
     market_id=market_id,
     bettor_is_a_skeptic=False,
     bettor_stake_cents=900_00,
   ))
 
-  assert fs_servicer.Stake(token, mvp_pb2.StakeRequest(
+  assert fs_servicer.Stake(bettor_token, mvp_pb2.StakeRequest(
     market_id=market_id,
     bettor_is_a_skeptic=True,
     bettor_stake_cents=1,
   )).WhichOneof('stake_result') == 'error'
-  assert fs_servicer.Stake(token, mvp_pb2.StakeRequest(
+  assert fs_servicer.Stake(bettor_token, mvp_pb2.StakeRequest(
     market_id=market_id,
     bettor_is_a_skeptic=False,
     bettor_stake_cents=9,
   )).WhichOneof('stake_result') == 'error'
+
+def test_Stake_enforces_trust(fs_servicer):
+  creator_token = fs_servicer.RegisterUsername(token=None, request=mvp_pb2.RegisterUsernameRequest(username='potato', password='secret')).ok
+  market_id = fs_servicer.CreateMarket(
+    token=creator_token,
+    request=mvp_pb2.CreateMarketRequest(
+      maximum_stake_cents=100_00,
+      certainty=mvp_pb2.CertaintyRange(low=0.80, high=0.90),
+    ),
+  ).new_market_id
+  assert market_id != 0
+
+
+  stake_req = mvp_pb2.StakeRequest(
+    market_id=market_id,
+    bettor_is_a_skeptic=False,
+    bettor_stake_cents=10_00,
+  )
+
+  rando_token = fs_servicer.RegisterUsername(token=None, request=mvp_pb2.RegisterUsernameRequest(username='rando', password='secret')).ok
+  assert fs_servicer.Stake(rando_token, stake_req).WhichOneof('stake_result') == 'error'
+  
+  truster_token = fs_servicer.RegisterUsername(token=None, request=mvp_pb2.RegisterUsernameRequest(username='truster', password='secret')).ok
+  fs_servicer.SetTrusted(truster_token, mvp_pb2.SetTrustedRequest(who=creator_token.owner, trusted=True))
+  assert fs_servicer.Stake(truster_token, stake_req).WhichOneof('stake_result') == 'error'
+  
+  trustee_token = fs_servicer.RegisterUsername(token=None, request=mvp_pb2.RegisterUsernameRequest(username='trustee', password='secret')).ok
+  fs_servicer.SetTrusted(creator_token, mvp_pb2.SetTrustedRequest(who=trustee_token.owner, trusted=True))
+  assert fs_servicer.Stake(trustee_token, stake_req).WhichOneof('stake_result') == 'error'
+  
+  friend_token = fs_servicer.RegisterUsername(token=None, request=mvp_pb2.RegisterUsernameRequest(username='friend', password='secret')).ok
+  fs_servicer.SetTrusted(friend_token, mvp_pb2.SetTrustedRequest(who=creator_token.owner, trusted=True))
+  fs_servicer.SetTrusted(creator_token, mvp_pb2.SetTrustedRequest(who=friend_token.owner, trusted=True))
+  assert fs_servicer.Stake(friend_token, stake_req).WhichOneof('stake_result') == 'ok'
