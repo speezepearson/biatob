@@ -224,7 +224,9 @@ view model =
             , StakeForm.view (stakeFormConfig model) model.stakeForm
             ]
         Just auth_ ->
-          if not creator_.trustsYou then
+          if creator_.isSelf then
+            H.text ""
+          else if not creator_.trustsYou then
             let
               userPagePath = case auth_.owner |> Maybe.andThen .kind of
                 Just (Pb.KindUsername username) -> "/username/" ++ username

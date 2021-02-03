@@ -9,6 +9,7 @@ import Json.Decode as JD
 import Protobuf.Encode as PE
 import Protobuf.Decode as PD
 import Time
+import Bytes.Encode
 
 import Biatob.Proto.Mvp as Pb
 import CreateMarketForm as Form
@@ -39,16 +40,39 @@ type Msg
 
 epoch = Time.millisToPosix 0
 
+authName : Maybe Pb.AuthToken -> String
+authName auth =
+  auth
+  |> Maybe.andThen .owner
+  |> Maybe.andThen .kind
+  |> Maybe.andThen (\k -> case k of
+        Pb.KindUsername u -> Just u
+        )
+  |> Maybe.withDefault "[You!]"
+
+dummyAuthToken : Pb.AuthToken
+dummyAuthToken =
+  { owner = Just {kind = Just (Pb.KindUsername "testuser")}
+  , mintedUnixtime=0
+  , expiresUnixtime=99999999999
+  , hmacOfRest=Bytes.Encode.encode <| Bytes.Encode.string ""
+  }
+
 init : JD.Value -> (Model, Cmd Msg)
 init flags =
   let
+    auth : Maybe Pb.AuthToken
+    auth = flags |> JD.decodeValue (JD.field "authTokenPbB64" JD.string)
+        |> Debug.log "init auth token"
+        |> Result.toMaybe
+        |> Maybe.andThen (Utils.decodePbB64 Pb.authTokenDecoder)
     previewModel : ViewMarketPage.Model
     previewModel =
       { stakeForm = StakeForm.init
       , linkToAuthority = "http://example.com"
-      , market = formStateToProto epoch Form.init
+      , market = formStateToProto {now=epoch, form=Form.init, creatorName=authName auth}
       , marketId = 12345
-      , auth = Nothing
+      , auth = Just dummyAuthToken
       , working = False
       , stakeError = Nothing
       , now = epoch
@@ -56,10 +80,7 @@ init flags =
   in
   ( { form = Form.init
     , preview = previewModel
-    , auth = flags |> JD.decodeValue (JD.field "authTokenPbB64" JD.string)
-        |> Debug.log "init auth token"
-        |> Result.toMaybe
-        |> Maybe.andThen (Utils.decodePbB64 Pb.authTokenDecoder)
+    , auth = auth
     , working = False
     , createError = Nothing
     , now = Time.millisToPosix 0
@@ -79,7 +100,7 @@ update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
     SetFormState newState ->
-      ({ model | form = newState , preview = model.preview |> ViewMarketPage.setMarket (formStateToProto model.now newState) }, Cmd.none)
+      ({ model | form = newState , preview = model.preview |> ViewMarketPage.setMarket (formStateToProto {now=model.now, form=newState, creatorName=authName model.auth}) }, Cmd.none)
     Create ->
       ( { model | working = True , createError = Nothing }
       , postCreate
@@ -118,8 +139,13 @@ update msg model =
       ( { model | preview = newPreview }, Cmd.map PreviewMsg cmd)
 
     Tick t ->
-      let (newPreview, cmd) = ViewMarketPage.update (ViewMarketPage.Tick t) model.preview in
-      ( { model | now = t, preview = newPreview } , Cmd.map PreviewMsg cmd )
+      if model.now == epoch then
+        ( { model | now = t } |> update (SetFormState model.form) |> Tuple.first
+        , Cmd.none
+        )
+      else
+        let (newPreview, cmd) = ViewMarketPage.update (ViewMarketPage.Tick t) model.preview in
+        ( { model | now = t, preview = newPreview } , Cmd.map PreviewMsg cmd )
 
     TodoIgnore ->
       (model, Cmd.none)
@@ -149,8 +175,8 @@ formConfig model =
   , disabled = (model.auth == Nothing)
   }
 
-formStateToProto : Time.Posix -> Form.State -> Pb.UserMarketView
-formStateToProto now form =
+formStateToProto : {now:Time.Posix, form:Form.State, creatorName:String} -> Pb.UserMarketView
+formStateToProto {now, form, creatorName} =
   { question = Form.question form
   , certainty = Just
       { low = Form.lowP form |> Maybe.withDefault 0
@@ -162,7 +188,7 @@ formStateToProto now form =
   , createdUnixtime = Time.posixToMillis now // 1000 -- TODO
   , closesUnixtime = Time.posixToMillis now // 1000 + (Form.openForSeconds form |> Maybe.withDefault 0) -- TODO
   , specialRules = form.specialRulesField
-  , creator = Just {displayName = "[TODO]", isSelf=False, trustsYou=True, isTrusted=True}
+  , creator = Just {displayName = creatorName, isSelf=False, trustsYou=True, isTrusted=True}
   , resolution = Pb.ResolutionNoneYet
   , yourTrades = []
   }

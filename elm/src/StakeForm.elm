@@ -50,8 +50,8 @@ view config state =
     winCentsIfNo = config.market.yourTrades |> List.map (\t -> if t.bettorIsASkeptic then t.creatorStakeCents else -t.bettorStakeCents) |> List.sum
     creatorStakeFactorVsBelievers = (1 - certainty.high) / certainty.high
     creatorStakeFactorVsSkeptics = certainty.low / (1 - certainty.low)
-    maxBelieverStakeCents = toFloat config.market.remainingStakeCentsVsBelievers / creatorStakeFactorVsBelievers + 0.001 |> floor
-    maxSkepticStakeCents = toFloat config.market.remainingStakeCentsVsSkeptics / creatorStakeFactorVsSkeptics + 0.001 |> floor
+    maxBelieverStakeCents = if creatorStakeFactorVsBelievers == 0 then 0 else toFloat config.market.remainingStakeCentsVsBelievers / creatorStakeFactorVsBelievers + 0.001 |> floor
+    maxSkepticStakeCents = if creatorStakeFactorVsSkeptics == 0 then 0 else toFloat config.market.remainingStakeCentsVsSkeptics / creatorStakeFactorVsSkeptics + 0.001 |> floor
     (invalidBelieverStake, emphasizeRemainingStakeVsBelievers) = case believerStakeCents state of
       Nothing -> (True, False)
       Just n -> (n < 0 || n > maxBelieverStakeCents, n > maxBelieverStakeCents)
