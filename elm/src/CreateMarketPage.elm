@@ -96,19 +96,22 @@ update msg model =
     SetFormState newState ->
       ({ model | form = newState , preview = model.preview |> ViewMarketPage.setMarket (formStateToProto {now=model.now, form=newState, creatorName=authName model.auth}) }, Cmd.none)
     Create ->
-      ( { model | working = True , createError = Nothing }
-      , postCreate
-          { question = Form.question model.form
-          , privacy = Nothing  -- TODO: delete this field
-          , certainty = Just
-              { low = Utils.must "can't parse lowP" <| Form.lowP model.form
-              , high = Utils.must "can't parse highP" <| Form.highP model.form
+      case (Form.lowP model.form, Form.highP model.form, Form.stakeCents model.form) of
+        (Just lowP, Just highP, Just stakeCents) ->
+          ( { model | working = True , createError = Nothing }
+          , postCreate
+              { question = Form.question model.form
+              , privacy = Nothing  -- TODO: delete this field
+              , certainty = Just { low=lowP, high=highP }
+              , maximumStakeCents = stakeCents
+              , openSeconds = Maybe.withDefault 0 <| Form.openForSeconds model.form
+              , specialRules = model.form.specialRulesField
               }
-          , maximumStakeCents = Utils.must "can't parse stake" <| Form.stakeCents model.form
-          , openSeconds = Maybe.withDefault 0 <| Form.openForSeconds model.form
-          , specialRules = model.form.specialRulesField
-          }
-      )
+          )
+        _ ->
+          ( { model | createError = Just "bad form" } -- TODO: improve error message
+          , Cmd.none
+          )
     CreateFinished (Err e) ->
       ( { model | working = False , createError = Just (Debug.toString e) }
       , Cmd.none

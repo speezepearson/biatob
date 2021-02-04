@@ -62,3 +62,18 @@ mustDecodeFromFlags dec field val =
   JD.decodeValue (JD.field field dec) val
   |> Result.toMaybe
   |> must ("bad " ++ field)
+
+mustMarketCreator : Pb.UserMarketView -> Pb.UserUserView
+mustMarketCreator {creator} = must "all markets must have creators" creator
+
+mustMarketCertainty : Pb.UserMarketView -> Pb.CertaintyRange
+mustMarketCertainty {certainty} = must "all markets must have certainties" certainty
+
+mustTradeBettor : Pb.Trade -> Pb.UserId
+mustTradeBettor {bettor} = must "all trades must have bettors" bettor
+
+mustUserKind : Pb.UserId -> Pb.Kind
+mustUserKind {kind} = must "all UserIds must have kinds" kind
+
+mustTokenOwner : Pb.AuthToken -> Pb.UserId
+mustTokenOwner {owner} = must "all AuthTokens must have owners" owner

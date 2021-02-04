@@ -14,7 +14,7 @@ import Time
 import Html exposing (s)
 
 import Biatob.Proto.Mvp as Pb
-import Utils exposing (must)
+import Utils
 
 epsilon = 0.0000001 -- 🎵 I hate floating-point arithmetic 🎶
 
@@ -40,8 +40,8 @@ skepticStakeCents {skepticStakeField} = String.toFloat skepticStakeField |> Mayb
 view : Config msg -> State -> Html msg
 view config state =
   let
-    creator = config.market.creator |> must "no creator given"
-    certainty = config.market.certainty |> must "no certainty given"
+    creator = Utils.mustMarketCreator config.market
+    certainty = Utils.mustMarketCertainty config.market
 
     isClosed = Time.posixToMillis state.now > 1000*config.market.closesUnixtime
     disableInputs = isClosed || (config.market.resolution /= Pb.ResolutionNoneYet)

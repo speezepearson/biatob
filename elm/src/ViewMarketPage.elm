@@ -40,12 +40,6 @@ type Msg
   | Tick Time.Posix
   | Ignore
 
-creator : Model -> Pb.UserUserView
-creator model = model.market.creator |> Utils.must "all markets must have creators"
-
-certainty : Model -> Pb.CertaintyRange
-certainty model = model.market.certainty |> Utils.must "all markets must have certainties"
-
 setMarket : Pb.UserMarketView -> Model -> Model
 setMarket market model = { model | market = market }
 
@@ -128,14 +122,15 @@ dateStr zone t =
 view : Model -> Html Msg
 view model =
   let
-    creator_ = creator model
+    creator = Utils.mustMarketCreator model.market
+    certainty = Utils.mustMarketCertainty model.market
     secondsToClose = model.market.closesUnixtime - Time.posixToMillis model.now // 1000
     resolved = (model.market.resolution /= Pb.ResolutionNoneYet)
     expired = secondsToClose <= 0
     openTime = model.market.createdUnixtime |> (*) 1000 |> Time.millisToPosix
     closeTime = model.market.closesUnixtime |> (*) 1000 |> Time.millisToPosix
-    winCentsIfYes = model.market.yourTrades |> List.map (\t -> if t.bettorIsASkeptic then -t.bettorStakeCents else t.creatorStakeCents) |> List.sum |> (*) (if creator_.isSelf then -1 else 1)
-    winCentsIfNo = model.market.yourTrades |> List.map (\t -> if t.bettorIsASkeptic then t.creatorStakeCents else -t.bettorStakeCents) |> List.sum |> (*) (if creator_.isSelf then -1 else 1)
+    winCentsIfYes = model.market.yourTrades |> List.map (\t -> if t.bettorIsASkeptic then -t.bettorStakeCents else t.creatorStakeCents) |> List.sum |> (*) (if creator.isSelf then -1 else 1)
+    winCentsIfNo = model.market.yourTrades |> List.map (\t -> if t.bettorIsASkeptic then t.creatorStakeCents else -t.bettorStakeCents) |> List.sum |> (*) (if creator.isSelf then -1 else 1)
   in
   H.div []
     [ H.h2 [] [H.text model.market.question]
@@ -143,19 +138,19 @@ view model =
         Pb.ResolutionYes ->
           H.div []
             [ H.text "This market has resolved YES. "
-            , if creator_.isSelf then
+            , if creator.isSelf then
                 H.ul [] <| (
                   model.market.yourTrades
                   |> Debug.log "trades"
                   -- TODO: avoid key collisions on Utils.renderUser
-                  |> List.foldl (\t d -> D.update (Utils.renderUser <| Utils.must "trades must have bettors" t.bettor) (Maybe.withDefault 0 >> ((+) (if t.bettorIsASkeptic then t.bettorStakeCents else -t.creatorStakeCents)) >> Just) d) D.empty
+                  |> List.foldl (\t d -> D.update (Utils.renderUser <| Utils.mustTradeBettor t) (Maybe.withDefault 0 >> ((+) (if t.bettorIsASkeptic then t.bettorStakeCents else -t.creatorStakeCents)) >> Just) d) D.empty
                   |> D.toList
                   |> List.sortBy (\(b, win) -> b)
                   |> List.map (\(b, win) -> H.li [] [H.text <| (if win > 0 then b ++ " owes you" else "You owe " ++ b) ++ " " ++ Utils.formatCents win ++ "."])
                   )
               else if winCentsIfYes /= 0 then
                 H.span []
-                  [ H.text <| if winCentsIfYes > 0 then creator_.displayName ++ " owes you " else ("You owe " ++ creator_.displayName ++ " ")
+                  [ H.text <| if winCentsIfYes > 0 then creator.displayName ++ " owes you " else ("You owe " ++ creator.displayName ++ " ")
                   , H.text <| Utils.formatCents <| abs winCentsIfYes
                   , H.text <| "."
                   ]
@@ -165,19 +160,19 @@ view model =
         Pb.ResolutionNo ->
           H.div []
             [ H.text "This market has resolved NO. "
-            , if creator_.isSelf then
+            , if creator.isSelf then
                 H.ul [] <| (
                   model.market.yourTrades
                   |> Debug.log "trades"
                   -- TODO: avoid key collisions on Utils.renderUser
-                  |> List.foldl (\t d -> D.update (Utils.renderUser <| Utils.must "trades must have bettors" t.bettor) (Maybe.withDefault 0 >> ((+) (if t.bettorIsASkeptic then -t.bettorStakeCents else t.creatorStakeCents)) >> Just) d) D.empty
+                  |> List.foldl (\t d -> D.update (Utils.renderUser <| Utils.mustTradeBettor t) (Maybe.withDefault 0 >> ((+) (if t.bettorIsASkeptic then -t.bettorStakeCents else t.creatorStakeCents)) >> Just) d) D.empty
                   |> D.toList
                   |> List.sortBy (\(b, win) -> b)
                   |> List.map (\(b, win) -> H.li [] [H.text <| (if win > 0 then b ++ " owes you" else "You owe " ++ b) ++ " " ++ Utils.formatCents win ++ "."])
                   )
               else if winCentsIfNo /= 0 then
                 H.span []
-                  [ H.text <| if winCentsIfYes > 0 then creator_.displayName ++ " owes you " else ("You owe " ++ creator_.displayName ++ " ")
+                  [ H.text <| if winCentsIfYes > 0 then creator.displayName ++ " owes you " else ("You owe " ++ creator.displayName ++ " ")
                   , H.text <| Utils.formatCents <| abs winCentsIfYes
                   , H.text <| "."
                   ]
@@ -187,14 +182,14 @@ view model =
         Pb.ResolutionNoneYet ->
           H.div []
             [ H.text <| "This market " ++ (if expired then "has closed, but " else "") ++ "hasn't resolved yet. "
-            , if creator_.isSelf then
+            , if creator.isSelf then
                 H.text "[TODO: show the creator how much they will owe / be owed]"
               else
                 H.span []
                   [ if winCentsIfYes /= 0 then
                       H.text <|
                         "If it resolves Yes, "
-                        ++ (if winCentsIfYes > 0 then creator_.displayName ++ " will owe you " else "you will owe " ++ creator_.displayName ++ " ")
+                        ++ (if winCentsIfYes > 0 then creator.displayName ++ " will owe you " else "you will owe " ++ creator.displayName ++ " ")
                         ++ Utils.formatCents (abs winCentsIfYes)
                         ++ ". "
                     else
@@ -202,7 +197,7 @@ view model =
                   , if winCentsIfNo /= 0 then
                       H.text <|
                         "If it resolves No, "
-                        ++ (if winCentsIfNo > 0 then creator_.displayName ++ " will owe you " else "you will owe " ++ creator_.displayName ++ " ")
+                        ++ (if winCentsIfNo > 0 then creator.displayName ++ " will owe you " else "you will owe " ++ creator.displayName ++ " ")
                         ++ Utils.formatCents (abs winCentsIfNo)
                         ++ ". "
                     else
@@ -246,11 +241,11 @@ view model =
     , H.hr [] []
     , H.p []
         [ H.text <| "On " ++ dateStr Time.utc openTime ++ " UTC, "
-        , H.strong [] [H.text (creator model).displayName]
+        , H.strong [] [H.text creator.displayName]
         , H.text " assigned this a "
-        , (certainty model).low |> (*) 100 |> round |> String.fromInt |> H.text
+        , certainty.low |> (*) 100 |> round |> String.fromInt |> H.text
         , H.text "-"
-        , (certainty model).high |> (*) 100 |> round |> String.fromInt |> H.text
+        , certainty.high |> (*) 100 |> round |> String.fromInt |> H.text
         , H.text "% chance, and staked "
         , model.market.maximumStakeCents |> Utils.formatCents |> H.text
         , H.text "."
@@ -266,17 +261,17 @@ view model =
             , StakeForm.view (stakeFormConfig model) model.stakeForm
             ]
         Just auth_ ->
-          if creator_.isSelf then
+          if creator.isSelf then
             H.text ""
-          else if not creator_.trustsYou then
+          else if not creator.trustsYou then
             let
               userPagePath =
-                auth_.owner
-                |> Maybe.andThen .kind
-                |> Maybe.map (\k -> case k of
+                auth_
+                |> Utils.mustTokenOwner
+                |> Utils.mustUserKind
+                |> (\k -> case k of
                     Pb.KindUsername username -> "/username/" ++ username
                     )
-                |> Utils.must "auths must have owners; users must have kinds"
               userPageUrl = model.linkToAuthority ++ userPagePath
             in
               H.span []
@@ -286,7 +281,7 @@ view model =
                     ++ " and ask them to mark you as trusted: "
                 , H.a [HA.href userPageUrl] [H.text userPageUrl]
                 ]
-          else if not creator_.isTrusted then
+          else if not creator.isTrusted then
             H.text <|
               "You don't trust the market creator!"
               ++ " If you think that you *do* trust them in real life, ask them for a link to their user page,"
@@ -296,7 +291,7 @@ view model =
     , case model.stakeError of
         Just e -> H.div [HA.style "color" "red"] [H.text e]
         Nothing -> H.text ""
-    , if (creator model).isSelf then
+    , if creator.isSelf then
         let
           linkUrl = model.linkToAuthority ++ "/market/" ++ String.fromInt model.marketId
           imgUrl = model.linkToAuthority ++ "/market/" ++ String.fromInt model.marketId ++ "/embed.png"
@@ -309,9 +304,9 @@ view model =
             "["
             ++ Utils.formatCents (model.market.maximumStakeCents // 100 * 100)
             ++ " @ "
-            ++ String.fromInt (round <| (certainty model).low * 100)
+            ++ String.fromInt (round <| certainty.low * 100)
             ++ "-"
-            ++ String.fromInt (round <| (certainty model).high * 100)
+            ++ String.fromInt (round <| certainty.high * 100)
             ++ "%]"
           linkCode =
             "<a style=\"" ++ (linkStyles |> List.map (\(k,v) -> k++":"++v) |> String.join ";") ++ "\" href=\"" ++ linkUrl ++ "\">" ++ linkText ++ "</a>"
@@ -348,7 +343,7 @@ stakeFormConfig model =
   { setState = SetStakeFormState
   , onStake = Stake
   , nevermind = Ignore
-  , disableCommit = (model.auth == Nothing || (creator model).isSelf)
+  , disableCommit = (model.auth == Nothing || (Utils.mustMarketCreator model.market).isSelf)
   , market = model.market
   }
 
