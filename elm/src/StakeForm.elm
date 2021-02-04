@@ -44,7 +44,7 @@ view config state =
     certainty = Utils.mustMarketCertainty config.market
 
     isClosed = Time.posixToMillis state.now > 1000*config.market.closesUnixtime
-    disableInputs = isClosed || (config.market.resolution /= Pb.ResolutionNoneYet)
+    disableInputs = isClosed || Utils.resolutionIsTerminal (Utils.currentResolution config.market)
     disableCommit = disableInputs || config.disableCommit
     winCentsIfYes = config.market.yourTrades |> List.map (\t -> if t.bettorIsASkeptic then -t.bettorStakeCents else t.creatorStakeCents) |> List.sum
     winCentsIfNo = config.market.yourTrades |> List.map (\t -> if t.bettorIsASkeptic then t.creatorStakeCents else -t.bettorStakeCents) |> List.sum
@@ -135,7 +135,7 @@ main =
       , closesUnixtime = 86400
       , specialRules = "If the CDC doesn't publish statistics on this, I'll fall back to some other official organization, like the WHO; failing that, I'll look for journal papers on U.S. cases, and go with a consensus if I find one; failing that, the market is unresolvable."
       , creator = Just {displayName = "Spencer", isSelf=False, trustsYou=True, isTrusted=True}
-      , resolution = Pb.ResolutionNoneYet
+      , resolutions = []
       , yourTrades = []
       }
   in

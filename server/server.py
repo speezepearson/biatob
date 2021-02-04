@@ -191,7 +191,7 @@ class FsBackedServicer(Servicer):
                 special_rules=request.special_rules,
                 creator=token.owner,
                 trades=[],
-                resolution=mvp_pb2.RESOLUTION_NONE_YET,
+                resolutions=[],
             )
             wstate.markets[mid].MergeFrom(market)
             return mvp_pb2.CreateMarketResponse(new_market_id=mid)
@@ -219,7 +219,7 @@ class FsBackedServicer(Servicer):
                 is_trusted=trusts(wstate, token.owner, ws_market.creator) if (token is not None) else False,
                 trusts_you=trusts(wstate, ws_market.creator, token.owner) if (token is not None) else False,
             ),
-            resolution=ws_market.resolution,
+            resolutions=ws_market.resolutions,
             your_trades=[
                 mvp_pb2.Trade(
                     bettor=t.bettor,
@@ -278,7 +278,7 @@ class FsBackedServicer(Servicer):
                 return mvp_pb2.ResolveResponse(error=mvp_pb2.ResolveResponse.Error(catchall='no such market'))
             if token.owner != market.creator:
                 return mvp_pb2.ResolveResponse(error=mvp_pb2.ResolveResponse.Error(catchall="you are not the creator"))
-            market.resolution = request.resolution
+            market.resolutions.append(mvp_pb2.ResolutionEvent(unixtime=int(self._clock()), resolution=request.resolution, notes=request.notes))
             return mvp_pb2.ResolveResponse(ok=mvp_pb2.VOID)
 
     @checks_token

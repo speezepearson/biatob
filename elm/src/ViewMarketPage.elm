@@ -30,12 +30,14 @@ type alias Model =
   , working : Bool
   , stakeError : Maybe String
   , now : Time.Posix
+  , resolutionNotes : String
   }
 
 type Msg
   = SetStakeFormState StakeForm.State
   | Stake {bettorIsASkeptic:Bool, bettorStakeCents:Int}
   | StakeFinished (Result Http.Error Pb.StakeResponse)
+  | SetResolutionNotes String
   | Resolve Pb.Resolution
   | ResolveFinished (Result Http.Error Pb.ResolveResponse)
   | Copy String
@@ -55,6 +57,7 @@ init flags =
     , working = False
     , stakeError = Nothing
     , now = Time.millisToPosix 0
+    , resolutionNotes = ""
     }
   , Task.perform Tick Time.now
   )
@@ -100,9 +103,11 @@ update msg model =
           ( { model | working = False , stakeError = Just "Invalid server response (neither Ok nor Error in protobuf)" }
           , Cmd.none
           )
+    SetResolutionNotes s ->
+      ( { model | resolutionNotes = s } , Cmd.none )
     Resolve resolution ->
       ( { model | working = True , stakeError = Nothing }
-      , postResolve {marketId=model.marketId, resolution=resolution}
+      , postResolve {marketId=model.marketId, resolution=resolution, notes = ""}
       )
     ResolveFinished (Err e) ->
       ( { model | working = False , stakeError = Just (Debug.toString e) }
@@ -132,8 +137,8 @@ update msg model =
 viewStakeFormOrExcuse : Model -> Html Msg
 viewStakeFormOrExcuse model =
   let creator = Utils.mustMarketCreator model.market in
-  if model.market.resolution /= Pb.ResolutionNoneYet then
-    H.text ""
+  if Utils.resolutionIsTerminal (Utils.currentResolution model.market) then
+    H.text "This market has resolved, so cannot be bet in."
   else if Utils.secondsToClose model.now model.market <= 0 then
     H.text <| "This market closed on " ++ Utils.dateStr Time.utc (Utils.marketClosesTime model.market) ++ " (UTC)."
   else case model.auth of
@@ -216,7 +221,7 @@ view model =
   in
   H.div []
     [ H.h2 [] [H.text model.market.question]
-    , case model.market.resolution of
+    , case Utils.currentResolution model.market of
         Pb.ResolutionYes ->
           viewDefiniteResolution model.market True
         Pb.ResolutionNo ->

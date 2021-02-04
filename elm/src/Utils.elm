@@ -78,6 +78,20 @@ mustUserKind {kind} = must "all UserIds must have kinds" kind
 mustTokenOwner : Pb.AuthToken -> Pb.UserId
 mustTokenOwner {owner} = must "all AuthTokens must have owners" owner
 
+currentResolution : Pb.UserMarketView -> Pb.Resolution
+currentResolution market =
+  List.head (List.reverse market.resolutions)
+  |> Maybe.map .resolution
+  |> Maybe.withDefault Pb.ResolutionNoneYet
+
+resolutionIsTerminal : Pb.Resolution -> Bool
+resolutionIsTerminal res =
+  case res of
+    Pb.ResolutionYes -> True
+    Pb.ResolutionNo -> True
+    Pb.ResolutionNoneYet -> False
+    Pb.ResolutionUnrecognized_ _ -> Debug.todo "unrecognized resolution"
+
 dateStr : Time.Zone -> Time.Posix -> String
 dateStr zone t =
   String.fromInt (Time.toYear zone t)

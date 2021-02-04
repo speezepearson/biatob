@@ -228,7 +228,6 @@ class WorldState(google___protobuf___message___Message):
         created_unixtime = ... # type: builtin___int
         closes_unixtime = ... # type: builtin___int
         special_rules = ... # type: typing___Text
-        resolution = ... # type: global___Resolution
 
         @property
         def certainty(self) -> global___CertaintyRange: ...
@@ -238,6 +237,9 @@ class WorldState(google___protobuf___message___Message):
 
         @property
         def trades(self) -> google___protobuf___internal___containers___RepeatedCompositeFieldContainer[global___Trade]: ...
+
+        @property
+        def resolutions(self) -> google___protobuf___internal___containers___RepeatedCompositeFieldContainer[global___ResolutionEvent]: ...
 
         def __init__(self,
             *,
@@ -249,7 +251,7 @@ class WorldState(google___protobuf___message___Message):
             special_rules : typing___Optional[typing___Text] = None,
             creator : typing___Optional[global___UserId] = None,
             trades : typing___Optional[typing___Iterable[global___Trade]] = None,
-            resolution : typing___Optional[global___Resolution] = None,
+            resolutions : typing___Optional[typing___Iterable[global___ResolutionEvent]] = None,
             ) -> None: ...
         if sys.version_info >= (3,):
             @classmethod
@@ -260,7 +262,7 @@ class WorldState(google___protobuf___message___Message):
         def MergeFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
         def CopyFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
         def HasField(self, field_name: typing_extensions___Literal[u"certainty",b"certainty",u"creator",b"creator"]) -> builtin___bool: ...
-        def ClearField(self, field_name: typing_extensions___Literal[u"certainty",b"certainty",u"closes_unixtime",b"closes_unixtime",u"created_unixtime",b"created_unixtime",u"creator",b"creator",u"maximum_stake_cents",b"maximum_stake_cents",u"question",b"question",u"resolution",b"resolution",u"special_rules",b"special_rules",u"trades",b"trades"]) -> None: ...
+        def ClearField(self, field_name: typing_extensions___Literal[u"certainty",b"certainty",u"closes_unixtime",b"closes_unixtime",u"created_unixtime",b"created_unixtime",u"creator",b"creator",u"maximum_stake_cents",b"maximum_stake_cents",u"question",b"question",u"resolutions",b"resolutions",u"special_rules",b"special_rules",u"trades",b"trades"]) -> None: ...
     global___Market = Market
 
 
@@ -285,6 +287,29 @@ class WorldState(google___protobuf___message___Message):
     def CopyFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
     def ClearField(self, field_name: typing_extensions___Literal[u"markets",b"markets",u"username_users",b"username_users"]) -> None: ...
 global___WorldState = WorldState
+
+class ResolutionEvent(google___protobuf___message___Message):
+    DESCRIPTOR: google___protobuf___descriptor___Descriptor = ...
+    unixtime = ... # type: builtin___int
+    resolution = ... # type: global___Resolution
+    notes = ... # type: typing___Text
+
+    def __init__(self,
+        *,
+        unixtime : typing___Optional[builtin___int] = None,
+        resolution : typing___Optional[global___Resolution] = None,
+        notes : typing___Optional[typing___Text] = None,
+        ) -> None: ...
+    if sys.version_info >= (3,):
+        @classmethod
+        def FromString(cls, s: builtin___bytes) -> ResolutionEvent: ...
+    else:
+        @classmethod
+        def FromString(cls, s: typing___Union[builtin___bytes, builtin___buffer, builtin___unicode]) -> ResolutionEvent: ...
+    def MergeFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
+    def CopyFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
+    def ClearField(self, field_name: typing_extensions___Literal[u"notes",b"notes",u"resolution",b"resolution",u"unixtime",b"unixtime"]) -> None: ...
+global___ResolutionEvent = ResolutionEvent
 
 class Trade(google___protobuf___message___Message):
     DESCRIPTOR: google___protobuf___descriptor___Descriptor = ...
@@ -738,13 +763,15 @@ class UserMarketView(google___protobuf___message___Message):
     created_unixtime = ... # type: builtin___int
     closes_unixtime = ... # type: builtin___int
     special_rules = ... # type: typing___Text
-    resolution = ... # type: global___Resolution
 
     @property
     def certainty(self) -> global___CertaintyRange: ...
 
     @property
     def creator(self) -> global___UserUserView: ...
+
+    @property
+    def resolutions(self) -> google___protobuf___internal___containers___RepeatedCompositeFieldContainer[global___ResolutionEvent]: ...
 
     @property
     def your_trades(self) -> google___protobuf___internal___containers___RepeatedCompositeFieldContainer[global___Trade]: ...
@@ -760,7 +787,7 @@ class UserMarketView(google___protobuf___message___Message):
         closes_unixtime : typing___Optional[builtin___int] = None,
         special_rules : typing___Optional[typing___Text] = None,
         creator : typing___Optional[global___UserUserView] = None,
-        resolution : typing___Optional[global___Resolution] = None,
+        resolutions : typing___Optional[typing___Iterable[global___ResolutionEvent]] = None,
         your_trades : typing___Optional[typing___Iterable[global___Trade]] = None,
         ) -> None: ...
     if sys.version_info >= (3,):
@@ -772,7 +799,7 @@ class UserMarketView(google___protobuf___message___Message):
     def MergeFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
     def CopyFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
     def HasField(self, field_name: typing_extensions___Literal[u"certainty",b"certainty",u"creator",b"creator"]) -> builtin___bool: ...
-    def ClearField(self, field_name: typing_extensions___Literal[u"certainty",b"certainty",u"closes_unixtime",b"closes_unixtime",u"created_unixtime",b"created_unixtime",u"creator",b"creator",u"maximum_stake_cents",b"maximum_stake_cents",u"question",b"question",u"remaining_stake_cents_vs_believers",b"remaining_stake_cents_vs_believers",u"remaining_stake_cents_vs_skeptics",b"remaining_stake_cents_vs_skeptics",u"resolution",b"resolution",u"special_rules",b"special_rules",u"your_trades",b"your_trades"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions___Literal[u"certainty",b"certainty",u"closes_unixtime",b"closes_unixtime",u"created_unixtime",b"created_unixtime",u"creator",b"creator",u"maximum_stake_cents",b"maximum_stake_cents",u"question",b"question",u"remaining_stake_cents_vs_believers",b"remaining_stake_cents_vs_believers",u"remaining_stake_cents_vs_skeptics",b"remaining_stake_cents_vs_skeptics",u"resolutions",b"resolutions",u"special_rules",b"special_rules",u"your_trades",b"your_trades"]) -> None: ...
 global___UserMarketView = UserMarketView
 
 class UserUserView(google___protobuf___message___Message):
@@ -871,11 +898,13 @@ class ResolveRequest(google___protobuf___message___Message):
     DESCRIPTOR: google___protobuf___descriptor___Descriptor = ...
     market_id = ... # type: builtin___int
     resolution = ... # type: global___Resolution
+    notes = ... # type: typing___Text
 
     def __init__(self,
         *,
         market_id : typing___Optional[builtin___int] = None,
         resolution : typing___Optional[global___Resolution] = None,
+        notes : typing___Optional[typing___Text] = None,
         ) -> None: ...
     if sys.version_info >= (3,):
         @classmethod
@@ -885,7 +914,7 @@ class ResolveRequest(google___protobuf___message___Message):
         def FromString(cls, s: typing___Union[builtin___bytes, builtin___buffer, builtin___unicode]) -> ResolveRequest: ...
     def MergeFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
     def CopyFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
-    def ClearField(self, field_name: typing_extensions___Literal[u"market_id",b"market_id",u"resolution",b"resolution"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions___Literal[u"market_id",b"market_id",u"notes",b"notes",u"resolution",b"resolution"]) -> None: ...
 global___ResolveRequest = ResolveRequest
 
 class ResolveResponse(google___protobuf___message___Message):

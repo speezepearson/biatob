@@ -50,10 +50,16 @@ message WorldState {
     string special_rules = 6;
     UserId creator = 7;
 
-    // Changes regularly
+    // Append-only
     repeated Trade trades = 8;
-    Resolution resolution = 9;
+    repeated ResolutionEvent resolutions = 10;
   }
+}
+
+message ResolutionEvent {
+  uint32 unixtime = 1;
+  Resolution resolution = 2;
+  string notes = 3;
 }
 
 message Trade {
@@ -167,7 +173,7 @@ message UserMarketView {
   uint32 closes_unixtime = 7;
   string special_rules = 8;
   UserUserView creator = 9;
-  Resolution resolution = 10;
+  repeated ResolutionEvent resolutions = 10;
   repeated Trade your_trades = 11;
 }
 message UserUserView {
@@ -195,6 +201,7 @@ message StakeResponse {
 message ResolveRequest {
   uint32 market_id = 1;
   Resolution resolution = 2;
+  string notes = 3;
 }
 message ResolveResponse {
   oneof resolve_result {

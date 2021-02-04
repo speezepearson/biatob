@@ -70,6 +70,7 @@ init flags =
       , working = False
       , stakeError = Nothing
       , now = epoch
+      , resolutionNotes = ""
       }
   in
   ( { form = Form.init
@@ -186,7 +187,7 @@ formStateToProto {now, form, creatorName} =
   , closesUnixtime = Time.posixToMillis now // 1000 + (Form.openForSeconds form |> Maybe.withDefault 0) -- TODO
   , specialRules = form.specialRulesField
   , creator = Just {displayName = creatorName, isSelf=False, trustsYou=True, isTrusted=True}
-  , resolution = Pb.ResolutionNoneYet
+  , resolutions = []
   , yourTrades = []
   }
 
