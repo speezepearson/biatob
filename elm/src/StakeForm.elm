@@ -59,14 +59,6 @@ view config state =
       Nothing -> (True, False)
       Just n -> (n < 0 || n > maxSkepticStakeCents, n > maxSkepticStakeCents)
 
-    _ = Debug.log ""
-          { certainty = certainty
-          , creatorStakeFactorVsSkeptics = creatorStakeFactorVsSkeptics
-          , skepticStakeField = state.skepticStakeField
-          , skepticStakeCents = skepticStakeCents state
-          , remainingStakeCentsVsSkeptics = config.market.remainingStakeCentsVsSkeptics
-          , maxSkepticStakeCents = maxSkepticStakeCents
-          }
   in
   H.div []
     [ H.p []

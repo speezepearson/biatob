@@ -158,7 +158,7 @@ view model =
         ]
         [ H.text <| if model.auth == Nothing then "Log in to create" else "Create" ]
     , case model.createError of
-        Just e -> H.div [HA.style "color" "red"] [H.text <| Debug.toString e]
+        Just e -> H.div [HA.style "color" "red"] [H.text e]
         Nothing -> H.text ""
     , H.hr [] []
     , H.text "Preview:"

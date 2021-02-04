@@ -83,7 +83,9 @@ view model =
         ]
     HasToken m ->
       H.div []
-        [ H.text <| "Signed in as " ++ Debug.toString m.token.owner ++ "; "
+        [ H.text <| "Signed in as "
+        , H.strong [] [H.text <| Utils.renderUser <| Utils.mustTokenOwner m.token]
+        , H.text " "
         , H.button [HA.disabled m.working, HE.onClick SignOut] [H.text "Sign out"]
         , case m.error of
             Just e -> H.div [HA.style "color" "red"] [H.text e]
