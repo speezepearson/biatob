@@ -20,6 +20,7 @@ TODO
 --------------
 - P1 [mvp]: sketch the signup process, and how trust is established between accounts
 - P2 [pre-beta]: write copy explaining how to operationalize a bet well
+- P2 [pre-beta]: figure out how to make ViewMarketPage less gnarly -- maybe just have totally separate functions for creator/challenger(/rando)?
 - P2 [pre-beta]: consider a semi-formalized system for naming an arbiter
 - P2 [pre-beta]: figure out how users can undo accidental bets
 - P2 [pre-beta]: add "Sign in with [identity provider]"
