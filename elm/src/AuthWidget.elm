@@ -61,7 +61,7 @@ initHasToken token =
 
 init : JD.Value -> ( Model , Cmd Msg )
 init flags =
-  ( case flags |> JD.decodeValue (JD.field "authTokenPbB64" JD.string) |> Result.toMaybe |> Maybe.andThen (Utils.decodePbB64 Pb.authTokenDecoder) of
+  ( case Utils.decodePbFromFlags Pb.authTokenDecoder "authTokenPbB64" flags of
       Just token -> initHasToken token
       Nothing -> initNoToken
   , Task.perform Tick Time.now

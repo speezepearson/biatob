@@ -30,20 +30,9 @@ type Msg
 
 init : JD.Value -> (Model, Cmd Msg)
 init flags =
-  ( { userId = flags |> JD.decodeValue (JD.field "userIdPbB64" JD.string)
-        |> Debug.log "init who"
-        |> Result.toMaybe
-        |> Maybe.andThen (Utils.decodePbB64 Pb.userIdDecoder)
-        |> Utils.must "no who / bad UserId from server"
-    , userView = flags |> JD.decodeValue (JD.field "userViewPbB64" JD.string)
-        |> Debug.log "init who"
-        |> Result.toMaybe
-        |> Maybe.andThen (Utils.decodePbB64 Pb.userUserViewDecoder)
-        |> Utils.must "no who / bad UserId from server"
-    , auth = flags |> JD.decodeValue (JD.field "authTokenPbB64" JD.string)
-        |> Debug.log "init auth token"
-        |> Result.toMaybe
-        |> Maybe.andThen (Utils.decodePbB64 Pb.authTokenDecoder)
+  ( { userId = Utils.mustDecodePbFromFlags Pb.userIdDecoder "userIdPbB64" flags
+    , userView = Utils.mustDecodePbFromFlags Pb.userUserViewDecoder "userViewPbB64" flags
+    , auth = Utils.decodePbFromFlags Pb.authTokenDecoder "authTokenPbB64" flags
     , working = False
     , setTrustedError = Nothing
     }

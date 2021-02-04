@@ -52,22 +52,10 @@ setMarket market model = { model | market = market }
 init : JD.Value -> (Model, Cmd Msg)
 init flags =
   ( { stakeForm = StakeForm.init
-    , linkToAuthority = flags |> JD.decodeValue (JD.field "linkToAuthority" JD.string)
-        |> Debug.log "linkToAuthority"
-        |> Result.withDefault "http://example.com"
-    , market = flags |> JD.decodeValue (JD.field "marketPbB64" JD.string)
-        |> Debug.log "init market"
-        |> Result.toMaybe
-        |> Maybe.andThen (Utils.decodePbB64 Pb.userMarketViewDecoder)
-        |> Utils.must "no/invalid market from server"
-    , marketId = flags |> JD.decodeValue (JD.field "marketId" JD.int)
-        |> Debug.log "init auth token"
-        |> Result.toMaybe
-        |> Utils.must "no marketId from server"
-    , auth = flags |> JD.decodeValue (JD.field "authTokenPbB64" JD.string)
-        |> Debug.log "init auth token"
-        |> Result.toMaybe
-        |> Maybe.andThen (Utils.decodePbB64 Pb.authTokenDecoder)
+    , linkToAuthority = Utils.mustDecodeFromFlags JD.string "linkToAuthority" flags
+    , market = Utils.mustDecodePbFromFlags Pb.userMarketViewDecoder "marketPbB64" flags
+    , marketId = Utils.mustDecodeFromFlags JD.int "marketId" flags
+    , auth = Utils.decodePbFromFlags Pb.authTokenDecoder "authTokenPbB64" flags
     , working = False
     , stakeError = Nothing
     , now = Time.millisToPosix 0

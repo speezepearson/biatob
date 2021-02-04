@@ -38,10 +38,27 @@ outlineIfInvalid : Bool -> H.Attribute msg
 outlineIfInvalid isInvalid =
   HA.style "outline" (if isInvalid then "2px solid red" else "none")
 
-
 decodePbB64 : PD.Decoder a -> String -> Maybe a
 decodePbB64 dec s =
   s |> Base64.toBytes |> Maybe.andThen (PD.decode dec)
 encodePbB64 : PE.Encoder -> String
 encodePbB64 enc =
   PE.encode enc |> Base64.fromBytes |> must "Base64.fromBytes docs say it will never return Nothing"
+
+decodePbFromFlags : PD.Decoder a -> String -> JD.Value -> Maybe a
+decodePbFromFlags dec field val =
+  JD.decodeValue (JD.field field JD.string) val
+  |> Debug.log ("init " ++ field)
+  |> Result.toMaybe
+  |> Maybe.andThen (decodePbB64 dec)
+
+mustDecodePbFromFlags : PD.Decoder a -> String -> JD.Value -> a
+mustDecodePbFromFlags dec field val =
+  decodePbFromFlags dec field val
+  |> must ("bad " ++ field)
+
+mustDecodeFromFlags : JD.Decoder a -> String -> JD.Value -> a
+mustDecodeFromFlags dec field val =
+  JD.decodeValue (JD.field field dec) val
+  |> Result.toMaybe
+  |> must ("bad " ++ field)

@@ -59,10 +59,7 @@ init : JD.Value -> (Model, Cmd Msg)
 init flags =
   let
     auth : Maybe Pb.AuthToken
-    auth = flags |> JD.decodeValue (JD.field "authTokenPbB64" JD.string)
-        |> Debug.log "init auth token"
-        |> Result.toMaybe
-        |> Maybe.andThen (Utils.decodePbB64 Pb.authTokenDecoder)
+    auth =  Utils.decodePbFromFlags Pb.authTokenDecoder "authTokenPbB64" flags
     previewModel : ViewMarketPage.Model
     previewModel =
       { stakeForm = StakeForm.init
