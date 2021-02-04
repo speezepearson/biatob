@@ -33,7 +33,7 @@
       document.getElementById(id).select();
       document.execCommand('copy');
     });
-    main.ports.staked.subscribe((marketId) => {
+    main.ports.changed.subscribe((marketId) => {
       window.location.reload();
     });
   </script>

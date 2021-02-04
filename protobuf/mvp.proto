@@ -73,6 +73,7 @@ enum Resolution {
   RESOLUTION_NONE_YET = 0;
   RESOLUTION_YES = 1;
   RESOLUTION_NO = 2;
+  // RESOLUTION_INVALID = 3;
 }
 
 message WhoamiRequest {}
@@ -183,6 +184,20 @@ message StakeRequest {
 }
 message StakeResponse {
   oneof stake_result {
+    Void ok = 1;
+    Error error = 2;
+  }
+  message Error {
+    string catchall = 1;
+  }
+}
+
+message ResolveRequest {
+  uint32 market_id = 1;
+  Resolution resolution = 2;
+}
+message ResolveResponse {
+  oneof resolve_result {
     Void ok = 1;
     Error error = 2;
   }

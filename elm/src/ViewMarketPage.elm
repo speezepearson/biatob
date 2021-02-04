@@ -18,7 +18,7 @@ import StakeForm
 import Biatob.Proto.Mvp exposing (StakeResult(..))
 import Task
 
-port staked : () -> Cmd msg
+port changed : () -> Cmd msg
 port copy : String -> Cmd msg
 
 type alias Model =
@@ -36,6 +36,8 @@ type Msg
   = SetStakeFormState StakeForm.State
   | Stake {bettorIsASkeptic:Bool, bettorStakeCents:Int}
   | StakeFinished (Result Http.Error Pb.StakeResponse)
+  | Resolve Pb.Resolution
+  | ResolveFinished (Result Http.Error Pb.ResolveResponse)
   | Copy String
   | Tick Time.Posix
   | Ignore
@@ -64,6 +66,13 @@ postStake req =
     , body = Http.bytesBody "application/octet-stream" <| PE.encode <| Pb.toStakeRequestEncoder req
     , expect = PD.expectBytes StakeFinished Pb.stakeResponseDecoder }
 
+postResolve : Pb.ResolveRequest -> Cmd Msg
+postResolve req =
+  Http.post
+    { url = "/api/Resolve"
+    , body = Http.bytesBody "application/octet-stream" <| PE.encode <| Pb.toResolveRequestEncoder req
+    , expect = PD.expectBytes ResolveFinished Pb.resolveResponseDecoder }
+
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
@@ -81,9 +90,31 @@ update msg model =
       case resp.stakeResult of
         Just (Pb.StakeResultOk _) ->
           ( model
-          , staked ()
+          , changed ()
           )
         Just (Pb.StakeResultError e) ->
+          ( { model | working = False , stakeError = Just (Debug.toString e) }
+          , Cmd.none
+          )
+        Nothing ->
+          ( { model | working = False , stakeError = Just "Invalid server response (neither Ok nor Error in protobuf)" }
+          , Cmd.none
+          )
+    Resolve resolution ->
+      ( { model | working = True , stakeError = Nothing }
+      , postResolve {marketId=model.marketId, resolution=resolution}
+      )
+    ResolveFinished (Err e) ->
+      ( { model | working = False , stakeError = Just (Debug.toString e) }
+      , Cmd.none
+      )
+    ResolveFinished (Ok resp) ->
+      case resp.resolveResult of
+        Just (Pb.ResolveResultOk _) ->
+          ( model
+          , changed ()
+          )
+        Just (Pb.ResolveResultError e) ->
           ( { model | working = False , stakeError = Just (Debug.toString e) }
           , Cmd.none
           )
@@ -143,11 +174,11 @@ viewStakeFormOrExcuse model =
 creatorWinningsByBettor : Bool -> List Pb.Trade -> Dict String Int -- TODO: avoid key serialization collisions
 creatorWinningsByBettor resolvedYes trades =
   trades
-  |> List.foldl (\t d -> D.update (Utils.renderUser <| Utils.mustTradeBettor t) (Maybe.withDefault 0 >> ((+) (if xor resolvedYes t.bettorIsASkeptic then t.bettorStakeCents else -t.creatorStakeCents)) >> Just) d) D.empty
+  |> List.foldl (\t d -> D.update (Utils.renderUser <| Utils.mustTradeBettor t) (Maybe.withDefault 0 >> ((+) (if xor resolvedYes t.bettorIsASkeptic then -t.creatorStakeCents else t.bettorStakeCents)) >> Just) d) D.empty
 
 stateWinnings : Int -> String -> String
 stateWinnings win counterparty =
-  (if win > 0 then counterparty ++ " owes you" else "You owe " ++ counterparty) ++ " " ++ Utils.formatCents win ++ "."
+  (if win > 0 then counterparty ++ " owes you" else "You owe " ++ counterparty) ++ " " ++ Utils.formatCents (abs win) ++ "."
 
 enumerateWinnings : Dict String Int -> Html Msg
 enumerateWinnings winningsByUser =
@@ -202,9 +233,13 @@ view model =
             , H.br [] []
             , if creator.isSelf then
                 H.div []
-                  [ H.text "If it resolves Yes, "
+                  [ H.button [HE.onClick (Resolve Pb.ResolutionYes)] [H.text "Resolve YES"]
+                  , H.button [HE.onClick (Resolve Pb.ResolutionNo)] [H.text "Resolve NO"]
+                  -- , H.button [HE.onClick (Resolve Pb.ResolutionInvalid)] [H.text "Resolve INVALID"]
+                  , H.br [] []
+                  , H.text "If this market resolves Yes, "
                   , enumerateWinnings (creatorWinningsByBettor True model.market.yourTrades)
-                  , H.text "If it resolves No, "
+                  , H.text "If this market resolves No, "
                   , enumerateWinnings (creatorWinningsByBettor False model.market.yourTrades)
                   ]
               else if List.length model.market.yourTrades /= 0 then

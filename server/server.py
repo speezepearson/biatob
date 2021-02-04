@@ -102,6 +102,7 @@ class Servicer(abc.ABC):
     def CreateMarket(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.CreateMarketRequest) -> mvp_pb2.CreateMarketResponse: pass
     def GetMarket(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.GetMarketRequest) -> mvp_pb2.GetMarketResponse: pass
     def Stake(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.StakeRequest) -> mvp_pb2.StakeResponse: pass
+    def Resolve(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.ResolveRequest) -> mvp_pb2.ResolveResponse: pass
     def SetTrusted(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.SetTrustedRequest) -> mvp_pb2.SetTrustedResponse: pass
     def GetUser(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.GetUserRequest) -> mvp_pb2.GetUserResponse: pass
 
@@ -267,6 +268,20 @@ class FsBackedServicer(Servicer):
             return mvp_pb2.StakeResponse(ok=mvp_pb2.VOID)
 
     @checks_token
+    def Resolve(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.ResolveRequest) -> mvp_pb2.ResolveResponse:
+        if token is None:
+            return mvp_pb2.ResolveResponse(error=mvp_pb2.ResolveResponse.Error(catchall='must log in to bet'))
+
+        with self._mutate_state() as wstate:
+            market = wstate.markets.get(request.market_id)
+            if market is None:
+                return mvp_pb2.ResolveResponse(error=mvp_pb2.ResolveResponse.Error(catchall='no such market'))
+            if token.owner != market.creator:
+                return mvp_pb2.ResolveResponse(error=mvp_pb2.ResolveResponse.Error(catchall="you are not the creator"))
+            market.resolution = request.resolution
+            return mvp_pb2.ResolveResponse(ok=mvp_pb2.VOID)
+
+    @checks_token
     def SetTrusted(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.SetTrustedRequest) -> mvp_pb2.SetTrustedResponse:
         if token is None:
             return mvp_pb2.SetTrustedResponse(error=mvp_pb2.SetTrustedResponse.Error(catchall='must log in to trust folks'))
@@ -412,6 +427,9 @@ class ApiServer:
         @routes.post('/api/Stake')
         async def api_Stake(http_req: web.Request) -> web.Response:
             return proto_response(self._servicer.Stake(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.StakeRequest)))
+        @routes.post('/api/Resolve')
+        async def api_Resolve(http_req: web.Request) -> web.Response:
+            return proto_response(self._servicer.Resolve(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.ResolveRequest)))
         @routes.post('/api/SetTrusted')
         async def api_SetTrusted(http_req: web.Request) -> web.Response:
             return proto_response(self._servicer.SetTrusted(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.SetTrustedRequest)))
