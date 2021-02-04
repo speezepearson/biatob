@@ -3,7 +3,7 @@ module Utils exposing (..)
 import Html as H
 import Html.Attributes as HA
 import Json.Decode as JD
-import Json.Encode as JE
+import Time
 
 import Base64
 import Protobuf.Decode as PD
@@ -77,3 +77,50 @@ mustUserKind {kind} = must "all UserIds must have kinds" kind
 
 mustTokenOwner : Pb.AuthToken -> Pb.UserId
 mustTokenOwner {owner} = must "all AuthTokens must have owners" owner
+
+dateStr : Time.Zone -> Time.Posix -> String
+dateStr zone t =
+  String.fromInt (Time.toYear zone t)
+  ++ "-"
+  ++ String.padLeft 2 '0' (String.fromInt (case Time.toMonth zone t of
+      Time.Jan -> 1
+      Time.Feb -> 2
+      Time.Mar -> 3
+      Time.Apr -> 4
+      Time.May -> 5
+      Time.Jun -> 6
+      Time.Jul -> 7
+      Time.Aug -> 8
+      Time.Sep -> 9
+      Time.Oct -> 10
+      Time.Nov -> 11
+      Time.Dec -> 12
+     ))
+  ++ "-"
+  ++ String.padLeft 2 '0' (String.fromInt (Time.toDay zone t))
+
+renderIntervalSeconds : Int -> String
+renderIntervalSeconds seconds =
+  let
+    divmod : Int -> Int -> (Int, Int)
+    divmod n div = (n // div , n |> modBy div)
+    t0 = seconds
+    (w,t1) = divmod t0 (60*60*24*7)
+    (d,t2) = divmod t1 (60*60*24)
+    (h,t3) = divmod t2 (60*60)
+    (m,s) = divmod t3 (60)
+  in
+    if w /= 0 then String.fromInt w ++ "w " ++ String.fromInt d ++ "d" else
+    if d /= 0 then String.fromInt d ++ "d " ++ String.fromInt h ++ "h" else
+    if h /= 0 then String.fromInt h ++ "h " ++ String.fromInt m ++ "m" else
+    if m /= 0 then String.fromInt m ++ "m " ++ String.fromInt s ++ "s" else
+    String.fromInt s ++ "s"
+
+marketCreatedTime : Pb.UserMarketView -> Time.Posix
+marketCreatedTime market = market.createdUnixtime * 1000 |> Time.millisToPosix
+
+marketClosesTime : Pb.UserMarketView -> Time.Posix
+marketClosesTime market = market.closesUnixtime * 1000 |> Time.millisToPosix
+
+secondsToClose : Time.Posix -> Pb.UserMarketView -> Int
+secondsToClose now market = market.closesUnixtime - Time.posixToMillis now // 1000

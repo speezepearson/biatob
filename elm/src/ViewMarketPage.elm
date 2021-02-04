@@ -98,26 +98,81 @@ update msg model =
     Ignore ->
       ( model , Cmd.none )
 
-dateStr : Time.Zone -> Time.Posix -> String
-dateStr zone t =
-  String.fromInt (Time.toYear zone t)
-  ++ "-"
-  ++ String.padLeft 2 '0' (String.fromInt (case Time.toMonth zone t of
-      Time.Jan -> 1
-      Time.Feb -> 2
-      Time.Mar -> 3
-      Time.Apr -> 4
-      Time.May -> 5
-      Time.Jun -> 6
-      Time.Jul -> 7
-      Time.Aug -> 8
-      Time.Sep -> 9
-      Time.Oct -> 10
-      Time.Nov -> 11
-      Time.Dec -> 12
-     ))
-  ++ "-"
-  ++ String.padLeft 2 '0' (String.fromInt (Time.toDay zone t))
+viewStakeFormOrExcuse : Model -> Html Msg
+viewStakeFormOrExcuse model =
+  let creator = Utils.mustMarketCreator model.market in
+  if model.market.resolution /= Pb.ResolutionNoneYet then
+    H.text ""
+  else if Utils.secondsToClose model.now model.market <= 0 then
+    H.text <| "This market closed on " ++ Utils.dateStr Time.utc (Utils.marketClosesTime model.market) ++ " (UTC)."
+  else case model.auth of
+    Nothing ->
+      H.div []
+        [ H.text "You must be logged in to participate in this market!"
+        , StakeForm.view (stakeFormConfig model) model.stakeForm
+        ]
+    Just auth_ ->
+      if creator.isSelf then
+        H.text ""
+      else if not creator.trustsYou then
+        let
+          userPagePath =
+            auth_
+            |> Utils.mustTokenOwner
+            |> Utils.mustUserKind
+            |> (\k -> case k of
+                Pb.KindUsername username -> "/username/" ++ username
+                )
+          userPageUrl = model.linkToAuthority ++ userPagePath
+        in
+          H.span []
+            [ H.text <|
+                "The market creator doesn't trust you!"
+                ++ " If you think that they *do* trust you in real life, then send them this link to your user page,"
+                ++ " and ask them to mark you as trusted: "
+            , H.a [HA.href userPageUrl] [H.text userPageUrl]
+            ]
+      else if not creator.isTrusted then
+        H.text <|
+          "You don't trust the market creator!"
+          ++ " If you think that you *do* trust them in real life, ask them for a link to their user page,"
+          ++ " and mark them as trusted."
+      else
+        StakeForm.view (stakeFormConfig model) model.stakeForm
+
+creatorWinningsByBettor : Bool -> List Pb.Trade -> Dict String Int -- TODO: avoid key serialization collisions
+creatorWinningsByBettor resolvedYes trades =
+  trades
+  |> List.foldl (\t d -> D.update (Utils.renderUser <| Utils.mustTradeBettor t) (Maybe.withDefault 0 >> ((+) (if xor resolvedYes t.bettorIsASkeptic then t.bettorStakeCents else -t.creatorStakeCents)) >> Just) d) D.empty
+
+stateWinnings : Int -> String -> String
+stateWinnings win counterparty =
+  (if win > 0 then counterparty ++ " owes you" else "You owe " ++ counterparty) ++ " " ++ Utils.formatCents win ++ "."
+
+enumerateWinnings : Dict String Int -> Html Msg
+enumerateWinnings winningsByUser =
+  H.ul [] <| (
+    winningsByUser
+    |> D.toList
+    |> List.sortBy (\(b, win) -> b)
+    |> List.map (\(b, win) -> H.li [] [H.text <| stateWinnings win b])
+    )
+
+viewDefiniteResolution : Pb.UserMarketView -> Bool -> Html Msg
+viewDefiniteResolution market resolvedYes =
+  let
+    creator = Utils.mustMarketCreator market
+  in
+    H.div []
+      [ H.text <| "This market has resolved " ++ (if resolvedYes then "YES" else "NO") ++ ". "
+      , if creator.isSelf then
+          enumerateWinnings (creatorWinningsByBettor resolvedYes market.yourTrades)
+        else if List.length market.yourTrades > 0 then
+          let bettorWinnings = -(List.sum <| D.values <| creatorWinningsByBettor resolvedYes market.yourTrades) in
+          H.text <| stateWinnings bettorWinnings creator.displayName
+        else
+          H.text ""
+      ]
 
 view : Model -> Html Msg
 view model =
@@ -125,122 +180,48 @@ view model =
     creator = Utils.mustMarketCreator model.market
     certainty = Utils.mustMarketCertainty model.market
     secondsToClose = model.market.closesUnixtime - Time.posixToMillis model.now // 1000
-    resolved = (model.market.resolution /= Pb.ResolutionNoneYet)
-    expired = secondsToClose <= 0
     openTime = model.market.createdUnixtime |> (*) 1000 |> Time.millisToPosix
     closeTime = model.market.closesUnixtime |> (*) 1000 |> Time.millisToPosix
-    winCentsIfYes = model.market.yourTrades |> List.map (\t -> if t.bettorIsASkeptic then -t.bettorStakeCents else t.creatorStakeCents) |> List.sum |> (*) (if creator.isSelf then -1 else 1)
-    winCentsIfNo = model.market.yourTrades |> List.map (\t -> if t.bettorIsASkeptic then t.creatorStakeCents else -t.bettorStakeCents) |> List.sum |> (*) (if creator.isSelf then -1 else 1)
   in
   H.div []
     [ H.h2 [] [H.text model.market.question]
     , case model.market.resolution of
         Pb.ResolutionYes ->
+          viewDefiniteResolution model.market True
+        Pb.ResolutionNo ->
+          viewDefiniteResolution model.market False
+        Pb.ResolutionNoneYet ->
           H.div []
-            [ H.text "This market has resolved YES. "
+            [ if secondsToClose <= 0 then
+                H.text <| "This market closed on " ++ Utils.dateStr Time.utc closeTime ++ ", but hasn't yet resolved."
+              else
+                H.text <| "This market will close on "
+                  ++ Utils.dateStr Time.utc closeTime ++ " UTC, in "
+                  ++ Utils.renderIntervalSeconds secondsToClose
+                  ++ ". "
+            , H.br [] []
             , if creator.isSelf then
-                H.ul [] <| (
-                  model.market.yourTrades
-                  |> Debug.log "trades"
-                  -- TODO: avoid key collisions on Utils.renderUser
-                  |> List.foldl (\t d -> D.update (Utils.renderUser <| Utils.mustTradeBettor t) (Maybe.withDefault 0 >> ((+) (if t.bettorIsASkeptic then t.bettorStakeCents else -t.creatorStakeCents)) >> Just) d) D.empty
-                  |> D.toList
-                  |> List.sortBy (\(b, win) -> b)
-                  |> List.map (\(b, win) -> H.li [] [H.text <| (if win > 0 then b ++ " owes you" else "You owe " ++ b) ++ " " ++ Utils.formatCents win ++ "."])
-                  )
-              else if winCentsIfYes /= 0 then
+                H.div []
+                  [ H.text "If it resolves Yes, "
+                  , enumerateWinnings (creatorWinningsByBettor True model.market.yourTrades)
+                  , H.text "If it resolves No, "
+                  , enumerateWinnings (creatorWinningsByBettor False model.market.yourTrades)
+                  ]
+              else if List.length model.market.yourTrades /= 0 then
                 H.span []
-                  [ H.text <| if winCentsIfYes > 0 then creator.displayName ++ " owes you " else ("You owe " ++ creator.displayName ++ " ")
-                  , H.text <| Utils.formatCents <| abs winCentsIfYes
-                  , H.text <| "."
+                  [ H.text <| "If it resolves Yes: " ++ stateWinnings (List.sum <| List.map (\t -> if t.bettorIsASkeptic then -t.bettorStakeCents else t.creatorStakeCents) model.market.yourTrades) creator.displayName
+                  , H.br [] []
+                  , H.text <| "If it resolves No: "  ++ stateWinnings (List.sum <| List.map (\t -> if t.bettorIsASkeptic then t.creatorStakeCents else -t.bettorStakeCents) model.market.yourTrades) creator.displayName
                   ]
               else
                 H.text ""
             ]
-        Pb.ResolutionNo ->
-          H.div []
-            [ H.text "This market has resolved NO. "
-            , if creator.isSelf then
-                H.ul [] <| (
-                  model.market.yourTrades
-                  |> Debug.log "trades"
-                  -- TODO: avoid key collisions on Utils.renderUser
-                  |> List.foldl (\t d -> D.update (Utils.renderUser <| Utils.mustTradeBettor t) (Maybe.withDefault 0 >> ((+) (if t.bettorIsASkeptic then -t.bettorStakeCents else t.creatorStakeCents)) >> Just) d) D.empty
-                  |> D.toList
-                  |> List.sortBy (\(b, win) -> b)
-                  |> List.map (\(b, win) -> H.li [] [H.text <| (if win > 0 then b ++ " owes you" else "You owe " ++ b) ++ " " ++ Utils.formatCents win ++ "."])
-                  )
-              else if winCentsIfNo /= 0 then
-                H.span []
-                  [ H.text <| if winCentsIfYes > 0 then creator.displayName ++ " owes you " else ("You owe " ++ creator.displayName ++ " ")
-                  , H.text <| Utils.formatCents <| abs winCentsIfYes
-                  , H.text <| "."
-                  ]
-              else
-                H.text ""
-            ]
-        Pb.ResolutionNoneYet ->
-          H.div []
-            [ H.text <| "This market " ++ (if expired then "has closed, but " else "") ++ "hasn't resolved yet. "
-            , if creator.isSelf then
-                H.text "[TODO: show the creator how much they will owe / be owed]"
-              else
-                H.span []
-                  [ if winCentsIfYes /= 0 then
-                      H.text <|
-                        "If it resolves Yes, "
-                        ++ (if winCentsIfYes > 0 then creator.displayName ++ " will owe you " else "you will owe " ++ creator.displayName ++ " ")
-                        ++ Utils.formatCents (abs winCentsIfYes)
-                        ++ ". "
-                    else
-                      H.text ""
-                  , if winCentsIfNo /= 0 then
-                      H.text <|
-                        "If it resolves No, "
-                        ++ (if winCentsIfNo > 0 then creator.displayName ++ " will owe you " else "you will owe " ++ creator.displayName ++ " ")
-                        ++ Utils.formatCents (abs winCentsIfNo)
-                        ++ ". "
-                    else
-                      H.text ""
-                  ]
-            ]
-        Pb.ResolutionUnrecognized_ _ ->
-          H.span [HA.style "color" "red"]
-            [H.text "Oh dear, something has gone very strange with this market. Please email TODO with this URL to report it!"]
-    , case model.market.resolution of
-        Pb.ResolutionYes ->
-          H.text "This market has resolved YES." --  TODO: this is a duplicate
-        Pb.ResolutionNo ->
-          H.text "This market has resolved NO."
-        Pb.ResolutionNoneYet ->
-          if expired then
-            H.text <| "This market closed on " ++ dateStr Time.utc closeTime ++ ", but hasn't yet resolved."
-          else
-            let
-              divmod : Int -> Int -> (Int, Int)
-              divmod n div = (n // div , n |> modBy div)
-              t0 = secondsToClose
-              (w,t1) = divmod t0 (60*60*24*7)
-              (d,t2) = divmod t1 (60*60*24)
-              (h,t3) = divmod t2 (60*60)
-              (m,s) = divmod t3 (60)
-            in
-            H.text <| "This market will close on "
-              ++ dateStr Time.utc closeTime ++ " UTC, in "
-              ++ (
-                if w /= 0 then String.fromInt w ++ "w " ++ String.fromInt d ++ "d" else
-                if d /= 0 then String.fromInt d ++ "d " ++ String.fromInt h ++ "h" else
-                if h /= 0 then String.fromInt h ++ "h " ++ String.fromInt m ++ "m" else
-                if m /= 0 then String.fromInt m ++ "m " ++ String.fromInt s ++ "s" else
-                String.fromInt s ++ "s"
-                )
-              ++ "."
         Pb.ResolutionUnrecognized_ _ ->
           H.span [HA.style "color" "red"]
             [H.text "Oh dear, something has gone very strange with this market. Please email TODO with this URL to report it!"]
     , H.hr [] []
     , H.p []
-        [ H.text <| "On " ++ dateStr Time.utc openTime ++ " UTC, "
+        [ H.text <| "On " ++ Utils.dateStr Time.utc openTime ++ " UTC, "
         , H.strong [] [H.text creator.displayName]
         , H.text " assigned this a "
         , certainty.low |> (*) 100 |> round |> String.fromInt |> H.text
@@ -250,93 +231,60 @@ view model =
         , model.market.maximumStakeCents |> Utils.formatCents |> H.text
         , H.text "."
         ]
-    , if resolved then
-        H.text ""
-      else if expired then
-        H.text <| "This market closed on " ++ dateStr Time.utc closeTime ++ " UTC."
-      else case model.auth of
-        Nothing ->
-          H.div []
-            [ H.text "You must be logged in to participate in this market!"
-            , StakeForm.view (stakeFormConfig model) model.stakeForm
-            ]
-        Just auth_ ->
-          if creator.isSelf then
-            H.text ""
-          else if not creator.trustsYou then
-            let
-              userPagePath =
-                auth_
-                |> Utils.mustTokenOwner
-                |> Utils.mustUserKind
-                |> (\k -> case k of
-                    Pb.KindUsername username -> "/username/" ++ username
-                    )
-              userPageUrl = model.linkToAuthority ++ userPagePath
-            in
-              H.span []
-                [ H.text <|
-                    "The market creator doesn't trust you!"
-                    ++ " If you think that they *do* trust you in real life, then send them this link to your user page,"
-                    ++ " and ask them to mark you as trusted: "
-                , H.a [HA.href userPageUrl] [H.text userPageUrl]
-                ]
-          else if not creator.isTrusted then
-            H.text <|
-              "You don't trust the market creator!"
-              ++ " If you think that you *do* trust them in real life, ask them for a link to their user page,"
-              ++ " and mark them as trusted."
-          else
-            StakeForm.view (stakeFormConfig model) model.stakeForm
+    , viewStakeFormOrExcuse model
     , case model.stakeError of
         Just e -> H.div [HA.style "color" "red"] [H.text e]
         Nothing -> H.text ""
     , if creator.isSelf then
-        let
-          linkUrl = model.linkToAuthority ++ "/market/" ++ String.fromInt model.marketId
-          imgUrl = model.linkToAuthority ++ "/market/" ++ String.fromInt model.marketId ++ "/embed.png"
-          imgStyles = [("max-height","1.5ex"), ("border-bottom","1px solid #008800")]
-          imgCode =
-            "<a href=\"" ++ linkUrl ++ "\">"
-            ++ "<img style=\"" ++ (imgStyles |> List.map (\(k,v) -> k++":"++v) |> String.join ";") ++ "\" src=\"" ++ imgUrl ++ "\" /></a>"
-          linkStyles = [("max-height","1.5ex")]
-          linkText =
-            "["
-            ++ Utils.formatCents (model.market.maximumStakeCents // 100 * 100)
-            ++ " @ "
-            ++ String.fromInt (round <| certainty.low * 100)
-            ++ "-"
-            ++ String.fromInt (round <| certainty.high * 100)
-            ++ "%]"
-          linkCode =
-            "<a style=\"" ++ (linkStyles |> List.map (\(k,v) -> k++":"++v) |> String.join ";") ++ "\" href=\"" ++ linkUrl ++ "\">" ++ linkText ++ "</a>"
-        in
         H.div []
           [ H.hr [] []
           , H.text "As the creator of this market, you might want to link to it in your writing! Here are some snippets of HTML you could copy-paste."
-          , H.ul []
-            [ H.li [] <|
-              [ H.text "A linked inline image: "
-              , H.input [HA.id "imgCopypasta", HA.style "font" "monospace", HA.value imgCode] []
-              , H.button [HE.onClick (Copy "imgCopypasta")] [H.text "Copy"]
-              , H.br [] []
-              , H.text "This would render as: "
-              , H.a [HA.href linkUrl]
-                [ H.img (HA.src imgUrl :: (imgStyles |> List.map (\(k,v) -> HA.style k v))) []]
-              ]
-            , H.li [] <|
-              [ H.text "A boring old link: "
-              , H.input [HA.id "linkCopypasta", HA.style "font" "monospace", HA.value linkCode] []
-              , H.button [HE.onClick (Copy "linkCopypasta")] [H.text "Copy"]
-              , H.br [] []
-              , H.text "This would render as: "
-              , H.a (HA.href linkUrl :: (linkStyles |> List.map (\(k,v) -> HA.style k v))) [H.text linkText]
-              ]
-            ]
+          , viewEmbedInfo model
           ]
       else
         H.text ""
     ]
+
+viewEmbedInfo : Model -> Html Msg
+viewEmbedInfo model =
+  let
+    linkUrl = model.linkToAuthority ++ "/market/" ++ String.fromInt model.marketId
+    imgUrl = model.linkToAuthority ++ "/market/" ++ String.fromInt model.marketId ++ "/embed.png"
+    imgStyles = [("max-height","1.5ex"), ("border-bottom","1px solid #008800")]
+    imgCode =
+      "<a href=\"" ++ linkUrl ++ "\">"
+      ++ "<img style=\"" ++ (imgStyles |> List.map (\(k,v) -> k++":"++v) |> String.join ";") ++ "\" src=\"" ++ imgUrl ++ "\" /></a>"
+    linkStyles = [("max-height","1.5ex")]
+    linkText =
+      "["
+      ++ Utils.formatCents (model.market.maximumStakeCents // 100 * 100)
+      ++ " @ "
+      ++ String.fromInt (round <| (Utils.mustMarketCertainty model.market).low * 100)
+      ++ "-"
+      ++ String.fromInt (round <| (Utils.mustMarketCertainty model.market).high * 100)
+      ++ "%]"
+    linkCode =
+      "<a style=\"" ++ (linkStyles |> List.map (\(k,v) -> k++":"++v) |> String.join ";") ++ "\" href=\"" ++ linkUrl ++ "\">" ++ linkText ++ "</a>"
+  in
+    H.ul []
+      [ H.li [] <|
+        [ H.text "A linked inline image: "
+        , H.input [HA.id "imgCopypasta", HA.style "font" "monospace", HA.value imgCode] []
+        , H.button [HE.onClick (Copy "imgCopypasta")] [H.text "Copy"]
+        , H.br [] []
+        , H.text "This would render as: "
+        , H.a [HA.href linkUrl]
+          [ H.img (HA.src imgUrl :: (imgStyles |> List.map (\(k,v) -> HA.style k v))) []]
+        ]
+      , H.li [] <|
+        [ H.text "A boring old link: "
+        , H.input [HA.id "linkCopypasta", HA.style "font" "monospace", HA.value linkCode] []
+        , H.button [HE.onClick (Copy "linkCopypasta")] [H.text "Copy"]
+        , H.br [] []
+        , H.text "This would render as: "
+        , H.a (HA.href linkUrl :: (linkStyles |> List.map (\(k,v) -> HA.style k v))) [H.text linkText]
+        ]
+      ]
 
 stakeFormConfig : Model -> StakeForm.Config Msg
 stakeFormConfig model =
