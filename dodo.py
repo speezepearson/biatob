@@ -55,7 +55,7 @@ def task_elm():
   dist = Path('elm/dist')
   modules = [p.with_suffix('').name for p in src.glob('*.elm') if '\nmain =' in p.read_text()]
   return {
-    'file_dep': ['elm/elm.json', *src.glob('**/*.elm')],
+    'file_dep': ['elm/elm.json', *src.glob('**/*.elm'), *[t for d in task_proto() for t in d['targets'] if d['name']=='elm']],
     'targets': [
       *[dist/f'{mod}.js' for mod in modules],
       *[dist/f'{mod}.html' for mod in modules],
