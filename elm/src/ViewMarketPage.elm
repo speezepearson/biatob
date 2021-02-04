@@ -241,11 +241,15 @@ view model =
                   [ H.button [HE.onClick (Resolve Pb.ResolutionYes)] [H.text "Resolve YES"]
                   , H.button [HE.onClick (Resolve Pb.ResolutionNo)] [H.text "Resolve NO"]
                   -- , H.button [HE.onClick (Resolve Pb.ResolutionInvalid)] [H.text "Resolve INVALID"]
-                  , H.br [] []
-                  , H.text "If this market resolves Yes, "
-                  , enumerateWinnings (creatorWinningsByBettor True model.market.yourTrades)
-                  , H.text "If this market resolves No, "
-                  , enumerateWinnings (creatorWinningsByBettor False model.market.yourTrades)
+                  , if List.length model.market.yourTrades /= 0 then
+                      H.div []
+                        [ H.text "If this market resolves Yes, "
+                        , enumerateWinnings (creatorWinningsByBettor True model.market.yourTrades)
+                        , H.text "If this market resolves No, "
+                        , enumerateWinnings (creatorWinningsByBettor False model.market.yourTrades)
+                        ]
+                    else
+                      H.text ""
                   ]
               else if List.length model.market.yourTrades /= 0 then
                 H.span []
