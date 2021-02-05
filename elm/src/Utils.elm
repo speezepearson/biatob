@@ -118,13 +118,13 @@ renderIntervalSeconds seconds =
   let
     divmod : Int -> Int -> (Int, Int)
     divmod n div = (n // div , n |> modBy div)
-    t0 = seconds
-    (w,t1) = divmod t0 (60*60*24*7)
-    (d,t2) = divmod t1 (60*60*24)
-    (h,t3) = divmod t2 (60*60)
-    (m,s) = divmod t3 (60)
+    (minutes,s) = divmod seconds 60
+    (hours,m) = divmod minutes 60
+    (days,h) = divmod hours 24
+    (years,d) = divmod days 365
+    y = years
   in
-    if w /= 0 then String.fromInt w ++ "w " ++ String.fromInt d ++ "d" else
+    if y /= 0 then String.fromInt y ++ "y " ++ String.fromInt d ++ "d" else
     if d /= 0 then String.fromInt d ++ "d " ++ String.fromInt h ++ "h" else
     if h /= 0 then String.fromInt h ++ "h " ++ String.fromInt m ++ "m" else
     if m /= 0 then String.fromInt m ++ "m " ++ String.fromInt s ++ "s" else
