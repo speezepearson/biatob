@@ -49,6 +49,8 @@ def user_exists(wstate: mvp_pb2.WorldState, user: mvp_pb2.UserId) -> bool:
     return get_generic_user_info(wstate, user) is not None
 
 def trusts(wstate: mvp_pb2.WorldState, a: mvp_pb2.UserId, b: mvp_pb2.UserId) -> bool:
+    if a == b:
+        return True
     a_info = get_generic_user_info(wstate, a)
     return (a_info is not None) and b in a_info.trusted_users
 
@@ -214,7 +216,7 @@ class FsBackedServicer(Servicer):
             closes_unixtime=ws_market.closes_unixtime,
             special_rules=ws_market.special_rules,
             creator=mvp_pb2.UserUserView(
-                display_name='You' if creator_is_self else ws_market.creator.username if ws_market.creator.WhichOneof('kind')=='username' else 'TODO',
+                display_name=ws_market.creator.username if ws_market.creator.WhichOneof('kind')=='username' else 'TODO',
                 is_self=creator_is_self,
                 is_trusted=trusts(wstate, token.owner, ws_market.creator) if (token is not None) else False,
                 trusts_you=trusts(wstate, ws_market.creator, token.owner) if (token is not None) else False,

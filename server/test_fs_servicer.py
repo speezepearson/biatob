@@ -1,15 +1,56 @@
 import contextlib
 from pathlib import Path
 import random
+from typing import Tuple
 
 import bcrypt  # type: ignore
 import pytest
 
 from .protobuf import mvp_pb2
 from .server import FsBackedServicer
-from .test_utils import clock, token_mint, fs_servicer
+from .test_utils import clock, token_mint, fs_servicer, MockClock
 
-def test_RegisterUsername(fs_servicer):
+def new_user_token(fs_servicer: FsBackedServicer, username: str) -> mvp_pb2.AuthToken:
+  resp = fs_servicer.RegisterUsername(token=None, request=mvp_pb2.RegisterUsernameRequest(username=username, password=f'{username} password'))
+  assert resp.WhichOneof('register_username_result') == 'ok'
+  return resp.ok
+
+
+def alice_bob_tokens(fs_servicer: FsBackedServicer) -> Tuple[mvp_pb2.AuthToken, mvp_pb2.AuthToken]:
+  token_a = new_user_token(fs_servicer, 'Alice')
+  token_b = new_user_token(fs_servicer, 'Bob')
+
+  fs_servicer.SetTrusted(token_a, mvp_pb2.SetTrustedRequest(who=token_b.owner, trusted=True))
+  fs_servicer.SetTrusted(token_b, mvp_pb2.SetTrustedRequest(who=token_a.owner, trusted=True))
+
+  return (token_a, token_b)
+
+
+def test_Whoami(fs_servicer: FsBackedServicer):
+  resp = fs_servicer.Whoami(None, mvp_pb2.WhoamiRequest())
+  assert resp.auth.ByteSize() == 0
+
+  rando_token = new_user_token(fs_servicer, 'rando')
+  resp = fs_servicer.Whoami(rando_token, mvp_pb2.WhoamiRequest())
+  assert resp.auth == rando_token
+
+
+def test_LogInUsername(fs_servicer: FsBackedServicer):
+  rando_token = new_user_token(fs_servicer, 'rando')
+  resp = fs_servicer.LogInUsername(None, mvp_pb2.LogInUsernameRequest(username='rando', password='rando password'))
+  assert resp.WhichOneof('log_in_username_result') == 'ok'
+  assert resp.ok.owner == rando_token.owner
+
+  resp = fs_servicer.LogInUsername(None, mvp_pb2.LogInUsernameRequest(username='rando', password='WRONG'))
+  assert resp.WhichOneof('log_in_username_result') == 'error'
+  assert resp.ok.ByteSize() == 0
+
+  resp = fs_servicer.LogInUsername(rando_token, mvp_pb2.LogInUsernameRequest(username='rando', password='WRONG'))
+  assert resp.WhichOneof('log_in_username_result') == 'error'
+  assert resp.ok.ByteSize() == 0
+
+
+def test_RegisterUsername(fs_servicer: FsBackedServicer):
   resp = fs_servicer.RegisterUsername(token=None, request=mvp_pb2.RegisterUsernameRequest(username='potato', password='secret'))
   assert resp.WhichOneof('register_username_result') == 'ok'
   token = resp.ok
@@ -24,14 +65,44 @@ def test_RegisterUsername(fs_servicer):
 
 
 def test_CreateMarket_returns_distinct_ids(token_mint, fs_servicer):
-  token = fs_servicer.RegisterUsername(token=None, request=mvp_pb2.RegisterUsernameRequest(username='potato', password='secret')).ok
+  token = new_user_token(fs_servicer, 'rando')
   ids = {fs_servicer.CreateMarket(token, mvp_pb2.CreateMarketRequest()).new_market_id for _ in range(30)}
   assert len(ids) == 30
 
-def test_Stake(fs_servicer, clock):
-  creator_token = fs_servicer.RegisterUsername(token=None, request=mvp_pb2.RegisterUsernameRequest(username='creator', password='secret')).ok
+
+def test_GetMarket(fs_servicer: FsBackedServicer, clock: MockClock):
+  rando_token = new_user_token(fs_servicer, 'rando')
   market_id = fs_servicer.CreateMarket(
-    token=creator_token,
+    token=rando_token,
+    request=mvp_pb2.CreateMarketRequest(
+      question='question!',
+      certainty=mvp_pb2.CertaintyRange(low=0.80, high=0.90),
+      maximum_stake_cents=100_00,
+      open_seconds=123,
+      special_rules='rules!'
+    ),
+  ).new_market_id
+
+  resp = fs_servicer.GetMarket(rando_token, mvp_pb2.GetMarketRequest(market_id=market_id))
+  assert resp == mvp_pb2.GetMarketResponse(market=mvp_pb2.UserMarketView(
+    question='question!',
+    certainty=mvp_pb2.CertaintyRange(low=0.80, high=0.90),
+    maximum_stake_cents=100_00,
+    remaining_stake_cents_vs_believers=100_00,
+    remaining_stake_cents_vs_skeptics=100_00,
+    created_unixtime=clock.now(),
+    closes_unixtime=clock.now() + 123,
+    special_rules='rules!',
+    creator=mvp_pb2.UserUserView(display_name='rando', is_self=True, is_trusted=True, trusts_you=True),
+    resolutions=[],
+    your_trades=[],
+  ))
+
+
+def test_Stake(fs_servicer, clock):
+  alice_token, bob_token = alice_bob_tokens(fs_servicer)
+  market_id = fs_servicer.CreateMarket(
+    token=alice_token,
     request=mvp_pb2.CreateMarketRequest(
       maximum_stake_cents=100_00,
       certainty=mvp_pb2.CertaintyRange(low=0.80, high=0.90),
@@ -39,30 +110,26 @@ def test_Stake(fs_servicer, clock):
   ).new_market_id
   assert market_id != 0
 
-  bettor_token = fs_servicer.RegisterUsername(token=None, request=mvp_pb2.RegisterUsernameRequest(username='bettor', password='secret')).ok
-  fs_servicer.SetTrusted(bettor_token, mvp_pb2.SetTrustedRequest(who=creator_token.owner, trusted=True))
-  fs_servicer.SetTrusted(creator_token, mvp_pb2.SetTrustedRequest(who=bettor_token.owner, trusted=True))
-
-  fs_servicer.Stake(token=bettor_token, request=mvp_pb2.StakeRequest(
+  fs_servicer.Stake(token=bob_token, request=mvp_pb2.StakeRequest(
     market_id=market_id,
     bettor_is_a_skeptic=True,
     bettor_stake_cents=20_00,
   ))
-  fs_servicer.Stake(token=bettor_token, request=mvp_pb2.StakeRequest(
+  fs_servicer.Stake(token=bob_token, request=mvp_pb2.StakeRequest(
     market_id=market_id,
     bettor_is_a_skeptic=False,
     bettor_stake_cents=90_00,
   ))
-  assert list(fs_servicer._get_state().markets.get(market_id).trades) == [
+  assert list(fs_servicer.GetMarket(alice_token, mvp_pb2.GetMarketRequest(market_id=market_id)).market.your_trades) == [
     mvp_pb2.Trade(
-      bettor=mvp_pb2.UserId(username='bettor'),
+      bettor=bob_token.owner,
       bettor_is_a_skeptic=True,
       bettor_stake_cents=20_00,
       creator_stake_cents=80_00,
       transacted_unixtime=clock.now(),
     ),
     mvp_pb2.Trade(
-      bettor=mvp_pb2.UserId(username='bettor'),
+      bettor=bob_token.owner,
       bettor_is_a_skeptic=False,
       bettor_stake_cents=90_00,
       creator_stake_cents=10_00,
@@ -70,10 +137,10 @@ def test_Stake(fs_servicer, clock):
     ),
   ]
 
-def test_Stake_protects_against_overpromising(fs_servicer):
-  creator_token = fs_servicer.RegisterUsername(token=None, request=mvp_pb2.RegisterUsernameRequest(username='potato', password='secret')).ok
+def test_Stake_protects_against_overpromising(fs_servicer: FsBackedServicer):
+  alice_token, bob_token = alice_bob_tokens(fs_servicer)
   market_id = fs_servicer.CreateMarket(
-    token=creator_token,
+    token=alice_token,
     request=mvp_pb2.CreateMarketRequest(
       maximum_stake_cents=100_00,
       certainty=mvp_pb2.CertaintyRange(low=0.80, high=0.90),
@@ -81,43 +148,39 @@ def test_Stake_protects_against_overpromising(fs_servicer):
   ).new_market_id
   assert market_id != 0
 
-  bettor_token = fs_servicer.RegisterUsername(token=None, request=mvp_pb2.RegisterUsernameRequest(username='bettor', password='secret')).ok
-  fs_servicer.SetTrusted(bettor_token, mvp_pb2.SetTrustedRequest(who=creator_token.owner, trusted=True))
-  fs_servicer.SetTrusted(creator_token, mvp_pb2.SetTrustedRequest(who=bettor_token.owner, trusted=True))
-
-  fs_servicer.Stake(token=bettor_token, request=mvp_pb2.StakeRequest(
+  fs_servicer.Stake(token=bob_token, request=mvp_pb2.StakeRequest(
     market_id=market_id,
     bettor_is_a_skeptic=True,
     bettor_stake_cents=25_00,
   ))
-  fs_servicer.Stake(token=bettor_token, request=mvp_pb2.StakeRequest(
+  fs_servicer.Stake(token=bob_token, request=mvp_pb2.StakeRequest(
     market_id=market_id,
     bettor_is_a_skeptic=False,
     bettor_stake_cents=900_00,
   ))
 
-  assert fs_servicer.Stake(bettor_token, mvp_pb2.StakeRequest(
+  assert fs_servicer.Stake(bob_token, mvp_pb2.StakeRequest(
     market_id=market_id,
     bettor_is_a_skeptic=True,
     bettor_stake_cents=1,
   )).WhichOneof('stake_result') == 'error'
-  assert fs_servicer.Stake(bettor_token, mvp_pb2.StakeRequest(
+  assert fs_servicer.Stake(bob_token, mvp_pb2.StakeRequest(
     market_id=market_id,
     bettor_is_a_skeptic=False,
     bettor_stake_cents=9,
   )).WhichOneof('stake_result') == 'error'
 
-def test_Stake_enforces_trust(fs_servicer):
-  creator_token = fs_servicer.RegisterUsername(token=None, request=mvp_pb2.RegisterUsernameRequest(username='potato', password='secret')).ok
+def test_Stake_enforces_trust(fs_servicer: FsBackedServicer):
+  alice_token, bob_token = alice_bob_tokens(fs_servicer)
+  rando_token = new_user_token(fs_servicer, 'rando')
   market_id = fs_servicer.CreateMarket(
-    token=creator_token,
+    token=alice_token,
     request=mvp_pb2.CreateMarketRequest(
       maximum_stake_cents=100_00,
       certainty=mvp_pb2.CertaintyRange(low=0.80, high=0.90),
     ),
   ).new_market_id
   assert market_id != 0
-
 
   stake_req = mvp_pb2.StakeRequest(
     market_id=market_id,
@@ -125,18 +188,81 @@ def test_Stake_enforces_trust(fs_servicer):
     bettor_stake_cents=10_00,
   )
 
-  rando_token = fs_servicer.RegisterUsername(token=None, request=mvp_pb2.RegisterUsernameRequest(username='rando', password='secret')).ok
   assert fs_servicer.Stake(rando_token, stake_req).WhichOneof('stake_result') == 'error'
 
-  truster_token = fs_servicer.RegisterUsername(token=None, request=mvp_pb2.RegisterUsernameRequest(username='truster', password='secret')).ok
-  fs_servicer.SetTrusted(truster_token, mvp_pb2.SetTrustedRequest(who=creator_token.owner, trusted=True))
+  truster_token = new_user_token(fs_servicer, 'truster')
+  fs_servicer.SetTrusted(truster_token, mvp_pb2.SetTrustedRequest(who=alice_token.owner, trusted=True))
   assert fs_servicer.Stake(truster_token, stake_req).WhichOneof('stake_result') == 'error'
 
-  trustee_token = fs_servicer.RegisterUsername(token=None, request=mvp_pb2.RegisterUsernameRequest(username='trustee', password='secret')).ok
-  fs_servicer.SetTrusted(creator_token, mvp_pb2.SetTrustedRequest(who=trustee_token.owner, trusted=True))
+  trustee_token = new_user_token(fs_servicer, 'trustee')
+  fs_servicer.SetTrusted(alice_token, mvp_pb2.SetTrustedRequest(who=trustee_token.owner, trusted=True))
   assert fs_servicer.Stake(trustee_token, stake_req).WhichOneof('stake_result') == 'error'
 
-  friend_token = fs_servicer.RegisterUsername(token=None, request=mvp_pb2.RegisterUsernameRequest(username='friend', password='secret')).ok
-  fs_servicer.SetTrusted(friend_token, mvp_pb2.SetTrustedRequest(who=creator_token.owner, trusted=True))
-  fs_servicer.SetTrusted(creator_token, mvp_pb2.SetTrustedRequest(who=friend_token.owner, trusted=True))
-  assert fs_servicer.Stake(friend_token, stake_req).WhichOneof('stake_result') == 'ok'
+  assert fs_servicer.Stake(bob_token, stake_req).WhichOneof('stake_result') == 'ok'
+
+
+def test_Resolve(fs_servicer: FsBackedServicer, clock: MockClock):
+  rando_token = new_user_token(fs_servicer, 'rando')
+  market_id = fs_servicer.CreateMarket(
+    token=rando_token,
+    request=mvp_pb2.CreateMarketRequest(
+      maximum_stake_cents=100_00,
+      certainty=mvp_pb2.CertaintyRange(low=0.80, high=0.90),
+    ),
+  ).new_market_id
+
+  t0 = clock.now()
+  planned_events = [
+    mvp_pb2.ResolutionEvent(unixtime=t0+0, resolution=mvp_pb2.RESOLUTION_YES),
+    mvp_pb2.ResolutionEvent(unixtime=t0+1, resolution=mvp_pb2.RESOLUTION_NONE_YET),
+    mvp_pb2.ResolutionEvent(unixtime=t0+2, resolution=mvp_pb2.RESOLUTION_NO),
+  ]
+
+  resolve_resp = fs_servicer.Resolve(rando_token, mvp_pb2.ResolveRequest(market_id=market_id, resolution=mvp_pb2.RESOLUTION_YES))
+  assert resolve_resp.WhichOneof('resolve_result') == 'ok'
+  get_resp = fs_servicer.GetMarket(rando_token, mvp_pb2.GetMarketRequest(market_id=market_id))
+  assert list(get_resp.market.resolutions) == planned_events[:1]
+
+  clock.tick()
+  t1 = clock.now()
+  resolve_resp = fs_servicer.Resolve(rando_token, mvp_pb2.ResolveRequest(market_id=market_id, resolution=mvp_pb2.RESOLUTION_NONE_YET))
+  assert resolve_resp.WhichOneof('resolve_result') == 'ok'
+  get_resp = fs_servicer.GetMarket(rando_token, mvp_pb2.GetMarketRequest(market_id=market_id))
+  assert list(get_resp.market.resolutions) == planned_events[:2]
+
+  clock.tick()
+  t2 = clock.now()
+  resolve_resp = fs_servicer.Resolve(rando_token, mvp_pb2.ResolveRequest(market_id=market_id, resolution=mvp_pb2.RESOLUTION_NO))
+  assert resolve_resp.WhichOneof('resolve_result') == 'ok'
+  get_resp = fs_servicer.GetMarket(rando_token, mvp_pb2.GetMarketRequest(market_id=market_id))
+  assert list(get_resp.market.resolutions) == planned_events
+
+
+def test_Resolve_ensures_creator(fs_servicer: FsBackedServicer):
+  alice_token, bob_token = alice_bob_tokens(fs_servicer)
+  market_id = fs_servicer.CreateMarket(
+    token=alice_token,
+    request=mvp_pb2.CreateMarketRequest(
+      maximum_stake_cents=100_00,
+      certainty=mvp_pb2.CertaintyRange(low=0.80, high=0.90),
+    ),
+  ).new_market_id
+
+  resp = fs_servicer.Resolve(bob_token, mvp_pb2.ResolveRequest(market_id=market_id, resolution=mvp_pb2.RESOLUTION_NO))
+  assert resp.WhichOneof('resolve_result') == 'error'
+  assert 'not the creator' in str(resp.error)
+
+
+def test_GetUser(fs_servicer: FsBackedServicer):
+  alice_token, bob_token = alice_bob_tokens(fs_servicer)
+
+  resp = fs_servicer.GetUser(alice_token, mvp_pb2.GetUserRequest(who=bob_token.owner))
+  assert resp.ok == mvp_pb2.UserUserView(display_name='Bob', is_self=False, is_trusted=True, trusts_you=True)
+
+  truster_token = new_user_token(fs_servicer, 'truster')
+  fs_servicer.SetTrusted(truster_token, mvp_pb2.SetTrustedRequest(who=alice_token.owner, trusted=True))
+  resp = fs_servicer.GetUser(alice_token, mvp_pb2.GetUserRequest(who=truster_token.owner))
+  assert resp.ok == mvp_pb2.UserUserView(display_name='truster', is_self=False, is_trusted=False, trusts_you=True)
+
+  resp = fs_servicer.GetUser(None, mvp_pb2.GetUserRequest(who=bob_token.owner))
+  assert resp.ok == mvp_pb2.UserUserView(display_name='Bob', is_self=False, is_trusted=False, trusts_you=False)
