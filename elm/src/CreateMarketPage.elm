@@ -69,6 +69,7 @@ init flags =
       , auth = Just dummyAuthToken
       , working = False
       , stakeError = Nothing
+      , resolveError = Nothing
       , now = epoch
       , resolutionNotes = ""
       }

@@ -29,6 +29,7 @@ type alias Model =
   , auth : Maybe Pb.AuthToken
   , working : Bool
   , stakeError : Maybe String
+  , resolveError : Maybe String
   , now : Time.Posix
   , resolutionNotes : String
   }
@@ -56,6 +57,7 @@ init flags =
     , auth = Utils.decodePbFromFlags Pb.authTokenDecoder "authTokenPbB64" flags
     , working = False
     , stakeError = Nothing
+    , resolveError = Nothing
     , now = Time.millisToPosix 0
     , resolutionNotes = ""
     }
@@ -106,11 +108,11 @@ update msg model =
     SetResolutionNotes s ->
       ( { model | resolutionNotes = s } , Cmd.none )
     Resolve resolution ->
-      ( { model | working = True , stakeError = Nothing }
+      ( { model | working = True , resolveError = Nothing }
       , postResolve {marketId=model.marketId, resolution=resolution, notes = ""}
       )
     ResolveFinished (Err e) ->
-      ( { model | working = False , stakeError = Just (Debug.toString e) }
+      ( { model | working = False , resolveError = Just (Debug.toString e) }
       , Cmd.none
       )
     ResolveFinished (Ok resp) ->
@@ -120,11 +122,11 @@ update msg model =
           , changed ()
           )
         Just (Pb.ResolveResultError e) ->
-          ( { model | working = False , stakeError = Just (Debug.toString e) }
+          ( { model | working = False , resolveError = Just (Debug.toString e) }
           , Cmd.none
           )
         Nothing ->
-          ( { model | working = False , stakeError = Just "Invalid server response (neither Ok nor Error in protobuf)" }
+          ( { model | working = False , resolveError = Just "Invalid server response (neither Ok nor Error in protobuf)" }
           , Cmd.none
           )
     Copy id ->
@@ -181,8 +183,8 @@ creatorWinningsByBettor resolvedYes trades =
   trades
   |> List.foldl (\t d -> D.update (Utils.renderUser <| Utils.mustTradeBettor t) (Maybe.withDefault 0 >> ((+) (if xor resolvedYes t.bettorIsASkeptic then -t.creatorStakeCents else t.bettorStakeCents)) >> Just) d) D.empty
 
-stateWinnings : Int -> String -> String
-stateWinnings win counterparty =
+stateWinnings : String -> Int -> String
+stateWinnings counterparty win =
   (if win > 0 then counterparty ++ " owes you" else "You owe " ++ counterparty) ++ " " ++ Utils.formatCents (abs win) ++ "."
 
 enumerateWinnings : Dict String Int -> Html Msg
@@ -191,90 +193,140 @@ enumerateWinnings winningsByUser =
     winningsByUser
     |> D.toList
     |> List.sortBy (\(b, win) -> b)
-    |> List.map (\(b, win) -> H.li [] [H.text <| stateWinnings win b])
+    |> List.map (\(b, win) -> H.li [] [H.text <| stateWinnings b win])
     )
 
-viewDefiniteResolution : Pb.UserMarketView -> Bool -> Html Msg
-viewDefiniteResolution market resolvedYes =
+viewMarketState : Model -> Html Msg
+viewMarketState model =
   let
-    creator = Utils.mustMarketCreator market
+    auditLog : Html Msg
+    auditLog =
+      if List.isEmpty model.market.resolutions then H.text "" else
+      H.details [HA.style "opacity" "50%"]
+        [ H.summary [] [H.text "Details"]
+        , model.market.resolutions
+          |> List.map (Debug.toString >> H.text >> List.singleton >> H.li [])
+          |> H.ul []
+        ]
   in
+  H.div []
+    [ case Utils.currentResolution model.market of
+      Pb.ResolutionYes ->
+        H.text "This market has resolved YES. "
+      Pb.ResolutionNo ->
+        H.text "This market has resolved NO. "
+      Pb.ResolutionNoneYet ->
+        let
+          secondsToClose = model.market.closesUnixtime - Time.posixToMillis model.now // 1000
+        in
+          if secondsToClose > 0 then
+            H.text <| "This market closes in " ++ Utils.renderIntervalSeconds secondsToClose ++ ". "
+          else
+            H.text <| "This market closed " ++ Utils.renderIntervalSeconds (abs secondsToClose) ++ " ago, but hasn't yet resolved. "
+      Pb.ResolutionUnrecognized_ _ ->
+        H.span [HA.style "color" "red"]
+          [H.text "Oh dear, something has gone very strange with this market. Please email TODO with this URL to report it!"]
+    , auditLog
+    ]
+
+viewWinnings : Model -> Html Msg
+viewWinnings model =
+  let
+    auditLog : Html Msg
+    auditLog =
+      if List.isEmpty model.market.yourTrades then H.text "" else
+      H.details [HA.style "opacity" "50%"]
+        [ H.summary [] [H.text "Details"]
+        , model.market.yourTrades
+          |> List.map (Debug.toString >> H.text >> List.singleton >> H.li [])
+          |> H.ul []
+        ]
+    ifRes : Bool -> Html Msg
+    ifRes res =
+      creatorWinningsByBettor res model.market.yourTrades
+        |> let creator = Utils.mustMarketCreator model.market in
+            if creator.isSelf then
+              enumerateWinnings
+            else
+              (D.values >> List.sum >> (\n -> -n) >> stateWinnings creator.displayName >> H.text)
+  in
+  if List.isEmpty model.market.yourTrades then H.text "" else
+  H.div []
+    [ case Utils.currentResolution model.market of
+      Pb.ResolutionYes ->
+        ifRes True
+      Pb.ResolutionNo ->
+        ifRes False
+      Pb.ResolutionNoneYet ->
+        H.div []
+          [ H.div [] [H.text "If this market resolves Yes: ", ifRes True]
+          , H.div [] [H.text "If this market resolves No:  ", ifRes False]
+          ]
+      Pb.ResolutionUnrecognized_ _ -> Debug.todo ""
+    , auditLog
+    ]
+
+viewCreationParams : Model -> Html Msg
+viewCreationParams model =
+  let
+    creator = Utils.mustMarketCreator model.market
+    openTime = model.market.createdUnixtime |> (*) 1000 |> Time.millisToPosix
+    certainty = Utils.mustMarketCertainty model.market
+  in
+  H.p []
+    [ H.text <| "On " ++ Utils.dateStr Time.utc openTime ++ " UTC, "
+    , H.strong [] [H.text creator.displayName]
+    , H.text " assigned this a "
+    , certainty.low |> (*) 100 |> round |> String.fromInt |> H.text
+    , H.text "-"
+    , certainty.high |> (*) 100 |> round |> String.fromInt |> H.text
+    , H.text "% chance, and staked "
+    , model.market.maximumStakeCents |> Utils.formatCents |> H.text
+    , H.text "."
+    ]
+
+viewResolveButtons : Model -> Html Msg
+viewResolveButtons model =
+  if (Utils.mustMarketCreator model.market).isSelf then
     H.div []
-      [ H.text <| "This market has resolved " ++ (if resolvedYes then "YES" else "NO") ++ ". "
-      , if creator.isSelf then
-          enumerateWinnings (creatorWinningsByBettor resolvedYes market.yourTrades)
-        else if List.length market.yourTrades > 0 then
-          let bettorWinnings = -(List.sum <| D.values <| creatorWinningsByBettor resolvedYes market.yourTrades) in
-          H.text <| stateWinnings bettorWinnings creator.displayName
-        else
-          H.text ""
+      [ case Utils.currentResolution model.market of
+          Pb.ResolutionYes ->
+            H.details []
+              [ H.summary [] [H.text "Un-resolve?"]
+              , H.text "If you resolved this market in error, you can "
+              , H.button [HE.onClick (Resolve Pb.ResolutionNoneYet)] [H.text "un-resolve it."]
+              ]
+          Pb.ResolutionNo ->
+            H.details []
+              [ H.summary [] [H.text "Un-resolve?"]
+              , H.text "If you resolved this market in error, you can "
+              , H.button [HE.onClick (Resolve Pb.ResolutionNoneYet)] [H.text "un-resolve it."]
+              ]
+          Pb.ResolutionNoneYet ->
+            H.div []
+              [ H.button [HE.onClick (Resolve Pb.ResolutionYes)] [H.text "Resolve YES"]
+              , H.button [HE.onClick (Resolve Pb.ResolutionNo)] [H.text "Resolve NO"]
+              ]
+          Pb.ResolutionUnrecognized_ _ -> Debug.todo ""
+      , case model.resolveError of
+          Just e -> H.span [] [H.text e]
+          Nothing -> H.text ""
       ]
+  else
+    H.text ""
 
 view : Model -> Html Msg
 view model =
   let
     creator = Utils.mustMarketCreator model.market
-    certainty = Utils.mustMarketCertainty model.market
-    secondsToClose = model.market.closesUnixtime - Time.posixToMillis model.now // 1000
-    openTime = model.market.createdUnixtime |> (*) 1000 |> Time.millisToPosix
-    closeTime = model.market.closesUnixtime |> (*) 1000 |> Time.millisToPosix
   in
   H.div []
     [ H.h2 [] [H.text model.market.question]
-    , case Utils.currentResolution model.market of
-        Pb.ResolutionYes ->
-          viewDefiniteResolution model.market True
-        Pb.ResolutionNo ->
-          viewDefiniteResolution model.market False
-        Pb.ResolutionNoneYet ->
-          H.div []
-            [ if secondsToClose <= 0 then
-                H.text <| "This market closed on " ++ Utils.dateStr Time.utc closeTime ++ ", but hasn't yet resolved."
-              else
-                H.text <| "This market will close on "
-                  ++ Utils.dateStr Time.utc closeTime ++ " UTC, in "
-                  ++ Utils.renderIntervalSeconds secondsToClose
-                  ++ ". "
-            , H.br [] []
-            , if creator.isSelf then
-                H.div []
-                  [ H.button [HE.onClick (Resolve Pb.ResolutionYes)] [H.text "Resolve YES"]
-                  , H.button [HE.onClick (Resolve Pb.ResolutionNo)] [H.text "Resolve NO"]
-                  -- , H.button [HE.onClick (Resolve Pb.ResolutionInvalid)] [H.text "Resolve INVALID"]
-                  , if List.length model.market.yourTrades /= 0 then
-                      H.div []
-                        [ H.text "If this market resolves Yes, "
-                        , enumerateWinnings (creatorWinningsByBettor True model.market.yourTrades)
-                        , H.text "If this market resolves No, "
-                        , enumerateWinnings (creatorWinningsByBettor False model.market.yourTrades)
-                        ]
-                    else
-                      H.text ""
-                  ]
-              else if List.length model.market.yourTrades /= 0 then
-                H.span []
-                  [ H.text <| "If it resolves Yes: " ++ stateWinnings (List.sum <| List.map (\t -> if t.bettorIsASkeptic then -t.bettorStakeCents else t.creatorStakeCents) model.market.yourTrades) creator.displayName
-                  , H.br [] []
-                  , H.text <| "If it resolves No: "  ++ stateWinnings (List.sum <| List.map (\t -> if t.bettorIsASkeptic then t.creatorStakeCents else -t.bettorStakeCents) model.market.yourTrades) creator.displayName
-                  ]
-              else
-                H.text ""
-            ]
-        Pb.ResolutionUnrecognized_ _ ->
-          H.span [HA.style "color" "red"]
-            [H.text "Oh dear, something has gone very strange with this market. Please email TODO with this URL to report it!"]
+    , viewMarketState model
+    , viewResolveButtons model
+    , viewWinnings model
     , H.hr [] []
-    , H.p []
-        [ H.text <| "On " ++ Utils.dateStr Time.utc openTime ++ " UTC, "
-        , H.strong [] [H.text creator.displayName]
-        , H.text " assigned this a "
-        , certainty.low |> (*) 100 |> round |> String.fromInt |> H.text
-        , H.text "-"
-        , certainty.high |> (*) 100 |> round |> String.fromInt |> H.text
-        , H.text "% chance, and staked "
-        , model.market.maximumStakeCents |> Utils.formatCents |> H.text
-        , H.text "."
-        ]
+    , viewCreationParams model
     , viewStakeFormOrExcuse model
     , case model.stakeError of
         Just e -> H.div [HA.style "color" "red"] [H.text e]
