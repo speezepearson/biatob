@@ -90,6 +90,7 @@ resolutionIsTerminal res =
     Pb.ResolutionYes -> True
     Pb.ResolutionNo -> True
     Pb.ResolutionNoneYet -> False
+    Pb.ResolutionInvalid -> True
     Pb.ResolutionUnrecognized_ _ -> Debug.todo "unrecognized resolution"
 
 unixtimeToTime : Int -> Time.Posix

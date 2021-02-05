@@ -215,6 +215,8 @@ viewMarketState model =
         H.text "This market has resolved YES. "
       Pb.ResolutionNo ->
         H.text "This market has resolved NO. "
+      Pb.ResolutionInvalid ->
+        H.text "This market has resolved INVALID. "
       Pb.ResolutionNoneYet ->
         let
           secondsToClose = model.market.closesUnixtime - Time.posixToMillis model.now // 1000
@@ -257,6 +259,8 @@ viewWinnings model =
         ifRes True
       Pb.ResolutionNo ->
         ifRes False
+      Pb.ResolutionInvalid ->
+        H.text "All bets have been called off. "
       Pb.ResolutionNoneYet ->
         H.div []
           [ H.div [] [H.text "If this market resolves Yes: ", ifRes True]
@@ -302,10 +306,13 @@ viewResolveButtons model =
             mistakeDetails
           Pb.ResolutionNo ->
             mistakeDetails
+          Pb.ResolutionInvalid ->
+            mistakeDetails
           Pb.ResolutionNoneYet ->
             H.div []
               [ H.button [HE.onClick (Resolve Pb.ResolutionYes)] [H.text "Resolve YES"]
               , H.button [HE.onClick (Resolve Pb.ResolutionNo)] [H.text "Resolve NO"]
+              , H.button [HE.onClick (Resolve Pb.ResolutionInvalid)] [H.text "Resolve INVALID"]
               ]
           Pb.ResolutionUnrecognized_ _ -> Debug.todo ""
       , case model.resolveError of

@@ -72,9 +72,11 @@ class Resolution(builtin___int):
     RESOLUTION_NONE_YET = typing___cast('Resolution', 0)
     RESOLUTION_YES = typing___cast('Resolution', 1)
     RESOLUTION_NO = typing___cast('Resolution', 2)
+    RESOLUTION_INVALID = typing___cast('Resolution', 3)
 RESOLUTION_NONE_YET = typing___cast('Resolution', 0)
 RESOLUTION_YES = typing___cast('Resolution', 1)
 RESOLUTION_NO = typing___cast('Resolution', 2)
+RESOLUTION_INVALID = typing___cast('Resolution', 3)
 global___Resolution = Resolution
 
 class UserId(google___protobuf___message___Message):

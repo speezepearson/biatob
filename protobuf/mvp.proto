@@ -79,7 +79,7 @@ enum Resolution {
   RESOLUTION_NONE_YET = 0;
   RESOLUTION_YES = 1;
   RESOLUTION_NO = 2;
-  // RESOLUTION_INVALID = 3;
+  RESOLUTION_INVALID = 3;
 }
 
 message WhoamiRequest {}

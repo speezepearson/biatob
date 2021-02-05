@@ -57,6 +57,7 @@ type Resolution
     = ResolutionNoneYet
     | ResolutionYes
     | ResolutionNo
+    | ResolutionInvalid
     | ResolutionUnrecognized_ Int
 
 
@@ -492,6 +493,9 @@ resolutionDecoder =
 
                     2 ->
                         ResolutionNo
+
+                    3 ->
+                        ResolutionInvalid
 
                     v ->
                         ResolutionUnrecognized_ v
@@ -953,6 +957,9 @@ toResolutionEncoder value =
 
             ResolutionNo ->
                 2
+
+            ResolutionInvalid ->
+                3
 
             ResolutionUnrecognized_ v ->
                 v
