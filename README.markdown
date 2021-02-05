@@ -18,13 +18,18 @@ Extrapolate.
 
 TODO
 --------------
-- P1 [mvp]: sketch the signup process, and how trust is established between accounts
-- P2 [pre-beta]: write copy explaining how to operationalize a bet well
+- P2 [pre-beta]: write copy explaining how to operationalize a bet well (or find somebody else's explanation)
 - P2 [pre-beta]: figure out how to make ViewMarketPage less gnarly -- maybe just have totally separate functions for creator/challenger(/rando)?
+- P2 [pre-beta]: link from more places to other places
+- P2 [pre-beta]: add an actual home page
+- P2 [pre-beta]: show users their balances with other users
+- P2 [pre-beta]: link auth widget to your user page
 - P2 [pre-beta]: consider a semi-formalized system for naming an arbiter
 - P2 [pre-beta]: figure out how users can undo accidental bets
 - P2 [pre-beta]: add "Sign in with [identity provider]"
 - P2 [pre-beta]: make "bet"/"wager"/"market"/"stake"/"bettor"/"challenger" terminology consistent
+- P2 [pre-beta]: _consider_ showing users each other's calibratedness / score / bets
+- P3 [nice-to-have]: market privacy controls
 - P3 [nice-to-have]: monetize via freemium or subscription?
 - P3 [nice-to-have]: consider allowing "soft resolutions" so a market can resolve "80% yes"
 - P3 [nice-to-have]: consider letting people download a list of all their bets
