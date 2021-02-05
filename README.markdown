@@ -18,6 +18,7 @@ Extrapolate.
 
 TODO
 --------------
+- P1 [mvp]: consider a better model of user identity -- UserUserView is gross
 - P2 [pre-beta]: write copy explaining how to operationalize a bet well (or find somebody else's explanation)
 - P2 [pre-beta]: figure out how to make ViewMarketPage less gnarly -- maybe just have totally separate functions for creator/challenger(/rando)?
 - P2 [pre-beta]: link from more places to other places
@@ -29,6 +30,7 @@ TODO
 - P2 [pre-beta]: add "Sign in with [identity provider]"
 - P2 [pre-beta]: make "bet"/"wager"/"market"/"stake"/"bettor"/"challenger" terminology consistent
 - P2 [pre-beta]: _consider_ showing users each other's calibratedness / score / bets
+- P2 [pre-beta]: more validation (e.g. character/length restrictions on usernames)
 - P3 [nice-to-have]: market privacy controls
 - P3 [nice-to-have]: monetize via freemium or subscription?
 - P3 [nice-to-have]: consider allowing "soft resolutions" so a market can resolve "80% yes"
