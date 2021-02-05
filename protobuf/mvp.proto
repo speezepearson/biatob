@@ -240,32 +240,16 @@ message GetUserResponse {
   }
 }
 
-// message GetUserRequest {
-//   string email = 2;
-// }
-// message GetUserResponse {
-//   oneof get_user_result {
-//     User user = 1;
-//     Error error = 2;
-//   }
-//   message User {
-//     bool trusted_by_requester = 1;
-//     bool trusts_requester = 2;
-//   }
-//   message Error {
-//     string catchall = 1;
-//   }
-// }
-
-// message MarkTrustedRequest {
-//   string email_to_trust = 2;
-// }
-// message MarkTrustedResponse {
-//   oneof result {
-//     Void ok = 1;
-//     Error error = 2;
-//   }
-//   message Error {
-//     string catchall = 1;
-//   }
-// }
+message ChangePasswordRequest {
+  string old_password = 1;
+  string new_password = 2;
+}
+message ChangePasswordResponse {
+  oneof change_password_result {
+    Void ok = 1;
+    Error error = 2;
+  }
+  message Error {
+    string catchall = 1;
+  }
+}

@@ -107,6 +107,7 @@ class Servicer(abc.ABC):
     def Resolve(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.ResolveRequest) -> mvp_pb2.ResolveResponse: pass
     def SetTrusted(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.SetTrustedRequest) -> mvp_pb2.SetTrustedResponse: pass
     def GetUser(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.GetUserRequest) -> mvp_pb2.GetUserResponse: pass
+    def ChangePassword(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.ChangePasswordRequest) -> mvp_pb2.ChangePasswordResponse: pass
 
 
 def checks_token(f):
@@ -316,6 +317,25 @@ class FsBackedServicer(Servicer):
             trusts_you=trusts(wstate, request.who, token.owner) if (token is not None) else False,
         ))
 
+    @checks_token
+    def ChangePassword(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.ChangePasswordRequest) -> mvp_pb2.ChangePasswordResponse:
+        if token is None:
+            return mvp_pb2.ChangePasswordResponse(error=mvp_pb2.ChangePasswordResponse.Error(catchall='must log in to change your password'))
+        if token.owner.WhichOneof('kind') != 'username':
+            return mvp_pb2.ChangePasswordResponse(error=mvp_pb2.ChangePasswordResponse.Error(catchall='only username-authenticated users have passwords'))
+
+        with self._mutate_state() as wstate:
+            info = wstate.username_users.get(token.owner.username)
+            if info is None:
+                raise RuntimeError('got valid token for nonexistent user!?', token)
+
+            if not bcrypt.checkpw(request.old_password.encode('utf8'), info.password_bcrypt):
+                return mvp_pb2.ChangePasswordResponse(error=mvp_pb2.ChangePasswordResponse.Error(catchall='bad password'))
+
+            info.password_bcrypt = bcrypt.hashpw(request.new_password.encode('utf8'), bcrypt.gensalt())
+
+            return mvp_pb2.ChangePasswordResponse(ok=mvp_pb2.VOID)
+
 
 from typing import TypeVar, Type, Tuple, Union, Awaitable
 from google.protobuf.message import Message
@@ -438,6 +458,9 @@ class ApiServer:
         @routes.post('/api/GetUser')
         async def api_GetUser(http_req: web.Request) -> web.Response:
             return proto_response(self._servicer.GetUser(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.GetUserRequest)))
+        @routes.post('/api/ChangePassword')
+        async def api_ChangePassword(http_req: web.Request) -> web.Response:
+            return proto_response(self._servicer.ChangePassword(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.ChangePasswordRequest)))
 
         self._token_glue.add_to_app(app)
         app.add_routes(routes)

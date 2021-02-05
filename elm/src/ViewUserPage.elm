@@ -13,6 +13,7 @@ import Biatob.Proto.Mvp as Pb
 import Utils
 
 import Biatob.Proto.Mvp exposing (StakeResult(..))
+import ChangePasswordWidget
 
 port changed : () -> Cmd msg
 
@@ -22,21 +23,27 @@ type alias Model =
   , auth : Maybe Pb.AuthToken
   , working : Bool
   , setTrustedError : Maybe String
+  , changePasswordWidget : ChangePasswordWidget.Model
   }
 
 type Msg
   = SetTrusted Bool
   | SetTrustedFinished (Result Http.Error Pb.SetTrustedResponse)
+  | ChangePasswordMsg ChangePasswordWidget.Msg
 
 init : JD.Value -> (Model, Cmd Msg)
 init flags =
+  let
+    (changePasswordWidget, cmd) = ChangePasswordWidget.init ()
+  in
   ( { userId = Utils.mustDecodePbFromFlags Pb.userIdDecoder "userIdPbB64" flags
     , userView = Utils.mustDecodePbFromFlags Pb.userUserViewDecoder "userViewPbB64" flags
     , auth = Utils.decodePbFromFlags Pb.authTokenDecoder "authTokenPbB64" flags
     , working = False
     , setTrustedError = Nothing
+    , changePasswordWidget = changePasswordWidget
     }
-  , Cmd.none
+  , Cmd.map ChangePasswordMsg cmd
   )
 
 postSetTrusted : Pb.SetTrustedRequest -> Cmd Msg
@@ -71,6 +78,10 @@ update msg model =
           ( { model | working = False , setTrustedError = Just "Invalid server response (neither Ok nor Error in protobuf)" }
           , Cmd.none
           )
+    ChangePasswordMsg widgetMsg ->
+      let (newWidget, cmd) = ChangePasswordWidget.update widgetMsg model.changePasswordWidget in
+      ( { model | changePasswordWidget = newWidget }, Cmd.map ChangePasswordMsg cmd)
+
 
 view : Model -> Html Msg
 view model =
@@ -78,7 +89,10 @@ view model =
     [ H.h2 [] [H.text model.userView.displayName]
     , H.br [] []
     , if model.userView.isSelf then
-        H.text "(This is you!)"
+        H.div []
+          [ H.text "This is you!"
+          , viewOwnPreferences model
+          ]
       else case model.auth of
         Nothing ->
           H.text "Log in to see your trust level with this user."
@@ -109,6 +123,15 @@ view model =
                 Just e -> H.div [HA.style "color" "red"] [H.text e]
                 Nothing -> H.text ""
             ]
+    ]
+
+viewOwnPreferences : Model -> Html Msg
+viewOwnPreferences model =
+  H.div []
+    [ H.h3 [] [H.text "Preferences"]
+    , H.ul []
+        [ H.li [] [H.map ChangePasswordMsg <| ChangePasswordWidget.view model.changePasswordWidget]
+        ]
     ]
 
 subscriptions : Model -> Sub Msg
