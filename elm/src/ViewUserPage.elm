@@ -79,29 +79,36 @@ view model =
     , H.br [] []
     , if model.userView.isSelf then
         H.text "(This is you!)"
-      else if model.auth == Nothing then
-        H.text "Log in to see your trust level with this user."
-      else
-        H.div []
-          [ if model.userView.trustsYou then
-              H.text "This user trusts you! :)"
-            else
-              H.text "This user doesn't trust you. :("
-          , H.br [] []
-          , if model.userView.isTrusted then
-              H.div []
-                [ H.text "You trust this user. "
-                , H.button [HA.disabled model.working, HE.onClick (SetTrusted False)] [H.text "Mark untrusted"]
-                ]
-            else
-              H.div []
-                [ H.text "You don't trust this user. "
-                , H.button [HA.disabled model.working, HE.onClick (SetTrusted True)] [H.text "Mark trusted"]
-                ]
-          , case model.setTrustedError of
-              Just e -> H.div [HA.style "color" "red"] [H.text e]
-              Nothing -> H.text ""
-          ]
+      else case model.auth of
+        Nothing ->
+          H.text "Log in to see your trust level with this user."
+        Just token ->
+          H.div []
+            [ if model.userView.trustsYou then
+                H.text "This user trusts you! :)"
+              else
+                H.div []
+                  [ H.text "This user hasn't marked you as trusted! If you think that, in real life, they "
+                  , H.i [] [H.text "do"]
+                  , H.text " trust you to pay your debts, send them a link to "
+                  , H.a [HA.href <| Utils.pathToUserPage <| Utils.mustTokenOwner token] [H.text "your user page"]
+                  , H.text " and ask them to mark you as trusted."
+                  ]
+            , H.br [] []
+            , if model.userView.isTrusted then
+                H.div []
+                  [ H.text "You trust this user. "
+                  , H.button [HA.disabled model.working, HE.onClick (SetTrusted False)] [H.text "Mark untrusted"]
+                  ]
+              else
+                H.div []
+                  [ H.text "You don't trust this user. "
+                  , H.button [HA.disabled model.working, HE.onClick (SetTrusted True)] [H.text "Mark trusted"]
+                  ]
+            , case model.setTrustedError of
+                Just e -> H.div [HA.style "color" "red"] [H.text e]
+                Nothing -> H.text ""
+            ]
     ]
 
 subscriptions : Model -> Sub Msg

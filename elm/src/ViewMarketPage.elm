@@ -23,7 +23,6 @@ port copy : String -> Cmd msg
 
 type alias Model =
   { stakeForm : StakeForm.State
-  , linkToAuthority : String
   , market : Pb.UserMarketView
   , marketId : Int
   , auth : Maybe Pb.AuthToken
@@ -51,7 +50,6 @@ setMarket market model = { model | market = market }
 init : JD.Value -> (Model, Cmd Msg)
 init flags =
   ( { stakeForm = StakeForm.init
-    , linkToAuthority = Utils.mustDecodeFromFlags JD.string "linkToAuthority" flags
     , market = Utils.mustDecodePbFromFlags Pb.userMarketViewDecoder "marketPbB64" flags
     , marketId = Utils.mustDecodeFromFlags JD.int "marketId" flags
     , auth = Utils.decodePbFromFlags Pb.authTokenDecoder "authTokenPbB64" flags
@@ -153,23 +151,13 @@ viewStakeFormOrExcuse model =
       if creator.isSelf then
         H.text ""
       else if not creator.trustsYou then
-        let
-          userPagePath =
-            auth_
-            |> Utils.mustTokenOwner
-            |> Utils.mustUserKind
-            |> (\k -> case k of
-                Pb.KindUsername username -> "/username/" ++ username
-                )
-          userPageUrl = model.linkToAuthority ++ userPagePath
-        in
-          H.span []
-            [ H.text <|
-                "The market creator doesn't trust you!"
-                ++ " If you think that they *do* trust you in real life, then send them this link to your user page,"
-                ++ " and ask them to mark you as trusted: "
-            , H.a [HA.href userPageUrl] [H.text userPageUrl]
-            ]
+        H.span []
+          [ H.text "This user hasn't marked you as trusted! If you think that, in real life, they "
+          , H.i [] [H.text "do"]
+          , H.text " trust you to pay your debts, send them a link to "
+          , H.a [HA.href <| Utils.pathToUserPage <| Utils.mustTokenOwner auth_] [H.text "your user page"]
+          , H.text " and ask them to mark you as trusted."
+          ]
       else if not creator.isTrusted then
         H.text <|
           "You don't trust the market creator!"
@@ -181,7 +169,7 @@ viewStakeFormOrExcuse model =
 creatorWinningsByBettor : Bool -> List Pb.Trade -> Dict String Int -- TODO: avoid key serialization collisions
 creatorWinningsByBettor resolvedYes trades =
   trades
-  |> List.foldl (\t d -> D.update (Utils.renderUser <| Utils.mustTradeBettor t) (Maybe.withDefault 0 >> ((+) (if xor resolvedYes t.bettorIsASkeptic then -t.creatorStakeCents else t.bettorStakeCents)) >> Just) d) D.empty
+  |> List.foldl (\t d -> D.update (Utils.renderUserPlain <| Utils.mustTradeBettor t) (Maybe.withDefault 0 >> ((+) (if xor resolvedYes t.bettorIsASkeptic then -t.creatorStakeCents else t.bettorStakeCents)) >> Just) d) D.empty
 
 stateWinnings : String -> Int -> String
 stateWinnings counterparty win =
@@ -240,7 +228,9 @@ viewWinnings model =
       H.details [HA.style "opacity" "50%"]
         [ H.summary [] [H.text "Details"]
         , model.market.yourTrades
-          |> List.map (\t -> H.li [] [H.text <| "[" ++ Utils.isoStr Time.utc (Utils.unixtimeToTime t.transactedUnixtime) ++ " UTC] " ++ Utils.renderUser (Utils.mustTradeBettor t) ++ " bet " ++ (if t.bettorIsASkeptic then "NO" else "YES") ++ " at " ++ Utils.formatCents t.bettorStakeCents ++ " : " ++ Utils.formatCents t.creatorStakeCents])
+          |> List.map (\t -> H.li [] [ H.text <| "[" ++ Utils.isoStr Time.utc (Utils.unixtimeToTime t.transactedUnixtime) ++ " UTC] "
+                                     , Utils.renderUser (Utils.mustTradeBettor t)
+                                     , H.text <| " bet " ++ (if t.bettorIsASkeptic then "NO" else "YES") ++ " at " ++ Utils.formatCents t.bettorStakeCents ++ " : " ++ Utils.formatCents t.creatorStakeCents])
           |> H.ul []
         ]
     ifRes : Bool -> Html Msg
@@ -351,8 +341,8 @@ view model =
 viewEmbedInfo : Model -> Html Msg
 viewEmbedInfo model =
   let
-    linkUrl = model.linkToAuthority ++ "/market/" ++ String.fromInt model.marketId
-    imgUrl = model.linkToAuthority ++ "/market/" ++ String.fromInt model.marketId ++ "/embed.png"
+    linkUrl = "/market/" ++ String.fromInt model.marketId
+    imgUrl = "/market/" ++ String.fromInt model.marketId ++ "/embed.png"
     imgStyles = [("max-height","1.5ex"), ("border-bottom","1px solid #008800")]
     imgCode =
       "<a href=\"" ++ linkUrl ++ "\">"

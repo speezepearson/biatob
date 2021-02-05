@@ -43,8 +43,8 @@ epoch = Time.millisToPosix 0
 authName : Maybe Pb.AuthToken -> String
 authName auth =
   auth
-  |> Maybe.andThen .owner
-  |> Maybe.map Utils.renderUser
+  |> Maybe.map Utils.mustTokenOwner
+  |> Maybe.map Utils.renderUserPlain
   |> Maybe.withDefault "[Creator]"
 
 dummyAuthToken : Pb.AuthToken
@@ -63,7 +63,6 @@ init flags =
     previewModel : ViewMarketPage.Model
     previewModel =
       { stakeForm = StakeForm.init
-      , linkToAuthority = "http://example.com"
       , market = formStateToProto {now=epoch, form=Form.init, creatorName=authName auth}
       , marketId = 12345
       , auth = Just dummyAuthToken

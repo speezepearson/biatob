@@ -46,7 +46,6 @@ main =
   Browser.element
     { init = \() -> Page.init (JE.object [ ("authTokenPbB64", JE.string <| Utils.encodePbB64 <| Pb.toAuthTokenEncoder mockAuthToken)
                                          , ("marketPbB64", JE.string <| Utils.encodePbB64 <| Pb.toUserMarketViewEncoder mockMarket)
-                                         , ("linkToAuthority", JE.string "http://example.com")
                                          , ("marketId", JE.int 12345)
                                          ])
     , subscriptions = Page.subscriptions

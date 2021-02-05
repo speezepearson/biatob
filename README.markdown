@@ -20,7 +20,6 @@ TODO
 --------------
 - P1 [mvp]: consider a better model of user identity -- UserUserView is gross
 - P2 [pre-beta]: write copy explaining how to operationalize a bet well (or find somebody else's explanation)
-- P2 [pre-beta]: figure out how to make ViewMarketPage less gnarly -- maybe just have totally separate functions for creator/challenger(/rando)?
 - P2 [pre-beta]: link from more places to other places
 - P2 [pre-beta]: add an actual home page
 - P2 [pre-beta]: show users their balances with other users

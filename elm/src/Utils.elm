@@ -28,11 +28,14 @@ must errmsg mx =
     Just x -> x
     Nothing -> Debug.todo errmsg
 
-renderUser : Pb.UserId -> String
-renderUser user =
-  user.kind |> must "all users have kinds" |> (\k -> case k of
+renderUserPlain : Pb.UserId -> String
+renderUserPlain user =
+  case mustUserKind user of
     Pb.KindUsername username -> username
-  )
+
+renderUser : Pb.UserId -> H.Html msg
+renderUser user =
+  H.a [HA.href <| pathToUserPage user] [H.text <| renderUserPlain user]
 
 outlineIfInvalid : Bool -> H.Attribute msg
 outlineIfInvalid isInvalid =
@@ -157,3 +160,8 @@ marketClosesTime market = market.closesUnixtime * 1000 |> Time.millisToPosix
 
 secondsToClose : Time.Posix -> Pb.UserMarketView -> Int
 secondsToClose now market = market.closesUnixtime - Time.posixToMillis now // 1000
+
+pathToUserPage : Pb.UserId -> String
+pathToUserPage user =
+  case mustUserKind user of
+    Pb.KindUsername username -> "/username/" ++ username
