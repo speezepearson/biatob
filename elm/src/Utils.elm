@@ -92,26 +92,44 @@ resolutionIsTerminal res =
     Pb.ResolutionNoneYet -> False
     Pb.ResolutionUnrecognized_ _ -> Debug.todo "unrecognized resolution"
 
-dateStr : Time.Zone -> Time.Posix -> String
-dateStr zone t =
+unixtimeToTime : Int -> Time.Posix
+unixtimeToTime n = Time.millisToPosix (n*1000)
+timeToUnixtime : Time.Posix -> Int
+timeToUnixtime t = Time.posixToMillis t // 1000
+
+monthNum_ : Time.Month -> Int
+monthNum_ month =
+  case month of
+    Time.Jan -> 1
+    Time.Feb -> 2
+    Time.Mar -> 3
+    Time.Apr -> 4
+    Time.May -> 5
+    Time.Jun -> 6
+    Time.Jul -> 7
+    Time.Aug -> 8
+    Time.Sep -> 9
+    Time.Oct -> 10
+    Time.Nov -> 11
+    Time.Dec -> 12
+
+isoStr : Time.Zone -> Time.Posix -> String
+isoStr zone t =
   String.fromInt (Time.toYear zone t)
   ++ "-"
-  ++ String.padLeft 2 '0' (String.fromInt (case Time.toMonth zone t of
-      Time.Jan -> 1
-      Time.Feb -> 2
-      Time.Mar -> 3
-      Time.Apr -> 4
-      Time.May -> 5
-      Time.Jun -> 6
-      Time.Jul -> 7
-      Time.Aug -> 8
-      Time.Sep -> 9
-      Time.Oct -> 10
-      Time.Nov -> 11
-      Time.Dec -> 12
-     ))
+  ++ String.padLeft 2 '0' (String.fromInt (monthNum_ <| Time.toMonth zone t))
   ++ "-"
   ++ String.padLeft 2 '0' (String.fromInt (Time.toDay zone t))
+  ++ "T"
+  ++ String.padLeft 2 '0' (String.fromInt (Time.toHour zone t))
+  ++ ":"
+  ++ String.padLeft 2 '0' (String.fromInt (Time.toMinute zone t))
+  ++ ":"
+  ++ String.padLeft 2 '0' (String.fromInt (Time.toSecond zone t))
+
+dateStr : Time.Zone -> Time.Posix -> String
+dateStr zone t =
+  isoStr zone t |> String.left (4+1+2+1+2)
 
 renderIntervalSeconds : Int -> String
 renderIntervalSeconds seconds =

@@ -205,7 +205,7 @@ viewMarketState model =
       H.details [HA.style "opacity" "50%"]
         [ H.summary [] [H.text "Details"]
         , model.market.resolutions
-          |> List.map (Debug.toString >> H.text >> List.singleton >> H.li [])
+          |> List.map (\event -> H.li [] [H.text <| "[" ++ Utils.isoStr Time.utc (Utils.unixtimeToTime event.unixtime) ++ " UTC] resolution set to " ++ Debug.toString event.resolution])
           |> H.ul []
         ]
   in
@@ -238,7 +238,7 @@ viewWinnings model =
       H.details [HA.style "opacity" "50%"]
         [ H.summary [] [H.text "Details"]
         , model.market.yourTrades
-          |> List.map (Debug.toString >> H.text >> List.singleton >> H.li [])
+          |> List.map (\t -> H.li [] [H.text <| "[" ++ Utils.isoStr Time.utc (Utils.unixtimeToTime t.transactedUnixtime) ++ " UTC] " ++ Utils.renderUser (Utils.mustTradeBettor t) ++ " bet " ++ (if t.bettorIsASkeptic then "NO" else "YES") ++ " at " ++ Utils.formatCents t.bettorStakeCents ++ " : " ++ Utils.formatCents t.creatorStakeCents])
           |> H.ul []
         ]
     ifRes : Bool -> Html Msg
@@ -289,19 +289,19 @@ viewResolveButtons : Model -> Html Msg
 viewResolveButtons model =
   if (Utils.mustMarketCreator model.market).isSelf then
     H.div []
-      [ case Utils.currentResolution model.market of
+      [ let
+          mistakeDetails =
+            H.details [HA.style "color" "gray"]
+              [ H.summary [] [H.text "Mistake?"]
+              , H.text "If you resolved this market incorrectly, you can "
+              , H.button [HE.onClick (Resolve Pb.ResolutionNoneYet)] [H.text "un-resolve it."]
+              ]
+        in
+        case Utils.currentResolution model.market of
           Pb.ResolutionYes ->
-            H.details []
-              [ H.summary [] [H.text "Un-resolve?"]
-              , H.text "If you resolved this market in error, you can "
-              , H.button [HE.onClick (Resolve Pb.ResolutionNoneYet)] [H.text "un-resolve it."]
-              ]
+            mistakeDetails
           Pb.ResolutionNo ->
-            H.details []
-              [ H.summary [] [H.text "Un-resolve?"]
-              , H.text "If you resolved this market in error, you can "
-              , H.button [HE.onClick (Resolve Pb.ResolutionNoneYet)] [H.text "un-resolve it."]
-              ]
+            mistakeDetails
           Pb.ResolutionNoneYet ->
             H.div []
               [ H.button [HE.onClick (Resolve Pb.ResolutionYes)] [H.text "Resolve YES"]
