@@ -9,11 +9,10 @@ Development
 
 This project uses the `doit` build system: https://pydoit.org/tutorial_1.html
 
-`doit list` lists all the targets.
-
-`doit proto` builds the `proto` target.
-
-Extrapolate.
+- `doit devsetup` tells you how to set up your environment.
+- `doit` builds and tests everything.
+- `doit nfsdeploy` deploys the current state (checked-in or not) to the NearlyFreeSpeech host (though you have to kick the server daemon yourself).
+- `doit list` lists all the targets.
 
 
 TODO

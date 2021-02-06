@@ -2,6 +2,9 @@ from pathlib import Path
 import re
 import subprocess
 
+def has_executable(executable: str) -> bool:
+  return subprocess.call(['which', executable], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) == 0
+
 def task_proto():
   protos = list(Path('protobuf').glob('**/*.proto'))
   snake_to_camel = lambda s: re.sub(r'(?:^|_)([a-z])', lambda m: m.group(1).upper(), s)
@@ -20,7 +23,7 @@ def task_proto():
     ],
   }
 
-  has_protoc_gen_for = lambda lang: not subprocess.call(['which', f'protoc-gen-{lang}'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+  has_protoc_gen_for = lambda lang: has_executable(f'protoc-gen-{lang}')
 
   if has_protoc_gen_for('elm'):
     yield {
@@ -85,3 +88,48 @@ def task_userstories():
     'targets': [dst],
     'actions': [f'pandoc -s {src} -o {dst}'],
   }
+
+
+def task_devsetup():
+  import sys
+  def print_instructions():
+    print("[to edit the server] Install Python dependencies: `pip install -r server/requirements.txt`", file=sys.stderr)
+    if not has_executable('elm'):
+      print("[to edit the UI] Install Elm: https://github.com/elm/compiler/blob/master/installers/linux/README.md", file=sys.stderr)
+    if not has_executable('protoc'):
+      print("[to edit the UI] Install protoc: https://github.com/elm/compiler/blob/master/installers/linux/README.md", file=sys.stderr)
+    if not has_executable('protoc-gen-elm'):
+      print("[to edit the UI] Install protoc-gen-elm: `npm install protoc-gen-elm` (and ensure it's on your path)", file=sys.stderr)
+    if not has_executable('protoc-gen-mypy'):
+      print("[to edit the UI] Install protoc-gen-mypy: `pip install mypy-protobuf`", file=sys.stderr)
+
+  return {
+    'actions': [(print_instructions,)],
+  }
+
+def task_nfsdeploy():
+  def ensure_nfsuser_given(nfsuser):
+    if not nfsuser:
+      raise RuntimeError('--nfsuser must be given')
+  return {
+    'setup': ['elm', 'proto', 'test'],
+    'params': [
+      {'name': 'nfsuser',
+       'long': 'nfsuser',
+       'default': '',
+       'help': f'NearlyFreeSpeech username'},
+    ],
+    'actions': [
+      (ensure_nfsuser_given,),
+      'rsync -havz --exclude=".*" --exclude="_*" --exclude="*~" ./ %(nfsuser)s_biatob@ssh.phx.nearlyfreespeech.net:/home/protected/',
+      'echo "Sorry, I don\'t know how to kick your server! You gotta yourself." >&2',
+    ],
+  }
+
+
+DOIT_CONFIG = {
+  'default_tasks': list(
+    {name[5:] for name, obj in locals().items() if name.startswith('task_') and callable(obj)}
+    - {'nfsdeploy', 'devsetup'}
+  ),
+}
