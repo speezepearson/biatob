@@ -23,7 +23,8 @@ from .protobuf import mvp_pb2
 
 MarketId = NewType('MarketId', int)
 
-IMAGE_EMBED_FONT = ImageFont.truetype('FreeSans.ttf', 18)
+try: IMAGE_EMBED_FONT = ImageFont.truetype('FreeSans.ttf', 18)
+except Exception: IMAGE_EMBED_FONT = ImageFont.load_default()
 
 class UsernameAlreadyRegisteredError(Exception): pass
 class NoSuchUserError(Exception): pass
@@ -551,6 +552,8 @@ def pb_b64_json(message: Message) -> str:
     return json.dumps(base64.b64encode(message.SerializeToString()).decode('ascii'))
 
 parser = argparse.ArgumentParser()
+parser.add_argument("-H", "--host", default="localhost")
+parser.add_argument("-p", "--port", type=int, default=8080)
 parser.add_argument("--elm-dist", type=Path, default="elm/dist")
 parser.add_argument("--state-path", type=Path, default="server.WorldState.pb")
 
@@ -572,4 +575,4 @@ if __name__ == '__main__':
         servicer=servicer,
     ).add_to_app(app)
 
-    web.run_app(app)
+    web.run_app(app, host=args.host, port=args.port)
