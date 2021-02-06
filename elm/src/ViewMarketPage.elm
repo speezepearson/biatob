@@ -145,7 +145,6 @@ viewStakeFormOrExcuse model =
     Nothing ->
       H.div []
         [ H.text "You must be logged in to participate in this market!"
-        , StakeForm.view (stakeFormConfig model) model.stakeForm
         ]
     Just auth_ ->
       if creator.isSelf then

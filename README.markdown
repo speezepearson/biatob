@@ -20,6 +20,7 @@ TODO
 --------------
 - P1 [mvp]: consider a better model of user identity -- UserUserView is gross
 - P2 [pre-beta]: write copy explaining how to operationalize a bet well (or find somebody else's explanation)
+- P2 [pre-beta]: display remaining stake even to people who can't bet
 - P2 [pre-beta]: link from more places to other places
 - P2 [pre-beta]: add an actual home page
 - P2 [pre-beta]: show users their balances with other users
