@@ -115,7 +115,7 @@ view model =
     , H.br [] []
     , H.button
         [ HE.onClick Create
-        , HA.disabled (model.auth == Nothing || Form.isInvalid model.form || model.working)
+        , HA.disabled (model.auth == Nothing || Form.toCreateRequest model.form == Nothing || model.working)
         ]
         [ H.text <| if model.auth == Nothing then "Log in to create" else "Create" ]
     , case model.createError of

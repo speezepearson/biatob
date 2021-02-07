@@ -16,12 +16,14 @@ import Utils
 import Http
 import Task
 
+import Field exposing (Field)
+
 port authChanged : () -> Cmd msg
 
 type Model
   = NoToken
-      { usernameField : String
-      , passwordField : String
+      { usernameField : Field {okIfBlank:Bool} String
+      , passwordField : Field {okIfBlank:Bool} String
       , working : Bool
       , error : Maybe String
       }
@@ -45,8 +47,8 @@ type Msg
 initNoToken : Model
 initNoToken =
   NoToken
-    { usernameField = ""
-    , passwordField = ""
+    { usernameField = Field.init "" <| \{okIfBlank} s -> if okIfBlank && s=="" then Ok "" else if s=="" then Err "" else Ok s
+    , passwordField = Field.init "" <| \{okIfBlank} s -> if okIfBlank && s=="" then Ok "" else if s=="" then Err "" else Ok s
     , working = False
     , error = Nothing
     }
@@ -71,12 +73,37 @@ view : Model -> Html Msg
 view model =
   case model of
     NoToken m ->
+      let
+        disableButtons = case (Field.parse {okIfBlank=False} m.usernameField, Field.parse {okIfBlank=False} m.passwordField) of
+          (Ok _, Ok _) -> False
+          _ -> True
+      in
       H.div []
-        [ H.input [HA.disabled m.working, HA.style "width" "8em", HA.type_ "username", HA.placeholder "username", HA.value m.usernameField, HE.onInput SetUsernameField] []
-        , H.input [HA.disabled m.working, HA.style "width" "8em", HA.type_ "password", HA.placeholder "password", HA.value m.passwordField, HE.onInput SetPasswordField] []
-        , H.button [HA.disabled m.working, HE.onClick LogInUsername] [H.text "Log in"]
+        [ Field.inputFor SetUsernameField {okIfBlank=Field.raw m.passwordField == ""} m.usernameField
+            H.input
+            [ HA.disabled m.working
+            , HA.style "width" "8em"
+            , HA.type_ "text"
+            , HA.placeholder "username"
+            ] []
+        , Field.inputFor SetPasswordField {okIfBlank=Field.raw m.usernameField == ""} m.passwordField
+            H.input
+            [ HA.disabled m.working
+            , HA.style "width" "8em"
+            , HA.type_ "password"
+            , HA.placeholder "password"
+            ] []
+        , H.button
+            [ HA.disabled <| m.working || disableButtons
+            , HE.onClick LogInUsername
+            ]
+            [H.text "Log in"]
         , H.text " or "
-        , H.button [HA.disabled m.working, HE.onClick RegisterUsername] [H.text "Sign up"]
+        , H.button
+            [ HA.disabled <| m.working || disableButtons
+            , HE.onClick RegisterUsername
+            ]
+            [H.text "Sign up"]
         , case m.error of
             Just e -> H.div [HA.style "color" "red"] [H.text e]
             Nothing -> H.text ""
@@ -120,12 +147,14 @@ update : Msg -> Model -> ( Model , Cmd Msg )
 update msg model =
   case (msg, model) of
   (SetUsernameField s, NoToken m) ->
-    ( NoToken { m | usernameField = s } , Cmd.none )
+    ( NoToken { m | usernameField = m.usernameField |> Field.setStr s } , Cmd.none )
   (SetPasswordField s, NoToken m) ->
-    ( NoToken { m | passwordField = s } , Cmd.none )
+    ( NoToken { m | passwordField = m.passwordField |> Field.setStr s } , Cmd.none )
   (LogInUsername, NoToken m) ->
     ( NoToken { m | working = True }
-    , postLogInUsername {username=m.usernameField, password=m.passwordField}
+    , case (Field.parse {okIfBlank=False} m.usernameField, Field.parse {okIfBlank=False} m.passwordField) of
+       (Ok username, Ok password) -> postLogInUsername {username=username, password=password}
+       _ -> Cmd.none
     )
   (LogInUsernameComplete (Err e), NoToken m) ->
     ( NoToken { m | working = False , error = Just (Debug.toString e) }
@@ -147,7 +176,9 @@ update msg model =
         )
   (RegisterUsername, NoToken m) ->
     ( NoToken { m | working = True }
-    , postRegisterUsername {username=m.usernameField, password=m.passwordField}
+    , case (Field.parse {okIfBlank=False} m.usernameField, Field.parse {okIfBlank=False} m.passwordField) of
+       (Ok username, Ok password) -> postRegisterUsername {username=username, password=password}
+       _ -> Cmd.none
     )
   (RegisterUsernameComplete (Err e), NoToken m) ->
     ( NoToken { m | working = False , error = Just (Debug.toString e) }

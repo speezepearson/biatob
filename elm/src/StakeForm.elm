@@ -15,6 +15,9 @@ import Html exposing (s)
 
 import Biatob.Proto.Mvp as Pb
 import Utils
+import Html exposing (a)
+
+import Field exposing (Field)
 
 epsilon = 0.0000001 -- 🎵 I hate floating-point arithmetic 🎶
 
@@ -26,16 +29,16 @@ type alias Config msg =
   , market : Pb.UserMarketView
   }
 
+type Dummy = Dummy State
 type alias State =
-  { believerStakeField : String
-  , skepticStakeField : String
+  { believerStakeField : Field {max : Int} Int
+  , skepticStakeField : Field {max : Int} Int
   , now : Time.Posix
   }
-
-believerStakeCents : State -> Maybe Int
-believerStakeCents {believerStakeField} = String.toFloat believerStakeField |> Maybe.map ((*) 100 >> round)
-skepticStakeCents : State -> Maybe Int
-skepticStakeCents {skepticStakeField} = String.toFloat skepticStakeField |> Maybe.map ((*) 100 >> round)
+-- believerStakeCents : State -> Maybe Int
+-- believerStakeCents {believerStakeField} = String.toFloat believerStakeField |> Maybe.map ((*) 100 >> round)
+-- skepticStakeCents : State -> Maybe Int
+-- skepticStakeCents {skepticStakeField} = String.toFloat skepticStakeField |> Maybe.map ((*) 100 >> round)
 
 view : Config msg -> State -> Html msg
 view config state =
@@ -52,71 +55,78 @@ view config state =
     creatorStakeFactorVsSkeptics = certainty.low / (1 - certainty.low)
     maxBelieverStakeCents = if creatorStakeFactorVsBelievers == 0 then 0 else toFloat config.market.remainingStakeCentsVsBelievers / creatorStakeFactorVsBelievers + 0.001 |> floor
     maxSkepticStakeCents = if creatorStakeFactorVsSkeptics == 0 then 0 else toFloat config.market.remainingStakeCentsVsSkeptics / creatorStakeFactorVsSkeptics + 0.001 |> floor
-    (invalidBelieverStake, emphasizeRemainingStakeVsBelievers) = case believerStakeCents state of
-      Nothing -> (True, False)
-      Just n -> (n < 0 || n > maxBelieverStakeCents, n > maxBelieverStakeCents)
-    (invalidSkepticStake, emphasizeRemainingStakeVsSkeptics) = case skepticStakeCents state of
-      Nothing -> (True, False)
-      Just n -> (n < 0 || n > maxSkepticStakeCents, n > maxSkepticStakeCents)
-
   in
   H.div []
-    [ H.p []
-        [ H.strong [Utils.outlineIfInvalid emphasizeRemainingStakeVsSkeptics] [config.market.remainingStakeCentsVsSkeptics |> Utils.formatCents |> H.text]
+    [ H.div []
+        [ H.strong [] [config.market.remainingStakeCentsVsSkeptics |> Utils.formatCents |> H.text]
         , H.text " remain staked against skeptics, "
-        , H.strong [Utils.outlineIfInvalid emphasizeRemainingStakeVsBelievers] [config.market.remainingStakeCentsVsBelievers |> Utils.formatCents |> H.text]
+        , H.strong [] [config.market.remainingStakeCentsVsBelievers |> Utils.formatCents |> H.text]
         , H.text " remain staked against believers."
         , H.br [] []
         ]
-    , H.p []
-        [ H.text "Bet $"
-        , H.input
-            [ HA.style "width" "5em"
-            , HA.type_"number", HA.min "0", HA.max (toFloat maxSkepticStakeCents / 100 + epsilon |> String.fromFloat), HA.step "any"
-            , HA.value state.skepticStakeField
-            , HE.onInput (\s -> config.setState {state | skepticStakeField = s})
-            , HA.disabled disableInputs
-            , Utils.outlineIfInvalid invalidSkepticStake
-            ] []
-        , H.text <| " that this will resolve No, against " ++ creator.displayName ++ "'s "
-        , H.strong [Utils.outlineIfInvalid emphasizeRemainingStakeVsSkeptics] [skepticStakeCents state |>  Maybe.map (toFloat >> (*) creatorStakeFactorVsSkeptics >> round >> Utils.formatCents) |> Maybe.withDefault "???" |> H.text]
-        , H.text "? "
-        , H.button
-          [ HA.disabled (invalidSkepticStake || disableCommit)
-          , HE.onClick <|
-              case skepticStakeCents state of
-                Just stake -> config.onStake {bettorIsASkeptic=True, bettorStakeCents=stake}
-                Nothing -> config.nevermind
+    , let
+        ctx = {max=maxSkepticStakeCents}
+      in
+        H.div []
+          [ H.text "Bet $"
+          , Field.inputFor (\s -> config.setState {state | skepticStakeField = state.skepticStakeField |> Field.setStr s}) ctx state.skepticStakeField
+              H.input
+              [ HA.style "width" "5em"
+              , HA.type_"number", HA.min "0", HA.max (toFloat maxSkepticStakeCents / 100 + epsilon |> String.fromFloat), HA.step "any"
+              , HA.disabled disableInputs
+              ]
+              []
+          , H.text <| " that this will resolve No, against " ++ creator.displayName ++ "'s "
+          , H.strong [] [Field.parse ctx state.skepticStakeField |> Result.map (toFloat >> (*) creatorStakeFactorVsSkeptics >> round >> Utils.formatCents) |> Result.withDefault "???" |> H.text]
+          , H.text "? "
+          , H.button
+              (case Field.parse ctx state.skepticStakeField of
+                Ok stake ->
+                  [ HE.onClick <| config.onStake {bettorIsASkeptic=True, bettorStakeCents=stake} ]
+                Err _ ->
+                  [ HA.disabled True ]
+              )
+              [H.text "Commit"]
           ]
-          [H.text "Commit"]
-        , H.br [] []
-        , H.text "Bet $"
-                , H.input
-            [ HA.style "width" "5em"
-            , HA.type_"number", HA.min "0", HA.max (toFloat maxBelieverStakeCents / 100 + epsilon |> String.fromFloat), HA.step "any"
-            , HA.value state.believerStakeField
-            , HE.onInput (\s -> config.setState {state | believerStakeField = s})
-            , HA.disabled disableInputs
-            , Utils.outlineIfInvalid invalidBelieverStake
-            ] []
-        , H.text <| " that this will resolve Yes, against " ++ creator.displayName ++ "'s "
-        , H.strong [Utils.outlineIfInvalid emphasizeRemainingStakeVsBelievers] [believerStakeCents state |>  Maybe.map (toFloat >> (*) creatorStakeFactorVsBelievers >> round >> Utils.formatCents) |> Maybe.withDefault "???" |> H.text]
-        , H.text "? "
-        , H.button
-          [ HA.disabled (invalidBelieverStake || disableCommit)
-          , HE.onClick <|
-              case believerStakeCents state of
-                Just stake -> config.onStake {bettorIsASkeptic=False, bettorStakeCents=stake}
-                Nothing -> config.nevermind
+    , let
+        ctx = {max=maxBelieverStakeCents}
+      in
+        H.div []
+          [ H.text "Bet $"
+          , Field.inputFor (\s -> config.setState {state | believerStakeField = state.believerStakeField |> Field.setStr s}) ctx state.believerStakeField
+              H.input
+              [ HA.style "width" "5em"
+              , HA.type_"number", HA.min "0", HA.max (toFloat maxBelieverStakeCents / 100 + epsilon |> String.fromFloat), HA.step "any"
+              , HA.disabled disableInputs
+              ]
+              []
+          , H.text <| " that this will resolve Yes, against " ++ creator.displayName ++ "'s "
+          , H.strong [] [Field.parse ctx state.believerStakeField |> Result.map (toFloat >> (*) creatorStakeFactorVsBelievers >> round >> Utils.formatCents) |> Result.withDefault "???" |> H.text]
+          , H.text "? "
+          , H.button
+              (case Field.parse ctx state.believerStakeField of
+                Ok stake ->
+                  [ HE.onClick <| config.onStake {bettorIsASkeptic=False, bettorStakeCents=stake} ]
+                Err _ ->
+                  [ HA.disabled True ]
+              )
+              [H.text "Commit"]
           ]
-          [H.text "Commit"]
-        ]
     ]
 
 init : State
 init =
-  { believerStakeField = "0"
-  , skepticStakeField = "0"
+  let
+    parseCents : {max:Int} -> String -> Result String Int
+    parseCents {max} s =
+      case String.toFloat s of
+        Nothing -> Err "must be a number"
+        Just dollars ->
+          let n = round (100*dollars) in
+          if n < 0 || n > max then Err ("must be between $0 and " ++ Utils.formatCents max) else Ok n
+  in
+  { believerStakeField = { string = "0" , parse = parseCents }
+  , skepticStakeField = { string = "0" , parse = parseCents }
   , now = Time.millisToPosix 0
   }
 

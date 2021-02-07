@@ -3,16 +3,7 @@ module CreateMarketForm exposing
   , Config
   , view
   , init
-  , question
-  , stakeCents
-  , lowPYes
-  , lowPNo
-  , openForSeconds
-  , specialRules
-  , lowP
-  , highP
   , main
-  , isInvalid
   , toCreateRequest
   )
 
@@ -22,7 +13,9 @@ import Html.Attributes as HA
 import Html.Events as HE
 import Utils
 
+import Field exposing (Field)
 import Biatob.Proto.Mvp as Pb
+import Field
 
 howToWriteGoodBetsUrl = "http://example.com/TODO"
 maxLegalStakeCents = 500000
@@ -40,80 +33,41 @@ unitToSeconds u =
     Weeks -> unitToSeconds Days * 7
 
 type alias State =
-  { questionField : String
-  , stakeField : String
-  , lowPYesField : String
-  , lowPNoField : String
-  , openForNField : String
-  , openForUnitField : OpenForUnit
-  , specialRulesField : String
+  { questionField : Field () String
+  , stakeField : Field () Int
+  , lowPField : Field () Float
+  , highPField : Field {lowP:Float} Float
+  , openForUnitField : Field () OpenForUnit
+  , openForSecondsField : Field {unit:OpenForUnit} Int
+  , specialRulesField : Field () String
   }
-
-question : State -> String
-question {questionField} = questionField
-stakeCents : State -> Maybe Int
-stakeCents {stakeField} = String.toFloat stakeField |> Maybe.map ((*) 100 >> round)
-lowPYes : State -> Maybe Float
-lowPYes {lowPYesField} = String.toFloat lowPYesField |> Maybe.map (\n -> n/100)
-lowPNo : State -> Maybe Float
-lowPNo {lowPNoField} = String.toFloat lowPNoField |> Maybe.map (\n -> n/100)
-lowP : State -> Maybe Float
-lowP state = lowPYes state
-highP : State -> Maybe Float
-highP state = lowPNo state |> Maybe.map (\p -> 1 - p)
-openForSeconds : State -> Maybe Int
-openForSeconds {openForNField, openForUnitField} =
-  String.toInt openForNField
-  |> Maybe.map ((*) (unitToSeconds openForUnitField))
-specialRules : State -> String
-specialRules {specialRulesField} = specialRulesField
 
 toCreateRequest : State -> Maybe Pb.CreateMarketRequest
 toCreateRequest state =
-  if isInvalid state then Nothing else
-  Maybe.map4
-    (\low high stake openSec ->
-        { question = question state
-        , privacy = Nothing  -- TODO: delete this field
-        , certainty = Just { low=low, high=high }
-        , maximumStakeCents = stake
-        , openSeconds = openSec
-        , specialRules = specialRules state
-        }
-    )
-    (lowP state)
-    (highP state)
-    (stakeCents state)
-    (openForSeconds state)
-
-
-isInvalidQuestion : State -> Bool
-isInvalidQuestion state = question state == ""
-isInvalidStake : State -> Bool
-isInvalidStake state = stakeCents state |> Maybe.map (\n -> n <= 0 || n > maxLegalStakeCents) |> Maybe.withDefault True
-isInvalidLowPYes : State -> Bool
-isInvalidLowPYes state = lowPYes state |> Maybe.map (\n -> n < 0 || n > 1) |> Maybe.withDefault True
-isInvalidLowPNo : State -> Bool
-isInvalidLowPNo state = lowPNo state |> Maybe.map (\n -> n < 0 || n > 1) |> Maybe.withDefault True
-isInvalidPsRel : State -> Bool
-isInvalidPsRel state = case (lowPYes state, lowPNo state) of
-  (Just lpy, Just lpn) -> lpy + lpn >= 1
-  _ -> False
-isInvalidOpenForN : State -> Bool
-isInvalidOpenForN state = openForSeconds state |> Maybe.map (\n -> n <= 0) |> Maybe.withDefault True
-isInvalid : State -> Bool
-isInvalid state =
-  isInvalidQuestion state
-  || isInvalidStake state
-  || isInvalidLowPYes state
-  || isInvalidLowPNo state
-  || isInvalidPsRel state
-  || isInvalidOpenForN state
+  Field.parse () state.questionField |> Result.andThen (\question ->
+  Field.parse () state.stakeField |> Result.andThen (\stake ->
+  Field.parse () state.lowPField |> Result.andThen (\lowP ->
+  Field.parse {lowP=lowP} state.highPField |> Result.andThen (\highP ->
+  Field.parse () state.openForUnitField |> Result.andThen (\unit ->
+  Field.parse {unit=unit} state.openForSecondsField |> Result.andThen (\openForSeconds ->
+  Field.parse () state.specialRulesField |> Result.andThen (\specialRules ->
+    Ok
+      { question = question
+      , privacy = Nothing  -- TODO: delete this field
+      , certainty = Just { low=lowP, high=highP }
+      , maximumStakeCents = stake
+      , openSeconds = openForSeconds
+      , specialRules = specialRules
+      }
+  )))))))
+  |> Result.toMaybe
 
 view : Config msg -> State -> Html msg
 view config state =
   let
     outlineIfInvalid b = Utils.outlineIfInvalid (b && not config.disabled)
+    highPCtx = {lowP = Field.parse () state.lowPField |> Result.withDefault 0}
+    openForSecondsCtx = {unit = Field.parse () state.openForUnitField |> Result.withDefault Days}
     placeholders =
       { question = "By 2021-08-01, will at least 50% of U.S. COVID-19 cases be B117 or a derivative strain, as reported by the CDC?"
       , stake = "100"
@@ -127,24 +81,20 @@ view config state =
             , H.a [HA.href howToWriteGoodBetsUrl] [H.text "how to write good bets"]
             , H.text ") "
             , H.br [] []
-            , H.textarea
+            , Field.inputFor (\s -> config.setState {state | questionField = state.questionField |> Field.setStr s}) () state.questionField
+                H.input
                 [ HA.style "width" "100%"
-                , HA.value state.questionField
                 , HA.placeholder placeholders.question
-                , HE.onInput (\s -> config.setState {state | questionField = s})
                 , HA.disabled config.disabled
-                , outlineIfInvalid (isInvalidQuestion state)
                 ] []
             ]
         , H.li []
             [ H.text "How much are you willing to stake? $"
-            , H.input
+            , Field.inputFor (\s -> config.setState {state | stakeField = state.stakeField |> Field.setStr s}) () state.stakeField
+                H.input
                 [ HA.type_ "number", HA.min "0", HA.max (String.fromInt maxLegalStakeCents)
-                , HA.value state.stakeField
                 , HA.placeholder placeholders.stake
-                , HE.onInput (\s -> config.setState {state | stakeField = s})
                 , HA.disabled config.disabled
-                , outlineIfInvalid (isInvalidStake state)
                 ] []
             ]
         , H.li []
@@ -155,57 +105,49 @@ view config state =
                   , H.strong [] [H.text "happens?"]
                   , H.text " $"
 
-                  , H.input
+                  , Field.inputFor (\s -> config.setState {state | lowPField = state.lowPField |> Field.setStr s}) () state.lowPField
+                      H.input
                       [ HA.type_ "number", HA.min "0", HA.max "100"
                       , HA.style "width" "5em"
-                      , HA.value state.lowPYesField
-                      , HE.onInput (\s -> config.setState {state | lowPYesField = s})
                       , HA.disabled config.disabled
-                      , outlineIfInvalid (isInvalidLowPYes state)
                       ] []
                   ]
                 , H.li []
                   [ H.text "...$100 if this "
                   , H.strong [] [H.text "doesn't happen?"]
                   , H.text " $"
-                  , H.input
-                      [ HA.type_ "number", HA.min "0", HA.max (String.fromFloat <| Maybe.withDefault 100 <| Maybe.map (\n -> 99.99 - n) <| String.toFloat state.lowPYesField)
+                  , Field.inputFor (\s -> config.setState {state | highPField = state.highPField |> Field.setStr s}) highPCtx state.highPField
+                      H.input
+                      [ HA.type_ "number", HA.min "0", HA.max (String.fromFloat <| Result.withDefault 100 <| Result.map (\n -> 99.999 - n) <| Field.parse highPCtx state.highPField)
                       , HA.style "width" "5em"
-                      , HA.value state.lowPNoField
-                      , HE.onInput (\s -> config.setState {state | lowPNoField = s})
                       , HA.disabled config.disabled
-                      , outlineIfInvalid (isInvalidLowPNo state)
                       ] []
                   ]
                 ]
             , H.text "In other words, you think that this is "
-            , case (String.toFloat state.lowPYesField, String.toFloat state.lowPNoField) of
-                (Just lpy, Just lpn) ->
-                  H.strong
-                    [ outlineIfInvalid (isInvalidPsRel state)
-                    ]
-                    [ lpy                  |> round |> String.fromInt |> H.text
-                    , H.text "-"
-                    , lpn |> (\n -> 100 - n) |> round |> String.fromInt |> H.text
-                    , H.text "%"
-                    ]
-                _ ->
-                  H.strong [outlineIfInvalid False] [H.text "???%"]
+            , H.strong []
+                [ case Field.parse () state.lowPField of
+                    Err _ -> H.text "???"
+                    Ok p -> H.text <| String.fromInt <| round (100*p)
+                , H.text "-"
+                , case Field.parse highPCtx state.highPField of
+                    Err _ -> H.text "???"
+                    Ok p -> H.text <| String.fromInt <| round (100*p)
+                , H.text "%"
+                ]
             , H.text " likely."
             ]
         , H.li []
             [ H.text "How long is this offer open for?"
-            , H.input
+            , Field.inputFor (\s -> config.setState {state | openForSecondsField = state.openForSecondsField |> Field.setStr s}) {unit=Field.parse () state.openForUnitField |> Result.withDefault Weeks} state.openForSecondsField
+                H.input
                 [ HA.type_ "number", HA.min "1"
                 , HA.style "width" "5em"
-                , HA.value state.openForNField
-                , HE.onInput (\s -> config.setState {state | openForNField = s})
                 , HA.disabled config.disabled
-                , outlineIfInvalid (isInvalidOpenForN state)
                 ] []
-            , H.select
-                [ HE.onInput (\s -> config.setState {state | openForUnitField = if s=="days" then Days else Weeks})
-                , HA.disabled config.disabled
+            , Field.inputFor (\s -> config.setState {state | openForUnitField = state.openForUnitField |> Field.setStr s}) () state.openForUnitField
+                H.select
+                [ HA.disabled config.disabled
                 ]
                 [ H.option [] [H.text "weeks"]
                 , H.option [] [H.text "days"]
@@ -213,10 +155,9 @@ view config state =
             ]
         , H.li []
             [ H.text "Any special rules? (For instance: what might make you consider the market unresolvable/invalid? What would you count as \"insider trading\"/cheating?)"
-            , H.textarea
+            , Field.inputFor (\s -> config.setState {state | specialRulesField = state.specialRulesField |> Field.setStr s}) () state.specialRulesField
+                H.textarea
                 [ HA.style "width" "100%"
-                , HE.onInput (\s -> config.setState {state | specialRulesField = s})
-                , HA.value state.specialRulesField
                 , HA.placeholder placeholders.specialRules
                 , HA.disabled config.disabled
                 ]
@@ -227,13 +168,29 @@ view config state =
 
 init : State
 init =
-  { questionField = ""
-  , stakeField = ""
-  , lowPYesField = ""
-  , lowPNoField = ""
-  , openForNField = "2"
-  , openForUnitField = Weeks
-  , specialRulesField = ""
+  { questionField = Field.init "" <| \() s -> if String.isEmpty s then Err "must not be empty" else Ok s
+  , stakeField = Field.init "20" <| \() s ->
+      case String.toFloat s of
+        Nothing -> Err "must be a positive number"
+        Just dollars -> if dollars <= 0 then Err "must be a positive number" else Ok <| round (100*dollars)
+  , lowPField = Field.init "0" <| \() s ->
+      case String.toFloat s of
+         Nothing -> Err "must be a number 0-100"
+         Just pct -> if pct < 0 || pct > 100 then Err "must be a number 0-100" else Ok (pct/100)
+  , highPField = Field.init "0" <| \{lowP} s ->
+      case String.toFloat s of
+         Nothing -> Err "must be a number 0-100"
+         Just pNoPct -> if pNoPct < 0 || pNoPct > 100 then Err "must be a number 0-100" else let highP = 1 - pNoPct/100 in if lowP > highP then Err "your prices must sum to under 100" else Ok highP
+  , openForUnitField = Field.init "weeks" <| \() s ->
+      case s of
+        "days" -> Ok Days
+        "weeks" -> Ok Weeks
+        _ -> Err "unrecognized time unit"
+  , openForSecondsField = Field.init "2" <| \{unit} s ->
+      case String.toInt s of
+        Nothing -> Err "must be a positive integer"
+        Just n -> if n <= 0 then Err "must be a positive integer" else Ok (n * unitToSeconds unit)
+  , specialRulesField = Field.init "" <| \() s -> Ok s
   }
 
 type MsgForDemo = SetState State
