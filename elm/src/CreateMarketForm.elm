@@ -13,6 +13,7 @@ module CreateMarketForm exposing
   , highP
   , main
   , isInvalid
+  , toCreateRequest
   )
 
 import Browser
@@ -20,7 +21,8 @@ import Html as H exposing (Html)
 import Html.Attributes as HA
 import Html.Events as HE
 import Utils
-import Html.Attributes exposing (placeholder)
+
+import Biatob.Proto.Mvp as Pb
 
 howToWriteGoodBetsUrl = "http://example.com/TODO"
 maxLegalStakeCents = 500000
@@ -65,6 +67,24 @@ openForSeconds {openForNField, openForUnitField} =
   |> Maybe.map ((*) (unitToSeconds openForUnitField))
 specialRules : State -> String
 specialRules {specialRulesField} = specialRulesField
+
+toCreateRequest : State -> Maybe Pb.CreateMarketRequest
+toCreateRequest state =
+  if isInvalid state then Nothing else
+  Maybe.map4
+    (\low high stake openSec ->
+        { question = question state
+        , privacy = Nothing  -- TODO: delete this field
+        , certainty = Just { low=low, high=high }
+        , maximumStakeCents = stake
+        , openSeconds = openSec
+        , specialRules = specialRules state
+        }
+    )
+    (lowP state)
+    (highP state)
+    (stakeCents state)
+    (openForSeconds state)
 
 
 isInvalidQuestion : State -> Bool

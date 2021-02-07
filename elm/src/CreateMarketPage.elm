@@ -17,28 +17,22 @@ import Utils
 
 import ViewMarketPage
 import StakeForm
-import Task
+import Http exposing (request)
 
 port createdMarket : Int -> Cmd msg
 
 type alias Model =
   { form : Form.State
-  , preview : ViewMarketPage.Model
   , auth : Maybe Pb.AuthToken
   , working : Bool
   , createError : Maybe String
-  , now : Time.Posix
   }
 
 type Msg
   = SetFormState Form.State
-  | PreviewMsg ViewMarketPage.Msg
   | Create
   | CreateFinished (Result Http.Error Pb.CreateMarketResponse)
-  | Tick Time.Posix
-  | TodoIgnore
-
-epoch = Time.millisToPosix 0
+  | Ignore
 
 authName : Maybe Pb.AuthToken -> String
 authName auth =
@@ -60,27 +54,13 @@ init flags =
   let
     auth : Maybe Pb.AuthToken
     auth =  Utils.decodePbFromFlags Pb.authTokenDecoder "authTokenPbB64" flags
-    previewModel : ViewMarketPage.Model
-    previewModel =
-      { stakeForm = StakeForm.init
-      , market = formStateToProto {now=epoch, form=Form.init, creatorName=authName auth}
-      , marketId = 12345
-      , auth = Just dummyAuthToken
-      , working = False
-      , stakeError = Nothing
-      , resolveError = Nothing
-      , now = epoch
-      , resolutionNotes = ""
-      }
   in
   ( { form = Form.init
-    , preview = previewModel
     , auth = auth
     , working = False
     , createError = Nothing
-    , now = Time.millisToPosix 0
     }
-  , Task.perform Tick Time.now
+  , Cmd.none
   )
 
 postCreate : Pb.CreateMarketRequest -> Cmd Msg
@@ -95,21 +75,14 @@ update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
     SetFormState newState ->
-      ({ model | form = newState , preview = model.preview |> ViewMarketPage.setMarket (formStateToProto {now=model.now, form=newState, creatorName=authName model.auth}) }, Cmd.none)
+      ({ model | form = newState }, Cmd.none)
     Create ->
-      case (Form.lowP model.form, Form.highP model.form, Form.stakeCents model.form) of
-        (Just lowP, Just highP, Just stakeCents) ->
+      case Form.toCreateRequest model.form of
+        Just req ->
           ( { model | working = True , createError = Nothing }
-          , postCreate
-              { question = Form.question model.form
-              , privacy = Nothing  -- TODO: delete this field
-              , certainty = Just { low=lowP, high=highP }
-              , maximumStakeCents = stakeCents
-              , openSeconds = Maybe.withDefault 0 <| Form.openForSeconds model.form
-              , specialRules = model.form.specialRulesField
-              }
+          , postCreate req
           )
-        _ ->
+        Nothing ->
           ( { model | createError = Just "bad form" } -- TODO: improve error message
           , Cmd.none
           )
@@ -132,20 +105,7 @@ update msg model =
           , Cmd.none
           )
 
-    PreviewMsg previewMsg ->
-      let (newPreview, cmd) = ViewMarketPage.update previewMsg model.preview in
-      ( { model | preview = newPreview }, Cmd.map PreviewMsg cmd)
-
-    Tick t ->
-      if model.now == epoch then
-        ( { model | now = t } |> update (SetFormState model.form) |> Tuple.first
-        , Cmd.none
-        )
-      else
-        let (newPreview, cmd) = ViewMarketPage.update (ViewMarketPage.Tick t) model.preview in
-        ( { model | now = t, preview = newPreview } , Cmd.map PreviewMsg cmd )
-
-    TodoIgnore ->
+    Ignore ->
       (model, Cmd.none)
 
 view : Model -> Html Msg
@@ -164,7 +124,15 @@ view model =
     , H.hr [] []
     , H.text "Preview:"
     , H.div [HA.style "border" "1px solid black", HA.style "padding" "1em", HA.style "margin" "1em"]
-        [H.map PreviewMsg (ViewMarketPage.view model.preview)]
+        [ case Form.toCreateRequest model.form of
+            Just req ->
+              previewMarket {request=req, creatorName=authName model.auth}
+              |> (\market -> ViewMarketPage.initBase {market=market, marketId=12345, auth=model.auth})
+              |> ViewMarketPage.view
+              |> H.map (always Ignore)
+            Nothing ->
+              H.span [HA.style "color" "red"] [H.text "(invalid market)"]
+        ]
     ]
 
 formConfig : Model -> Form.Config Msg
@@ -173,19 +141,16 @@ formConfig model =
   , disabled = (model.auth == Nothing)
   }
 
-formStateToProto : {now:Time.Posix, form:Form.State, creatorName:String} -> Pb.UserMarketView
-formStateToProto {now, form, creatorName} =
-  { question = Form.question form
-  , certainty = Just
-      { low = Form.lowP form |> Maybe.withDefault 0
-      , high = Form.highP form |> Maybe.withDefault 1
-      }
-  , maximumStakeCents = Form.stakeCents form |> Maybe.withDefault 0
-  , remainingStakeCentsVsBelievers = Form.stakeCents form |> Maybe.withDefault 0
-  , remainingStakeCentsVsSkeptics = Form.stakeCents form |> Maybe.withDefault 0
-  , createdUnixtime = Time.posixToMillis now // 1000 -- TODO
-  , closesUnixtime = Time.posixToMillis now // 1000 + (Form.openForSeconds form |> Maybe.withDefault 0) -- TODO
-  , specialRules = form.specialRulesField
+previewMarket : {request:Pb.CreateMarketRequest, creatorName:String} -> Pb.UserMarketView
+previewMarket {request, creatorName} =
+  { question = request.question
+  , certainty = request.certainty
+  , maximumStakeCents = request.maximumStakeCents
+  , remainingStakeCentsVsBelievers = request.maximumStakeCents
+  , remainingStakeCentsVsSkeptics = request.maximumStakeCents
+  , createdUnixtime = 0
+  , closesUnixtime = request.openSeconds
+  , specialRules = request.specialRules
   , creator = Just {displayName = creatorName, isSelf=False, trustsYou=True, isTrusted=True}
   , resolutions = []
   , yourTrades = []
@@ -193,10 +158,7 @@ formStateToProto {now, form, creatorName} =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-  Sub.batch
-    [ Time.every 1000 Tick
-    , Sub.map PreviewMsg <| ViewMarketPage.subscriptions model.preview
-    ]
+  Sub.none
 
 main : Program JD.Value Model Msg
 main =
