@@ -17,21 +17,37 @@ This project uses the `doit` build system: https://pydoit.org/tutorial_1.html
 
 TODO
 --------------
-- P1 [mvp]: consider a better model of user identity -- UserUserView is gross
-- P2 [pre-beta]: write copy explaining how to operationalize a bet well (or find somebody else's explanation)
-- P2 [pre-beta]: display remaining stake even to people who can't bet
-- P2 [pre-beta]: add more fields to CreateMarketRequest (e.g. "bettors are forbidden from trying to affect the outcome? [ ]" ; "if the result is disputed, who will arbitrate?")
-- P2 [pre-beta]: link from more places to other places
-- P2 [pre-beta]: add an actual home page
-- P2 [pre-beta]: show users their balances with other users
-- P2 [pre-beta]: consider a semi-formalized system for naming an arbiter
-- P2 [pre-beta]: figure out how users can undo accidental bets
-- P2 [pre-beta]: add "Sign in with [identity provider]"
-- P2 [pre-beta]: make "bet"/"wager"/"market"/"stake"/"bettor"/"challenger" terminology consistent
-- P2 [pre-beta]: _consider_ showing users each other's calibratedness / score / bets
-- P3 [nice-to-have]: market privacy controls
-- P3 [nice-to-have]: monetize via freemium or subscription?
-- P3 [nice-to-have]: consider allowing "soft resolutions" so a market can resolve "80% yes"
-- P3 [nice-to-have]: consider letting people download a list of all their bets
-- P3 [nice-to-have]: advertise to Caplan/Hanson/LessWrong/EAG/CFAR?
-- P4 [nice-to-have]: let people subscribe to their mutuals' bets (RSS?)
+
+### P1: make this something _I_ want to use
+- offer to email users about resolved bets
+- add an "all my markets" page
+- add a navbar (auth / Home / New Market / My Markets / Settings)
+
+### P2: make this something other hardcore betting nerds might use
+- consider a better model of user identity -- UserUserView is gross
+- add an actual home page
+- finish the tutorial, integrate it into ViewMarketPage and the home page
+- make the betting mechanism "more intuitive"
+- write copy explaining how to operationalize a bet well (or find somebody else's explanation)
+- display remaining stake even to people who can't bet
+- add "Sign in with [identity provider]"
+- make "bet"/"wager"/"market"/"stake"/"bettor"/"challenger" terminology consistent
+
+### P3: make this something Less Wrongers might use
+- add more fields to CreateMarketRequest:
+    - "bettors are forbidden from trying to affect the outcome? [y/n]"
+    - "if the result is disputed, who will arbitrate?"
+    - "when will this market definitely be resolvable?"
+- show users their balances with other users
+- figure out how users can undo accidental bets
+- scale test
+- add "hide embeds" button for bettophobes (deceptively complicated! The user doesn't log in, so we have to store it in their cookie, but it should appear on some pages (all pages? Just Settings?))
+- let people subscribe to their mutuals' bets (RSS?)
+- consider letting people download a list of all their bets (Is this satisfied just Ctrl-S on an "All my markets" page?)
+- advertise to Caplan/Hanson/LessWrong/EAG/CFAR?
+
+### P4: things I'll do once I quit my software engineering job to follow this dream
+- monetize via freemium or subscription?
+- market privacy controls
+- consider allowing "soft resolutions" so a market can resolve "80% yes"
+- show users each other's calibratedness / score / bets
