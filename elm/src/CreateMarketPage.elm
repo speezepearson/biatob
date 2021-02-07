@@ -54,7 +54,7 @@ init flags =
     auth : Maybe Pb.AuthToken
     auth =  Utils.decodePbFromFlags Pb.authTokenDecoder "authTokenPbB64" flags
   in
-  ( { form = Form.init
+  ( { form = Form.init |> if auth == Nothing then Form.disable else Form.enable
     , auth = auth
     , working = False
     , createError = Nothing
@@ -110,7 +110,14 @@ update msg model =
 view : Model -> Html Msg
 view model =
   H.div []
-    [ Form.view model.form |> H.map FormMsg
+    [ case model.auth of
+       Just _ -> H.text ""
+       Nothing ->
+        H.div []
+          [ H.span [HA.style "color" "red"] [H.text "You need to log in to create a market!"]
+          , H.hr [] []
+          ]
+    , Form.view model.form |> H.map FormMsg
     , H.br [] []
     , H.button
         [ HE.onClick Create

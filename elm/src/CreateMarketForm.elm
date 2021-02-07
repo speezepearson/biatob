@@ -91,10 +91,11 @@ view model =
             , H.text ") "
             , H.br [] []
             , Field.inputFor SetQuestion () model.questionField
-                H.input
+                H.textarea
                 [ HA.style "width" "100%"
                 , HA.placeholder placeholders.question
                 , HA.disabled model.disabled
+                , HA.class "question-field"
                 ] []
             ]
         , H.li []

@@ -44,7 +44,12 @@ inputFor onInput ctx field ctor attrs children =
         [ ctor allAttrs children
         ]
     Err e ->
-      H.span [HA.style "outline" "1px solid red"]
-        [ ctor allAttrs children
-        , H.span [HA.style "color" "red"] [H.text e]
-        ]
+      if List.member (HA.disabled True) attrs then
+        H.span []
+          [ ctor allAttrs children
+          ]
+      else
+        H.span [HA.style "outline" "1px solid red"]
+          [ ctor allAttrs children
+          , H.span [HA.style "color" "red"] [H.text e]
+          ]

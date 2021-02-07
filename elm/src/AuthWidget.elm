@@ -85,6 +85,7 @@ view model =
             , HA.style "width" "8em"
             , HA.type_ "text"
             , HA.placeholder "username"
+            , HA.class "username-field"
             ] []
         , Field.inputFor SetPasswordField {okIfBlank=Field.raw m.usernameField == ""} m.passwordField
             H.input
