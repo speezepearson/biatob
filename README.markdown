@@ -29,7 +29,6 @@ TODO
 - P2 [pre-beta]: add "Sign in with [identity provider]"
 - P2 [pre-beta]: make "bet"/"wager"/"market"/"stake"/"bettor"/"challenger" terminology consistent
 - P2 [pre-beta]: _consider_ showing users each other's calibratedness / score / bets
-- P2 [pre-beta]: more validation (e.g. character/length restrictions on usernames)
 - P3 [nice-to-have]: market privacy controls
 - P3 [nice-to-have]: monetize via freemium or subscription?
 - P3 [nice-to-have]: consider allowing "soft resolutions" so a market can resolve "80% yes"

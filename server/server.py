@@ -7,12 +7,14 @@ import base64
 import contextlib
 import contextvars
 import copy
+import functools
 import hmac
 import io
 import json
 from pathlib import Path
 import random
 import secrets
+import string
 import time
 from typing import Iterator, Optional, Container, NewType, Callable, NoReturn, Tuple
 
@@ -25,6 +27,8 @@ MarketId = NewType('MarketId', int)
 
 try: IMAGE_EMBED_FONT = ImageFont.truetype('FreeSans.ttf', 18)
 except Exception: IMAGE_EMBED_FONT = ImageFont.load_default()
+
+MAX_LEGAL_STAKE_CENTS = 5_000_00
 
 class UsernameAlreadyRegisteredError(Exception): pass
 class NoSuchUserError(Exception): pass
@@ -54,6 +58,23 @@ def trusts(wstate: mvp_pb2.WorldState, a: mvp_pb2.UserId, b: mvp_pb2.UserId) -> 
         return True
     a_info = get_generic_user_info(wstate, a)
     return (a_info is not None) and b in a_info.trusted_users
+
+def describe_username_problems(username: str) -> Optional[str]:
+    if not username:
+        return 'username must be non-empty'
+    if len(username) > 64:
+        return 'username must be no more than 64 characters'
+    if not username.isalnum():
+        return 'username must be alphanumeric'
+    return None
+
+def describe_password_problems(password: str) -> Optional[str]:
+    if not password:
+        return 'password must be non-empty'
+    if len(password) > 256:
+        return 'password must not exceed 256 characters, good lord'
+    return None
+
 
 class TokenMint:
 
@@ -112,7 +133,6 @@ class Servicer(abc.ABC):
 
 
 def checks_token(f):
-    import functools
     @functools.wraps(f)
     def wrapped(self: 'FsBackedServicer', token: Optional[mvp_pb2.AuthToken], *args, **kwargs):
         token = self._token_mint.check_token(token)
@@ -155,6 +175,12 @@ class FsBackedServicer(Servicer):
     def RegisterUsername(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.RegisterUsernameRequest) -> mvp_pb2.RegisterUsernameResponse:
         if token is not None:
             return mvp_pb2.RegisterUsernameResponse(error=mvp_pb2.RegisterUsernameResponse.Error(catchall='already authenticated; first, log out'))
+        username_problems = describe_username_problems(request.username)
+        if username_problems is not None:
+            return mvp_pb2.RegisterUsernameResponse(error=mvp_pb2.RegisterUsernameResponse.Error(catchall=username_problems))
+        password_problems = describe_password_problems(request.password)
+        if password_problems is not None:
+            return mvp_pb2.RegisterUsernameResponse(error=mvp_pb2.RegisterUsernameResponse.Error(catchall=password_problems))
 
         with self._mutate_state() as wstate:
             if request.username in wstate.username_users:
@@ -169,6 +195,12 @@ class FsBackedServicer(Servicer):
     def LogInUsername(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.LogInUsernameRequest) -> mvp_pb2.LogInUsernameResponse:
         if token is not None:
             return mvp_pb2.LogInUsernameResponse(error=mvp_pb2.LogInUsernameResponse.Error(catchall='already authenticated; first, log out'))
+        username_problems = describe_username_problems(request.username)
+        if username_problems is not None:
+            return mvp_pb2.LogInUsernameResponse(error=mvp_pb2.LogInUsernameResponse.Error(catchall=username_problems))
+        password_problems = describe_password_problems(request.password)
+        if password_problems is not None:
+            return mvp_pb2.LogInUsernameResponse(error=mvp_pb2.LogInUsernameResponse.Error(catchall=password_problems))
 
         info = self._get_state().username_users.get(request.username)
         if info is None:
@@ -183,6 +215,17 @@ class FsBackedServicer(Servicer):
     def CreateMarket(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.CreateMarketRequest) -> mvp_pb2.CreateMarketResponse:
         if token is None:
             return mvp_pb2.CreateMarketResponse(error=mvp_pb2.CreateMarketResponse.Error(catchall='must log in to create markets'))
+        if not request.question:
+            return mvp_pb2.CreateMarketResponse(error=mvp_pb2.CreateMarketResponse.Error(catchall='must have a question field'))
+        if not request.certainty:
+            return mvp_pb2.CreateMarketResponse(error=mvp_pb2.CreateMarketResponse.Error(catchall='must have a certainty'))
+        if not (request.certainty.low < request.certainty.high):
+            return mvp_pb2.CreateMarketResponse(error=mvp_pb2.CreateMarketResponse.Error(catchall='certainty must have low < high'))
+        if not (request.maximum_stake_cents <= MAX_LEGAL_STAKE_CENTS):
+            return mvp_pb2.CreateMarketResponse(error=mvp_pb2.CreateMarketResponse.Error(catchall=f'stake must not exceed ${MAX_LEGAL_STAKE_CENTS//100}'))
+        if not (request.open_seconds > 0):
+            return mvp_pb2.CreateMarketResponse(error=mvp_pb2.CreateMarketResponse.Error(catchall=f'market must be open for a positive number of seconds'))
+
         now = int(self._clock())
         with self._mutate_state() as wstate:
             mid = MarketId(weak_rand_not_in(self._rng, limit=2**32, xs=wstate.markets.keys()))
@@ -241,6 +284,7 @@ class FsBackedServicer(Servicer):
     def Stake(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.StakeRequest) -> mvp_pb2.StakeResponse:
         if token is None:
             return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall='must log in to bet'))
+        assert request.bettor_stake_cents >= 0, 'protobuf should enforce this being a uint, but just in case...'
 
         with self._mutate_state() as wstate:
             market = wstate.markets.get(request.market_id)
@@ -262,6 +306,9 @@ class FsBackedServicer(Servicer):
                 existing_stake = sum(t.creator_stake_cents for t in market.trades if not t.bettor_is_a_skeptic)
             if existing_stake + creator_stake_cents > market.maximum_stake_cents:
                 return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall=f'bet would exceed creator tolerance ({existing_stake} existing + {creator_stake_cents} new stake > {market.maximum_stake_cents} max)'))
+            existing_bettor_exposure = sum(t.bettor_stake_cents for t in market.trades if t.bettor == token.owner and t.bettor_is_a_skeptic == request.bettor_is_a_skeptic)
+            if existing_bettor_exposure + request.bettor_stake_cents > MAX_LEGAL_STAKE_CENTS:
+                return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall=f'your existing stake of ~${existing_bettor_exposure//100} plus your new stake ~${request.bettor_stake_cents//100} cents would put you over the limit of ${MAX_LEGAL_STAKE_CENTS//100} staked in a single market'))
             market.trades.append(mvp_pb2.Trade(
                 bettor=token.owner,
                 bettor_is_a_skeptic=request.bettor_is_a_skeptic,
@@ -324,6 +371,9 @@ class FsBackedServicer(Servicer):
             return mvp_pb2.ChangePasswordResponse(error=mvp_pb2.ChangePasswordResponse.Error(catchall='must log in to change your password'))
         if token.owner.WhichOneof('kind') != 'username':
             return mvp_pb2.ChangePasswordResponse(error=mvp_pb2.ChangePasswordResponse.Error(catchall='only username-authenticated users have passwords'))
+        password_problems = describe_password_problems(request.new_password)
+        if password_problems is not None:
+            return mvp_pb2.ChangePasswordResponse(error=mvp_pb2.ChangePasswordResponse.Error(catchall=password_problems))
 
         with self._mutate_state() as wstate:
             info = wstate.username_users.get(token.owner.username)

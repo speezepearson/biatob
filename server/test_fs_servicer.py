@@ -1,4 +1,5 @@
 import contextlib
+import copy
 from pathlib import Path
 import random
 from typing import Tuple
@@ -12,7 +13,7 @@ from .test_utils import clock, token_mint, fs_servicer, MockClock
 
 def new_user_token(fs_servicer: FsBackedServicer, username: str) -> mvp_pb2.AuthToken:
   resp = fs_servicer.RegisterUsername(token=None, request=mvp_pb2.RegisterUsernameRequest(username=username, password=f'{username} password'))
-  assert resp.WhichOneof('register_username_result') == 'ok'
+  assert resp.WhichOneof('register_username_result') == 'ok', resp
   return resp.ok
 
 
@@ -25,6 +26,16 @@ def alice_bob_tokens(fs_servicer: FsBackedServicer) -> Tuple[mvp_pb2.AuthToken, 
 
   return (token_a, token_b)
 
+def some_create_market_request(**kwargs) -> mvp_pb2.CreateMarketRequest:
+  init_kwargs = dict(
+    question='question!',
+    certainty=mvp_pb2.CertaintyRange(low=0.80, high=0.90),
+    maximum_stake_cents=100_00,
+    open_seconds=123,
+    special_rules='rules!',
+  )
+  init_kwargs.update(kwargs)
+  return mvp_pb2.CreateMarketRequest(**init_kwargs)  # type: ignore
 
 def test_Whoami(fs_servicer: FsBackedServicer):
   resp = fs_servicer.Whoami(None, mvp_pb2.WhoamiRequest())
@@ -38,61 +49,56 @@ def test_Whoami(fs_servicer: FsBackedServicer):
 def test_LogInUsername(fs_servicer: FsBackedServicer):
   rando_token = new_user_token(fs_servicer, 'rando')
   resp = fs_servicer.LogInUsername(None, mvp_pb2.LogInUsernameRequest(username='rando', password='rando password'))
-  assert resp.WhichOneof('log_in_username_result') == 'ok'
+  assert resp.WhichOneof('log_in_username_result') == 'ok', resp
   assert resp.ok.owner == rando_token.owner
 
   resp = fs_servicer.LogInUsername(None, mvp_pb2.LogInUsernameRequest(username='rando', password='WRONG'))
-  assert resp.WhichOneof('log_in_username_result') == 'error'
+  assert resp.WhichOneof('log_in_username_result') == 'error', resp
   assert resp.ok.ByteSize() == 0
 
   resp = fs_servicer.LogInUsername(rando_token, mvp_pb2.LogInUsernameRequest(username='rando', password='WRONG'))
-  assert resp.WhichOneof('log_in_username_result') == 'error'
+  assert resp.WhichOneof('log_in_username_result') == 'error', resp
   assert resp.ok.ByteSize() == 0
 
 
 def test_RegisterUsername(fs_servicer: FsBackedServicer):
   resp = fs_servicer.RegisterUsername(token=None, request=mvp_pb2.RegisterUsernameRequest(username='potato', password='secret'))
-  assert resp.WhichOneof('register_username_result') == 'ok'
+  assert resp.WhichOneof('register_username_result') == 'ok', resp
   token = resp.ok
   assert token.owner.username == 'potato'
 
   resp = fs_servicer.RegisterUsername(token=None, request=mvp_pb2.RegisterUsernameRequest(username='potato', password='secret'))
-  assert resp.WhichOneof('register_username_result') == 'error'
+  assert resp.WhichOneof('register_username_result') == 'error', resp
 
   resp = fs_servicer.RegisterUsername(token=token, request=mvp_pb2.RegisterUsernameRequest(username='potato2', password='secret'))
-  assert resp.WhichOneof('register_username_result') == 'error'
+  assert resp.WhichOneof('register_username_result') == 'error', resp
 
 
 
 def test_CreateMarket_returns_distinct_ids(token_mint, fs_servicer):
   token = new_user_token(fs_servicer, 'rando')
-  ids = {fs_servicer.CreateMarket(token, mvp_pb2.CreateMarketRequest()).new_market_id for _ in range(30)}
+  ids = {fs_servicer.CreateMarket(token, some_create_market_request()).new_market_id for _ in range(30)}
   assert len(ids) == 30
 
 
 def test_GetMarket(fs_servicer: FsBackedServicer, clock: MockClock):
+  req = some_create_market_request()
   rando_token = new_user_token(fs_servicer, 'rando')
   market_id = fs_servicer.CreateMarket(
     token=rando_token,
-    request=mvp_pb2.CreateMarketRequest(
-      question='question!',
-      certainty=mvp_pb2.CertaintyRange(low=0.80, high=0.90),
-      maximum_stake_cents=100_00,
-      open_seconds=123,
-      special_rules='rules!'
-    ),
+    request=copy.deepcopy(req),
   ).new_market_id
 
   resp = fs_servicer.GetMarket(rando_token, mvp_pb2.GetMarketRequest(market_id=market_id))
   assert resp == mvp_pb2.GetMarketResponse(market=mvp_pb2.UserMarketView(
-    question='question!',
-    certainty=mvp_pb2.CertaintyRange(low=0.80, high=0.90),
-    maximum_stake_cents=100_00,
-    remaining_stake_cents_vs_believers=100_00,
-    remaining_stake_cents_vs_skeptics=100_00,
+    question=req.question,
+    certainty=req.certainty,
+    maximum_stake_cents=req.maximum_stake_cents,
+    remaining_stake_cents_vs_believers=req.maximum_stake_cents,
+    remaining_stake_cents_vs_skeptics=req.maximum_stake_cents,
     created_unixtime=clock.now(),
-    closes_unixtime=clock.now() + 123,
-    special_rules='rules!',
+    closes_unixtime=clock.now() + req.open_seconds,
+    special_rules=req.special_rules,
     creator=mvp_pb2.UserUserView(display_name='rando', is_self=True, is_trusted=True, trusts_you=True),
     resolutions=[],
     your_trades=[],
@@ -103,9 +109,9 @@ def test_Stake(fs_servicer, clock):
   alice_token, bob_token = alice_bob_tokens(fs_servicer)
   market_id = fs_servicer.CreateMarket(
     token=alice_token,
-    request=mvp_pb2.CreateMarketRequest(
-      maximum_stake_cents=100_00,
+    request=some_create_market_request(
       certainty=mvp_pb2.CertaintyRange(low=0.80, high=0.90),
+      maximum_stake_cents=100_00,
     ),
   ).new_market_id
   assert market_id != 0
@@ -141,9 +147,9 @@ def test_Stake_protects_against_overpromising(fs_servicer: FsBackedServicer):
   alice_token, bob_token = alice_bob_tokens(fs_servicer)
   market_id = fs_servicer.CreateMarket(
     token=alice_token,
-    request=mvp_pb2.CreateMarketRequest(
-      maximum_stake_cents=100_00,
+    request=some_create_market_request(
       certainty=mvp_pb2.CertaintyRange(low=0.80, high=0.90),
+      maximum_stake_cents=100_00,
     ),
   ).new_market_id
   assert market_id != 0
@@ -175,10 +181,7 @@ def test_Stake_enforces_trust(fs_servicer: FsBackedServicer):
   rando_token = new_user_token(fs_servicer, 'rando')
   market_id = fs_servicer.CreateMarket(
     token=alice_token,
-    request=mvp_pb2.CreateMarketRequest(
-      maximum_stake_cents=100_00,
-      certainty=mvp_pb2.CertaintyRange(low=0.80, high=0.90),
-    ),
+    request=some_create_market_request(),
   ).new_market_id
   assert market_id != 0
 
@@ -205,10 +208,7 @@ def test_Resolve(fs_servicer: FsBackedServicer, clock: MockClock):
   rando_token = new_user_token(fs_servicer, 'rando')
   market_id = fs_servicer.CreateMarket(
     token=rando_token,
-    request=mvp_pb2.CreateMarketRequest(
-      maximum_stake_cents=100_00,
-      certainty=mvp_pb2.CertaintyRange(low=0.80, high=0.90),
-    ),
+    request=some_create_market_request(),
   ).new_market_id
 
   t0 = clock.now()
@@ -219,21 +219,21 @@ def test_Resolve(fs_servicer: FsBackedServicer, clock: MockClock):
   ]
 
   resolve_resp = fs_servicer.Resolve(rando_token, mvp_pb2.ResolveRequest(market_id=market_id, resolution=mvp_pb2.RESOLUTION_YES))
-  assert resolve_resp.WhichOneof('resolve_result') == 'ok'
+  assert resolve_resp.WhichOneof('resolve_result') == 'ok', resolve_resp
   get_resp = fs_servicer.GetMarket(rando_token, mvp_pb2.GetMarketRequest(market_id=market_id))
   assert list(get_resp.market.resolutions) == planned_events[:1]
 
   clock.tick()
   t1 = clock.now()
   resolve_resp = fs_servicer.Resolve(rando_token, mvp_pb2.ResolveRequest(market_id=market_id, resolution=mvp_pb2.RESOLUTION_NONE_YET))
-  assert resolve_resp.WhichOneof('resolve_result') == 'ok'
+  assert resolve_resp.WhichOneof('resolve_result') == 'ok', resolve_resp
   get_resp = fs_servicer.GetMarket(rando_token, mvp_pb2.GetMarketRequest(market_id=market_id))
   assert list(get_resp.market.resolutions) == planned_events[:2]
 
   clock.tick()
   t2 = clock.now()
   resolve_resp = fs_servicer.Resolve(rando_token, mvp_pb2.ResolveRequest(market_id=market_id, resolution=mvp_pb2.RESOLUTION_NO))
-  assert resolve_resp.WhichOneof('resolve_result') == 'ok'
+  assert resolve_resp.WhichOneof('resolve_result') == 'ok', resolve_resp
   get_resp = fs_servicer.GetMarket(rando_token, mvp_pb2.GetMarketRequest(market_id=market_id))
   assert list(get_resp.market.resolutions) == planned_events
 
@@ -242,14 +242,11 @@ def test_Resolve_ensures_creator(fs_servicer: FsBackedServicer):
   alice_token, bob_token = alice_bob_tokens(fs_servicer)
   market_id = fs_servicer.CreateMarket(
     token=alice_token,
-    request=mvp_pb2.CreateMarketRequest(
-      maximum_stake_cents=100_00,
-      certainty=mvp_pb2.CertaintyRange(low=0.80, high=0.90),
-    ),
+    request=some_create_market_request(),
   ).new_market_id
 
   resp = fs_servicer.Resolve(bob_token, mvp_pb2.ResolveRequest(market_id=market_id, resolution=mvp_pb2.RESOLUTION_NO))
-  assert resp.WhichOneof('resolve_result') == 'error'
+  assert resp.WhichOneof('resolve_result') == 'error', resp
   assert 'not the creator' in str(resp.error)
 
 
