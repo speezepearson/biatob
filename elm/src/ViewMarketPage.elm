@@ -331,6 +331,14 @@ view model =
     , viewWinnings model
     , H.hr [] []
     , viewCreationParams model
+    , case model.market.specialRules of
+        "" ->
+          H.text ""
+        rules ->
+          H.div []
+            [ H.strong [] [H.text "Special rules:"]
+            , H.text <| " " ++ rules
+            ]
     , viewStakeFormOrExcuse model
     , case model.stakeError of
         Just e -> H.div [HA.style "color" "red"] [H.text e]

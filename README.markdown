@@ -21,7 +21,6 @@ TODO
 - P2 [pre-beta]: write copy explaining how to operationalize a bet well (or find somebody else's explanation)
 - P2 [pre-beta]: display remaining stake even to people who can't bet
 - P2 [pre-beta]: add more fields to CreateMarketRequest (e.g. "bettors are forbidden from trying to affect the outcome? [ ]" ; "if the result is disputed, who will arbitrate?")
-- P2 [pre-beta]: display market special rules in UI
 - P2 [pre-beta]: link from more places to other places
 - P2 [pre-beta]: add an actual home page
 - P2 [pre-beta]: show users their balances with other users
