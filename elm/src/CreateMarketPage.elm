@@ -16,20 +16,19 @@ import CreateMarketForm as Form
 import Utils
 
 import ViewMarketPage
-import StakeForm
 import Http exposing (request)
 
 port createdMarket : Int -> Cmd msg
 
 type alias Model =
-  { form : Form.State
+  { form : Form.Model
   , auth : Maybe Pb.AuthToken
   , working : Bool
   , createError : Maybe String
   }
 
 type Msg
-  = SetFormState Form.State
+  = FormMsg Form.Msg
   | Create
   | CreateFinished (Result Http.Error Pb.CreateMarketResponse)
   | Ignore
@@ -74,8 +73,8 @@ postCreate req =
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
-    SetFormState newState ->
-      ({ model | form = newState }, Cmd.none)
+    FormMsg formMsg ->
+      ({ model | form = model.form |> Form.update formMsg }, Cmd.none)
     Create ->
       case Form.toCreateRequest model.form of
         Just req ->
@@ -111,7 +110,7 @@ update msg model =
 view : Model -> Html Msg
 view model =
   H.div []
-    [ Form.view (formConfig model) model.form
+    [ Form.view model.form |> H.map FormMsg
     , H.br [] []
     , H.button
         [ HE.onClick Create
@@ -134,12 +133,6 @@ view model =
               H.span [HA.style "color" "red"] [H.text "(invalid market)"]
         ]
     ]
-
-formConfig : Model -> Form.Config Msg
-formConfig model =
-  { setState = SetFormState
-  , disabled = (model.auth == Nothing)
-  }
 
 previewMarket : {request:Pb.CreateMarketRequest, creatorName:String} -> Pb.UserMarketView
 previewMarket {request, creatorName} =
