@@ -24,7 +24,6 @@ TODO
 - P2 [pre-beta]: link from more places to other places
 - P2 [pre-beta]: add an actual home page
 - P2 [pre-beta]: show users their balances with other users
-- P2 [pre-beta]: link auth widget to your user page
 - P2 [pre-beta]: consider a semi-formalized system for naming an arbiter
 - P2 [pre-beta]: figure out how users can undo accidental bets
 - P2 [pre-beta]: add "Sign in with [identity provider]"
