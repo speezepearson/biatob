@@ -21,7 +21,7 @@
       node: document.getElementById('navbar'),
       flags: {authTokenPbB64},
     })
-    navbar.ports.authChanged.subscribe(() => window.location.reload());
+    navbar.ports.authChanged.subscribe(({loggedIn}) => (loggedIn ? window.location.reload() : window.location='/'));
 
     var main = Elm.MyMarketsPage.init({
       node: document.getElementById('main'),

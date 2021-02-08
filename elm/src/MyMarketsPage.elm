@@ -61,12 +61,21 @@ view : Model -> Html Msg
 view model =
   H.div []
     [ H.h2 [] [H.text "My Markets"]
-    , model.markets
-      |> Dict.toList
-      |> List.sortBy (\(id, _) -> id)
-      |> List.map (\(id, m) -> H.div [HA.style "margin" "1em", HA.style "padding" "1em", HA.style "border" "1px solid black"] [ViewMarketPage.view m |> H.map (MarketPageMsg id)])
-      |> List.intersperse (H.hr [] [])
-      |> H.div []
+    , if Dict.isEmpty model.markets then
+        H.div []
+          [ H.text "You haven't participated in any markets yet!"
+          , H.br [] []
+          , H.text "Maybe you want to "
+          , H.a [HA.href "/new"] [H.text "create one"]
+          , H.text "?"
+          ]
+      else
+        model.markets
+        |> Dict.toList
+        |> List.sortBy (\(id, _) -> id)
+        |> List.map (\(id, m) -> H.div [HA.style "margin" "1em", HA.style "padding" "1em", HA.style "border" "1px solid black"] [ViewMarketPage.view m |> H.map (MarketPageMsg id)])
+        |> List.intersperse (H.hr [] [])
+        |> H.div []
     ]
 
 subscriptions : Model -> Sub Msg

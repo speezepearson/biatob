@@ -18,7 +18,7 @@ import Task
 
 import Field exposing (Field)
 
-port authChanged : () -> Cmd msg
+port authChanged : {loggedIn:Bool} -> Cmd msg
 
 type Model
   = NoToken
@@ -174,7 +174,7 @@ update msg model =
     case resp.logInUsernameResult of
       Just (Pb.LogInUsernameResultOk token) ->
         ( initHasToken token
-        , authChanged ()
+        , authChanged {loggedIn=True}
         )
       Just (Pb.LogInUsernameResultError e) ->
         ( NoToken { m | working = False , error = Just (Debug.toString e) }
@@ -197,7 +197,7 @@ update msg model =
     case resp.registerUsernameResult of
       Just (Pb.RegisterUsernameResultOk token) ->
         ( initHasToken token
-        , authChanged ()
+        , authChanged {loggedIn=True}
         )
       Just (Pb.RegisterUsernameResultError e) ->
         ( NoToken { m | working = False , error = Just (Debug.toString e) }
@@ -229,7 +229,7 @@ update msg model =
   (Tick now, HasToken {token}) ->
     if Time.posixToMillis now > 1000*token.expiresUnixtime then
       ( init JE.null |> Tuple.first
-      , authChanged ()
+      , authChanged {loggedIn=False}
       )
     else
       ( model , Cmd.none )
@@ -238,7 +238,7 @@ update msg model =
     , postSignOut
     )
   (SignOutComplete _, HasToken _) ->
-    ( initNoToken , authChanged () )
+    ( initNoToken , authChanged {loggedIn=False} )
 
 subscriptions : Model -> Sub Msg
 subscriptions _ = Time.every 1000 Tick
