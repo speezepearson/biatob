@@ -39,6 +39,7 @@ TODO
 - show users their balances with other users
 - figure out how users can undo accidental bets
 - scale test
+- regular backups of state
 - add "hide embeds" button for bettophobes (deceptively complicated! The user doesn't log in, so we have to store it in their cookie, but it should appear on some pages (all pages? Just Settings?))
 - let people subscribe to their mutuals' bets (RSS?)
 - consider letting people download a list of all their bets (Is this satisfied just Ctrl-S on an "All my markets" page?)

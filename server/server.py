@@ -186,7 +186,9 @@ class FsBackedServicer(Servicer):
             result.ParseFromString(self._state_path.read_bytes())
         return result
     def _set_state(self, wstate: mvp_pb2.WorldState) -> None:
-        self._state_path.write_bytes(wstate.SerializeToString())
+        bak = self._state_path.with_suffix('.bak')
+        bak.write_bytes(wstate.SerializeToString())
+        bak.rename(self._state_path)
     @contextlib.contextmanager
     def _mutate_state(self) -> Iterator[mvp_pb2.WorldState]:
         wstate = self._get_state()
