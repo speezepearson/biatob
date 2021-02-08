@@ -5,21 +5,21 @@
   <title>Main</title>
   <link rel="shortcut icon"type="image/x-icon" href="data:image/x-icon;,">
   <script type="text/javascript" src="/elm/CreateMarketPage.js"></script>
-  <script type="text/javascript" src="/elm/AuthWidget.js"></script>
+  <script type="text/javascript" src="/elm/Navbar.js"></script>
 </head>
 
 <body>
-  <div id="auth"></div>
+  <div id="navbar"></div>
   <main id="main"></main>
   <script type="text/javascript">
 
     var authTokenPbB64 = {{auth_token_pb_b64}};
 
-    var auth = Elm.AuthWidget.init({
-      node: document.getElementById('auth'),
+    var navbar = Elm.Navbar.init({
+      node: document.getElementById('navbar'),
       flags: {authTokenPbB64},
     })
-    auth.ports.authChanged.subscribe(() => window.location.reload());
+    navbar.ports.authChanged.subscribe(() => window.location.reload());
 
     var main = Elm.CreateMarketPage.init({
       node: document.getElementById('main'),

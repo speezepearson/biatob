@@ -44,6 +44,15 @@ type Msg
   | SignOut
   | SignOutComplete (Result Http.Error Pb.SignOutResponse)
 
+getAuth : Model -> Maybe Pb.AuthToken
+getAuth model =
+  case model of
+     NoToken _ -> Nothing
+     HasToken {token} -> Just token
+hasAuth : Model -> Bool
+hasAuth model =
+  getAuth model /= Nothing
+
 initNoToken : Model
 initNoToken =
   NoToken
@@ -231,11 +240,14 @@ update msg model =
   (SignOutComplete _, HasToken _) ->
     ( initNoToken , authChanged () )
 
+subscriptions : Model -> Sub Msg
+subscriptions _ = Time.every 1000 Tick
+
 main : Program JD.Value Model Msg
 main =
   Browser.element
     { init = init
     , view = view
     , update = update
-    , subscriptions = always (Time.every 1000 Tick)
+    , subscriptions = subscriptions
     }

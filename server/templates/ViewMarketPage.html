@@ -5,11 +5,11 @@
   <title>Main</title>
   <link rel="shortcut icon"type="image/x-icon" href="data:image/x-icon;,">
   <script type="text/javascript" src="/elm/ViewMarketPage.js"></script>
-  <script type="text/javascript" src="/elm/AuthWidget.js"></script>
+  <script type="text/javascript" src="/elm/Navbar.js"></script>
 </head>
 
 <body>
-  <div id="auth"></div>
+  <div id="navbar"></div>
   <main id="main"></main>
   <script type="text/javascript">
 
@@ -18,11 +18,11 @@
     var marketId = {{market_id}};
     var linkToAuthority = window.location.origin;
 
-    var auth = Elm.AuthWidget.init({
-      node: document.getElementById('auth'),
+    var navbar = Elm.Navbar.init({
+      node: document.getElementById('navbar'),
       flags: {authTokenPbB64},
     })
-    auth.ports.authChanged.subscribe(() => window.location.reload());
+    navbar.ports.authChanged.subscribe(() => window.location.reload());
 
     var main = Elm.ViewMarketPage.init({
       node: document.getElementById('main'),
