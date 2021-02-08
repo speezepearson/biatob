@@ -76,3 +76,22 @@ async def test_CreateMarket_and_GetMarket(aiohttp_client, app, clock):
   assert returned_market.created_unixtime == clock.now()
   assert returned_market.closes_unixtime == returned_market.created_unixtime + create_pb_req.open_seconds
   assert returned_market.special_rules == create_pb_req.special_rules
+
+
+async def test_forgotten_token_recovery(aiohttp_client, app, fs_servicer):
+  cli = await aiohttp_client(app)
+
+  (http_resp, pb_resp) = await post_proto(cli, '/api/RegisterUsername', mvp_pb2.RegisterUsernameRequest(username='potato', password='secret'), mvp_pb2.RegisterUsernameResponse)
+  assert pb_resp.ok.owner == mvp_pb2.UserId(username='potato'), pb_resp
+
+  fs_servicer._set_state(mvp_pb2.WorldState())
+  http_resp = await cli.post(
+    '/api/RegisterUsername',
+    headers={'Content-Type': 'application/octet-stream'},
+    data=mvp_pb2.WhoamiRequest().SerializeToString(),
+  )
+  assert http_resp.status == 500
+  assert b'obliterated your entire account' in await http_resp.content.read()
+
+  (http_resp, pb_resp) = await post_proto(cli, '/api/Whoami', mvp_pb2.WhoamiRequest(), mvp_pb2.WhoamiResponse)
+  assert pb_resp.auth.owner.WhichOneof('kind') == None, pb_resp

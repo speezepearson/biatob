@@ -33,6 +33,7 @@ MAX_LEGAL_STAKE_CENTS = 5_000_00
 class UsernameAlreadyRegisteredError(Exception): pass
 class NoSuchUserError(Exception): pass
 class BadPasswordError(Exception): pass
+class ForgottenTokenError(RuntimeError): pass
 
 def weak_rand_not_in(rng: random.Random, limit: int, xs: Container[int]) -> int:
     result = rng.randrange(0, limit)
@@ -48,7 +49,7 @@ def get_generic_user_info(wstate: mvp_pb2.WorldState, user: mvp_pb2.UserId) -> O
         username_info = wstate.username_users.get(user.username)
         return username_info.info if (username_info is not None) else None
     else:
-        raise RuntimeError(f'unrecognized UserId kind: {user!r}')
+        assert False, f'unrecognized UserId kind: {user!r}'
 
 def user_exists(wstate: mvp_pb2.WorldState, user: mvp_pb2.UserId) -> bool:
     return get_generic_user_info(wstate, user) is not None
@@ -169,7 +170,7 @@ def checks_token(f):
     def wrapped(self: 'FsBackedServicer', token: Optional[mvp_pb2.AuthToken], *args, **kwargs):
         token = self._token_mint.check_token(token)
         if (token is not None) and not user_exists(self._get_state(), token.owner):
-            raise RuntimeError('got valid token for nonexistent user!?', token)
+            raise ForgottenTokenError(token)
         return f(self, token, *args, **kwargs)
     return wrapped
 
@@ -360,7 +361,7 @@ class FsBackedServicer(Servicer):
         with self._mutate_state() as wstate:
             requester_info = get_generic_user_info(wstate, token.owner)
             if requester_info is None:
-                raise RuntimeError('got valid token for nonexistent user!?', token)
+                raise ForgottenTokenError(token)
             if not user_exists(wstate, request.who):
                 return mvp_pb2.SetTrustedResponse(error=mvp_pb2.SetTrustedResponse.Error(catchall='no such user'))
             if request.trusted and request.who not in requester_info.trusted_users:
@@ -398,7 +399,7 @@ class FsBackedServicer(Servicer):
         with self._mutate_state() as wstate:
             info = wstate.username_users.get(token.owner.username)
             if info is None:
-                raise RuntimeError('got valid token for nonexistent user!?', token)
+                raise ForgottenTokenError(token)
 
             if not bcrypt.checkpw(request.old_password.encode('utf8'), info.password_bcrypt):
                 return mvp_pb2.ChangePasswordResponse(error=mvp_pb2.ChangePasswordResponse.Error(catchall='bad password'))
@@ -452,6 +453,10 @@ class HttpTokenGlue:
         ctxtok = self._ctxvar.set(self.parse_cookie(request))
         try:
             return await handler(request)
+        except ForgottenTokenError:
+            response = web.HTTPInternalServerError(reason="I, uh, may have accidentally obliterated your entire account. Crap. I'm sorry.")
+            self.del_cookie(request, response)
+            return response
         finally:
             self._ctxvar.reset(ctxtok)
 
