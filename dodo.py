@@ -76,7 +76,7 @@ def task_test():
     'actions': [
       # 'pip3 install -r server/requirements.txt',
       'mypy server',
-      'cd server && pytest',
+      'cd server && pytest --color=yes',
     ]
   }
 
