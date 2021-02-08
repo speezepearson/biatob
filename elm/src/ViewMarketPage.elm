@@ -47,7 +47,7 @@ type Msg
 setMarket : Pb.UserMarketView -> Model -> Model
 setMarket market model = { model | market = market }
 
-initBase : { market : Pb.UserMarketView , marketId : Int , auth : Maybe Pb.AuthToken } -> ( Model, Cmd Msg )
+initBase : { market : Pb.UserMarketView , marketId : Int , auth : Maybe Pb.AuthToken, now : Time.Posix } -> ( Model, Cmd Msg )
 initBase flags =
   ( { stakeForm = StakeForm.init
     , market = flags.market
@@ -56,7 +56,7 @@ initBase flags =
     , working = False
     , stakeError = Nothing
     , resolveError = Nothing
-    , now = Time.millisToPosix 0
+    , now = flags.now
     , resolutionNotes = ""
     }
   , Task.perform Tick Time.now
@@ -68,6 +68,7 @@ init flags =
     { market = Utils.mustDecodePbFromFlags Pb.userMarketViewDecoder "marketPbB64" flags
     , marketId = Utils.mustDecodeFromFlags JD.int "marketId" flags
     , auth = Utils.decodePbFromFlags Pb.authTokenDecoder "authTokenPbB64" flags
+    , now = Time.millisToPosix 0
     }
 
 postStake : Pb.StakeRequest -> Cmd Msg

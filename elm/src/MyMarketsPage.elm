@@ -5,6 +5,7 @@ import Html as H exposing (Html)
 import Html.Attributes as HA
 import Json.Decode as JD
 import Dict exposing (Dict)
+import Time
 
 import Biatob.Proto.Mvp as Pb
 import Utils
@@ -32,7 +33,7 @@ init flags =
     subinits =
       Dict.map
         (\id m ->
-          let (submodel, subcmd) = ViewMarketPage.initBase {marketId=id, market=m, auth=auth} in
+          let (submodel, subcmd) = ViewMarketPage.initBase {marketId=id, market=m, auth=auth, now=Time.millisToPosix 0} in
           (submodel, subcmd)
         )
         markets

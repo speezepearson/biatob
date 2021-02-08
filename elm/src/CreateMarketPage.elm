@@ -10,6 +10,8 @@ import Protobuf.Encode as PE
 import Protobuf.Decode as PD
 import Time
 import Bytes.Encode
+import Time
+import Task
 
 import Biatob.Proto.Mvp as Pb
 import CreateMarketForm as Form
@@ -25,12 +27,14 @@ type alias Model =
   , auth : Maybe Pb.AuthToken
   , working : Bool
   , createError : Maybe String
+  , initTime : Time.Posix
   }
 
 type Msg
   = FormMsg Form.Msg
   | Create
   | CreateFinished (Result Http.Error Pb.CreateMarketResponse)
+  | Tick Time.Posix
   | Ignore
 
 authName : Maybe Pb.AuthToken -> String
@@ -58,8 +62,9 @@ init flags =
     , auth = auth
     , working = False
     , createError = Nothing
+    , initTime = Time.millisToPosix 0
     }
-  , Cmd.none
+  , Task.perform Tick Time.now
   )
 
 postCreate : Pb.CreateMarketRequest -> Cmd Msg
@@ -103,7 +108,8 @@ update msg model =
           ( { model | working = False , createError = Just "Invalid server response (neither Ok nor Error in protobuf)" }
           , Cmd.none
           )
-
+    Tick t ->
+      ( { model | initTime = t } , Cmd.none )
     Ignore ->
       (model, Cmd.none)
 
@@ -132,8 +138,8 @@ view model =
     , H.div [HA.style "border" "1px solid black", HA.style "padding" "1em", HA.style "margin" "1em"]
         [ case Form.toCreateRequest model.form of
             Just req ->
-              previewMarket {request=req, creatorName=authName model.auth}
-              |> (\market -> ViewMarketPage.initBase {market=market, marketId=12345, auth=model.auth})
+              previewMarket {request=req, creatorName=authName model.auth, createdAt=model.initTime}
+              |> (\market -> ViewMarketPage.initBase {market=market, marketId=12345, auth=model.auth, now=model.initTime})
               |> Tuple.first
               |> ViewMarketPage.view
               |> H.map (always Ignore)
@@ -142,15 +148,15 @@ view model =
         ]
     ]
 
-previewMarket : {request:Pb.CreateMarketRequest, creatorName:String} -> Pb.UserMarketView
-previewMarket {request, creatorName} =
+previewMarket : {request:Pb.CreateMarketRequest, creatorName:String, createdAt:Time.Posix} -> Pb.UserMarketView
+previewMarket {request, creatorName, createdAt} =
   { question = request.question
   , certainty = request.certainty
   , maximumStakeCents = request.maximumStakeCents
   , remainingStakeCentsVsBelievers = request.maximumStakeCents
   , remainingStakeCentsVsSkeptics = request.maximumStakeCents
-  , createdUnixtime = 0
-  , closesUnixtime = request.openSeconds
+  , createdUnixtime = Time.posixToMillis createdAt // 1000
+  , closesUnixtime = Time.posixToMillis createdAt // 1000 + request.openSeconds
   , specialRules = request.specialRules
   , creator = Just {displayName = creatorName, isSelf=False, trustsYou=True, isTrusted=True}
   , resolutions = []
