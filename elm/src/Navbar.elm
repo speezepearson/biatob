@@ -26,7 +26,7 @@ init flags =
 
 view : Model -> Html Msg
 view model =
-  H.ul [HA.style "width" "100%", HA.style "display" "flex", HA.style "flex-direction" "row", HA.style "list-style" "none", HA.style "background-color" "lightblue", HA.style "align-items" "center"]
+  H.ul [HA.class "navbar-content"]
     [ H.li [HA.style "margin" "0.5ex 1ex"] [H.a [HA.href "/"] [H.text "Home"]]
     , H.li [HA.style "margin" "0.5ex 1ex"] [H.a [HA.href "/new"] [H.text "New market"]]
     , if AuthWidget.hasAuth model.authWidget then

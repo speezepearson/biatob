@@ -536,6 +536,7 @@ class ApiServer:
         self._token_glue.add_to_app(app)
         app.add_routes(routes)
 
+_HERE = Path(__file__).parent
 class WebServer:
     def __init__(self, servicer: Servicer, elm_dist: Path, token_glue: HttpTokenGlue) -> None:
         self._servicer = servicer
@@ -545,21 +546,41 @@ class WebServer:
     def add_to_app(self, app: web.Application) -> None:
         routes = web.RouteTableDef()
 
-        @routes.get('/elm/{module}.js')
+        @routes.get('/static/{filename}') # type: ignore
+        async def get_elm_module(req: web.Request) -> web.StreamResponse:
+            filename = req.match_info['filename']
+            if (not filename) or filename.startswith('.'):
+                return web.HTTPBadRequest()
+            return web.FileResponse(_HERE/'static'/filename)
+
+        @routes.get('/elm/{module}.js') # type: ignore
         async def get_elm_module(req: web.Request) -> web.Response:
             module = req.match_info['module']
-            return web.Response(content_type='text/javascript', body=(Path(__file__).parent.parent/f'elm/dist/{module}.js').read_text())
+            return web.Response(content_type='text/javascript', body=(_HERE.parent/f'elm/dist/{module}.js').read_text()) # type: ignore
 
         @routes.get('/')
-        async def get_index(req: web.Request) -> web.Response:
-            return web.HTTPTemporaryRedirect('/new')
+        async def get_index(req: web.Request) -> web.StreamResponse:
+            auth = self._token_glue.get()
+            if auth is None:
+                return await get_welcome(req)
+            else:
+                return await get_my_markets(req)
+
+        @routes.get('/welcome')
+        async def get_welcome(req: web.Request) -> web.Response:
+            auth = self._token_glue.get()
+            return web.Response(
+                content_type='text/html',
+                body=(_HERE/'templates'/'Welcome.html').read_text()
+                        .replace(r'{{auth_token_pb_b64}}', pb_b64_json(auth) if auth else 'null'))
+
 
         @routes.get('/new')
         async def get_create_market_page(req: web.Request) -> web.Response:
             auth = self._token_glue.get()
             return web.Response(
                 content_type='text/html',
-                body=(Path(__file__).parent/'templates'/'CreateMarketPage.html').read_text()
+                body=(_HERE/'templates'/'CreateMarketPage.html').read_text()
                         .replace(r'{{auth_token_pb_b64}}', pb_b64_json(auth) if auth else 'null'))
 
         @routes.get('/market/{market_id:[0-9]+}')
@@ -573,7 +594,7 @@ class WebServer:
             assert get_market_resp.WhichOneof('get_market_result') == 'market'
             return web.Response(
                 content_type='text/html',
-                body=(Path(__file__).parent/'templates'/'ViewMarketPage.html').read_text()
+                body=(_HERE/'templates'/'ViewMarketPage.html').read_text()
                         .replace(r'{{auth_token_pb_b64}}', pb_b64_json(auth) if auth else 'null')
                         .replace(r'{{market_pb_b64}}', pb_b64_json(get_market_resp.market))
                         .replace(r'{{market_id}}', str(market_id)))
@@ -608,7 +629,7 @@ class WebServer:
             assert list_my_markets_resp.WhichOneof('list_my_markets_result') == 'ok'
             return web.Response(
                 content_type='text/html',
-                body=(Path(__file__).parent/'templates'/'MyMarketsPage.html').read_text()
+                body=(_HERE/'templates'/'MyMarketsPage.html').read_text()
                             .replace(r'{{auth_token_pb_b64}}', pb_b64_json(auth) if auth else 'null')
                             .replace(r'{{markets_pb_b64}}', pb_b64_json(list_my_markets_resp.ok)))
 
@@ -622,7 +643,7 @@ class WebServer:
             assert get_user_resp.WhichOneof('get_user_result') == 'ok'
             return web.Response(
                 content_type='text/html',
-                body=(Path(__file__).parent/'templates'/'ViewUserPage.html').read_text()
+                body=(_HERE/'templates'/'ViewUserPage.html').read_text()
                             .replace(r'{{auth_token_pb_b64}}', pb_b64_json(auth) if auth else 'null')
                             .replace(r'{{userViewPbB64}}', pb_b64_json(get_user_resp.ok))
                             .replace(r'{{userIdPbB64}}', pb_b64_json(user_id)))

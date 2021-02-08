@@ -1,0 +1,17 @@
+#navbar-wrapper {
+  background-color: lightblue;
+}
+#navbar-wrapper > ul {
+  max-width: 45em;
+  margin: auto;
+  
+  display: flex;
+  flex-direction: row;
+  list-style: none;
+  align-items: center;
+}
+
+main {
+  max-width: 45em;
+  margin: auto;
+}

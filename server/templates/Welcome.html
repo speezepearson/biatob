@@ -1,0 +1,42 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Biatob</title>
+  <link rel="shortcut icon"type="image/x-icon" href="data:image/x-icon;,">
+  <script type="text/javascript" src="/elm/Navbar.js"></script>
+  <link rel="stylesheet" href="/static/base.css">
+</head>
+
+<body>
+  <nav id="navbar-wrapper"><div id="navbar"></div></nav>
+  <script type="text/javascript">
+    var authTokenPbB64 = {{auth_token_pb_b64}};
+    var navbar = Elm.Navbar.init({
+      node: document.getElementById('navbar'),
+      flags: {authTokenPbB64},
+    })
+    navbar.ports.authChanged.subscribe(() => window.location.reload());
+  </script>
+
+  <main id="main">
+
+  <h2>Biatob</h2>
+
+  <p>Hi! This is a site that helps people make friendly wagers, thereby clarifying and concretizing their beliefs and making the world a better, saner place.</p>
+  <p>Personally, when I force myself to make concrete predictions
+      &mdash; especially on topics I feel strongly about &mdash;
+      it frequently turns out that I don't actually believe what I thought I did.
+      Crazy, right!? Brains <i>suck!</i>
+      And betting, i.e. attaching money to my predictions, is
+      <a href="https://marginalrevolution.com/marginalrevolution/2012/11/a-bet-is-a-tax-on-bullshit.html">just an extra incentive to get them right</a>.
+  </p>
+
+  <p>
+    
+  </p>
+
+  </main>
+
+</body>
+</html>

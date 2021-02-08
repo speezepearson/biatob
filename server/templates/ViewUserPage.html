@@ -6,11 +6,12 @@
   <link rel="shortcut icon"type="image/x-icon" href="data:image/x-icon;,">
   <script type="text/javascript" src="/elm/ViewUserPage.js"></script>
   <script type="text/javascript" src="/elm/Navbar.js"></script>
+  <link rel="stylesheet" href="/static/base.css">
 </head>
 
 <body>
-  <div id="navbar"></div>
-  <main id="main"></main>
+  <nav id="navbar-wrapper"><div id="navbar"></div></nav>
+  <main id="main-wrapper"><div id="main"></div></main>
   <script type="text/javascript">
 
     var authTokenPbB64 = {{auth_token_pb_b64}};
