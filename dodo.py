@@ -121,7 +121,7 @@ def task_nfsdeploy():
     ],
     'actions': [
       (ensure_nfsuser_given,),
-      'rsync -havz --exclude=".*" --exclude="_*" --exclude="*~" ./ %(nfsuser)s_biatob@ssh.phx.nearlyfreespeech.net:/home/protected/',
+      'rsync -havz --exclude=".*" --exclude="_*" --exclude="*~" --exclude=server.WorldState.pb ./ %(nfsuser)s_biatob@ssh.phx.nearlyfreespeech.net:/home/protected/',
       'echo "Sorry, I don\'t know how to kick your server! You gotta yourself." >&2',
     ],
   }

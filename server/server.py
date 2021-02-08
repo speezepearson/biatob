@@ -664,7 +664,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-H", "--host", default="localhost")
 parser.add_argument("-p", "--port", type=int, default=8080)
 parser.add_argument("--elm-dist", type=Path, default="elm/dist")
-parser.add_argument("--state-path", type=Path, default="server.WorldState.pb")
+parser.add_argument("--state-path", type=Path, required=True)
 
 if __name__ == '__main__':
     args = parser.parse_args()
