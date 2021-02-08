@@ -19,7 +19,7 @@ TODO
 --------------
 
 ### P1: make this something _I_ want to use
-- offer to email users about resolved bets
+- offer to email users to remind them to resolve bets
 
 ### P2: make this something other hardcore betting nerds might use
 - consider a better model of user identity -- UserUserView is gross
@@ -30,8 +30,10 @@ TODO
 - display remaining stake even to people who can't bet
 - add "Sign in with [identity provider]"
 - make "bet"/"wager"/"market"/"stake"/"bettor"/"challenger" terminology consistent
+- offer to shame users by emailing the participants if they greatly exceed the resolution deadline
 
 ### P3: make this something Less Wrongers might use
+- tutorial video
 - add more fields to CreateMarketRequest:
     - "bettors are forbidden from trying to affect the outcome? [y/n]"
     - "if the result is disputed, who will arbitrate?"
@@ -40,6 +42,8 @@ TODO
 - figure out how users can undo accidental bets
 - scale test
 - regular backups of state
+- do fancy stuff with dynamic images, displaying how much money's left in the pot
+- cache images?
 - add "hide embeds" button for bettophobes (deceptively complicated! The user doesn't log in, so we have to store it in their cookie, but it should appear on some pages (all pages? Just Settings?))
 - let people subscribe to their mutuals' bets (RSS?)
 - consider letting people download a list of all their bets (Is this satisfied just Ctrl-S on an "All my markets" page?)

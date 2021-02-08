@@ -124,12 +124,13 @@ view model =
           , H.hr [] []
           ]
     , Form.view model.form |> H.map FormMsg
-    , H.br [] []
-    , H.button
-        [ HE.onClick Create
-        , HA.disabled (model.auth == Nothing || Form.toCreateRequest model.form == Nothing || model.working)
+    , H.div [HA.style "text-align" "center", HA.style "margin-bottom" "2em"]
+        [ H.button
+            [ HE.onClick Create
+            , HA.disabled (model.auth == Nothing || Form.toCreateRequest model.form == Nothing || model.working)
+            ]
+            [ H.text <| if model.auth == Nothing then "Log in to create" else "Create" ]
         ]
-        [ H.text <| if model.auth == Nothing then "Log in to create" else "Create" ]
     , case model.createError of
         Just e -> H.div [HA.style "color" "red"] [H.text e]
         Nothing -> H.text ""

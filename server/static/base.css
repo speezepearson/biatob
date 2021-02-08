@@ -14,4 +14,9 @@
 main {
   max-width: 45em;
   margin: auto;
+  text-align: justify;
+}
+
+h1, h2, h3 {
+  text-align: center;
 }
