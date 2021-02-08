@@ -288,7 +288,7 @@ class FsBackedServicer(Servicer):
     def ListMyMarkets(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.ListMyMarketsRequest) -> mvp_pb2.ListMyMarketsResponse:
         wstate = self._get_state()
         if token is None:
-            return mvp_pb2.ListMyMarketsResponse(error=mvp_pb2.ListMyMarketsResponse.Error(catchall="must be logged in to list markets"))
+            return mvp_pb2.ListMyMarketsResponse(error=mvp_pb2.ListMyMarketsResponse.Error(catchall='listing "your markets" when you\'re not logged in is meaningless'))
 
         result = {
             market_id: view_market(wstate, (token.owner if token is not None else None), market)
@@ -596,6 +596,19 @@ class WebServer:
             buf = io.BytesIO()
             img.save(buf, format='png')
             return web.Response(content_type='image/png', body=buf.getvalue())
+
+        @routes.get('/my_markets')
+        async def get_my_markets(req: web.Request) -> web.Response:
+            auth = self._token_glue.get()
+            list_my_markets_resp = self._servicer.ListMyMarkets(auth, mvp_pb2.ListMyMarketsRequest())
+            if list_my_markets_resp.WhichOneof('list_my_markets_result') == 'error':
+                return web.Response(status=400, body=str(list_my_markets_resp.error))
+            assert list_my_markets_resp.WhichOneof('list_my_markets_result') == 'ok'
+            return web.Response(
+                content_type='text/html',
+                body=(Path(__file__).parent/'templates'/'MyMarketsPage.html').read_text()
+                            .replace(r'{{auth_token_pb_b64}}', pb_b64_json(auth) if auth else 'null')
+                            .replace(r'{{markets_pb_b64}}', pb_b64_json(list_my_markets_resp.ok)))
 
         @routes.get('/username/{username:[a-zA-Z0-9_-]+}')
         async def get_username(req: web.Request) -> web.Response:

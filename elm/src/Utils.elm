@@ -8,6 +8,7 @@ import Time
 import Base64
 import Protobuf.Decode as PD
 import Protobuf.Encode as PE
+import Dict exposing (Dict)
 
 import Biatob.Proto.Mvp as Pb
 
@@ -80,6 +81,9 @@ mustUserKind {kind} = must "all UserIds must have kinds" kind
 
 mustTokenOwner : Pb.AuthToken -> Pb.UserId
 mustTokenOwner {owner} = must "all AuthTokens must have owners" owner
+
+mustMarketsById : Pb.MarketsById -> Dict Int Pb.UserMarketView
+mustMarketsById {markets} = markets |> Dict.map (\_ v -> must "no null values are allowed in a MarketsById" v)
 
 currentResolution : Pb.UserMarketView -> Pb.Resolution
 currentResolution market =

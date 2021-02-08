@@ -1,0 +1,42 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Main</title>
+  <link rel="shortcut icon"type="image/x-icon" href="data:image/x-icon;,">
+  <script type="text/javascript" src="/elm/MyMarketsPage.js"></script>
+  <script type="text/javascript" src="/elm/Navbar.js"></script>
+</head>
+
+<body>
+  <div id="navbar"></div>
+  <main id="main"></main>
+  <script type="text/javascript">
+
+    var authTokenPbB64 = {{auth_token_pb_b64}};
+    var marketsPbB64 = {{markets_pb_b64}};
+
+    var navbar = Elm.Navbar.init({
+      node: document.getElementById('navbar'),
+      flags: {authTokenPbB64},
+    })
+    navbar.ports.authChanged.subscribe(() => window.location.reload());
+
+    var main = Elm.MyMarketsPage.init({
+      node: document.getElementById('main'),
+      flags: {authTokenPbB64, marketsPbB64},
+    });
+    main.ports.copy.subscribe((id) => {
+      console.log('copy');
+      document.getElementById(id).select();
+      document.execCommand('copy');
+    });
+    main.ports.changed.subscribe((marketId) => {
+      window.location.reload();
+    });
+
+    var usernameField = document.getElementsByClassName('username-field')[0];
+    if (usernameField) usernameField.focus();
+  </script>
+</body>
+</html>

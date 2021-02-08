@@ -29,7 +29,7 @@ view model =
     [ H.li [HA.style "margin" "0.5ex 1ex"] [H.a [HA.href "/"] [H.text "Home"]]
     , H.li [HA.style "margin" "0.5ex 1ex"] [H.a [HA.href "/new"] [H.text "New market"]]
     , if AuthWidget.hasAuth model.authWidget then
-        H.li [HA.style "margin" "0.5ex 1ex"] [H.a [HA.href "/markets"] [H.text "My markets"]]
+        H.li [HA.style "margin" "0.5ex 1ex"] [H.a [HA.href "/my_markets"] [H.text "My markets"]]
       else
         H.text ""
     , H.li [HA.style "margin" "0.5ex 1ex"] [AuthWidget.view model.authWidget |> H.map AuthMsg]
