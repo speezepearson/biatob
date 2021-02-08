@@ -91,7 +91,7 @@ view model =
     , if model.userView.isSelf then
         H.div []
           [ H.text "This is you!"
-          , viewOwnPreferences model
+          , viewOwnSettings model
           ]
       else case model.auth of
         Nothing ->
@@ -125,10 +125,10 @@ view model =
             ]
     ]
 
-viewOwnPreferences : Model -> Html Msg
-viewOwnPreferences model =
+viewOwnSettings : Model -> Html Msg
+viewOwnSettings model =
   H.div []
-    [ H.h3 [] [H.text "Preferences"]
+    [ H.h3 [] [H.text "Settings"]
     , H.ul []
         [ H.li [] [H.map ChangePasswordMsg <| ChangePasswordWidget.view model.changePasswordWidget]
         ]

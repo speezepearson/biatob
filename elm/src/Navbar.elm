@@ -7,6 +7,7 @@ import Json.Decode as JD
 import Html exposing (Html)
 
 import AuthWidget
+import Utils
 
 type alias Model =
   { authWidget : AuthWidget.Model
@@ -32,6 +33,10 @@ view model =
         H.li [HA.style "margin" "0.5ex 1ex"] [H.a [HA.href "/my_markets"] [H.text "My markets"]]
       else
         H.text ""
+    , case AuthWidget.getAuth model.authWidget of
+        Nothing  -> H.text ""
+        Just auth ->
+          H.li [HA.style "margin" "0.5ex 1ex"] [H.a [HA.href (Utils.pathToUserPage <| Utils.mustTokenOwner auth)] [H.text "Settings"]]
     , H.li [HA.style "margin" "0.5ex 1ex"] [AuthWidget.view model.authWidget |> H.map AuthMsg]
     ]
 

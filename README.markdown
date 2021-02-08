@@ -20,8 +20,6 @@ TODO
 
 ### P1: make this something _I_ want to use
 - offer to email users about resolved bets
-- add an "all my markets" page
-- add a navbar (auth / Home / New Market / My Markets / Settings)
 
 ### P2: make this something other hardcore betting nerds might use
 - consider a better model of user identity -- UserUserView is gross
