@@ -47,28 +47,28 @@ type Msg
 setMarket : Pb.UserMarketView -> Model -> Model
 setMarket market model = { model | market = market }
 
-initBase : { market : Pb.UserMarketView , marketId : Int , auth : Maybe Pb.AuthToken } -> Model
+initBase : { market : Pb.UserMarketView , marketId : Int , auth : Maybe Pb.AuthToken } -> ( Model, Cmd Msg )
 initBase flags =
-  { stakeForm = StakeForm.init
-  , market = flags.market
-  , marketId = flags.marketId
-  , auth = flags.auth
-  , working = False
-  , stakeError = Nothing
-  , resolveError = Nothing
-  , now = Time.millisToPosix 0
-  , resolutionNotes = ""
-  }
+  ( { stakeForm = StakeForm.init
+    , market = flags.market
+    , marketId = flags.marketId
+    , auth = flags.auth
+    , working = False
+    , stakeError = Nothing
+    , resolveError = Nothing
+    , now = Time.millisToPosix 0
+    , resolutionNotes = ""
+    }
+  , Task.perform Tick Time.now
+  )
 
 init : JD.Value -> (Model, Cmd Msg)
 init flags =
-  ( initBase
-      { market = Utils.mustDecodePbFromFlags Pb.userMarketViewDecoder "marketPbB64" flags
-      , marketId = Utils.mustDecodeFromFlags JD.int "marketId" flags
-      , auth = Utils.decodePbFromFlags Pb.authTokenDecoder "authTokenPbB64" flags
-      }
-  , Task.perform Tick Time.now
-  )
+  initBase
+    { market = Utils.mustDecodePbFromFlags Pb.userMarketViewDecoder "marketPbB64" flags
+    , marketId = Utils.mustDecodeFromFlags JD.int "marketId" flags
+    , auth = Utils.decodePbFromFlags Pb.authTokenDecoder "authTokenPbB64" flags
+    }
 
 postStake : Pb.StakeRequest -> Cmd Msg
 postStake req =

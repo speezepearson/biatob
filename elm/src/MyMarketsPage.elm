@@ -27,11 +27,20 @@ init flags =
     auth =  Utils.decodePbFromFlags Pb.authTokenDecoder "authTokenPbB64" flags
     markets : Dict Int Pb.UserMarketView
     markets = Utils.mustDecodePbFromFlags Pb.marketsByIdDecoder "marketsPbB64" flags |> Utils.mustMarketsById
+
+    subinits : Dict Int (ViewMarketPage.Model, Cmd ViewMarketPage.Msg)
+    subinits =
+      Dict.map
+        (\id m ->
+          let (submodel, subcmd) = ViewMarketPage.initBase {marketId=id, market=m, auth=auth} in
+          (submodel, subcmd)
+        )
+        markets
   in
-  ( { markets = markets |> Dict.map (\marketId market -> ViewMarketPage.initBase {marketId=marketId, market=market, auth=auth})
+  ( { markets = Dict.map (\_ (submodel, _) -> submodel) subinits
     , auth = auth
     }
-  , Cmd.none
+  , Cmd.batch <| List.map (\(id, (_, subcmd)) -> Cmd.map (MarketPageMsg id) subcmd) <| Dict.toList subinits
   )
 
 update : Msg -> Model -> (Model, Cmd Msg)
@@ -60,7 +69,10 @@ view model =
     ]
 
 subscriptions : Model -> Sub Msg
-subscriptions _ = Sub.none
+subscriptions model =
+  Sub.batch
+  <| List.map (\(id, m) -> ViewMarketPage.subscriptions m |> Sub.map (MarketPageMsg id))
+  <| Dict.toList model.markets
 
 main : Program JD.Value Model Msg
 main =

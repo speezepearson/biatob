@@ -134,6 +134,7 @@ view model =
             Just req ->
               previewMarket {request=req, creatorName=authName model.auth}
               |> (\market -> ViewMarketPage.initBase {market=market, marketId=12345, auth=model.auth})
+              |> Tuple.first
               |> ViewMarketPage.view
               |> H.map (always Ignore)
             Nothing ->
