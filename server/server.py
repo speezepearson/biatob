@@ -75,6 +75,37 @@ def describe_password_problems(password: str) -> Optional[str]:
         return 'password must not exceed 256 characters, good lord'
     return None
 
+def view_market(wstate: mvp_pb2.WorldState, viewer: Optional[mvp_pb2.UserId], ws_market: mvp_pb2.WorldState.Market) -> mvp_pb2.UserMarketView:
+    creator_is_self = (viewer == ws_market.creator)
+    return mvp_pb2.UserMarketView(
+        question=ws_market.question,
+        certainty=ws_market.certainty,
+        maximum_stake_cents=ws_market.maximum_stake_cents,
+        remaining_stake_cents_vs_believers=ws_market.maximum_stake_cents - sum(t.creator_stake_cents for t in ws_market.trades if not t.bettor_is_a_skeptic),
+        remaining_stake_cents_vs_skeptics=ws_market.maximum_stake_cents - sum(t.creator_stake_cents for t in ws_market.trades if t.bettor_is_a_skeptic),
+        created_unixtime=ws_market.created_unixtime,
+        closes_unixtime=ws_market.closes_unixtime,
+        special_rules=ws_market.special_rules,
+        creator=mvp_pb2.UserUserView(
+            display_name=ws_market.creator.username if ws_market.creator.WhichOneof('kind')=='username' else 'TODO',
+            is_self=creator_is_self,
+            is_trusted=trusts(wstate, viewer, ws_market.creator) if (viewer is not None) else False,
+            trusts_you=trusts(wstate, ws_market.creator, viewer) if (viewer is not None) else False,
+        ),
+        resolutions=ws_market.resolutions,
+        your_trades=[
+            mvp_pb2.Trade(
+                bettor=t.bettor,
+                bettor_is_a_skeptic=t.bettor_is_a_skeptic,
+                creator_stake_cents=t.creator_stake_cents,
+                bettor_stake_cents=t.bettor_stake_cents,
+                transacted_unixtime=t.transacted_unixtime,
+            )
+            for t in ws_market.trades
+            if (t.bettor == viewer or creator_is_self)
+        ],
+    )
+
 
 class TokenMint:
 
@@ -125,6 +156,7 @@ class Servicer(abc.ABC):
     def LogInUsername(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.LogInUsernameRequest) -> mvp_pb2.LogInUsernameResponse: pass
     def CreateMarket(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.CreateMarketRequest) -> mvp_pb2.CreateMarketResponse: pass
     def GetMarket(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.GetMarketRequest) -> mvp_pb2.GetMarketResponse: pass
+    def ListMyMarkets(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.ListMyMarketsRequest) -> mvp_pb2.ListMyMarketsResponse: pass
     def Stake(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.StakeRequest) -> mvp_pb2.StakeResponse: pass
     def Resolve(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.ResolveRequest) -> mvp_pb2.ResolveResponse: pass
     def SetTrusted(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.SetTrustedRequest) -> mvp_pb2.SetTrustedResponse: pass
@@ -250,35 +282,21 @@ class FsBackedServicer(Servicer):
         if ws_market is None:
             return mvp_pb2.GetMarketResponse(error=mvp_pb2.GetMarketResponse.Error(no_such_market=mvp_pb2.VOID))
 
-        creator_is_self = (token is not None) and (token.owner == ws_market.creator)
-        return mvp_pb2.GetMarketResponse(market=mvp_pb2.UserMarketView(
-            question=ws_market.question,
-            certainty=ws_market.certainty,
-            maximum_stake_cents=ws_market.maximum_stake_cents,
-            remaining_stake_cents_vs_believers=ws_market.maximum_stake_cents - sum(t.creator_stake_cents for t in ws_market.trades if not t.bettor_is_a_skeptic),
-            remaining_stake_cents_vs_skeptics=ws_market.maximum_stake_cents - sum(t.creator_stake_cents for t in ws_market.trades if t.bettor_is_a_skeptic),
-            created_unixtime=ws_market.created_unixtime,
-            closes_unixtime=ws_market.closes_unixtime,
-            special_rules=ws_market.special_rules,
-            creator=mvp_pb2.UserUserView(
-                display_name=ws_market.creator.username if ws_market.creator.WhichOneof('kind')=='username' else 'TODO',
-                is_self=creator_is_self,
-                is_trusted=trusts(wstate, token.owner, ws_market.creator) if (token is not None) else False,
-                trusts_you=trusts(wstate, ws_market.creator, token.owner) if (token is not None) else False,
-            ),
-            resolutions=ws_market.resolutions,
-            your_trades=[
-                mvp_pb2.Trade(
-                    bettor=t.bettor,
-                    bettor_is_a_skeptic=t.bettor_is_a_skeptic,
-                    creator_stake_cents=t.creator_stake_cents,
-                    bettor_stake_cents=t.bettor_stake_cents,
-                    transacted_unixtime=t.transacted_unixtime,
-                )
-                for t in ws_market.trades
-                if (token is not None) and (t.bettor == token.owner or creator_is_self)
-            ],
-        ))
+        return mvp_pb2.GetMarketResponse(market=view_market(wstate, (token.owner if token is not None else None), ws_market))
+
+    @checks_token
+    def ListMyMarkets(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.ListMyMarketsRequest) -> mvp_pb2.ListMyMarketsResponse:
+        wstate = self._get_state()
+        if token is None:
+            return mvp_pb2.ListMyMarketsResponse(error=mvp_pb2.ListMyMarketsResponse.Error(catchall="must be logged in to list markets"))
+
+        result = {
+            market_id: view_market(wstate, (token.owner if token is not None else None), market)
+            for market_id, market in wstate.markets.items()
+            if market.creator == token.owner or any(trade.bettor == token.owner for trade in market.trades)
+        }
+
+        return mvp_pb2.ListMyMarketsResponse(ok=mvp_pb2.MarketsById(markets=result))
 
     @checks_token
     def Stake(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.StakeRequest) -> mvp_pb2.StakeResponse:

@@ -105,6 +105,27 @@ def test_GetMarket(fs_servicer: FsBackedServicer, clock: MockClock):
   ))
 
 
+def test_ListMyMarkets(fs_servicer: FsBackedServicer):
+  alice_token, bob_token = alice_bob_tokens(fs_servicer)
+  market_1_id = fs_servicer.CreateMarket(token=alice_token, request=some_create_market_request()).new_market_id
+  market_2_id = fs_servicer.CreateMarket(token=alice_token, request=some_create_market_request()).new_market_id
+  market_3_id = fs_servicer.CreateMarket(token=alice_token, request=some_create_market_request()).new_market_id
+
+  resp = fs_servicer.ListMyMarkets(bob_token, mvp_pb2.ListMyMarketsRequest())
+  assert resp.WhichOneof('list_my_markets_result') == 'ok'
+  assert set(resp.ok.markets.keys()) == set()
+
+  fs_servicer.Stake(bob_token, mvp_pb2.StakeRequest(market_id=market_1_id, bettor_is_a_skeptic=True, bettor_stake_cents=10))
+  resp = fs_servicer.ListMyMarkets(bob_token, mvp_pb2.ListMyMarketsRequest())
+  assert resp.WhichOneof('list_my_markets_result') == 'ok'
+  assert set(resp.ok.markets.keys()) == {market_1_id}
+
+  fs_servicer.Stake(bob_token, mvp_pb2.StakeRequest(market_id=market_2_id, bettor_is_a_skeptic=True, bettor_stake_cents=10))
+  resp = fs_servicer.ListMyMarkets(bob_token, mvp_pb2.ListMyMarketsRequest())
+  assert resp.WhichOneof('list_my_markets_result') == 'ok'
+  assert set(resp.ok.markets.keys()) == {market_1_id, market_2_id}
+
+
 def test_Stake(fs_servicer, clock):
   alice_token, bob_token = alice_bob_tokens(fs_servicer)
   market_id = fs_servicer.CreateMarket(

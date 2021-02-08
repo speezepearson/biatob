@@ -183,6 +183,22 @@ message UserUserView {
   bool trusts_you = 4;
 }
 
+message ListMyMarketsRequest {
+}
+message ListMyMarketsResponse {
+  oneof list_my_markets_result {
+    MarketsById ok = 1;
+    Error error = 2;
+  }
+  message Error {
+    string catchall = 1;
+    Void no_such_market = 2;
+  }
+}
+message MarketsById {
+  map<uint32, UserMarketView> markets = 1;
+}
+
 message StakeRequest {
   uint32 market_id = 2;
   bool bettor_is_a_skeptic = 3;
