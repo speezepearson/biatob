@@ -86,6 +86,7 @@ def view_market(wstate: mvp_pb2.WorldState, viewer: Optional[mvp_pb2.UserId], ws
         remaining_stake_cents_vs_skeptics=ws_market.maximum_stake_cents - sum(t.creator_stake_cents for t in ws_market.trades if t.bettor_is_a_skeptic),
         created_unixtime=ws_market.created_unixtime,
         closes_unixtime=ws_market.closes_unixtime,
+        resolves_at_unixtime=ws_market.resolves_at_unixtime,
         special_rules=ws_market.special_rules,
         creator=mvp_pb2.UserUserView(
             display_name=ws_market.creator.username if ws_market.creator.WhichOneof('kind')=='username' else 'TODO',
@@ -250,6 +251,9 @@ class FsBackedServicer(Servicer):
     def CreateMarket(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.CreateMarketRequest) -> mvp_pb2.CreateMarketResponse:
         if token is None:
             return mvp_pb2.CreateMarketResponse(error=mvp_pb2.CreateMarketResponse.Error(catchall='must log in to create markets'))
+
+        now = int(self._clock())
+
         if not request.question:
             return mvp_pb2.CreateMarketResponse(error=mvp_pb2.CreateMarketResponse.Error(catchall='must have a question field'))
         if not request.certainty:
@@ -260,8 +264,9 @@ class FsBackedServicer(Servicer):
             return mvp_pb2.CreateMarketResponse(error=mvp_pb2.CreateMarketResponse.Error(catchall=f'stake must not exceed ${MAX_LEGAL_STAKE_CENTS//100}'))
         if not (request.open_seconds > 0):
             return mvp_pb2.CreateMarketResponse(error=mvp_pb2.CreateMarketResponse.Error(catchall=f'market must be open for a positive number of seconds'))
+        if not (request.resolves_at_unixtime > now):
+            return mvp_pb2.CreateMarketResponse(error=mvp_pb2.CreateMarketResponse.Error(catchall=f'market must resolve in the future'))
 
-        now = int(self._clock())
         with self._mutate_state() as wstate:
             mid = MarketId(weak_rand_not_in(self._rng, limit=2**32, xs=wstate.markets.keys()))
             market = mvp_pb2.WorldState.Market(
@@ -270,6 +275,7 @@ class FsBackedServicer(Servicer):
                 maximum_stake_cents=request.maximum_stake_cents,
                 created_unixtime=now,
                 closes_unixtime=now + request.open_seconds,
+                resolves_at_unixtime=request.resolves_at_unixtime,
                 special_rules=request.special_rules,
                 creator=token.owner,
                 trades=[],

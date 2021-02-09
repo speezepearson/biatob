@@ -47,6 +47,7 @@ message WorldState {
     uint32 maximum_stake_cents = 3;
     uint32 created_unixtime = 4;
     uint32 closes_unixtime = 5;
+    uint32 resolves_at_unixtime = 11;
     string special_rules = 6;
     UserId creator = 7;
 
@@ -139,6 +140,7 @@ message CreateMarketRequest {
   uint32 maximum_stake_cents = 5;
   uint32 open_seconds = 6;
   string special_rules = 7;
+  uint32 resolves_at_unixtime = 8;
 }
 message CreateMarketResponse {
   oneof create_market_result {
@@ -175,6 +177,7 @@ message UserMarketView {
   UserUserView creator = 9;
   repeated ResolutionEvent resolutions = 10;
   repeated Trade your_trades = 11;
+  uint32 resolves_at_unixtime = 12;
 }
 message UserUserView {
   string display_name = 1;

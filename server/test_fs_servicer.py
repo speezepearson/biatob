@@ -32,6 +32,7 @@ def some_create_market_request(**kwargs) -> mvp_pb2.CreateMarketRequest:
     certainty=mvp_pb2.CertaintyRange(low=0.80, high=0.90),
     maximum_stake_cents=100_00,
     open_seconds=123,
+    resolves_at_unixtime=int(2e9),
     special_rules='rules!',
   )
   init_kwargs.update(kwargs)
@@ -98,6 +99,7 @@ def test_GetMarket(fs_servicer: FsBackedServicer, clock: MockClock):
     remaining_stake_cents_vs_skeptics=req.maximum_stake_cents,
     created_unixtime=clock.now(),
     closes_unixtime=clock.now() + req.open_seconds,
+    resolves_at_unixtime=req.resolves_at_unixtime,
     special_rules=req.special_rules,
     creator=mvp_pb2.UserUserView(display_name='rando', is_self=True, is_trusted=True, trusts_you=True),
     resolutions=[],

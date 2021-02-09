@@ -11,6 +11,7 @@ import Protobuf.Decode as PD
 import Time
 import Dict as D exposing (Dict)
 
+import Iso8601
 import Biatob.Proto.Mvp as Pb
 import Utils
 
@@ -215,12 +216,21 @@ viewMarketState model =
         H.text "This market has resolved INVALID. "
       Pb.ResolutionNoneYet ->
         let
-          secondsToClose = model.market.closesUnixtime - Time.posixToMillis model.now // 1000
+          nowUnixtime = Time.posixToMillis model.now // 1000
+          secondsToClose = model.market.closesUnixtime - nowUnixtime
+          secondsToResolve = model.market.resolvesAtUnixtime - nowUnixtime
         in
-          if secondsToClose > 0 then
-            H.text <| "This market closes in " ++ Utils.renderIntervalSeconds secondsToClose ++ ". "
-          else
-            H.text <| "This market closed " ++ Utils.renderIntervalSeconds (abs secondsToClose) ++ " ago, but hasn't yet resolved. "
+          H.text <|
+            ( if secondsToClose > 0 then
+                "This market closes in " ++ Utils.renderIntervalSeconds secondsToClose ++ ", and "
+              else
+                "This market closed " ++ Utils.renderIntervalSeconds (abs secondsToClose) ++ " ago, and "
+            ) ++
+            ( if secondsToResolve > 0 then
+                "should resolve in " ++ Utils.renderIntervalSeconds secondsToResolve ++ ". "
+              else
+                "should have resolved " ++ Utils.renderIntervalSeconds (abs secondsToResolve) ++ " ago. Consider pinging the creator! "
+            )
       Pb.ResolutionUnrecognized_ _ ->
         H.span [HA.style "color" "red"]
           [H.text "Oh dear, something has gone very strange with this market. Please email TODO with this URL to report it!"]

@@ -5,9 +5,12 @@ import Html as H exposing (Html)
 import Html.Attributes as HA
 import Html.Events as HE
 import Utils
+import Time
+import Task
 
 import Field exposing (Field)
 import Biatob.Proto.Mvp as Pb
+import Iso8601
 import Field
 
 howToWriteGoodBetsUrl = "http://example.com/TODO"
@@ -22,15 +25,18 @@ unitToSeconds u =
 
 type Msg
   = SetQuestion String
+  | SetResolvesTime String
   | SetStake String
   | SetLowP String
   | SetHighP String
   | SetOpenForUnit String
   | SetOpenForN String
   | SetSpecialRules String
+  | Tick Time.Posix
 
 type alias Model =
   { questionField : Field () String
+  , resolvesAtField : Field {now:Time.Posix} Time.Posix
   , stakeField : Field () Int
   , lowPField : Field () Float
   , highPField : Field {lowP:Float} Float
@@ -38,6 +44,7 @@ type alias Model =
   , openForSecondsField : Field {unit:OpenForUnit} Int
   , specialRulesField : Field () String
   , disabled : Bool
+  , now : Time.Posix
   }
 
 toCreateRequest : Model -> Maybe Pb.CreateMarketRequest
@@ -49,6 +56,7 @@ toCreateRequest model =
   Field.parse () model.openForUnitField |> Result.andThen (\unit ->
   Field.parse {unit=unit} model.openForSecondsField |> Result.andThen (\openForSeconds ->
   Field.parse () model.specialRulesField |> Result.andThen (\specialRules ->
+  Field.parse {now=model.now} model.resolvesAtField |> Result.andThen (\resolvesAt ->
     Ok
       { question = question
       , privacy = Nothing  -- TODO: delete this field
@@ -56,20 +64,26 @@ toCreateRequest model =
       , maximumStakeCents = stake
       , openSeconds = openForSeconds
       , specialRules = specialRules
+      , resolvesAtUnixtime = Time.posixToMillis resolvesAt // 1000
       }
-  )))))))
+  ))))))))
   |> Result.toMaybe
 
-update : Msg -> Model -> Model
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
   case msg of
-    SetQuestion s -> { model | questionField = model.questionField |> Field.setStr s}
-    SetStake s -> { model | stakeField = model.stakeField |> Field.setStr s}
-    SetLowP s -> { model | lowPField = model.lowPField |> Field.setStr s}
-    SetHighP s -> { model | highPField = model.highPField |> Field.setStr s}
-    SetOpenForUnit s -> { model | openForUnitField = model.openForUnitField |> Field.setStr s}
-    SetOpenForN s -> { model | openForSecondsField = model.openForSecondsField |> Field.setStr s}
-    SetSpecialRules s -> { model | specialRulesField = model.specialRulesField |> Field.setStr s}
+    SetQuestion s -> ({ model | questionField = model.questionField |> Field.setStr s}, Cmd.none)
+    SetResolvesTime s -> ({ model | resolvesAtField = model.resolvesAtField |> Field.setStr s}, Cmd.none)
+    SetStake s -> ({ model | stakeField = model.stakeField |> Field.setStr s}, Cmd.none)
+    SetLowP s -> ({ model | lowPField = model.lowPField |> Field.setStr s}, Cmd.none)
+    SetHighP s -> ({ model | highPField = model.highPField |> Field.setStr s}, Cmd.none)
+    SetOpenForUnit s -> ({ model | openForUnitField = model.openForUnitField |> Field.setStr s}, Cmd.none)
+    SetOpenForN s -> ({ model | openForSecondsField = model.openForSecondsField |> Field.setStr s}, Cmd.none)
+    SetSpecialRules s -> ({ model | specialRulesField = model.specialRulesField |> Field.setStr s}, Cmd.none)
+    Tick t ->
+      ( { model | now = t , resolvesAtField = model.resolvesAtField |> if Time.posixToMillis model.now == 0 then Field.setStr (String.left 10 <| Iso8601.fromTime <| Utils.addMillis (1000*60*60*24*7*4) t) else identity }
+      , Cmd.none
+      )
 
 view : Model -> Html Msg
 view model =
@@ -96,6 +110,14 @@ view model =
                 , HA.placeholder placeholders.question
                 , HA.disabled model.disabled
                 , HA.class "question-field"
+                ] []
+            ]
+        , H.li []
+            [ H.text "When will you know the answer by? "
+            , Field.inputFor SetResolvesTime {now=model.now} model.resolvesAtField
+                H.input
+                [ HA.type_ "date"
+                , HA.disabled model.disabled
                 ] []
             ]
         , H.li []
@@ -176,43 +198,55 @@ view model =
         ]
     ]
 
-init : Model
-init =
-  { questionField = Field.init "" <| \() s -> if String.isEmpty s then Err "must not be empty" else Ok s
-  , stakeField = Field.init "20" <| \() s ->
-      case String.toFloat s of
-        Nothing -> Err "must be a positive number"
-        Just dollars -> if dollars <= 0 then Err "must be a positive number" else Ok <| round (100*dollars)
-  , lowPField = Field.init "0" <| \() s ->
-      case String.toFloat s of
-         Nothing -> Err "must be a number 0-100"
-         Just pct -> if pct < 0 || pct > 100 then Err "must be a number 0-100" else Ok (pct/100)
-  , highPField = Field.init "0" <| \{lowP} s ->
-      case String.toFloat s of
-         Nothing -> Err "must be a number 0-100"
-         Just pNoPct -> if pNoPct < 0 || pNoPct > 100 then Err "must be a number 0-100" else let highP = 1 - pNoPct/100 in if lowP > highP then Err "your prices must sum to under 100" else Ok highP
-  , openForUnitField = Field.init "weeks" <| \() s ->
-      case s of
-        "days" -> Ok Days
-        "weeks" -> Ok Weeks
-        _ -> Err "unrecognized time unit"
-  , openForSecondsField = Field.init "2" <| \{unit} s ->
-      case String.toInt s of
-        Nothing -> Err "must be a positive integer"
-        Just n -> if n <= 0 then Err "must be a positive integer" else Ok (n * unitToSeconds unit)
-  , specialRulesField = Field.init "" <| \() s -> Ok s
-  , disabled = False
-  }
+init : () -> ( Model , Cmd Msg )
+init () =
+  ( { questionField = Field.init "" <| \() s -> if String.isEmpty s then Err "must not be empty" else Ok s
+    , resolvesAtField = Field.init "" <| \{now} s ->
+        case Iso8601.toTime s of
+          Err _ -> Err ""
+          Ok t -> if Time.posixToMillis t < Time.posixToMillis now then Err "must be in the future" else Ok t
+    , stakeField = Field.init "20" <| \() s ->
+        case String.toFloat s of
+          Nothing -> Err "must be a positive number"
+          Just dollars -> if dollars <= 0 then Err "must be a positive number" else Ok <| round (100*dollars)
+    , lowPField = Field.init "0" <| \() s ->
+        case String.toFloat s of
+          Nothing -> Err "must be a number 0-100"
+          Just pct -> if pct < 0 || pct > 100 then Err "must be a number 0-100" else Ok (pct/100)
+    , highPField = Field.init "0" <| \{lowP} s ->
+        case String.toFloat s of
+          Nothing -> Err "must be a number 0-100"
+          Just pNoPct -> if pNoPct < 0 || pNoPct > 100 then Err "must be a number 0-100" else let highP = 1 - pNoPct/100 in if lowP > highP then Err "your prices must sum to under 100" else Ok highP
+    , openForUnitField = Field.init "weeks" <| \() s ->
+        case s of
+          "days" -> Ok Days
+          "weeks" -> Ok Weeks
+          _ -> Err "unrecognized time unit"
+    , openForSecondsField = Field.init "2" <| \{unit} s ->
+        case String.toInt s of
+          Nothing -> Err "must be a positive integer"
+          Just n -> if n <= 0 then Err "must be a positive integer" else Ok (n * unitToSeconds unit)
+    , specialRulesField = Field.init "" <| \() s -> Ok s
+    , disabled = False
+    , now = Time.millisToPosix 0
+    }
+  , Task.perform Tick Time.now
+  )
 
 disable : Model -> Model
 disable model = { model | disabled = True }
 enable : Model -> Model
 enable model = { model | disabled = False }
 
+subscriptions : Model -> Sub Msg
+subscriptions model =
+  Time.every 1000 Tick
+
 main : Program () Model Msg
 main =
-  Browser.sandbox
+  Browser.element
     { init = init
     , view = view
     , update = update
+    , subscriptions = subscriptions
     }

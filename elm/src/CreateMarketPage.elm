@@ -27,7 +27,7 @@ type alias Model =
   , auth : Maybe Pb.AuthToken
   , working : Bool
   , createError : Maybe String
-  , initTime : Time.Posix
+  , now : Time.Posix
   }
 
 type Msg
@@ -57,14 +57,15 @@ init flags =
   let
     auth : Maybe Pb.AuthToken
     auth =  Utils.decodePbFromFlags Pb.authTokenDecoder "authTokenPbB64" flags
+    (form, formCmd) = Form.init ()
   in
-  ( { form = Form.init |> if auth == Nothing then Form.disable else Form.enable
+  ( { form = form |> if auth == Nothing then Form.disable else Form.enable
     , auth = auth
     , working = False
     , createError = Nothing
-    , initTime = Time.millisToPosix 0
+    , now = Time.millisToPosix 0
     }
-  , Task.perform Tick Time.now
+  , Cmd.batch [Task.perform Tick Time.now, Cmd.map FormMsg formCmd]
   )
 
 postCreate : Pb.CreateMarketRequest -> Cmd Msg
@@ -79,7 +80,8 @@ update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
     FormMsg formMsg ->
-      ({ model | form = model.form |> Form.update formMsg }, Cmd.none)
+      let (newForm, formCmd) = Form.update formMsg model.form in
+      ({ model | form = newForm }, Cmd.map FormMsg formCmd)
     Create ->
       case Form.toCreateRequest model.form of
         Just req ->
@@ -109,7 +111,7 @@ update msg model =
           , Cmd.none
           )
     Tick t ->
-      ( { model | initTime = t } , Cmd.none )
+      ( { model | now = t } , Cmd.none )
     Ignore ->
       (model, Cmd.none)
 
@@ -139,8 +141,8 @@ view model =
     , H.div [HA.style "border" "1px solid black", HA.style "padding" "1em", HA.style "margin" "1em"]
         [ case Form.toCreateRequest model.form of
             Just req ->
-              previewMarket {request=req, creatorName=authName model.auth, createdAt=model.initTime}
-              |> (\market -> ViewMarketPage.initBase {market=market, marketId=12345, auth=model.auth, now=model.initTime})
+              previewMarket {request=req, creatorName=authName model.auth, createdAt=model.now}
+              |> (\market -> ViewMarketPage.initBase {market=market, marketId=12345, auth=model.auth, now=model.now})
               |> Tuple.first
               |> ViewMarketPage.view
               |> H.map (always Ignore)
@@ -162,11 +164,15 @@ previewMarket {request, creatorName, createdAt} =
   , creator = Just {displayName = creatorName, isSelf=False, trustsYou=True, isTrusted=True}
   , resolutions = []
   , yourTrades = []
+  , resolvesAtUnixtime = request.resolvesAtUnixtime
   }
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-  Sub.none
+  Sub.batch
+    [ Time.every 1000 Tick
+    , Form.subscriptions model.form |> Sub.map FormMsg
+    ]
 
 main : Program JD.Value Model Msg
 main =

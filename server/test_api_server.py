@@ -53,6 +53,7 @@ async def test_CreateMarket_and_GetMarket(aiohttp_client, app, clock):
     certainty=mvp_pb2.CertaintyRange(low=0.90, high=1.00),
     maximum_stake_cents=100_00,
     open_seconds=60*60*24*7,
+    resolves_at_unixtime=int(clock.now() + 86400),
     special_rules="special rules string",
   )
 
@@ -76,6 +77,25 @@ async def test_CreateMarket_and_GetMarket(aiohttp_client, app, clock):
   assert returned_market.created_unixtime == clock.now()
   assert returned_market.closes_unixtime == returned_market.created_unixtime + create_pb_req.open_seconds
   assert returned_market.special_rules == create_pb_req.special_rules
+
+
+async def test_CreateMarket_enforces_future_resolution(aiohttp_client, app, clock):
+  create_pb_req = mvp_pb2.CreateMarketRequest(
+    question="Is 1 > 2?",
+    certainty=mvp_pb2.CertaintyRange(low=0.90, high=1.00),
+    maximum_stake_cents=100_00,
+    open_seconds=60*60*24*7,
+    resolves_at_unixtime=int(clock.now() - 1),
+    special_rules="special rules string",
+  )
+
+  cli = await aiohttp_client(app)
+  (http_resp, register_resp) = await post_proto(cli, '/api/RegisterUsername', mvp_pb2.RegisterUsernameRequest(username='potato', password='secret'), mvp_pb2.RegisterUsernameResponse)
+  assert register_resp.WhichOneof('register_username_result') == 'ok', register_resp
+
+  (http_resp, create_pb_resp) = await post_proto(cli, '/api/CreateMarket', create_pb_req, mvp_pb2.CreateMarketResponse)
+  assert 'must resolve in the future' in str(create_pb_resp.error), create_pb_resp
+
 
 
 async def test_forgotten_token_recovery(aiohttp_client, app, fs_servicer):

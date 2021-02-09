@@ -147,6 +147,7 @@ main =
       , creator = Just {displayName = "Spencer", isSelf=False, trustsYou=True, isTrusted=True}
       , resolutions = []
       , yourTrades = []
+      , resolvesAtUnixtime = 0
       }
   in
   Browser.sandbox

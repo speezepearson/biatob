@@ -115,6 +115,7 @@ type alias WorldStateMarket =
     , maximumStakeCents : Int
     , createdUnixtime : Int
     , closesUnixtime : Int
+    , resolvesAtUnixtime : Int
     , specialRules : String
     , creator : Maybe UserId
     , trades : List Trade
@@ -264,6 +265,7 @@ type alias CreateMarketRequest =
     , maximumStakeCents : Int
     , openSeconds : Int
     , specialRules : String
+    , resolvesAtUnixtime : Int
     }
 
 
@@ -331,6 +333,7 @@ type alias UserMarketView =
     , creator : Maybe UserUserView
     , resolutions : List ResolutionEvent
     , yourTrades : List Trade
+    , resolvesAtUnixtime : Int
     }
 
 
@@ -617,12 +620,13 @@ worldStateUsernameInfoDecoder =
 
 worldStateMarketDecoder : Decode.Decoder WorldStateMarket
 worldStateMarketDecoder =
-    Decode.message (WorldStateMarket "" Nothing 0 0 0 "" Nothing [] [])
+    Decode.message (WorldStateMarket "" Nothing 0 0 0 0 "" Nothing [] [])
         [ Decode.optional 1 Decode.string setQuestion
         , Decode.optional 2 (Decode.map Just certaintyRangeDecoder) setCertainty
         , Decode.optional 3 Decode.uint32 setMaximumStakeCents
         , Decode.optional 4 Decode.uint32 setCreatedUnixtime
         , Decode.optional 5 Decode.uint32 setClosesUnixtime
+        , Decode.optional 11 Decode.uint32 setResolvesAtUnixtime
         , Decode.optional 6 Decode.string setSpecialRules
         , Decode.optional 7 (Decode.map Just userIdDecoder) setCreator
         , Decode.repeated 8 tradeDecoder .trades setTrades
@@ -782,13 +786,14 @@ marketPrivacyEmailsDecoder =
 -}
 createMarketRequestDecoder : Decode.Decoder CreateMarketRequest
 createMarketRequestDecoder =
-    Decode.message (CreateMarketRequest "" Nothing Nothing 0 0 "")
+    Decode.message (CreateMarketRequest "" Nothing Nothing 0 0 "" 0)
         [ Decode.optional 2 Decode.string setQuestion
         , Decode.optional 3 (Decode.map Just marketPrivacyDecoder) setPrivacy
         , Decode.optional 4 (Decode.map Just certaintyRangeDecoder) setCertainty
         , Decode.optional 5 Decode.uint32 setMaximumStakeCents
         , Decode.optional 6 Decode.uint32 setOpenSeconds
         , Decode.optional 7 Decode.string setSpecialRules
+        , Decode.optional 8 Decode.uint32 setResolvesAtUnixtime
         ]
 
 
@@ -846,7 +851,7 @@ getMarketResponseErrorDecoder =
 -}
 userMarketViewDecoder : Decode.Decoder UserMarketView
 userMarketViewDecoder =
-    Decode.message (UserMarketView "" Nothing 0 0 0 0 0 "" Nothing [] [])
+    Decode.message (UserMarketView "" Nothing 0 0 0 0 0 "" Nothing [] [] 0)
         [ Decode.optional 1 Decode.string setQuestion
         , Decode.optional 2 (Decode.map Just certaintyRangeDecoder) setCertainty
         , Decode.optional 3 Decode.uint32 setMaximumStakeCents
@@ -858,6 +863,7 @@ userMarketViewDecoder =
         , Decode.optional 9 (Decode.map Just userUserViewDecoder) setCreator
         , Decode.repeated 10 resolutionEventDecoder .resolutions setResolutions
         , Decode.repeated 11 tradeDecoder .yourTrades setYourTrades
+        , Decode.optional 12 Decode.uint32 setResolvesAtUnixtime
         ]
 
 
@@ -1158,6 +1164,7 @@ toWorldStateMarketEncoder model =
         , ( 3, Encode.uint32 model.maximumStakeCents )
         , ( 4, Encode.uint32 model.createdUnixtime )
         , ( 5, Encode.uint32 model.closesUnixtime )
+        , ( 11, Encode.uint32 model.resolvesAtUnixtime )
         , ( 6, Encode.string model.specialRules )
         , ( 7, (Maybe.withDefault Encode.none << Maybe.map toUserIdEncoder) model.creator )
         , ( 8, Encode.list toTradeEncoder model.trades )
@@ -1342,6 +1349,7 @@ toCreateMarketRequestEncoder model =
         , ( 5, Encode.uint32 model.maximumStakeCents )
         , ( 6, Encode.uint32 model.openSeconds )
         , ( 7, Encode.string model.specialRules )
+        , ( 8, Encode.uint32 model.resolvesAtUnixtime )
         ]
 
 
@@ -1423,6 +1431,7 @@ toUserMarketViewEncoder model =
         , ( 9, (Maybe.withDefault Encode.none << Maybe.map toUserUserViewEncoder) model.creator )
         , ( 10, Encode.list toResolutionEventEncoder model.resolutions )
         , ( 11, Encode.list toTradeEncoder model.yourTrades )
+        , ( 12, Encode.uint32 model.resolvesAtUnixtime )
         ]
 
 
@@ -1740,6 +1749,11 @@ setCreatedUnixtime value model =
 setClosesUnixtime : a -> { b | closesUnixtime : a } -> { b | closesUnixtime : a }
 setClosesUnixtime value model =
     { model | closesUnixtime = value }
+
+
+setResolvesAtUnixtime : a -> { b | resolvesAtUnixtime : a } -> { b | resolvesAtUnixtime : a }
+setResolvesAtUnixtime value model =
+    { model | resolvesAtUnixtime = value }
 
 
 setSpecialRules : a -> { b | specialRules : a } -> { b | specialRules : a }

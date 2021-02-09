@@ -39,6 +39,7 @@ mockMarket =
   , creator = Just {displayName = "Spencer", isSelf=False, trustsYou=True, isTrusted=True}
   , resolutions = []
   , yourTrades = []
+  , resolvesAtUnixtime = 60*60*24*365*101
   }
 
 

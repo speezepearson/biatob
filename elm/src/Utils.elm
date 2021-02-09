@@ -139,6 +139,10 @@ dateStr : Time.Zone -> Time.Posix -> String
 dateStr zone t =
   isoStr zone t |> String.left (4+1+2+1+2)
 
+addMillis : Int -> Time.Posix -> Time.Posix
+addMillis n t =
+  t |> Time.posixToMillis |> (+) n |> Time.millisToPosix
+
 renderIntervalSeconds : Int -> String
 renderIntervalSeconds seconds =
   let
