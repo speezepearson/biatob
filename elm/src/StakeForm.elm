@@ -56,13 +56,14 @@ view config state =
     maxSkepticStakeCents = if creatorStakeFactorVsSkeptics == 0 then 0 else toFloat config.prediction.remainingStakeCentsVsSkeptics / creatorStakeFactorVsSkeptics + 0.001 |> floor
   in
   H.div []
-    [ H.text <| "Do you think " ++ creator.displayName ++ " is..."
+    [ H.text <| "Do you believe strongly that..."
     , H.ul []
-        [ H.li [] <|
+        [ H.li [HA.style "margin-bottom" "1em"] <|
             let
               ctx = {max=maxSkepticStakeCents}
             in
-              [ H.strong [] [H.text "...too skeptical?"]
+              [ H.strong [] [H.text "...this won't happen?"]
+              , H.br [] []
               , H.text " Then stake $"
               , Field.inputFor (\s -> config.setState {state | skepticStakeField = state.skepticStakeField |> Field.setStr s}) ctx state.skepticStakeField
                   H.input
@@ -71,9 +72,9 @@ view config state =
                   , HA.disabled disableInputs
                   ]
                   []
-              , H.text <| " (against their "
+              , H.text <| " that it won't, against " ++ creator.displayName ++ "'s "
               , H.strong [] [Field.parse ctx state.skepticStakeField |> Result.map (toFloat >> (*) creatorStakeFactorVsSkeptics >> round >> Utils.formatCents) |> Result.withDefault "???" |> H.text]
-              , H.text ") that they're wrong. "
+              , H.text ". "
               , H.button
                   (case Field.parse ctx state.skepticStakeField of
                     Ok stake ->
@@ -83,11 +84,12 @@ view config state =
                   )
                   [H.text "Commit"]
               ]
-        , H.li [] <|
+        , H.li [HA.style "margin-bottom" "1em"] <|
             let
               ctx = {max=maxSkepticStakeCents}
             in
-              [ H.strong [] [H.text "...too credulous?"]
+              [ H.strong [] [H.text "...this ", H.i [] [H.text "will"], H.text " happen?"]
+              , H.br [] []
               , H.text " Then stake $"
               , Field.inputFor (\s -> config.setState {state | believerStakeField = state.believerStakeField |> Field.setStr s}) ctx state.believerStakeField
                   H.input
@@ -96,9 +98,9 @@ view config state =
                   , HA.disabled disableInputs
                   ]
                   []
-              , H.text <| " (against their " ++ creator.displayName ++ " "
+              , H.text <| " that it will, against " ++ creator.displayName ++ "'s "
               , H.strong [] [Field.parse ctx state.believerStakeField |> Result.map (toFloat >> (*) creatorStakeFactorVsBelievers >> round >> Utils.formatCents) |> Result.withDefault "???" |> H.text]
-              , H.text ") that this will happen. "
+              , H.text ". "
               , H.button
                   (case Field.parse ctx state.believerStakeField of
                     Ok stake ->

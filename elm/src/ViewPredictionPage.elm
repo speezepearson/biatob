@@ -173,7 +173,12 @@ viewStakeFormOrExcuse model =
           ++ " If you think that you *do* trust them in real life, ask them for a link to their user page,"
           ++ " and mark them as trusted."
       else
-        StakeForm.view (stakeFormConfig model) model.stakeForm
+        H.div []
+          [ StakeForm.view (stakeFormConfig model) model.stakeForm
+          , case model.stakeError of
+              Just e -> H.div [HA.style "color" "red"] [H.text e]
+              Nothing -> H.text ""
+          ]
 
 creatorWinningsByBettor : Bool -> List Pb.Trade -> Dict String Int -- TODO: avoid key serialization collisions
 creatorWinningsByBettor resolvedYes trades =
@@ -230,14 +235,14 @@ viewPredictionState model =
         in
           H.text <|
             ( if secondsToClose > 0 then
-                "This prediction closes in " ++ Utils.renderIntervalSeconds secondsToClose ++ ", and "
+                "Betting closes in " ++ Utils.renderIntervalSeconds secondsToClose ++ ", and "
               else
-                "This prediction closed " ++ Utils.renderIntervalSeconds (abs secondsToClose) ++ " ago, and "
+                "Betting closed " ++ Utils.renderIntervalSeconds (abs secondsToClose) ++ " ago, and "
             ) ++
             ( if secondsToResolve > 0 then
-                "should resolve in " ++ Utils.renderIntervalSeconds secondsToResolve ++ ". "
+                "the prediction should resolve in " ++ Utils.renderIntervalSeconds secondsToResolve ++ ". "
               else
-                "should have resolved " ++ Utils.renderIntervalSeconds (abs secondsToResolve) ++ " ago. Consider pinging the creator! "
+                "the prediction should have resolved " ++ Utils.renderIntervalSeconds (abs secondsToResolve) ++ " ago. Consider pinging the creator! "
             )
       Pb.ResolutionUnrecognized_ _ ->
         H.span [HA.style "color" "red"]
@@ -304,9 +309,9 @@ viewCreationParams model =
     , model.prediction.maximumStakeCents |> Utils.formatCents |> H.text
     , case (model.prediction.maximumStakeCents - model.prediction.remainingStakeCentsVsSkeptics, model.prediction.maximumStakeCents - model.prediction.remainingStakeCentsVsBelievers) of
         (0, 0) -> H.text ""
-        (promisedToSkeptics, 0) -> H.span [HA.style "opacity" "50%"] [H.text <| " (though they've already promised away " ++ Utils.formatCents promisedToSkeptics ++ " if they're too credulous)"]
-        (0, promisedToBelievers) -> H.span [HA.style "opacity" "50%"] [H.text <| " (though they've already promised away " ++ Utils.formatCents promisedToBelievers ++ " if they're too skeptical)"]
-        (promisedToSkeptics, promisedToBelievers) -> H.span [HA.style "opacity" "50%"] [H.text <| " (though they've already promised away " ++ Utils.formatCents promisedToSkeptics ++ " if they're too credulous, and " ++ Utils.formatCents promisedToBelievers ++ " if they're too skeptical)"]
+        (promisedToSkeptics, 0) -> H.span [HA.style "opacity" "50%"] [H.text <| " (though they've already promised away " ++ Utils.formatCents promisedToSkeptics ++ " if this doesn't happen)"]
+        (0, promisedToBelievers) -> H.span [HA.style "opacity" "50%"] [H.text <| " (though they've already promised away " ++ Utils.formatCents promisedToBelievers ++ " if this happens)"]
+        (promisedToSkeptics, promisedToBelievers) -> H.span [HA.style "opacity" "50%"] [H.text <| " (though they've already promised away " ++ Utils.formatCents promisedToSkeptics ++ " if this doesn't happen, and " ++ Utils.formatCents promisedToBelievers ++ " if it does)"]
     , H.text "."
     ]
 
@@ -363,14 +368,11 @@ view model =
             [ H.strong [] [H.text "Special rules:"]
             , H.text <| " " ++ rules
             ]
+    , H.hr [] []
     , viewStakeFormOrExcuse model
-    , case model.stakeError of
-        Just e -> H.div [HA.style "color" "red"] [H.text e]
-        Nothing -> H.text ""
     , if creator.isSelf then
         H.div []
-          [ H.hr [] []
-          , H.text "As the creator of this prediction, you might want to link to it in your writing! Here are some snippets of HTML you could copy-paste."
+          [ H.text "As the creator of this prediction, you might want to link to it in your writing! Here are some snippets of HTML you could copy-paste."
           , viewEmbedInfo model
           ]
       else

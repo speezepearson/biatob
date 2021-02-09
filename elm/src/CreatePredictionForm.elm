@@ -81,10 +81,7 @@ update msg model =
     SetOpenForUnit s -> ({ model | openForUnitField = model.openForUnitField |> Field.setStr s}, Cmd.none)
     SetOpenForN s -> ({ model | openForSecondsField = model.openForSecondsField |> Field.setStr s}, Cmd.none)
     SetSpecialRules s -> ({ model | specialRulesField = model.specialRulesField |> Field.setStr s}, Cmd.none)
-    Tick t ->
-      ( { model | now = t , resolvesAtField = model.resolvesAtField |> if Time.posixToMillis model.now == 0 then Field.setStr (String.left 10 <| Iso8601.fromTime <| Utils.addMillis (1000*60*60*24*7*4) t) else identity }
-      , Cmd.none
-      )
+    Tick t -> ( { model | now = t }, Cmd.none)
 
 view : Model -> Html Msg
 view model =
@@ -123,26 +120,26 @@ view model =
                 ]
           ]
         , H.li []
-            [ H.text "I'm at least "
+            [ H.text "I think this as at least a"
             , Field.inputFor SetLowP () model.lowPField
                 H.input
                 [ HA.type_ "number", HA.min "0", HA.max "100"
                 , HA.style "width" "5em"
                 , HA.disabled model.disabled
                 ] []
-            , H.text "% sure that this will happen,"
+            , H.text "% chance of happening,"
             , H.br [] []
-            , H.text "though I admit there's at least a "
+            , H.text "but not more than a "
             , Field.inputFor SetHighP highPCtx model.highPField
                 H.input
-                [ HA.type_ "number", HA.min "0", HA.max (String.fromFloat <| Result.withDefault 100 <| Result.map (\n -> 99.999 - n) <| Field.parse highPCtx model.highPField)
+                [ HA.type_ "number", HA.min (String.fromFloat <| Result.withDefault 100 <| Field.parse () model.lowPField), HA.max "100"
                 , HA.style "width" "5em"
                 , HA.disabled model.disabled
                 ] []
-            , H.text "% chance I'm wrong."
+            , H.text "% chance."
             ]
         , H.li []
-            [ H.text "I'm willing to stake up to $"
+            [ H.text "I'm willing to bet up to $"
             , Field.inputFor SetStake () model.stakeField
                 H.input
                 [ HA.type_ "number", HA.min "0", HA.max (String.fromInt maxLegalStakeCents)
@@ -190,7 +187,7 @@ view model =
             , H.text "."
             ]
         , H.li []
-            [ H.text "Special rules (implicit assumptions, or what counts as cheating):"
+            [ H.text "Special rules (e.g. implicit assumptions, what counts as cheating):"
             , Field.inputFor SetSpecialRules () model.specialRulesField
                 H.textarea
                 [ HA.style "width" "100%"
@@ -217,12 +214,12 @@ init () =
         case String.toFloat s of
           Nothing -> Err "must be a number 0-100"
           Just pct -> if pct < 0 || pct > 100 then Err "must be a number 0-100" else Ok (pct/100)
-    , highPField = Field.init "0" <| \{lowP} s ->
+    , highPField = Field.init "100" <| \{lowP} s ->
         case String.toFloat s of
           Nothing -> Err "must be a number 0-100"
-          Just pNoPct -> if pNoPct < 0 || pNoPct > 100 then Err "must be a number 0-100" else let highP = 1 - pNoPct/100 in
+          Just pct -> if pct < 0 || pct > 100 then Err "must be a number 0-100" else let highP = pct/100 in
             if highP < lowP - epsilon then
-              Err "prob wrong + prob right can't be >100"
+              Err "can't be less than your low prob"
             else if highP < lowP then
               Ok lowP
             else
