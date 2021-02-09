@@ -118,7 +118,8 @@ update msg model =
 view : Model -> Html Msg
 view model =
   H.div []
-    [ case model.auth of
+    [ H.h2 [] [H.text "New Prediction"]
+    , case model.auth of
        Just _ -> H.text ""
        Nothing ->
         H.div []

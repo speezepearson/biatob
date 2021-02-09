@@ -29,7 +29,6 @@ type alias Config msg =
   , market : Pb.UserMarketView
   }
 
-type Dummy = Dummy State
 type alias State =
   { believerStakeField : Field {max : Int} Int
   , skepticStakeField : Field {max : Int} Int
@@ -57,61 +56,59 @@ view config state =
     maxSkepticStakeCents = if creatorStakeFactorVsSkeptics == 0 then 0 else toFloat config.market.remainingStakeCentsVsSkeptics / creatorStakeFactorVsSkeptics + 0.001 |> floor
   in
   H.div []
-    [ H.div []
-        [ H.strong [] [config.market.remainingStakeCentsVsSkeptics |> Utils.formatCents |> H.text]
-        , H.text " remain staked against skeptics, "
-        , H.strong [] [config.market.remainingStakeCentsVsBelievers |> Utils.formatCents |> H.text]
-        , H.text " remain staked against believers."
-        , H.br [] []
+    [ H.text <| "Do you think " ++ creator.displayName ++ " is..."
+    , H.ul []
+        [ H.li [] <|
+            let
+              ctx = {max=maxSkepticStakeCents}
+            in
+              [ H.strong [] [H.text "...too skeptical?"]
+              , H.text " Then stake $"
+              , Field.inputFor (\s -> config.setState {state | skepticStakeField = state.skepticStakeField |> Field.setStr s}) ctx state.skepticStakeField
+                  H.input
+                  [ HA.style "width" "5em"
+                  , HA.type_"number", HA.min "0", HA.max (toFloat maxSkepticStakeCents / 100 + epsilon |> String.fromFloat), HA.step "any"
+                  , HA.disabled disableInputs
+                  ]
+                  []
+              , H.text <| " (against their "
+              , H.strong [] [Field.parse ctx state.skepticStakeField |> Result.map (toFloat >> (*) creatorStakeFactorVsSkeptics >> round >> Utils.formatCents) |> Result.withDefault "???" |> H.text]
+              , H.text ") that they're wrong. "
+              , H.button
+                  (case Field.parse ctx state.skepticStakeField of
+                    Ok stake ->
+                      [ HE.onClick <| config.onStake {bettorIsASkeptic=True, bettorStakeCents=stake} ]
+                    Err _ ->
+                      [ HA.disabled True ]
+                  )
+                  [H.text "Commit"]
+              ]
+        , H.li [] <|
+            let
+              ctx = {max=maxSkepticStakeCents}
+            in
+              [ H.strong [] [H.text "...too credulous?"]
+              , H.text " Then stake $"
+              , Field.inputFor (\s -> config.setState {state | believerStakeField = state.believerStakeField |> Field.setStr s}) ctx state.believerStakeField
+                  H.input
+                  [ HA.style "width" "5em"
+                  , HA.type_"number", HA.min "0", HA.max (toFloat maxBelieverStakeCents / 100 + epsilon |> String.fromFloat), HA.step "any"
+                  , HA.disabled disableInputs
+                  ]
+                  []
+              , H.text <| " (against their " ++ creator.displayName ++ " "
+              , H.strong [] [Field.parse ctx state.believerStakeField |> Result.map (toFloat >> (*) creatorStakeFactorVsBelievers >> round >> Utils.formatCents) |> Result.withDefault "???" |> H.text]
+              , H.text ") that this will happen. "
+              , H.button
+                  (case Field.parse ctx state.believerStakeField of
+                    Ok stake ->
+                      [ HE.onClick <| config.onStake {bettorIsASkeptic=False, bettorStakeCents=stake} ]
+                    Err _ ->
+                      [ HA.disabled True ]
+                  )
+                  [H.text "Commit"]
+              ]
         ]
-    , let
-        ctx = {max=maxSkepticStakeCents}
-      in
-        H.div []
-          [ H.text "Bet $"
-          , Field.inputFor (\s -> config.setState {state | skepticStakeField = state.skepticStakeField |> Field.setStr s}) ctx state.skepticStakeField
-              H.input
-              [ HA.style "width" "5em"
-              , HA.type_"number", HA.min "0", HA.max (toFloat maxSkepticStakeCents / 100 + epsilon |> String.fromFloat), HA.step "any"
-              , HA.disabled disableInputs
-              ]
-              []
-          , H.text <| " that this will resolve No, against " ++ creator.displayName ++ "'s "
-          , H.strong [] [Field.parse ctx state.skepticStakeField |> Result.map (toFloat >> (*) creatorStakeFactorVsSkeptics >> round >> Utils.formatCents) |> Result.withDefault "???" |> H.text]
-          , H.text "? "
-          , H.button
-              (case Field.parse ctx state.skepticStakeField of
-                Ok stake ->
-                  [ HE.onClick <| config.onStake {bettorIsASkeptic=True, bettorStakeCents=stake} ]
-                Err _ ->
-                  [ HA.disabled True ]
-              )
-              [H.text "Commit"]
-          ]
-    , let
-        ctx = {max=maxBelieverStakeCents}
-      in
-        H.div []
-          [ H.text "Bet $"
-          , Field.inputFor (\s -> config.setState {state | believerStakeField = state.believerStakeField |> Field.setStr s}) ctx state.believerStakeField
-              H.input
-              [ HA.style "width" "5em"
-              , HA.type_"number", HA.min "0", HA.max (toFloat maxBelieverStakeCents / 100 + epsilon |> String.fromFloat), HA.step "any"
-              , HA.disabled disableInputs
-              ]
-              []
-          , H.text <| " that this will resolve Yes, against " ++ creator.displayName ++ "'s "
-          , H.strong [] [Field.parse ctx state.believerStakeField |> Result.map (toFloat >> (*) creatorStakeFactorVsBelievers >> round >> Utils.formatCents) |> Result.withDefault "???" |> H.text]
-          , H.text "? "
-          , H.button
-              (case Field.parse ctx state.believerStakeField of
-                Ok stake ->
-                  [ HE.onClick <| config.onStake {bettorIsASkeptic=False, bettorStakeCents=stake} ]
-                Err _ ->
-                  [ HA.disabled True ]
-              )
-              [H.text "Commit"]
-          ]
     ]
 
 init : State
@@ -136,7 +133,7 @@ main =
   let
     market : Pb.UserMarketView
     market =
-      { prediction = "at least 50% of U.S. COVID-19 cases be B117 or a derivative strain, as reported by the CDC"
+      { prediction = "at least 50% of U.S. COVID-19 cases will be B117 or a derivative strain, as reported by the CDC"
       , certainty = Just {low = 0.8, high = 0.9}
       , maximumStakeCents = 10000
       , remainingStakeCentsVsBelievers = 10000

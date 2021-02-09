@@ -202,7 +202,15 @@ viewMarketState model =
       H.details [HA.style "opacity" "50%"]
         [ H.summary [] [H.text "Details"]
         , model.market.resolutions
-          |> List.map (\event -> H.li [] [H.text <| "[" ++ Utils.isoStr Time.utc (Utils.unixtimeToTime event.unixtime) ++ " UTC] resolution set to " ++ Debug.toString event.resolution])
+          |> List.map (\event -> H.li []
+              [ H.text <| "[" ++ Utils.isoStr Time.utc (Utils.unixtimeToTime event.unixtime) ++ " UTC] "
+              , H.text <| case event.resolution of
+                  Pb.ResolutionYes -> "resolved YES"
+                  Pb.ResolutionNo -> "resolved NO"
+                  Pb.ResolutionInvalid -> "resolved INVALID"
+                  Pb.ResolutionNoneYet -> "UN-RESOLVED"
+                  Pb.ResolutionUnrecognized_ _ -> "(??? unrecognized resolution ???)"
+              ])
           |> H.ul []
         ]
   in
@@ -248,7 +256,7 @@ viewWinnings model =
         , model.market.yourTrades
           |> List.map (\t -> H.li [] [ H.text <| "[" ++ Utils.isoStr Time.utc (Utils.unixtimeToTime t.transactedUnixtime) ++ " UTC] "
                                      , Utils.renderUser (Utils.mustTradeBettor t)
-                                     , H.text <| " bet " ++ (if t.bettorIsASkeptic then "NO" else "YES") ++ " at " ++ Utils.formatCents t.bettorStakeCents ++ " : " ++ Utils.formatCents t.creatorStakeCents])
+                                     , H.text <| " bet " ++ (if t.bettorIsASkeptic then "NO" else "YES") ++ " staking " ++ Utils.formatCents t.bettorStakeCents ++ " against " ++ Utils.formatCents t.creatorStakeCents])
           |> H.ul []
         ]
     ifRes : Bool -> Html Msg
@@ -271,8 +279,8 @@ viewWinnings model =
         H.text "All bets have been called off. "
       Pb.ResolutionNoneYet ->
         H.div []
-          [ H.div [] [H.text "If this market resolves Yes: ", ifRes True]
-          , H.div [] [H.text "If this market resolves No:  ", ifRes False]
+          [ H.div [] [H.text "If this comes true: ", ifRes True]
+          , H.div [] [H.text "Otherwise: ", ifRes False]
           ]
       Pb.ResolutionUnrecognized_ _ -> Debug.todo ""
     , auditLog
@@ -287,13 +295,18 @@ viewCreationParams model =
   in
   H.p []
     [ H.text <| "On " ++ Utils.dateStr Time.utc openTime ++ " UTC, "
-    , H.strong [] [H.text creator.displayName]
+    , H.strong [] [H.text <| if creator.isSelf then "you" else creator.displayName]
     , H.text " assigned this a "
     , certainty.low |> (*) 100 |> round |> String.fromInt |> H.text
     , H.text "-"
     , certainty.high |> (*) 100 |> round |> String.fromInt |> H.text
     , H.text "% chance, and staked "
     , model.market.maximumStakeCents |> Utils.formatCents |> H.text
+    , case (model.market.maximumStakeCents - model.market.remainingStakeCentsVsSkeptics, model.market.maximumStakeCents - model.market.remainingStakeCentsVsBelievers) of
+        (0, 0) -> H.text ""
+        (promisedToSkeptics, 0) -> H.span [HA.style "opacity" "50%"] [H.text <| " (though they've already promised away " ++ Utils.formatCents promisedToSkeptics ++ " if they're too credulous)"]
+        (0, promisedToBelievers) -> H.span [HA.style "opacity" "50%"] [H.text <| " (though they've already promised away " ++ Utils.formatCents promisedToBelievers ++ " if they're too skeptical)"]
+        (promisedToSkeptics, promisedToBelievers) -> H.span [HA.style "opacity" "50%"] [H.text <| " (though they've already promised away " ++ Utils.formatCents promisedToSkeptics ++ " if they're too credulous, and " ++ Utils.formatCents promisedToBelievers ++ " if they're too skeptical)"]
     , H.text "."
     ]
 
@@ -336,7 +349,7 @@ view model =
     creator = Utils.mustMarketCreator model.market
   in
   H.div []
-    [ H.h2 [] [H.text model.market.prediction]
+    [ H.h2 [] [H.text <| "Prediction: " ++ model.market.prediction ++ ", by " ++ (String.left 10 <| Iso8601.fromTime <| Time.millisToPosix <| model.market.resolvesAtUnixtime * 1000)]
     , viewMarketState model
     , viewResolveButtons model
     , viewWinnings model
@@ -373,7 +386,6 @@ viewEmbedInfo model =
     imgCode =
       "<a href=\"" ++ linkUrl ++ "\">"
       ++ "<img style=\"" ++ (imgStyles |> List.map (\(k,v) -> k++":"++v) |> String.join ";") ++ "\" src=\"" ++ imgUrl ++ "\" /></a>"
-    linkStyles = [("max-height","1.5ex")]
     linkText =
       "["
       ++ Utils.formatCents (model.market.maximumStakeCents // 100 * 100)
@@ -383,7 +395,7 @@ viewEmbedInfo model =
       ++ String.fromInt (round <| (Utils.mustMarketCertainty model.market).high * 100)
       ++ "%]"
     linkCode =
-      "<a style=\"" ++ (linkStyles |> List.map (\(k,v) -> k++":"++v) |> String.join ";") ++ "\" href=\"" ++ linkUrl ++ "\">" ++ linkText ++ "</a>"
+      "<a href=\"" ++ linkUrl ++ "\">" ++ linkText ++ "</a>"
   in
     H.ul []
       [ H.li [] <|
@@ -401,7 +413,7 @@ viewEmbedInfo model =
         , H.button [HE.onClick (Copy "linkCopypasta")] [H.text "Copy"]
         , H.br [] []
         , H.text "This would render as: "
-        , H.a (HA.href linkUrl :: (linkStyles |> List.map (\(k,v) -> HA.style k v))) [H.text linkText]
+        , H.a [HA.href linkUrl] [H.text linkText]
         ]
       ]
 

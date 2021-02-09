@@ -15,6 +15,7 @@ import Field
 
 howToWriteGoodBetsUrl = "http://example.com/TODO"
 maxLegalStakeCents = 500000
+epsilon = 0.000001
 
 type OpenForUnit = Days | Weeks
 unitToSeconds : OpenForUnit -> Int
@@ -41,7 +42,7 @@ type alias Model =
   , lowPField : Field () Float
   , highPField : Field {lowP:Float} Float
   , openForUnitField : Field () OpenForUnit
-  , openForSecondsField : Field {unit:OpenForUnit} Int
+  , openForSecondsField : Field {unit:OpenForUnit, resolvesAt:Maybe Time.Posix} Int
   , specialRulesField : Field () String
   , disabled : Bool
   , now : Time.Posix
@@ -50,13 +51,13 @@ type alias Model =
 toCreateRequest : Model -> Maybe Pb.CreateMarketRequest
 toCreateRequest model =
   Field.parse () model.predictionField |> Result.andThen (\prediction ->
+  Field.parse {now=model.now} model.resolvesAtField |> Result.andThen (\resolvesAt ->
   Field.parse () model.stakeField |> Result.andThen (\stake ->
   Field.parse () model.lowPField |> Result.andThen (\lowP ->
   Field.parse {lowP=lowP} model.highPField |> Result.andThen (\highP ->
   Field.parse () model.openForUnitField |> Result.andThen (\unit ->
-  Field.parse {unit=unit} model.openForSecondsField |> Result.andThen (\openForSeconds ->
+  Field.parse {unit=unit,resolvesAt=Just resolvesAt} model.openForSecondsField |> Result.andThen (\openForSeconds ->
   Field.parse () model.specialRulesField |> Result.andThen (\specialRules ->
-  Field.parse {now=model.now} model.resolvesAtField |> Result.andThen (\resolvesAt ->
     Ok
       { prediction = prediction
       , privacy = Nothing  -- TODO: delete this field
@@ -92,17 +93,15 @@ view model =
     highPCtx = {lowP = Field.parse () model.lowPField |> Result.withDefault 0}
     openForSecondsCtx = {unit = Field.parse () model.openForUnitField |> Result.withDefault Days}
     placeholders =
-      { prediction = "at least 50% of U.S. COVID-19 cases be B117 or a derivative strain, as reported by the CDC"
+      { prediction = "at least 50% of U.S. COVID-19 cases will be B117 or a derivative strain, as reported by the CDC"
       , stake = "100"
       , specialRules = "If the CDC doesn't publish statistics on this, I'll fall back to some other official organization, like the WHO; failing that, I'll look for journal papers on U.S. cases, and go with a consensus if I find one; failing that, the market is unresolvable."
       }
   in
   H.div []
-    [ H.ul []
+    [ H.ul [HA.class "create-market-form"]
         [ H.li []
-            [ H.text "What prediction are you willing to stake money on? ("
-            , H.a [HA.href howToWriteGoodBetsUrl] [H.text "how to write good bets"]
-            , H.text ") "
+            [ H.text "I predict that..."
             , H.br [] []
             , Field.inputFor SetPrediction () model.predictionField
                 H.textarea
@@ -111,67 +110,71 @@ view model =
                 , HA.disabled model.disabled
                 , HA.class "prediction-field"
                 ] []
-            ]
+            , H.br [] []
+            , H.div [HA.style "margin-left" "5em"]
+                [ H.text " ...by "
+                , Field.inputFor SetResolvesTime {now=model.now} model.resolvesAtField
+                    H.input
+                    [ HA.type_ "date"
+                    , HA.disabled model.disabled
+                    ] []
+                , H.text "."
+                -- TODO: , H.a [HA.href howToWriteGoodBetsUrl] [H.text "how to write good bets"]
+                ]
+          ]
         , H.li []
-            [ H.text "When will you know the answer by? "
-            , Field.inputFor SetResolvesTime {now=model.now} model.resolvesAtField
+            [ H.text "I'm at least "
+            , Field.inputFor SetLowP () model.lowPField
                 H.input
-                [ HA.type_ "date"
+                [ HA.type_ "number", HA.min "0", HA.max "100"
+                , HA.style "width" "5em"
                 , HA.disabled model.disabled
                 ] []
+            , H.text "% sure that this will happen,"
+            , H.br [] []
+            , H.text "though I admit there's at least a "
+            , Field.inputFor SetHighP highPCtx model.highPField
+                H.input
+                [ HA.type_ "number", HA.min "0", HA.max (String.fromFloat <| Result.withDefault 100 <| Result.map (\n -> 99.999 - n) <| Field.parse highPCtx model.highPField)
+                , HA.style "width" "5em"
+                , HA.disabled model.disabled
+                ] []
+            , H.text "% chance I'm wrong."
             ]
         , H.li []
-            [ H.text "How much are you willing to stake? $"
+            [ H.text "I'm willing to stake up to $"
             , Field.inputFor SetStake () model.stakeField
                 H.input
                 [ HA.type_ "number", HA.min "0", HA.max (String.fromInt maxLegalStakeCents)
+                , HA.style "width" "5em"
                 , HA.placeholder placeholders.stake
                 , HA.disabled model.disabled
                 ] []
+            , H.text " at these odds."
+            , case Field.parse () model.stakeField of
+                  Err _ -> H.text ""
+                  Ok stakeCents ->
+                    let
+                      betVsSkeptics : Maybe String
+                      betVsSkeptics =
+                        Field.parse () model.lowPField
+                        |> Result.toMaybe
+                        |> Maybe.andThen (\lowP -> if lowP == 0 then Nothing else Just <| Utils.formatCents stakeCents ++ " against " ++ Utils.formatCents (round <| toFloat stakeCents * (1-lowP)/lowP))
+                      betVsBelievers : Maybe String
+                      betVsBelievers =
+                        Field.parse highPCtx model.highPField
+                        |> Result.toMaybe
+                        |> Maybe.andThen (\highP -> if highP == 1 then Nothing else Just <| Utils.formatCents stakeCents ++ " against " ++ Utils.formatCents (round <| toFloat stakeCents * highP/(1-highP)))
+                    in
+                      case (betVsSkeptics, betVsBelievers) of
+                        (Nothing, Nothing) -> H.text ""
+                        (Just s, Nothing) -> H.div [] [H.text "(In other words, I'd happily bet ", H.strong [] [H.text s], H.text " that this will happen.)"]
+                        (Nothing, Just s) -> H.div [] [H.text "(In other words, I'd happily bet ", H.strong [] [H.text s], H.text " that this won't happen.)"]
+                        (Just skep, Just bel)  -> H.div [] [H.text "(In other words, I'd happily bet ", H.strong [] [H.text skep], H.text " that this will happen, or ", H.strong [] [H.text bel], H.text " that it won't.)"]
             ]
         , H.li []
-            [ H.text "How much would you be willing to pay if your most well-informed friend offered you an IOU that paid out..."
-            , H.ul []
-                [ H.li []
-                  [ H.text "...$100 if this "
-                  , H.strong [] [H.text "happens?"]
-                  , H.text " $"
-
-                  , Field.inputFor SetLowP () model.lowPField
-                      H.input
-                      [ HA.type_ "number", HA.min "0", HA.max "100"
-                      , HA.style "width" "5em"
-                      , HA.disabled model.disabled
-                      ] []
-                  ]
-                , H.li []
-                  [ H.text "...$100 if this "
-                  , H.strong [] [H.text "doesn't happen?"]
-                  , H.text " $"
-                  , Field.inputFor SetHighP highPCtx model.highPField
-                      H.input
-                      [ HA.type_ "number", HA.min "0", HA.max (String.fromFloat <| Result.withDefault 100 <| Result.map (\n -> 99.999 - n) <| Field.parse highPCtx model.highPField)
-                      , HA.style "width" "5em"
-                      , HA.disabled model.disabled
-                      ] []
-                  ]
-                ]
-            , H.text "In other words, you think that this is "
-            , H.strong []
-                [ case Field.parse () model.lowPField of
-                    Err _ -> H.text "???"
-                    Ok p -> H.text <| String.fromInt <| round (100*p)
-                , H.text "-"
-                , case Field.parse highPCtx model.highPField of
-                    Err _ -> H.text "???"
-                    Ok p -> H.text <| String.fromInt <| round (100*p)
-                , H.text "%"
-                ]
-            , H.text " likely."
-            ]
-        , H.li []
-            [ H.text "How long is this offer open for?"
-            , Field.inputFor SetOpenForN {unit=Field.parse () model.openForUnitField |> Result.withDefault Weeks} model.openForSecondsField
+            [ H.text "This offer is only open for "
+            , Field.inputFor SetOpenForN {unit=Field.parse () model.openForUnitField |> Result.withDefault Weeks, resolvesAt=Field.parse {now=model.now} model.resolvesAtField |> Result.toMaybe} model.openForSecondsField
                 H.input
                 [ HA.type_ "number", HA.min "1"
                 , HA.style "width" "5em"
@@ -184,9 +187,10 @@ view model =
                 [ H.option [] [H.text "weeks"]
                 , H.option [] [H.text "days"]
                 ]
+            , H.text "."
             ]
         , H.li []
-            [ H.text "Any special rules? (For instance: what might make you consider the market unresolvable/invalid? What would you count as \"insider trading\"/cheating?)"
+            [ H.text "Special rules (events that might invalidate the market, or what counts as cheating):"
             , Field.inputFor SetSpecialRules () model.specialRulesField
                 H.textarea
                 [ HA.style "width" "100%"
@@ -216,7 +220,13 @@ init () =
     , highPField = Field.init "0" <| \{lowP} s ->
         case String.toFloat s of
           Nothing -> Err "must be a number 0-100"
-          Just pNoPct -> if pNoPct < 0 || pNoPct > 100 then Err "must be a number 0-100" else let highP = 1 - pNoPct/100 in if lowP > highP then Err "your prices must sum to under 100" else Ok highP
+          Just pNoPct -> if pNoPct < 0 || pNoPct > 100 then Err "must be a number 0-100" else let highP = 1 - pNoPct/100 in
+            if highP < lowP - epsilon then
+              Err "prob wrong + prob right can't be >100"
+            else if highP < lowP then
+              Ok lowP
+            else
+              Ok highP
     , openForUnitField = Field.init "weeks" <| \() s ->
         case s of
           "days" -> Ok Days
