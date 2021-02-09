@@ -21,6 +21,8 @@
       flags: {authTokenPbB64},
     })
     navbar.ports.authChanged.subscribe(() => window.location.reload());
+    var usernameField = document.getElementsByClassName('username-field')[0];
+    if (usernameField) usernameField.focus();
 
     var main = Elm.CreateMarketPage.init({
       node: document.getElementById('main'),
@@ -31,14 +33,7 @@
     });
 
     var questionField = document.getElementsByClassName('question-field')[0];
-    if (questionField && questionField.disabled) {
-      console.log('focusing username-field');
-      var usernameField = document.getElementsByClassName('username-field')[0];
-      if (usernameField) usernameField.focus();
-    } else {
-      console.log('focusing question-field');
-      questionField.focus();
-    }
+    if (questionField) questionField.focus();
   </script>
 </body>
 </html>

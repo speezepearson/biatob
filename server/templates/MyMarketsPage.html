@@ -22,6 +22,8 @@
       flags: {authTokenPbB64},
     })
     navbar.ports.authChanged.subscribe(({loggedIn}) => (loggedIn ? window.location.reload() : window.location='/'));
+    var usernameField = document.getElementsByClassName('username-field')[0];
+    if (usernameField) usernameField.focus();
 
     var main = Elm.MyMarketsPage.init({
       node: document.getElementById('main'),
