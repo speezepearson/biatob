@@ -70,7 +70,7 @@ def task_elm():
 def task_test():
   yield {
     'name': 'python',
-    'file_dep': list(Path('server').glob('**/*.py')),
+    'file_dep': [*Path('server').glob('**/*.py'), *Path('server').glob('**/*.pyi')],
     'actions': [
       # 'pip3 install -r server/requirements.txt',
       'mypy server',

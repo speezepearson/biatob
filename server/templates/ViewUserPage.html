@@ -30,7 +30,7 @@
       node: document.getElementById('main'),
       flags: {authTokenPbB64, userIdPbB64, userViewPbB64},
     });
-    main.ports.changed.subscribe((marketId) => {
+    main.ports.changed.subscribe((predictionId) => {
       window.location.reload();
     });
   </script>

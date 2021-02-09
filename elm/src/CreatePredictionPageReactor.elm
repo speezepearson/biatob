@@ -1,8 +1,8 @@
-module CreateMarketPageReactor exposing (main)
+module CreatePredictionPageReactor exposing (main)
 
 import Browser
 
-import CreateMarketPage as Page
+import CreatePredictionPage as Page
 import Json.Encode as JE
 
 import Bytes.Encode

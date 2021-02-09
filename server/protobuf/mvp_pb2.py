@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='protobuf/mvp.proto',
   package='biatob.proto.mvp',
   syntax='proto3',
-  serialized_pb=_b('\n\x12protobuf/mvp.proto\x12\x10\x62iatob.proto.mvp\"$\n\x06UserId\x12\x12\n\x08username\x18\x01 \x01(\tH\x00\x42\x06\n\x04kind\"}\n\tAuthToken\x12\x14\n\x0chmac_of_rest\x18\x01 \x01(\x0c\x12\'\n\x05owner\x18\x02 \x01(\x0b\x32\x18.biatob.proto.mvp.UserId\x12\x17\n\x0fminted_unixtime\x18\x03 \x01(\r\x12\x18\n\x10\x65xpires_unixtime\x18\x04 \x01(\r\"\xd5\x06\n\nWorldState\x12G\n\x0eusername_users\x18\x01 \x03(\x0b\x32/.biatob.proto.mvp.WorldState.UsernameUsersEntry\x12:\n\x07markets\x18\x02 \x03(\x0b\x32).biatob.proto.mvp.WorldState.MarketsEntry\x1a_\n\x12UsernameUsersEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x38\n\x05value\x18\x02 \x01(\x0b\x32).biatob.proto.mvp.WorldState.UsernameInfo:\x02\x38\x01\x1aS\n\x0cMarketsEntry\x12\x0b\n\x03key\x18\x01 \x01(\r\x12\x32\n\x05value\x18\x02 \x01(\x0b\x32#.biatob.proto.mvp.WorldState.Market:\x02\x38\x01\x1a\x42\n\x0fGenericUserInfo\x12/\n\rtrusted_users\x18\x01 \x03(\x0b\x32\x18.biatob.proto.mvp.UserId\x1a\x63\n\x0cUsernameInfo\x12:\n\x04info\x18\x01 \x01(\x0b\x32,.biatob.proto.mvp.WorldState.GenericUserInfo\x12\x17\n\x0fpassword_bcrypt\x18\x02 \x01(\x0c\x1a\xe2\x02\n\x06Market\x12\x12\n\nprediction\x18\x01 \x01(\t\x12\x33\n\tcertainty\x18\x02 \x01(\x0b\x32 .biatob.proto.mvp.CertaintyRange\x12\x1b\n\x13maximum_stake_cents\x18\x03 \x01(\r\x12\x18\n\x10\x63reated_unixtime\x18\x04 \x01(\r\x12\x17\n\x0f\x63loses_unixtime\x18\x05 \x01(\r\x12\x1c\n\x14resolves_at_unixtime\x18\x0b \x01(\r\x12\x15\n\rspecial_rules\x18\x06 \x01(\t\x12)\n\x07\x63reator\x18\x07 \x01(\x0b\x32\x18.biatob.proto.mvp.UserId\x12\'\n\x06trades\x18\x08 \x03(\x0b\x32\x17.biatob.proto.mvp.Trade\x12\x36\n\x0bresolutions\x18\n \x03(\x0b\x32!.biatob.proto.mvp.ResolutionEvent\"d\n\x0fResolutionEvent\x12\x10\n\x08unixtime\x18\x01 \x01(\r\x12\x30\n\nresolution\x18\x02 \x01(\x0e\x32\x1c.biatob.proto.mvp.Resolution\x12\r\n\x05notes\x18\x03 \x01(\t\"\xa4\x01\n\x05Trade\x12(\n\x06\x62\x65ttor\x18\x01 \x01(\x0b\x32\x18.biatob.proto.mvp.UserId\x12\x1b\n\x13\x62\x65ttor_is_a_skeptic\x18\x02 \x01(\x08\x12\x1a\n\x12\x62\x65ttor_stake_cents\x18\x03 \x01(\r\x12\x1b\n\x13\x63reator_stake_cents\x18\x04 \x01(\r\x12\x1b\n\x13transacted_unixtime\x18\x05 \x01(\r\"\x0f\n\rWhoamiRequest\";\n\x0eWhoamiResponse\x12)\n\x04\x61uth\x18\x01 \x01(\x0b\x32\x1b.biatob.proto.mvp.AuthToken\"\x10\n\x0eSignOutRequest\"\x11\n\x0fSignOutResponse\"=\n\x17RegisterUsernameRequest\x12\x10\n\x08username\x18\x01 \x01(\t\x12\x10\n\x08password\x18\x02 \x01(\t\"\xef\x01\n\x18RegisterUsernameResponse\x12)\n\x02ok\x18\x01 \x01(\x0b\x32\x1b.biatob.proto.mvp.AuthTokenH\x00\x12\x41\n\x05\x65rror\x18\x02 \x01(\x0b\x32\x30.biatob.proto.mvp.RegisterUsernameResponse.ErrorH\x00\x1aI\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\t\x12.\n\x0eusername_taken\x18\x02 \x01(\x0e\x32\x16.biatob.proto.mvp.VoidB\x1a\n\x18register_username_result\":\n\x14LogInUsernameRequest\x12\x10\n\x08username\x18\x01 \x01(\t\x12\x10\n\x08password\x18\x02 \x01(\t\"\xb7\x01\n\x15LogInUsernameResponse\x12)\n\x02ok\x18\x01 \x01(\x0b\x32\x1b.biatob.proto.mvp.AuthTokenH\x00\x12>\n\x05\x65rror\x18\x02 \x01(\x0b\x32-.biatob.proto.mvp.LogInUsernameResponse.ErrorH\x00\x1a\x19\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\tB\x18\n\x16log_in_username_result\"+\n\x0e\x43\x65rtaintyRange\x12\x0b\n\x03low\x18\x01 \x01(\x02\x12\x0c\n\x04high\x18\x02 \x01(\x02\"\xb4\x01\n\rMarketPrivacy\x12\x37\n\x15\x61ll_trusted_by_author\x18\x01 \x01(\x0e\x32\x16.biatob.proto.mvp.VoidH\x00\x12@\n\x0especific_users\x18\x02 \x01(\x0b\x32&.biatob.proto.mvp.MarketPrivacy.EmailsH\x00\x1a\x18\n\x06\x45mails\x12\x0e\n\x06\x65mails\x18\x01 \x03(\tB\x0e\n\x0cprivacy_kind\"\xf8\x01\n\x13\x43reateMarketRequest\x12\x12\n\nprediction\x18\x02 \x01(\t\x12\x30\n\x07privacy\x18\x03 \x01(\x0b\x32\x1f.biatob.proto.mvp.MarketPrivacy\x12\x33\n\tcertainty\x18\x04 \x01(\x0b\x32 .biatob.proto.mvp.CertaintyRange\x12\x1b\n\x13maximum_stake_cents\x18\x05 \x01(\r\x12\x14\n\x0copen_seconds\x18\x06 \x01(\r\x12\x15\n\rspecial_rules\x18\x07 \x01(\t\x12\x1c\n\x14resolves_at_unixtime\x18\x08 \x01(\r\"\xa1\x01\n\x14\x43reateMarketResponse\x12\x17\n\rnew_market_id\x18\x01 \x01(\rH\x00\x12=\n\x05\x65rror\x18\x02 \x01(\x0b\x32,.biatob.proto.mvp.CreateMarketResponse.ErrorH\x00\x1a\x19\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\tB\x16\n\x14\x63reate_market_result\"%\n\x10GetMarketRequest\x12\x11\n\tmarket_id\x18\x02 \x01(\r\"\xe3\x01\n\x11GetMarketResponse\x12\x32\n\x06market\x18\x01 \x01(\x0b\x32 .biatob.proto.mvp.UserMarketViewH\x00\x12:\n\x05\x65rror\x18\x02 \x01(\x0b\x32).biatob.proto.mvp.GetMarketResponse.ErrorH\x00\x1aI\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\t\x12.\n\x0eno_such_market\x18\x02 \x01(\x0e\x32\x16.biatob.proto.mvp.VoidB\x13\n\x11get_market_result\"\xcc\x03\n\x0eUserMarketView\x12\x12\n\nprediction\x18\x01 \x01(\t\x12\x33\n\tcertainty\x18\x02 \x01(\x0b\x32 .biatob.proto.mvp.CertaintyRange\x12\x1b\n\x13maximum_stake_cents\x18\x03 \x01(\r\x12*\n\"remaining_stake_cents_vs_believers\x18\x04 \x01(\r\x12)\n!remaining_stake_cents_vs_skeptics\x18\x05 \x01(\r\x12\x18\n\x10\x63reated_unixtime\x18\x06 \x01(\r\x12\x17\n\x0f\x63loses_unixtime\x18\x07 \x01(\r\x12\x15\n\rspecial_rules\x18\x08 \x01(\t\x12/\n\x07\x63reator\x18\t \x01(\x0b\x32\x1e.biatob.proto.mvp.UserUserView\x12\x36\n\x0bresolutions\x18\n \x03(\x0b\x32!.biatob.proto.mvp.ResolutionEvent\x12,\n\x0byour_trades\x18\x0b \x03(\x0b\x32\x17.biatob.proto.mvp.Trade\x12\x1c\n\x14resolves_at_unixtime\x18\x0c \x01(\r\"]\n\x0cUserUserView\x12\x14\n\x0c\x64isplay_name\x18\x01 \x01(\t\x12\x0f\n\x07is_self\x18\x02 \x01(\x08\x12\x12\n\nis_trusted\x18\x03 \x01(\x08\x12\x12\n\ntrusts_you\x18\x04 \x01(\x08\"\x16\n\x14ListMyMarketsRequest\"\xe9\x01\n\x15ListMyMarketsResponse\x12+\n\x02ok\x18\x01 \x01(\x0b\x32\x1d.biatob.proto.mvp.MarketsByIdH\x00\x12>\n\x05\x65rror\x18\x02 \x01(\x0b\x32-.biatob.proto.mvp.ListMyMarketsResponse.ErrorH\x00\x1aI\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\t\x12.\n\x0eno_such_market\x18\x02 \x01(\x0e\x32\x16.biatob.proto.mvp.VoidB\x18\n\x16list_my_markets_result\"\x9c\x01\n\x0bMarketsById\x12;\n\x07markets\x18\x01 \x03(\x0b\x32*.biatob.proto.mvp.MarketsById.MarketsEntry\x1aP\n\x0cMarketsEntry\x12\x0b\n\x03key\x18\x01 \x01(\r\x12/\n\x05value\x18\x02 \x01(\x0b\x32 .biatob.proto.mvp.UserMarketView:\x02\x38\x01\"Z\n\x0cStakeRequest\x12\x11\n\tmarket_id\x18\x02 \x01(\r\x12\x1b\n\x13\x62\x65ttor_is_a_skeptic\x18\x03 \x01(\x08\x12\x1a\n\x12\x62\x65ttor_stake_cents\x18\x04 \x01(\r\"\x98\x01\n\rStakeResponse\x12$\n\x02ok\x18\x01 \x01(\x0e\x32\x16.biatob.proto.mvp.VoidH\x00\x12\x36\n\x05\x65rror\x18\x02 \x01(\x0b\x32%.biatob.proto.mvp.StakeResponse.ErrorH\x00\x1a\x19\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\tB\x0e\n\x0cstake_result\"d\n\x0eResolveRequest\x12\x11\n\tmarket_id\x18\x01 \x01(\r\x12\x30\n\nresolution\x18\x02 \x01(\x0e\x32\x1c.biatob.proto.mvp.Resolution\x12\r\n\x05notes\x18\x03 \x01(\t\"\x9e\x01\n\x0fResolveResponse\x12$\n\x02ok\x18\x01 \x01(\x0e\x32\x16.biatob.proto.mvp.VoidH\x00\x12\x38\n\x05\x65rror\x18\x02 \x01(\x0b\x32\'.biatob.proto.mvp.ResolveResponse.ErrorH\x00\x1a\x19\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\tB\x10\n\x0eresolve_result\"K\n\x11SetTrustedRequest\x12%\n\x03who\x18\x01 \x01(\x0b\x32\x18.biatob.proto.mvp.UserId\x12\x0f\n\x07trusted\x18\x02 \x01(\x08\"\xa8\x01\n\x12SetTrustedResponse\x12$\n\x02ok\x18\x01 \x01(\x0e\x32\x16.biatob.proto.mvp.VoidH\x00\x12;\n\x05\x65rror\x18\x02 \x01(\x0b\x32*.biatob.proto.mvp.SetTrustedResponse.ErrorH\x00\x1a\x19\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\tB\x14\n\x12set_trusted_result\"7\n\x0eGetUserRequest\x12%\n\x03who\x18\x01 \x01(\x0b\x32\x18.biatob.proto.mvp.UserId\"\xa7\x01\n\x0fGetUserResponse\x12,\n\x02ok\x18\x01 \x01(\x0b\x32\x1e.biatob.proto.mvp.UserUserViewH\x00\x12\x38\n\x05\x65rror\x18\x02 \x01(\x0b\x32\'.biatob.proto.mvp.GetUserResponse.ErrorH\x00\x1a\x19\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\tB\x11\n\x0fget_user_result\"C\n\x15\x43hangePasswordRequest\x12\x14\n\x0cold_password\x18\x01 \x01(\t\x12\x14\n\x0cnew_password\x18\x02 \x01(\t\"\xb4\x01\n\x16\x43hangePasswordResponse\x12$\n\x02ok\x18\x01 \x01(\x0e\x32\x16.biatob.proto.mvp.VoidH\x00\x12?\n\x05\x65rror\x18\x02 \x01(\x0b\x32..biatob.proto.mvp.ChangePasswordResponse.ErrorH\x00\x1a\x19\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\tB\x18\n\x16\x63hange_password_result*\x10\n\x04Void\x12\x08\n\x04VOID\x10\x00*d\n\nResolution\x12\x17\n\x13RESOLUTION_NONE_YET\x10\x00\x12\x12\n\x0eRESOLUTION_YES\x10\x01\x12\x11\n\rRESOLUTION_NO\x10\x02\x12\x16\n\x12RESOLUTION_INVALID\x10\x03\x62\x06proto3')
+  serialized_pb=_b('\n\x12protobuf/mvp.proto\x12\x10\x62iatob.proto.mvp\"$\n\x06UserId\x12\x12\n\x08username\x18\x01 \x01(\tH\x00\x42\x06\n\x04kind\"}\n\tAuthToken\x12\x14\n\x0chmac_of_rest\x18\x01 \x01(\x0c\x12\'\n\x05owner\x18\x02 \x01(\x0b\x32\x18.biatob.proto.mvp.UserId\x12\x17\n\x0fminted_unixtime\x18\x03 \x01(\r\x12\x18\n\x10\x65xpires_unixtime\x18\x04 \x01(\r\"\xe9\x06\n\nWorldState\x12G\n\x0eusername_users\x18\x01 \x03(\x0b\x32/.biatob.proto.mvp.WorldState.UsernameUsersEntry\x12\x42\n\x0bpredictions\x18\x02 \x03(\x0b\x32-.biatob.proto.mvp.WorldState.PredictionsEntry\x1a_\n\x12UsernameUsersEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x38\n\x05value\x18\x02 \x01(\x0b\x32).biatob.proto.mvp.WorldState.UsernameInfo:\x02\x38\x01\x1a[\n\x10PredictionsEntry\x12\x0b\n\x03key\x18\x01 \x01(\r\x12\x36\n\x05value\x18\x02 \x01(\x0b\x32\'.biatob.proto.mvp.WorldState.Prediction:\x02\x38\x01\x1a\x42\n\x0fGenericUserInfo\x12/\n\rtrusted_users\x18\x01 \x03(\x0b\x32\x18.biatob.proto.mvp.UserId\x1a\x63\n\x0cUsernameInfo\x12:\n\x04info\x18\x01 \x01(\x0b\x32,.biatob.proto.mvp.WorldState.GenericUserInfo\x12\x17\n\x0fpassword_bcrypt\x18\x02 \x01(\x0c\x1a\xe6\x02\n\nPrediction\x12\x12\n\nprediction\x18\x01 \x01(\t\x12\x33\n\tcertainty\x18\x02 \x01(\x0b\x32 .biatob.proto.mvp.CertaintyRange\x12\x1b\n\x13maximum_stake_cents\x18\x03 \x01(\r\x12\x18\n\x10\x63reated_unixtime\x18\x04 \x01(\r\x12\x17\n\x0f\x63loses_unixtime\x18\x05 \x01(\r\x12\x1c\n\x14resolves_at_unixtime\x18\x0b \x01(\r\x12\x15\n\rspecial_rules\x18\x06 \x01(\t\x12)\n\x07\x63reator\x18\x07 \x01(\x0b\x32\x18.biatob.proto.mvp.UserId\x12\'\n\x06trades\x18\x08 \x03(\x0b\x32\x17.biatob.proto.mvp.Trade\x12\x36\n\x0bresolutions\x18\n \x03(\x0b\x32!.biatob.proto.mvp.ResolutionEvent\"d\n\x0fResolutionEvent\x12\x10\n\x08unixtime\x18\x01 \x01(\r\x12\x30\n\nresolution\x18\x02 \x01(\x0e\x32\x1c.biatob.proto.mvp.Resolution\x12\r\n\x05notes\x18\x03 \x01(\t\"\xa4\x01\n\x05Trade\x12(\n\x06\x62\x65ttor\x18\x01 \x01(\x0b\x32\x18.biatob.proto.mvp.UserId\x12\x1b\n\x13\x62\x65ttor_is_a_skeptic\x18\x02 \x01(\x08\x12\x1a\n\x12\x62\x65ttor_stake_cents\x18\x03 \x01(\r\x12\x1b\n\x13\x63reator_stake_cents\x18\x04 \x01(\r\x12\x1b\n\x13transacted_unixtime\x18\x05 \x01(\r\"\x0f\n\rWhoamiRequest\";\n\x0eWhoamiResponse\x12)\n\x04\x61uth\x18\x01 \x01(\x0b\x32\x1b.biatob.proto.mvp.AuthToken\"\x10\n\x0eSignOutRequest\"\x11\n\x0fSignOutResponse\"=\n\x17RegisterUsernameRequest\x12\x10\n\x08username\x18\x01 \x01(\t\x12\x10\n\x08password\x18\x02 \x01(\t\"\xef\x01\n\x18RegisterUsernameResponse\x12)\n\x02ok\x18\x01 \x01(\x0b\x32\x1b.biatob.proto.mvp.AuthTokenH\x00\x12\x41\n\x05\x65rror\x18\x02 \x01(\x0b\x32\x30.biatob.proto.mvp.RegisterUsernameResponse.ErrorH\x00\x1aI\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\t\x12.\n\x0eusername_taken\x18\x02 \x01(\x0e\x32\x16.biatob.proto.mvp.VoidB\x1a\n\x18register_username_result\":\n\x14LogInUsernameRequest\x12\x10\n\x08username\x18\x01 \x01(\t\x12\x10\n\x08password\x18\x02 \x01(\t\"\xb7\x01\n\x15LogInUsernameResponse\x12)\n\x02ok\x18\x01 \x01(\x0b\x32\x1b.biatob.proto.mvp.AuthTokenH\x00\x12>\n\x05\x65rror\x18\x02 \x01(\x0b\x32-.biatob.proto.mvp.LogInUsernameResponse.ErrorH\x00\x1a\x19\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\tB\x18\n\x16log_in_username_result\"+\n\x0e\x43\x65rtaintyRange\x12\x0b\n\x03low\x18\x01 \x01(\x02\x12\x0c\n\x04high\x18\x02 \x01(\x02\"\xbc\x01\n\x11PredictionPrivacy\x12\x37\n\x15\x61ll_trusted_by_author\x18\x01 \x01(\x0e\x32\x16.biatob.proto.mvp.VoidH\x00\x12\x44\n\x0especific_users\x18\x02 \x01(\x0b\x32*.biatob.proto.mvp.PredictionPrivacy.EmailsH\x00\x1a\x18\n\x06\x45mails\x12\x0e\n\x06\x65mails\x18\x01 \x03(\tB\x0e\n\x0cprivacy_kind\"\x80\x02\n\x17\x43reatePredictionRequest\x12\x12\n\nprediction\x18\x02 \x01(\t\x12\x34\n\x07privacy\x18\x03 \x01(\x0b\x32#.biatob.proto.mvp.PredictionPrivacy\x12\x33\n\tcertainty\x18\x04 \x01(\x0b\x32 .biatob.proto.mvp.CertaintyRange\x12\x1b\n\x13maximum_stake_cents\x18\x05 \x01(\r\x12\x14\n\x0copen_seconds\x18\x06 \x01(\r\x12\x15\n\rspecial_rules\x18\x07 \x01(\t\x12\x1c\n\x14resolves_at_unixtime\x18\x08 \x01(\r\"\xb1\x01\n\x18\x43reatePredictionResponse\x12\x1b\n\x11new_prediction_id\x18\x01 \x01(\rH\x00\x12\x41\n\x05\x65rror\x18\x02 \x01(\x0b\x32\x30.biatob.proto.mvp.CreatePredictionResponse.ErrorH\x00\x1a\x19\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\tB\x1a\n\x18\x63reate_prediction_result\"-\n\x14GetPredictionRequest\x12\x15\n\rprediction_id\x18\x02 \x01(\r\"\xfb\x01\n\x15GetPredictionResponse\x12:\n\nprediction\x18\x01 \x01(\x0b\x32$.biatob.proto.mvp.UserPredictionViewH\x00\x12>\n\x05\x65rror\x18\x02 \x01(\x0b\x32-.biatob.proto.mvp.GetPredictionResponse.ErrorH\x00\x1aM\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\t\x12\x32\n\x12no_such_prediction\x18\x02 \x01(\x0e\x32\x16.biatob.proto.mvp.VoidB\x17\n\x15get_prediction_result\"\xd0\x03\n\x12UserPredictionView\x12\x12\n\nprediction\x18\x01 \x01(\t\x12\x33\n\tcertainty\x18\x02 \x01(\x0b\x32 .biatob.proto.mvp.CertaintyRange\x12\x1b\n\x13maximum_stake_cents\x18\x03 \x01(\r\x12*\n\"remaining_stake_cents_vs_believers\x18\x04 \x01(\r\x12)\n!remaining_stake_cents_vs_skeptics\x18\x05 \x01(\r\x12\x18\n\x10\x63reated_unixtime\x18\x06 \x01(\r\x12\x17\n\x0f\x63loses_unixtime\x18\x07 \x01(\r\x12\x15\n\rspecial_rules\x18\x08 \x01(\t\x12/\n\x07\x63reator\x18\t \x01(\x0b\x32\x1e.biatob.proto.mvp.UserUserView\x12\x36\n\x0bresolutions\x18\n \x03(\x0b\x32!.biatob.proto.mvp.ResolutionEvent\x12,\n\x0byour_trades\x18\x0b \x03(\x0b\x32\x17.biatob.proto.mvp.Trade\x12\x1c\n\x14resolves_at_unixtime\x18\x0c \x01(\r\"]\n\x0cUserUserView\x12\x14\n\x0c\x64isplay_name\x18\x01 \x01(\t\x12\x0f\n\x07is_self\x18\x02 \x01(\x08\x12\x12\n\nis_trusted\x18\x03 \x01(\x08\x12\x12\n\ntrusts_you\x18\x04 \x01(\x08\"\x1a\n\x18ListMyPredictionsRequest\"\xfd\x01\n\x19ListMyPredictionsResponse\x12/\n\x02ok\x18\x01 \x01(\x0b\x32!.biatob.proto.mvp.PredictionsByIdH\x00\x12\x42\n\x05\x65rror\x18\x02 \x01(\x0b\x32\x31.biatob.proto.mvp.ListMyPredictionsResponse.ErrorH\x00\x1aM\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\t\x12\x32\n\x12no_such_prediction\x18\x02 \x01(\x0e\x32\x16.biatob.proto.mvp.VoidB\x1c\n\x1alist_my_predictions_result\"\xb4\x01\n\x0fPredictionsById\x12G\n\x0bpredictions\x18\x01 \x03(\x0b\x32\x32.biatob.proto.mvp.PredictionsById.PredictionsEntry\x1aX\n\x10PredictionsEntry\x12\x0b\n\x03key\x18\x01 \x01(\r\x12\x33\n\x05value\x18\x02 \x01(\x0b\x32$.biatob.proto.mvp.UserPredictionView:\x02\x38\x01\"^\n\x0cStakeRequest\x12\x15\n\rprediction_id\x18\x02 \x01(\r\x12\x1b\n\x13\x62\x65ttor_is_a_skeptic\x18\x03 \x01(\x08\x12\x1a\n\x12\x62\x65ttor_stake_cents\x18\x04 \x01(\r\"\x98\x01\n\rStakeResponse\x12$\n\x02ok\x18\x01 \x01(\x0e\x32\x16.biatob.proto.mvp.VoidH\x00\x12\x36\n\x05\x65rror\x18\x02 \x01(\x0b\x32%.biatob.proto.mvp.StakeResponse.ErrorH\x00\x1a\x19\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\tB\x0e\n\x0cstake_result\"h\n\x0eResolveRequest\x12\x15\n\rprediction_id\x18\x01 \x01(\r\x12\x30\n\nresolution\x18\x02 \x01(\x0e\x32\x1c.biatob.proto.mvp.Resolution\x12\r\n\x05notes\x18\x03 \x01(\t\"\x9e\x01\n\x0fResolveResponse\x12$\n\x02ok\x18\x01 \x01(\x0e\x32\x16.biatob.proto.mvp.VoidH\x00\x12\x38\n\x05\x65rror\x18\x02 \x01(\x0b\x32\'.biatob.proto.mvp.ResolveResponse.ErrorH\x00\x1a\x19\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\tB\x10\n\x0eresolve_result\"K\n\x11SetTrustedRequest\x12%\n\x03who\x18\x01 \x01(\x0b\x32\x18.biatob.proto.mvp.UserId\x12\x0f\n\x07trusted\x18\x02 \x01(\x08\"\xa8\x01\n\x12SetTrustedResponse\x12$\n\x02ok\x18\x01 \x01(\x0e\x32\x16.biatob.proto.mvp.VoidH\x00\x12;\n\x05\x65rror\x18\x02 \x01(\x0b\x32*.biatob.proto.mvp.SetTrustedResponse.ErrorH\x00\x1a\x19\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\tB\x14\n\x12set_trusted_result\"7\n\x0eGetUserRequest\x12%\n\x03who\x18\x01 \x01(\x0b\x32\x18.biatob.proto.mvp.UserId\"\xa7\x01\n\x0fGetUserResponse\x12,\n\x02ok\x18\x01 \x01(\x0b\x32\x1e.biatob.proto.mvp.UserUserViewH\x00\x12\x38\n\x05\x65rror\x18\x02 \x01(\x0b\x32\'.biatob.proto.mvp.GetUserResponse.ErrorH\x00\x1a\x19\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\tB\x11\n\x0fget_user_result\"C\n\x15\x43hangePasswordRequest\x12\x14\n\x0cold_password\x18\x01 \x01(\t\x12\x14\n\x0cnew_password\x18\x02 \x01(\t\"\xb4\x01\n\x16\x43hangePasswordResponse\x12$\n\x02ok\x18\x01 \x01(\x0e\x32\x16.biatob.proto.mvp.VoidH\x00\x12?\n\x05\x65rror\x18\x02 \x01(\x0b\x32..biatob.proto.mvp.ChangePasswordResponse.ErrorH\x00\x1a\x19\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\tB\x18\n\x16\x63hange_password_result*\x10\n\x04Void\x12\x08\n\x04VOID\x10\x00*d\n\nResolution\x12\x17\n\x13RESOLUTION_NONE_YET\x10\x00\x12\x12\n\x0eRESOLUTION_YES\x10\x01\x12\x11\n\rRESOLUTION_NO\x10\x02\x12\x16\n\x12RESOLUTION_INVALID\x10\x03\x62\x06proto3')
 )
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
@@ -37,8 +37,8 @@ _VOID = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=5122,
-  serialized_end=5138,
+  serialized_start=5266,
+  serialized_end=5282,
 )
 _sym_db.RegisterEnumDescriptor(_VOID)
 
@@ -68,8 +68,8 @@ _RESOLUTION = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=5140,
-  serialized_end=5240,
+  serialized_start=5284,
+  serialized_end=5384,
 )
 _sym_db.RegisterEnumDescriptor(_RESOLUTION)
 
@@ -201,26 +201,26 @@ _WORLDSTATE_USERNAMEUSERSENTRY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=353,
-  serialized_end=448,
+  serialized_start=361,
+  serialized_end=456,
 )
 
-_WORLDSTATE_MARKETSENTRY = _descriptor.Descriptor(
-  name='MarketsEntry',
-  full_name='biatob.proto.mvp.WorldState.MarketsEntry',
+_WORLDSTATE_PREDICTIONSENTRY = _descriptor.Descriptor(
+  name='PredictionsEntry',
+  full_name='biatob.proto.mvp.WorldState.PredictionsEntry',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='key', full_name='biatob.proto.mvp.WorldState.MarketsEntry.key', index=0,
+      name='key', full_name='biatob.proto.mvp.WorldState.PredictionsEntry.key', index=0,
       number=1, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='value', full_name='biatob.proto.mvp.WorldState.MarketsEntry.value', index=1,
+      name='value', full_name='biatob.proto.mvp.WorldState.PredictionsEntry.value', index=1,
       number=2, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -238,8 +238,8 @@ _WORLDSTATE_MARKETSENTRY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=450,
-  serialized_end=533,
+  serialized_start=458,
+  serialized_end=549,
 )
 
 _WORLDSTATE_GENERICUSERINFO = _descriptor.Descriptor(
@@ -268,8 +268,8 @@ _WORLDSTATE_GENERICUSERINFO = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=535,
-  serialized_end=601,
+  serialized_start=551,
+  serialized_end=617,
 )
 
 _WORLDSTATE_USERNAMEINFO = _descriptor.Descriptor(
@@ -305,82 +305,82 @@ _WORLDSTATE_USERNAMEINFO = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=603,
-  serialized_end=702,
+  serialized_start=619,
+  serialized_end=718,
 )
 
-_WORLDSTATE_MARKET = _descriptor.Descriptor(
-  name='Market',
-  full_name='biatob.proto.mvp.WorldState.Market',
+_WORLDSTATE_PREDICTION = _descriptor.Descriptor(
+  name='Prediction',
+  full_name='biatob.proto.mvp.WorldState.Prediction',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='prediction', full_name='biatob.proto.mvp.WorldState.Market.prediction', index=0,
+      name='prediction', full_name='biatob.proto.mvp.WorldState.Prediction.prediction', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='certainty', full_name='biatob.proto.mvp.WorldState.Market.certainty', index=1,
+      name='certainty', full_name='biatob.proto.mvp.WorldState.Prediction.certainty', index=1,
       number=2, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='maximum_stake_cents', full_name='biatob.proto.mvp.WorldState.Market.maximum_stake_cents', index=2,
+      name='maximum_stake_cents', full_name='biatob.proto.mvp.WorldState.Prediction.maximum_stake_cents', index=2,
       number=3, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='created_unixtime', full_name='biatob.proto.mvp.WorldState.Market.created_unixtime', index=3,
+      name='created_unixtime', full_name='biatob.proto.mvp.WorldState.Prediction.created_unixtime', index=3,
       number=4, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='closes_unixtime', full_name='biatob.proto.mvp.WorldState.Market.closes_unixtime', index=4,
+      name='closes_unixtime', full_name='biatob.proto.mvp.WorldState.Prediction.closes_unixtime', index=4,
       number=5, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='resolves_at_unixtime', full_name='biatob.proto.mvp.WorldState.Market.resolves_at_unixtime', index=5,
+      name='resolves_at_unixtime', full_name='biatob.proto.mvp.WorldState.Prediction.resolves_at_unixtime', index=5,
       number=11, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='special_rules', full_name='biatob.proto.mvp.WorldState.Market.special_rules', index=6,
+      name='special_rules', full_name='biatob.proto.mvp.WorldState.Prediction.special_rules', index=6,
       number=6, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='creator', full_name='biatob.proto.mvp.WorldState.Market.creator', index=7,
+      name='creator', full_name='biatob.proto.mvp.WorldState.Prediction.creator', index=7,
       number=7, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='trades', full_name='biatob.proto.mvp.WorldState.Market.trades', index=8,
+      name='trades', full_name='biatob.proto.mvp.WorldState.Prediction.trades', index=8,
       number=8, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='resolutions', full_name='biatob.proto.mvp.WorldState.Market.resolutions', index=9,
+      name='resolutions', full_name='biatob.proto.mvp.WorldState.Prediction.resolutions', index=9,
       number=10, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
@@ -398,8 +398,8 @@ _WORLDSTATE_MARKET = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=705,
-  serialized_end=1059,
+  serialized_start=721,
+  serialized_end=1079,
 )
 
 _WORLDSTATE = _descriptor.Descriptor(
@@ -417,7 +417,7 @@ _WORLDSTATE = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='markets', full_name='biatob.proto.mvp.WorldState.markets', index=1,
+      name='predictions', full_name='biatob.proto.mvp.WorldState.predictions', index=1,
       number=2, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
@@ -426,7 +426,7 @@ _WORLDSTATE = _descriptor.Descriptor(
   ],
   extensions=[
   ],
-  nested_types=[_WORLDSTATE_USERNAMEUSERSENTRY, _WORLDSTATE_MARKETSENTRY, _WORLDSTATE_GENERICUSERINFO, _WORLDSTATE_USERNAMEINFO, _WORLDSTATE_MARKET, ],
+  nested_types=[_WORLDSTATE_USERNAMEUSERSENTRY, _WORLDSTATE_PREDICTIONSENTRY, _WORLDSTATE_GENERICUSERINFO, _WORLDSTATE_USERNAMEINFO, _WORLDSTATE_PREDICTION, ],
   enum_types=[
   ],
   options=None,
@@ -436,7 +436,7 @@ _WORLDSTATE = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=206,
-  serialized_end=1059,
+  serialized_end=1079,
 )
 
 
@@ -480,8 +480,8 @@ _RESOLUTIONEVENT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1061,
-  serialized_end=1161,
+  serialized_start=1081,
+  serialized_end=1181,
 )
 
 
@@ -539,8 +539,8 @@ _TRADE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1164,
-  serialized_end=1328,
+  serialized_start=1184,
+  serialized_end=1348,
 )
 
 
@@ -563,8 +563,8 @@ _WHOAMIREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1330,
-  serialized_end=1345,
+  serialized_start=1350,
+  serialized_end=1365,
 )
 
 
@@ -594,8 +594,8 @@ _WHOAMIRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1347,
-  serialized_end=1406,
+  serialized_start=1367,
+  serialized_end=1426,
 )
 
 
@@ -618,8 +618,8 @@ _SIGNOUTREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1408,
-  serialized_end=1424,
+  serialized_start=1428,
+  serialized_end=1444,
 )
 
 
@@ -642,8 +642,8 @@ _SIGNOUTRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1426,
-  serialized_end=1443,
+  serialized_start=1446,
+  serialized_end=1463,
 )
 
 
@@ -680,8 +680,8 @@ _REGISTERUSERNAMEREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1445,
-  serialized_end=1506,
+  serialized_start=1465,
+  serialized_end=1526,
 )
 
 
@@ -718,8 +718,8 @@ _REGISTERUSERNAMERESPONSE_ERROR = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1647,
-  serialized_end=1720,
+  serialized_start=1667,
+  serialized_end=1740,
 )
 
 _REGISTERUSERNAMERESPONSE = _descriptor.Descriptor(
@@ -758,8 +758,8 @@ _REGISTERUSERNAMERESPONSE = _descriptor.Descriptor(
       name='register_username_result', full_name='biatob.proto.mvp.RegisterUsernameResponse.register_username_result',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=1509,
-  serialized_end=1748,
+  serialized_start=1529,
+  serialized_end=1768,
 )
 
 
@@ -796,8 +796,8 @@ _LOGINUSERNAMEREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1750,
-  serialized_end=1808,
+  serialized_start=1770,
+  serialized_end=1828,
 )
 
 
@@ -827,8 +827,8 @@ _LOGINUSERNAMERESPONSE_ERROR = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1647,
-  serialized_end=1672,
+  serialized_start=1667,
+  serialized_end=1692,
 )
 
 _LOGINUSERNAMERESPONSE = _descriptor.Descriptor(
@@ -867,8 +867,8 @@ _LOGINUSERNAMERESPONSE = _descriptor.Descriptor(
       name='log_in_username_result', full_name='biatob.proto.mvp.LogInUsernameResponse.log_in_username_result',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=1811,
-  serialized_end=1994,
+  serialized_start=1831,
+  serialized_end=2014,
 )
 
 
@@ -905,20 +905,20 @@ _CERTAINTYRANGE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1996,
-  serialized_end=2039,
+  serialized_start=2016,
+  serialized_end=2059,
 )
 
 
-_MARKETPRIVACY_EMAILS = _descriptor.Descriptor(
+_PREDICTIONPRIVACY_EMAILS = _descriptor.Descriptor(
   name='Emails',
-  full_name='biatob.proto.mvp.MarketPrivacy.Emails',
+  full_name='biatob.proto.mvp.PredictionPrivacy.Emails',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='emails', full_name='biatob.proto.mvp.MarketPrivacy.Emails.emails', index=0,
+      name='emails', full_name='biatob.proto.mvp.PredictionPrivacy.Emails.emails', index=0,
       number=1, type=9, cpp_type=9, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
@@ -936,26 +936,26 @@ _MARKETPRIVACY_EMAILS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2182,
-  serialized_end=2206,
+  serialized_start=2210,
+  serialized_end=2234,
 )
 
-_MARKETPRIVACY = _descriptor.Descriptor(
-  name='MarketPrivacy',
-  full_name='biatob.proto.mvp.MarketPrivacy',
+_PREDICTIONPRIVACY = _descriptor.Descriptor(
+  name='PredictionPrivacy',
+  full_name='biatob.proto.mvp.PredictionPrivacy',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='all_trusted_by_author', full_name='biatob.proto.mvp.MarketPrivacy.all_trusted_by_author', index=0,
+      name='all_trusted_by_author', full_name='biatob.proto.mvp.PredictionPrivacy.all_trusted_by_author', index=0,
       number=1, type=14, cpp_type=8, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='specific_users', full_name='biatob.proto.mvp.MarketPrivacy.specific_users', index=1,
+      name='specific_users', full_name='biatob.proto.mvp.PredictionPrivacy.specific_users', index=1,
       number=2, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -964,7 +964,7 @@ _MARKETPRIVACY = _descriptor.Descriptor(
   ],
   extensions=[
   ],
-  nested_types=[_MARKETPRIVACY_EMAILS, ],
+  nested_types=[_PREDICTIONPRIVACY_EMAILS, ],
   enum_types=[
   ],
   options=None,
@@ -973,65 +973,65 @@ _MARKETPRIVACY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
     _descriptor.OneofDescriptor(
-      name='privacy_kind', full_name='biatob.proto.mvp.MarketPrivacy.privacy_kind',
+      name='privacy_kind', full_name='biatob.proto.mvp.PredictionPrivacy.privacy_kind',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=2042,
-  serialized_end=2222,
+  serialized_start=2062,
+  serialized_end=2250,
 )
 
 
-_CREATEMARKETREQUEST = _descriptor.Descriptor(
-  name='CreateMarketRequest',
-  full_name='biatob.proto.mvp.CreateMarketRequest',
+_CREATEPREDICTIONREQUEST = _descriptor.Descriptor(
+  name='CreatePredictionRequest',
+  full_name='biatob.proto.mvp.CreatePredictionRequest',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='prediction', full_name='biatob.proto.mvp.CreateMarketRequest.prediction', index=0,
+      name='prediction', full_name='biatob.proto.mvp.CreatePredictionRequest.prediction', index=0,
       number=2, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='privacy', full_name='biatob.proto.mvp.CreateMarketRequest.privacy', index=1,
+      name='privacy', full_name='biatob.proto.mvp.CreatePredictionRequest.privacy', index=1,
       number=3, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='certainty', full_name='biatob.proto.mvp.CreateMarketRequest.certainty', index=2,
+      name='certainty', full_name='biatob.proto.mvp.CreatePredictionRequest.certainty', index=2,
       number=4, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='maximum_stake_cents', full_name='biatob.proto.mvp.CreateMarketRequest.maximum_stake_cents', index=3,
+      name='maximum_stake_cents', full_name='biatob.proto.mvp.CreatePredictionRequest.maximum_stake_cents', index=3,
       number=5, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='open_seconds', full_name='biatob.proto.mvp.CreateMarketRequest.open_seconds', index=4,
+      name='open_seconds', full_name='biatob.proto.mvp.CreatePredictionRequest.open_seconds', index=4,
       number=6, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='special_rules', full_name='biatob.proto.mvp.CreateMarketRequest.special_rules', index=5,
+      name='special_rules', full_name='biatob.proto.mvp.CreatePredictionRequest.special_rules', index=5,
       number=7, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='resolves_at_unixtime', full_name='biatob.proto.mvp.CreateMarketRequest.resolves_at_unixtime', index=6,
+      name='resolves_at_unixtime', full_name='biatob.proto.mvp.CreatePredictionRequest.resolves_at_unixtime', index=6,
       number=8, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -1049,20 +1049,20 @@ _CREATEMARKETREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2225,
-  serialized_end=2473,
+  serialized_start=2253,
+  serialized_end=2509,
 )
 
 
-_CREATEMARKETRESPONSE_ERROR = _descriptor.Descriptor(
+_CREATEPREDICTIONRESPONSE_ERROR = _descriptor.Descriptor(
   name='Error',
-  full_name='biatob.proto.mvp.CreateMarketResponse.Error',
+  full_name='biatob.proto.mvp.CreatePredictionResponse.Error',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='catchall', full_name='biatob.proto.mvp.CreateMarketResponse.Error.catchall', index=0,
+      name='catchall', full_name='biatob.proto.mvp.CreatePredictionResponse.Error.catchall', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
@@ -1080,26 +1080,26 @@ _CREATEMARKETRESPONSE_ERROR = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1647,
-  serialized_end=1672,
+  serialized_start=1667,
+  serialized_end=1692,
 )
 
-_CREATEMARKETRESPONSE = _descriptor.Descriptor(
-  name='CreateMarketResponse',
-  full_name='biatob.proto.mvp.CreateMarketResponse',
+_CREATEPREDICTIONRESPONSE = _descriptor.Descriptor(
+  name='CreatePredictionResponse',
+  full_name='biatob.proto.mvp.CreatePredictionResponse',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='new_market_id', full_name='biatob.proto.mvp.CreateMarketResponse.new_market_id', index=0,
+      name='new_prediction_id', full_name='biatob.proto.mvp.CreatePredictionResponse.new_prediction_id', index=0,
       number=1, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='error', full_name='biatob.proto.mvp.CreateMarketResponse.error', index=1,
+      name='error', full_name='biatob.proto.mvp.CreatePredictionResponse.error', index=1,
       number=2, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -1108,7 +1108,7 @@ _CREATEMARKETRESPONSE = _descriptor.Descriptor(
   ],
   extensions=[
   ],
-  nested_types=[_CREATEMARKETRESPONSE_ERROR, ],
+  nested_types=[_CREATEPREDICTIONRESPONSE_ERROR, ],
   enum_types=[
   ],
   options=None,
@@ -1117,23 +1117,23 @@ _CREATEMARKETRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
     _descriptor.OneofDescriptor(
-      name='create_market_result', full_name='biatob.proto.mvp.CreateMarketResponse.create_market_result',
+      name='create_prediction_result', full_name='biatob.proto.mvp.CreatePredictionResponse.create_prediction_result',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=2476,
-  serialized_end=2637,
+  serialized_start=2512,
+  serialized_end=2689,
 )
 
 
-_GETMARKETREQUEST = _descriptor.Descriptor(
-  name='GetMarketRequest',
-  full_name='biatob.proto.mvp.GetMarketRequest',
+_GETPREDICTIONREQUEST = _descriptor.Descriptor(
+  name='GetPredictionRequest',
+  full_name='biatob.proto.mvp.GetPredictionRequest',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='market_id', full_name='biatob.proto.mvp.GetMarketRequest.market_id', index=0,
+      name='prediction_id', full_name='biatob.proto.mvp.GetPredictionRequest.prediction_id', index=0,
       number=2, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -1151,27 +1151,27 @@ _GETMARKETREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2639,
-  serialized_end=2676,
+  serialized_start=2691,
+  serialized_end=2736,
 )
 
 
-_GETMARKETRESPONSE_ERROR = _descriptor.Descriptor(
+_GETPREDICTIONRESPONSE_ERROR = _descriptor.Descriptor(
   name='Error',
-  full_name='biatob.proto.mvp.GetMarketResponse.Error',
+  full_name='biatob.proto.mvp.GetPredictionResponse.Error',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='catchall', full_name='biatob.proto.mvp.GetMarketResponse.Error.catchall', index=0,
+      name='catchall', full_name='biatob.proto.mvp.GetPredictionResponse.Error.catchall', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='no_such_market', full_name='biatob.proto.mvp.GetMarketResponse.Error.no_such_market', index=1,
+      name='no_such_prediction', full_name='biatob.proto.mvp.GetPredictionResponse.Error.no_such_prediction', index=1,
       number=2, type=14, cpp_type=8, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -1189,26 +1189,26 @@ _GETMARKETRESPONSE_ERROR = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2812,
-  serialized_end=2885,
+  serialized_start=2888,
+  serialized_end=2965,
 )
 
-_GETMARKETRESPONSE = _descriptor.Descriptor(
-  name='GetMarketResponse',
-  full_name='biatob.proto.mvp.GetMarketResponse',
+_GETPREDICTIONRESPONSE = _descriptor.Descriptor(
+  name='GetPredictionResponse',
+  full_name='biatob.proto.mvp.GetPredictionResponse',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='market', full_name='biatob.proto.mvp.GetMarketResponse.market', index=0,
+      name='prediction', full_name='biatob.proto.mvp.GetPredictionResponse.prediction', index=0,
       number=1, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='error', full_name='biatob.proto.mvp.GetMarketResponse.error', index=1,
+      name='error', full_name='biatob.proto.mvp.GetPredictionResponse.error', index=1,
       number=2, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -1217,7 +1217,7 @@ _GETMARKETRESPONSE = _descriptor.Descriptor(
   ],
   extensions=[
   ],
-  nested_types=[_GETMARKETRESPONSE_ERROR, ],
+  nested_types=[_GETPREDICTIONRESPONSE_ERROR, ],
   enum_types=[
   ],
   options=None,
@@ -1226,100 +1226,100 @@ _GETMARKETRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
     _descriptor.OneofDescriptor(
-      name='get_market_result', full_name='biatob.proto.mvp.GetMarketResponse.get_market_result',
+      name='get_prediction_result', full_name='biatob.proto.mvp.GetPredictionResponse.get_prediction_result',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=2679,
-  serialized_end=2906,
+  serialized_start=2739,
+  serialized_end=2990,
 )
 
 
-_USERMARKETVIEW = _descriptor.Descriptor(
-  name='UserMarketView',
-  full_name='biatob.proto.mvp.UserMarketView',
+_USERPREDICTIONVIEW = _descriptor.Descriptor(
+  name='UserPredictionView',
+  full_name='biatob.proto.mvp.UserPredictionView',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='prediction', full_name='biatob.proto.mvp.UserMarketView.prediction', index=0,
+      name='prediction', full_name='biatob.proto.mvp.UserPredictionView.prediction', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='certainty', full_name='biatob.proto.mvp.UserMarketView.certainty', index=1,
+      name='certainty', full_name='biatob.proto.mvp.UserPredictionView.certainty', index=1,
       number=2, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='maximum_stake_cents', full_name='biatob.proto.mvp.UserMarketView.maximum_stake_cents', index=2,
+      name='maximum_stake_cents', full_name='biatob.proto.mvp.UserPredictionView.maximum_stake_cents', index=2,
       number=3, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='remaining_stake_cents_vs_believers', full_name='biatob.proto.mvp.UserMarketView.remaining_stake_cents_vs_believers', index=3,
+      name='remaining_stake_cents_vs_believers', full_name='biatob.proto.mvp.UserPredictionView.remaining_stake_cents_vs_believers', index=3,
       number=4, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='remaining_stake_cents_vs_skeptics', full_name='biatob.proto.mvp.UserMarketView.remaining_stake_cents_vs_skeptics', index=4,
+      name='remaining_stake_cents_vs_skeptics', full_name='biatob.proto.mvp.UserPredictionView.remaining_stake_cents_vs_skeptics', index=4,
       number=5, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='created_unixtime', full_name='biatob.proto.mvp.UserMarketView.created_unixtime', index=5,
+      name='created_unixtime', full_name='biatob.proto.mvp.UserPredictionView.created_unixtime', index=5,
       number=6, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='closes_unixtime', full_name='biatob.proto.mvp.UserMarketView.closes_unixtime', index=6,
+      name='closes_unixtime', full_name='biatob.proto.mvp.UserPredictionView.closes_unixtime', index=6,
       number=7, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='special_rules', full_name='biatob.proto.mvp.UserMarketView.special_rules', index=7,
+      name='special_rules', full_name='biatob.proto.mvp.UserPredictionView.special_rules', index=7,
       number=8, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='creator', full_name='biatob.proto.mvp.UserMarketView.creator', index=8,
+      name='creator', full_name='biatob.proto.mvp.UserPredictionView.creator', index=8,
       number=9, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='resolutions', full_name='biatob.proto.mvp.UserMarketView.resolutions', index=9,
+      name='resolutions', full_name='biatob.proto.mvp.UserPredictionView.resolutions', index=9,
       number=10, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='your_trades', full_name='biatob.proto.mvp.UserMarketView.your_trades', index=10,
+      name='your_trades', full_name='biatob.proto.mvp.UserPredictionView.your_trades', index=10,
       number=11, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='resolves_at_unixtime', full_name='biatob.proto.mvp.UserMarketView.resolves_at_unixtime', index=11,
+      name='resolves_at_unixtime', full_name='biatob.proto.mvp.UserPredictionView.resolves_at_unixtime', index=11,
       number=12, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -1337,8 +1337,8 @@ _USERMARKETVIEW = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2909,
-  serialized_end=3369,
+  serialized_start=2993,
+  serialized_end=3457,
 )
 
 
@@ -1389,14 +1389,14 @@ _USERUSERVIEW = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3371,
-  serialized_end=3464,
+  serialized_start=3459,
+  serialized_end=3552,
 )
 
 
-_LISTMYMARKETSREQUEST = _descriptor.Descriptor(
-  name='ListMyMarketsRequest',
-  full_name='biatob.proto.mvp.ListMyMarketsRequest',
+_LISTMYPREDICTIONSREQUEST = _descriptor.Descriptor(
+  name='ListMyPredictionsRequest',
+  full_name='biatob.proto.mvp.ListMyPredictionsRequest',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
@@ -1413,27 +1413,27 @@ _LISTMYMARKETSREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3466,
-  serialized_end=3488,
+  serialized_start=3554,
+  serialized_end=3580,
 )
 
 
-_LISTMYMARKETSRESPONSE_ERROR = _descriptor.Descriptor(
+_LISTMYPREDICTIONSRESPONSE_ERROR = _descriptor.Descriptor(
   name='Error',
-  full_name='biatob.proto.mvp.ListMyMarketsResponse.Error',
+  full_name='biatob.proto.mvp.ListMyPredictionsResponse.Error',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='catchall', full_name='biatob.proto.mvp.ListMyMarketsResponse.Error.catchall', index=0,
+      name='catchall', full_name='biatob.proto.mvp.ListMyPredictionsResponse.Error.catchall', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='no_such_market', full_name='biatob.proto.mvp.ListMyMarketsResponse.Error.no_such_market', index=1,
+      name='no_such_prediction', full_name='biatob.proto.mvp.ListMyPredictionsResponse.Error.no_such_prediction', index=1,
       number=2, type=14, cpp_type=8, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -1451,26 +1451,26 @@ _LISTMYMARKETSRESPONSE_ERROR = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2812,
-  serialized_end=2885,
+  serialized_start=2888,
+  serialized_end=2965,
 )
 
-_LISTMYMARKETSRESPONSE = _descriptor.Descriptor(
-  name='ListMyMarketsResponse',
-  full_name='biatob.proto.mvp.ListMyMarketsResponse',
+_LISTMYPREDICTIONSRESPONSE = _descriptor.Descriptor(
+  name='ListMyPredictionsResponse',
+  full_name='biatob.proto.mvp.ListMyPredictionsResponse',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='ok', full_name='biatob.proto.mvp.ListMyMarketsResponse.ok', index=0,
+      name='ok', full_name='biatob.proto.mvp.ListMyPredictionsResponse.ok', index=0,
       number=1, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='error', full_name='biatob.proto.mvp.ListMyMarketsResponse.error', index=1,
+      name='error', full_name='biatob.proto.mvp.ListMyPredictionsResponse.error', index=1,
       number=2, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -1479,7 +1479,7 @@ _LISTMYMARKETSRESPONSE = _descriptor.Descriptor(
   ],
   extensions=[
   ],
-  nested_types=[_LISTMYMARKETSRESPONSE_ERROR, ],
+  nested_types=[_LISTMYPREDICTIONSRESPONSE_ERROR, ],
   enum_types=[
   ],
   options=None,
@@ -1488,30 +1488,30 @@ _LISTMYMARKETSRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
     _descriptor.OneofDescriptor(
-      name='list_my_markets_result', full_name='biatob.proto.mvp.ListMyMarketsResponse.list_my_markets_result',
+      name='list_my_predictions_result', full_name='biatob.proto.mvp.ListMyPredictionsResponse.list_my_predictions_result',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=3491,
-  serialized_end=3724,
+  serialized_start=3583,
+  serialized_end=3836,
 )
 
 
-_MARKETSBYID_MARKETSENTRY = _descriptor.Descriptor(
-  name='MarketsEntry',
-  full_name='biatob.proto.mvp.MarketsById.MarketsEntry',
+_PREDICTIONSBYID_PREDICTIONSENTRY = _descriptor.Descriptor(
+  name='PredictionsEntry',
+  full_name='biatob.proto.mvp.PredictionsById.PredictionsEntry',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='key', full_name='biatob.proto.mvp.MarketsById.MarketsEntry.key', index=0,
+      name='key', full_name='biatob.proto.mvp.PredictionsById.PredictionsEntry.key', index=0,
       number=1, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='value', full_name='biatob.proto.mvp.MarketsById.MarketsEntry.value', index=1,
+      name='value', full_name='biatob.proto.mvp.PredictionsById.PredictionsEntry.value', index=1,
       number=2, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -1529,19 +1529,19 @@ _MARKETSBYID_MARKETSENTRY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3803,
-  serialized_end=3883,
+  serialized_start=3931,
+  serialized_end=4019,
 )
 
-_MARKETSBYID = _descriptor.Descriptor(
-  name='MarketsById',
-  full_name='biatob.proto.mvp.MarketsById',
+_PREDICTIONSBYID = _descriptor.Descriptor(
+  name='PredictionsById',
+  full_name='biatob.proto.mvp.PredictionsById',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='markets', full_name='biatob.proto.mvp.MarketsById.markets', index=0,
+      name='predictions', full_name='biatob.proto.mvp.PredictionsById.predictions', index=0,
       number=1, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
@@ -1550,7 +1550,7 @@ _MARKETSBYID = _descriptor.Descriptor(
   ],
   extensions=[
   ],
-  nested_types=[_MARKETSBYID_MARKETSENTRY, ],
+  nested_types=[_PREDICTIONSBYID_PREDICTIONSENTRY, ],
   enum_types=[
   ],
   options=None,
@@ -1559,8 +1559,8 @@ _MARKETSBYID = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3727,
-  serialized_end=3883,
+  serialized_start=3839,
+  serialized_end=4019,
 )
 
 
@@ -1572,7 +1572,7 @@ _STAKEREQUEST = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='market_id', full_name='biatob.proto.mvp.StakeRequest.market_id', index=0,
+      name='prediction_id', full_name='biatob.proto.mvp.StakeRequest.prediction_id', index=0,
       number=2, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -1604,8 +1604,8 @@ _STAKEREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3885,
-  serialized_end=3975,
+  serialized_start=4021,
+  serialized_end=4115,
 )
 
 
@@ -1635,8 +1635,8 @@ _STAKERESPONSE_ERROR = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1647,
-  serialized_end=1672,
+  serialized_start=1667,
+  serialized_end=1692,
 )
 
 _STAKERESPONSE = _descriptor.Descriptor(
@@ -1675,8 +1675,8 @@ _STAKERESPONSE = _descriptor.Descriptor(
       name='stake_result', full_name='biatob.proto.mvp.StakeResponse.stake_result',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=3978,
-  serialized_end=4130,
+  serialized_start=4118,
+  serialized_end=4270,
 )
 
 
@@ -1688,7 +1688,7 @@ _RESOLVEREQUEST = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='market_id', full_name='biatob.proto.mvp.ResolveRequest.market_id', index=0,
+      name='prediction_id', full_name='biatob.proto.mvp.ResolveRequest.prediction_id', index=0,
       number=1, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -1720,8 +1720,8 @@ _RESOLVEREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=4132,
-  serialized_end=4232,
+  serialized_start=4272,
+  serialized_end=4376,
 )
 
 
@@ -1751,8 +1751,8 @@ _RESOLVERESPONSE_ERROR = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1647,
-  serialized_end=1672,
+  serialized_start=1667,
+  serialized_end=1692,
 )
 
 _RESOLVERESPONSE = _descriptor.Descriptor(
@@ -1791,8 +1791,8 @@ _RESOLVERESPONSE = _descriptor.Descriptor(
       name='resolve_result', full_name='biatob.proto.mvp.ResolveResponse.resolve_result',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=4235,
-  serialized_end=4393,
+  serialized_start=4379,
+  serialized_end=4537,
 )
 
 
@@ -1829,8 +1829,8 @@ _SETTRUSTEDREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=4395,
-  serialized_end=4470,
+  serialized_start=4539,
+  serialized_end=4614,
 )
 
 
@@ -1860,8 +1860,8 @@ _SETTRUSTEDRESPONSE_ERROR = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1647,
-  serialized_end=1672,
+  serialized_start=1667,
+  serialized_end=1692,
 )
 
 _SETTRUSTEDRESPONSE = _descriptor.Descriptor(
@@ -1900,8 +1900,8 @@ _SETTRUSTEDRESPONSE = _descriptor.Descriptor(
       name='set_trusted_result', full_name='biatob.proto.mvp.SetTrustedResponse.set_trusted_result',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=4473,
-  serialized_end=4641,
+  serialized_start=4617,
+  serialized_end=4785,
 )
 
 
@@ -1931,8 +1931,8 @@ _GETUSERREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=4643,
-  serialized_end=4698,
+  serialized_start=4787,
+  serialized_end=4842,
 )
 
 
@@ -1962,8 +1962,8 @@ _GETUSERRESPONSE_ERROR = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1647,
-  serialized_end=1672,
+  serialized_start=1667,
+  serialized_end=1692,
 )
 
 _GETUSERRESPONSE = _descriptor.Descriptor(
@@ -2002,8 +2002,8 @@ _GETUSERRESPONSE = _descriptor.Descriptor(
       name='get_user_result', full_name='biatob.proto.mvp.GetUserResponse.get_user_result',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=4701,
-  serialized_end=4868,
+  serialized_start=4845,
+  serialized_end=5012,
 )
 
 
@@ -2040,8 +2040,8 @@ _CHANGEPASSWORDREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=4870,
-  serialized_end=4937,
+  serialized_start=5014,
+  serialized_end=5081,
 )
 
 
@@ -2071,8 +2071,8 @@ _CHANGEPASSWORDRESPONSE_ERROR = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1647,
-  serialized_end=1672,
+  serialized_start=1667,
+  serialized_end=1692,
 )
 
 _CHANGEPASSWORDRESPONSE = _descriptor.Descriptor(
@@ -2111,8 +2111,8 @@ _CHANGEPASSWORDRESPONSE = _descriptor.Descriptor(
       name='change_password_result', full_name='biatob.proto.mvp.ChangePasswordResponse.change_password_result',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=4940,
-  serialized_end=5120,
+  serialized_start=5084,
+  serialized_end=5264,
 )
 
 _USERID.oneofs_by_name['kind'].fields.append(
@@ -2121,19 +2121,19 @@ _USERID.fields_by_name['username'].containing_oneof = _USERID.oneofs_by_name['ki
 _AUTHTOKEN.fields_by_name['owner'].message_type = _USERID
 _WORLDSTATE_USERNAMEUSERSENTRY.fields_by_name['value'].message_type = _WORLDSTATE_USERNAMEINFO
 _WORLDSTATE_USERNAMEUSERSENTRY.containing_type = _WORLDSTATE
-_WORLDSTATE_MARKETSENTRY.fields_by_name['value'].message_type = _WORLDSTATE_MARKET
-_WORLDSTATE_MARKETSENTRY.containing_type = _WORLDSTATE
+_WORLDSTATE_PREDICTIONSENTRY.fields_by_name['value'].message_type = _WORLDSTATE_PREDICTION
+_WORLDSTATE_PREDICTIONSENTRY.containing_type = _WORLDSTATE
 _WORLDSTATE_GENERICUSERINFO.fields_by_name['trusted_users'].message_type = _USERID
 _WORLDSTATE_GENERICUSERINFO.containing_type = _WORLDSTATE
 _WORLDSTATE_USERNAMEINFO.fields_by_name['info'].message_type = _WORLDSTATE_GENERICUSERINFO
 _WORLDSTATE_USERNAMEINFO.containing_type = _WORLDSTATE
-_WORLDSTATE_MARKET.fields_by_name['certainty'].message_type = _CERTAINTYRANGE
-_WORLDSTATE_MARKET.fields_by_name['creator'].message_type = _USERID
-_WORLDSTATE_MARKET.fields_by_name['trades'].message_type = _TRADE
-_WORLDSTATE_MARKET.fields_by_name['resolutions'].message_type = _RESOLUTIONEVENT
-_WORLDSTATE_MARKET.containing_type = _WORLDSTATE
+_WORLDSTATE_PREDICTION.fields_by_name['certainty'].message_type = _CERTAINTYRANGE
+_WORLDSTATE_PREDICTION.fields_by_name['creator'].message_type = _USERID
+_WORLDSTATE_PREDICTION.fields_by_name['trades'].message_type = _TRADE
+_WORLDSTATE_PREDICTION.fields_by_name['resolutions'].message_type = _RESOLUTIONEVENT
+_WORLDSTATE_PREDICTION.containing_type = _WORLDSTATE
 _WORLDSTATE.fields_by_name['username_users'].message_type = _WORLDSTATE_USERNAMEUSERSENTRY
-_WORLDSTATE.fields_by_name['markets'].message_type = _WORLDSTATE_MARKETSENTRY
+_WORLDSTATE.fields_by_name['predictions'].message_type = _WORLDSTATE_PREDICTIONSENTRY
 _RESOLUTIONEVENT.fields_by_name['resolution'].enum_type = _RESOLUTION
 _TRADE.fields_by_name['bettor'].message_type = _USERID
 _WHOAMIRESPONSE.fields_by_name['auth'].message_type = _AUTHTOKEN
@@ -2156,52 +2156,52 @@ _LOGINUSERNAMERESPONSE.fields_by_name['ok'].containing_oneof = _LOGINUSERNAMERES
 _LOGINUSERNAMERESPONSE.oneofs_by_name['log_in_username_result'].fields.append(
   _LOGINUSERNAMERESPONSE.fields_by_name['error'])
 _LOGINUSERNAMERESPONSE.fields_by_name['error'].containing_oneof = _LOGINUSERNAMERESPONSE.oneofs_by_name['log_in_username_result']
-_MARKETPRIVACY_EMAILS.containing_type = _MARKETPRIVACY
-_MARKETPRIVACY.fields_by_name['all_trusted_by_author'].enum_type = _VOID
-_MARKETPRIVACY.fields_by_name['specific_users'].message_type = _MARKETPRIVACY_EMAILS
-_MARKETPRIVACY.oneofs_by_name['privacy_kind'].fields.append(
-  _MARKETPRIVACY.fields_by_name['all_trusted_by_author'])
-_MARKETPRIVACY.fields_by_name['all_trusted_by_author'].containing_oneof = _MARKETPRIVACY.oneofs_by_name['privacy_kind']
-_MARKETPRIVACY.oneofs_by_name['privacy_kind'].fields.append(
-  _MARKETPRIVACY.fields_by_name['specific_users'])
-_MARKETPRIVACY.fields_by_name['specific_users'].containing_oneof = _MARKETPRIVACY.oneofs_by_name['privacy_kind']
-_CREATEMARKETREQUEST.fields_by_name['privacy'].message_type = _MARKETPRIVACY
-_CREATEMARKETREQUEST.fields_by_name['certainty'].message_type = _CERTAINTYRANGE
-_CREATEMARKETRESPONSE_ERROR.containing_type = _CREATEMARKETRESPONSE
-_CREATEMARKETRESPONSE.fields_by_name['error'].message_type = _CREATEMARKETRESPONSE_ERROR
-_CREATEMARKETRESPONSE.oneofs_by_name['create_market_result'].fields.append(
-  _CREATEMARKETRESPONSE.fields_by_name['new_market_id'])
-_CREATEMARKETRESPONSE.fields_by_name['new_market_id'].containing_oneof = _CREATEMARKETRESPONSE.oneofs_by_name['create_market_result']
-_CREATEMARKETRESPONSE.oneofs_by_name['create_market_result'].fields.append(
-  _CREATEMARKETRESPONSE.fields_by_name['error'])
-_CREATEMARKETRESPONSE.fields_by_name['error'].containing_oneof = _CREATEMARKETRESPONSE.oneofs_by_name['create_market_result']
-_GETMARKETRESPONSE_ERROR.fields_by_name['no_such_market'].enum_type = _VOID
-_GETMARKETRESPONSE_ERROR.containing_type = _GETMARKETRESPONSE
-_GETMARKETRESPONSE.fields_by_name['market'].message_type = _USERMARKETVIEW
-_GETMARKETRESPONSE.fields_by_name['error'].message_type = _GETMARKETRESPONSE_ERROR
-_GETMARKETRESPONSE.oneofs_by_name['get_market_result'].fields.append(
-  _GETMARKETRESPONSE.fields_by_name['market'])
-_GETMARKETRESPONSE.fields_by_name['market'].containing_oneof = _GETMARKETRESPONSE.oneofs_by_name['get_market_result']
-_GETMARKETRESPONSE.oneofs_by_name['get_market_result'].fields.append(
-  _GETMARKETRESPONSE.fields_by_name['error'])
-_GETMARKETRESPONSE.fields_by_name['error'].containing_oneof = _GETMARKETRESPONSE.oneofs_by_name['get_market_result']
-_USERMARKETVIEW.fields_by_name['certainty'].message_type = _CERTAINTYRANGE
-_USERMARKETVIEW.fields_by_name['creator'].message_type = _USERUSERVIEW
-_USERMARKETVIEW.fields_by_name['resolutions'].message_type = _RESOLUTIONEVENT
-_USERMARKETVIEW.fields_by_name['your_trades'].message_type = _TRADE
-_LISTMYMARKETSRESPONSE_ERROR.fields_by_name['no_such_market'].enum_type = _VOID
-_LISTMYMARKETSRESPONSE_ERROR.containing_type = _LISTMYMARKETSRESPONSE
-_LISTMYMARKETSRESPONSE.fields_by_name['ok'].message_type = _MARKETSBYID
-_LISTMYMARKETSRESPONSE.fields_by_name['error'].message_type = _LISTMYMARKETSRESPONSE_ERROR
-_LISTMYMARKETSRESPONSE.oneofs_by_name['list_my_markets_result'].fields.append(
-  _LISTMYMARKETSRESPONSE.fields_by_name['ok'])
-_LISTMYMARKETSRESPONSE.fields_by_name['ok'].containing_oneof = _LISTMYMARKETSRESPONSE.oneofs_by_name['list_my_markets_result']
-_LISTMYMARKETSRESPONSE.oneofs_by_name['list_my_markets_result'].fields.append(
-  _LISTMYMARKETSRESPONSE.fields_by_name['error'])
-_LISTMYMARKETSRESPONSE.fields_by_name['error'].containing_oneof = _LISTMYMARKETSRESPONSE.oneofs_by_name['list_my_markets_result']
-_MARKETSBYID_MARKETSENTRY.fields_by_name['value'].message_type = _USERMARKETVIEW
-_MARKETSBYID_MARKETSENTRY.containing_type = _MARKETSBYID
-_MARKETSBYID.fields_by_name['markets'].message_type = _MARKETSBYID_MARKETSENTRY
+_PREDICTIONPRIVACY_EMAILS.containing_type = _PREDICTIONPRIVACY
+_PREDICTIONPRIVACY.fields_by_name['all_trusted_by_author'].enum_type = _VOID
+_PREDICTIONPRIVACY.fields_by_name['specific_users'].message_type = _PREDICTIONPRIVACY_EMAILS
+_PREDICTIONPRIVACY.oneofs_by_name['privacy_kind'].fields.append(
+  _PREDICTIONPRIVACY.fields_by_name['all_trusted_by_author'])
+_PREDICTIONPRIVACY.fields_by_name['all_trusted_by_author'].containing_oneof = _PREDICTIONPRIVACY.oneofs_by_name['privacy_kind']
+_PREDICTIONPRIVACY.oneofs_by_name['privacy_kind'].fields.append(
+  _PREDICTIONPRIVACY.fields_by_name['specific_users'])
+_PREDICTIONPRIVACY.fields_by_name['specific_users'].containing_oneof = _PREDICTIONPRIVACY.oneofs_by_name['privacy_kind']
+_CREATEPREDICTIONREQUEST.fields_by_name['privacy'].message_type = _PREDICTIONPRIVACY
+_CREATEPREDICTIONREQUEST.fields_by_name['certainty'].message_type = _CERTAINTYRANGE
+_CREATEPREDICTIONRESPONSE_ERROR.containing_type = _CREATEPREDICTIONRESPONSE
+_CREATEPREDICTIONRESPONSE.fields_by_name['error'].message_type = _CREATEPREDICTIONRESPONSE_ERROR
+_CREATEPREDICTIONRESPONSE.oneofs_by_name['create_prediction_result'].fields.append(
+  _CREATEPREDICTIONRESPONSE.fields_by_name['new_prediction_id'])
+_CREATEPREDICTIONRESPONSE.fields_by_name['new_prediction_id'].containing_oneof = _CREATEPREDICTIONRESPONSE.oneofs_by_name['create_prediction_result']
+_CREATEPREDICTIONRESPONSE.oneofs_by_name['create_prediction_result'].fields.append(
+  _CREATEPREDICTIONRESPONSE.fields_by_name['error'])
+_CREATEPREDICTIONRESPONSE.fields_by_name['error'].containing_oneof = _CREATEPREDICTIONRESPONSE.oneofs_by_name['create_prediction_result']
+_GETPREDICTIONRESPONSE_ERROR.fields_by_name['no_such_prediction'].enum_type = _VOID
+_GETPREDICTIONRESPONSE_ERROR.containing_type = _GETPREDICTIONRESPONSE
+_GETPREDICTIONRESPONSE.fields_by_name['prediction'].message_type = _USERPREDICTIONVIEW
+_GETPREDICTIONRESPONSE.fields_by_name['error'].message_type = _GETPREDICTIONRESPONSE_ERROR
+_GETPREDICTIONRESPONSE.oneofs_by_name['get_prediction_result'].fields.append(
+  _GETPREDICTIONRESPONSE.fields_by_name['prediction'])
+_GETPREDICTIONRESPONSE.fields_by_name['prediction'].containing_oneof = _GETPREDICTIONRESPONSE.oneofs_by_name['get_prediction_result']
+_GETPREDICTIONRESPONSE.oneofs_by_name['get_prediction_result'].fields.append(
+  _GETPREDICTIONRESPONSE.fields_by_name['error'])
+_GETPREDICTIONRESPONSE.fields_by_name['error'].containing_oneof = _GETPREDICTIONRESPONSE.oneofs_by_name['get_prediction_result']
+_USERPREDICTIONVIEW.fields_by_name['certainty'].message_type = _CERTAINTYRANGE
+_USERPREDICTIONVIEW.fields_by_name['creator'].message_type = _USERUSERVIEW
+_USERPREDICTIONVIEW.fields_by_name['resolutions'].message_type = _RESOLUTIONEVENT
+_USERPREDICTIONVIEW.fields_by_name['your_trades'].message_type = _TRADE
+_LISTMYPREDICTIONSRESPONSE_ERROR.fields_by_name['no_such_prediction'].enum_type = _VOID
+_LISTMYPREDICTIONSRESPONSE_ERROR.containing_type = _LISTMYPREDICTIONSRESPONSE
+_LISTMYPREDICTIONSRESPONSE.fields_by_name['ok'].message_type = _PREDICTIONSBYID
+_LISTMYPREDICTIONSRESPONSE.fields_by_name['error'].message_type = _LISTMYPREDICTIONSRESPONSE_ERROR
+_LISTMYPREDICTIONSRESPONSE.oneofs_by_name['list_my_predictions_result'].fields.append(
+  _LISTMYPREDICTIONSRESPONSE.fields_by_name['ok'])
+_LISTMYPREDICTIONSRESPONSE.fields_by_name['ok'].containing_oneof = _LISTMYPREDICTIONSRESPONSE.oneofs_by_name['list_my_predictions_result']
+_LISTMYPREDICTIONSRESPONSE.oneofs_by_name['list_my_predictions_result'].fields.append(
+  _LISTMYPREDICTIONSRESPONSE.fields_by_name['error'])
+_LISTMYPREDICTIONSRESPONSE.fields_by_name['error'].containing_oneof = _LISTMYPREDICTIONSRESPONSE.oneofs_by_name['list_my_predictions_result']
+_PREDICTIONSBYID_PREDICTIONSENTRY.fields_by_name['value'].message_type = _USERPREDICTIONVIEW
+_PREDICTIONSBYID_PREDICTIONSENTRY.containing_type = _PREDICTIONSBYID
+_PREDICTIONSBYID.fields_by_name['predictions'].message_type = _PREDICTIONSBYID_PREDICTIONSENTRY
 _STAKERESPONSE_ERROR.containing_type = _STAKERESPONSE
 _STAKERESPONSE.fields_by_name['ok'].enum_type = _VOID
 _STAKERESPONSE.fields_by_name['error'].message_type = _STAKERESPONSE_ERROR
@@ -2264,16 +2264,16 @@ DESCRIPTOR.message_types_by_name['RegisterUsernameResponse'] = _REGISTERUSERNAME
 DESCRIPTOR.message_types_by_name['LogInUsernameRequest'] = _LOGINUSERNAMEREQUEST
 DESCRIPTOR.message_types_by_name['LogInUsernameResponse'] = _LOGINUSERNAMERESPONSE
 DESCRIPTOR.message_types_by_name['CertaintyRange'] = _CERTAINTYRANGE
-DESCRIPTOR.message_types_by_name['MarketPrivacy'] = _MARKETPRIVACY
-DESCRIPTOR.message_types_by_name['CreateMarketRequest'] = _CREATEMARKETREQUEST
-DESCRIPTOR.message_types_by_name['CreateMarketResponse'] = _CREATEMARKETRESPONSE
-DESCRIPTOR.message_types_by_name['GetMarketRequest'] = _GETMARKETREQUEST
-DESCRIPTOR.message_types_by_name['GetMarketResponse'] = _GETMARKETRESPONSE
-DESCRIPTOR.message_types_by_name['UserMarketView'] = _USERMARKETVIEW
+DESCRIPTOR.message_types_by_name['PredictionPrivacy'] = _PREDICTIONPRIVACY
+DESCRIPTOR.message_types_by_name['CreatePredictionRequest'] = _CREATEPREDICTIONREQUEST
+DESCRIPTOR.message_types_by_name['CreatePredictionResponse'] = _CREATEPREDICTIONRESPONSE
+DESCRIPTOR.message_types_by_name['GetPredictionRequest'] = _GETPREDICTIONREQUEST
+DESCRIPTOR.message_types_by_name['GetPredictionResponse'] = _GETPREDICTIONRESPONSE
+DESCRIPTOR.message_types_by_name['UserPredictionView'] = _USERPREDICTIONVIEW
 DESCRIPTOR.message_types_by_name['UserUserView'] = _USERUSERVIEW
-DESCRIPTOR.message_types_by_name['ListMyMarketsRequest'] = _LISTMYMARKETSREQUEST
-DESCRIPTOR.message_types_by_name['ListMyMarketsResponse'] = _LISTMYMARKETSRESPONSE
-DESCRIPTOR.message_types_by_name['MarketsById'] = _MARKETSBYID
+DESCRIPTOR.message_types_by_name['ListMyPredictionsRequest'] = _LISTMYPREDICTIONSREQUEST
+DESCRIPTOR.message_types_by_name['ListMyPredictionsResponse'] = _LISTMYPREDICTIONSRESPONSE
+DESCRIPTOR.message_types_by_name['PredictionsById'] = _PREDICTIONSBYID
 DESCRIPTOR.message_types_by_name['StakeRequest'] = _STAKEREQUEST
 DESCRIPTOR.message_types_by_name['StakeResponse'] = _STAKERESPONSE
 DESCRIPTOR.message_types_by_name['ResolveRequest'] = _RESOLVEREQUEST
@@ -2310,10 +2310,10 @@ WorldState = _reflection.GeneratedProtocolMessageType('WorldState', (_message.Me
     ))
   ,
 
-  MarketsEntry = _reflection.GeneratedProtocolMessageType('MarketsEntry', (_message.Message,), dict(
-    DESCRIPTOR = _WORLDSTATE_MARKETSENTRY,
+  PredictionsEntry = _reflection.GeneratedProtocolMessageType('PredictionsEntry', (_message.Message,), dict(
+    DESCRIPTOR = _WORLDSTATE_PREDICTIONSENTRY,
     __module__ = 'protobuf.mvp_pb2'
-    # @@protoc_insertion_point(class_scope:biatob.proto.mvp.WorldState.MarketsEntry)
+    # @@protoc_insertion_point(class_scope:biatob.proto.mvp.WorldState.PredictionsEntry)
     ))
   ,
 
@@ -2331,10 +2331,10 @@ WorldState = _reflection.GeneratedProtocolMessageType('WorldState', (_message.Me
     ))
   ,
 
-  Market = _reflection.GeneratedProtocolMessageType('Market', (_message.Message,), dict(
-    DESCRIPTOR = _WORLDSTATE_MARKET,
+  Prediction = _reflection.GeneratedProtocolMessageType('Prediction', (_message.Message,), dict(
+    DESCRIPTOR = _WORLDSTATE_PREDICTION,
     __module__ = 'protobuf.mvp_pb2'
-    # @@protoc_insertion_point(class_scope:biatob.proto.mvp.WorldState.Market)
+    # @@protoc_insertion_point(class_scope:biatob.proto.mvp.WorldState.Prediction)
     ))
   ,
   DESCRIPTOR = _WORLDSTATE,
@@ -2343,10 +2343,10 @@ WorldState = _reflection.GeneratedProtocolMessageType('WorldState', (_message.Me
   ))
 _sym_db.RegisterMessage(WorldState)
 _sym_db.RegisterMessage(WorldState.UsernameUsersEntry)
-_sym_db.RegisterMessage(WorldState.MarketsEntry)
+_sym_db.RegisterMessage(WorldState.PredictionsEntry)
 _sym_db.RegisterMessage(WorldState.GenericUserInfo)
 _sym_db.RegisterMessage(WorldState.UsernameInfo)
-_sym_db.RegisterMessage(WorldState.Market)
+_sym_db.RegisterMessage(WorldState.Prediction)
 
 ResolutionEvent = _reflection.GeneratedProtocolMessageType('ResolutionEvent', (_message.Message,), dict(
   DESCRIPTOR = _RESOLUTIONEVENT,
@@ -2441,71 +2441,71 @@ CertaintyRange = _reflection.GeneratedProtocolMessageType('CertaintyRange', (_me
   ))
 _sym_db.RegisterMessage(CertaintyRange)
 
-MarketPrivacy = _reflection.GeneratedProtocolMessageType('MarketPrivacy', (_message.Message,), dict(
+PredictionPrivacy = _reflection.GeneratedProtocolMessageType('PredictionPrivacy', (_message.Message,), dict(
 
   Emails = _reflection.GeneratedProtocolMessageType('Emails', (_message.Message,), dict(
-    DESCRIPTOR = _MARKETPRIVACY_EMAILS,
+    DESCRIPTOR = _PREDICTIONPRIVACY_EMAILS,
     __module__ = 'protobuf.mvp_pb2'
-    # @@protoc_insertion_point(class_scope:biatob.proto.mvp.MarketPrivacy.Emails)
+    # @@protoc_insertion_point(class_scope:biatob.proto.mvp.PredictionPrivacy.Emails)
     ))
   ,
-  DESCRIPTOR = _MARKETPRIVACY,
+  DESCRIPTOR = _PREDICTIONPRIVACY,
   __module__ = 'protobuf.mvp_pb2'
-  # @@protoc_insertion_point(class_scope:biatob.proto.mvp.MarketPrivacy)
+  # @@protoc_insertion_point(class_scope:biatob.proto.mvp.PredictionPrivacy)
   ))
-_sym_db.RegisterMessage(MarketPrivacy)
-_sym_db.RegisterMessage(MarketPrivacy.Emails)
+_sym_db.RegisterMessage(PredictionPrivacy)
+_sym_db.RegisterMessage(PredictionPrivacy.Emails)
 
-CreateMarketRequest = _reflection.GeneratedProtocolMessageType('CreateMarketRequest', (_message.Message,), dict(
-  DESCRIPTOR = _CREATEMARKETREQUEST,
+CreatePredictionRequest = _reflection.GeneratedProtocolMessageType('CreatePredictionRequest', (_message.Message,), dict(
+  DESCRIPTOR = _CREATEPREDICTIONREQUEST,
   __module__ = 'protobuf.mvp_pb2'
-  # @@protoc_insertion_point(class_scope:biatob.proto.mvp.CreateMarketRequest)
+  # @@protoc_insertion_point(class_scope:biatob.proto.mvp.CreatePredictionRequest)
   ))
-_sym_db.RegisterMessage(CreateMarketRequest)
+_sym_db.RegisterMessage(CreatePredictionRequest)
 
-CreateMarketResponse = _reflection.GeneratedProtocolMessageType('CreateMarketResponse', (_message.Message,), dict(
+CreatePredictionResponse = _reflection.GeneratedProtocolMessageType('CreatePredictionResponse', (_message.Message,), dict(
 
   Error = _reflection.GeneratedProtocolMessageType('Error', (_message.Message,), dict(
-    DESCRIPTOR = _CREATEMARKETRESPONSE_ERROR,
+    DESCRIPTOR = _CREATEPREDICTIONRESPONSE_ERROR,
     __module__ = 'protobuf.mvp_pb2'
-    # @@protoc_insertion_point(class_scope:biatob.proto.mvp.CreateMarketResponse.Error)
+    # @@protoc_insertion_point(class_scope:biatob.proto.mvp.CreatePredictionResponse.Error)
     ))
   ,
-  DESCRIPTOR = _CREATEMARKETRESPONSE,
+  DESCRIPTOR = _CREATEPREDICTIONRESPONSE,
   __module__ = 'protobuf.mvp_pb2'
-  # @@protoc_insertion_point(class_scope:biatob.proto.mvp.CreateMarketResponse)
+  # @@protoc_insertion_point(class_scope:biatob.proto.mvp.CreatePredictionResponse)
   ))
-_sym_db.RegisterMessage(CreateMarketResponse)
-_sym_db.RegisterMessage(CreateMarketResponse.Error)
+_sym_db.RegisterMessage(CreatePredictionResponse)
+_sym_db.RegisterMessage(CreatePredictionResponse.Error)
 
-GetMarketRequest = _reflection.GeneratedProtocolMessageType('GetMarketRequest', (_message.Message,), dict(
-  DESCRIPTOR = _GETMARKETREQUEST,
+GetPredictionRequest = _reflection.GeneratedProtocolMessageType('GetPredictionRequest', (_message.Message,), dict(
+  DESCRIPTOR = _GETPREDICTIONREQUEST,
   __module__ = 'protobuf.mvp_pb2'
-  # @@protoc_insertion_point(class_scope:biatob.proto.mvp.GetMarketRequest)
+  # @@protoc_insertion_point(class_scope:biatob.proto.mvp.GetPredictionRequest)
   ))
-_sym_db.RegisterMessage(GetMarketRequest)
+_sym_db.RegisterMessage(GetPredictionRequest)
 
-GetMarketResponse = _reflection.GeneratedProtocolMessageType('GetMarketResponse', (_message.Message,), dict(
+GetPredictionResponse = _reflection.GeneratedProtocolMessageType('GetPredictionResponse', (_message.Message,), dict(
 
   Error = _reflection.GeneratedProtocolMessageType('Error', (_message.Message,), dict(
-    DESCRIPTOR = _GETMARKETRESPONSE_ERROR,
+    DESCRIPTOR = _GETPREDICTIONRESPONSE_ERROR,
     __module__ = 'protobuf.mvp_pb2'
-    # @@protoc_insertion_point(class_scope:biatob.proto.mvp.GetMarketResponse.Error)
+    # @@protoc_insertion_point(class_scope:biatob.proto.mvp.GetPredictionResponse.Error)
     ))
   ,
-  DESCRIPTOR = _GETMARKETRESPONSE,
+  DESCRIPTOR = _GETPREDICTIONRESPONSE,
   __module__ = 'protobuf.mvp_pb2'
-  # @@protoc_insertion_point(class_scope:biatob.proto.mvp.GetMarketResponse)
+  # @@protoc_insertion_point(class_scope:biatob.proto.mvp.GetPredictionResponse)
   ))
-_sym_db.RegisterMessage(GetMarketResponse)
-_sym_db.RegisterMessage(GetMarketResponse.Error)
+_sym_db.RegisterMessage(GetPredictionResponse)
+_sym_db.RegisterMessage(GetPredictionResponse.Error)
 
-UserMarketView = _reflection.GeneratedProtocolMessageType('UserMarketView', (_message.Message,), dict(
-  DESCRIPTOR = _USERMARKETVIEW,
+UserPredictionView = _reflection.GeneratedProtocolMessageType('UserPredictionView', (_message.Message,), dict(
+  DESCRIPTOR = _USERPREDICTIONVIEW,
   __module__ = 'protobuf.mvp_pb2'
-  # @@protoc_insertion_point(class_scope:biatob.proto.mvp.UserMarketView)
+  # @@protoc_insertion_point(class_scope:biatob.proto.mvp.UserPredictionView)
   ))
-_sym_db.RegisterMessage(UserMarketView)
+_sym_db.RegisterMessage(UserPredictionView)
 
 UserUserView = _reflection.GeneratedProtocolMessageType('UserUserView', (_message.Message,), dict(
   DESCRIPTOR = _USERUSERVIEW,
@@ -2514,42 +2514,42 @@ UserUserView = _reflection.GeneratedProtocolMessageType('UserUserView', (_messag
   ))
 _sym_db.RegisterMessage(UserUserView)
 
-ListMyMarketsRequest = _reflection.GeneratedProtocolMessageType('ListMyMarketsRequest', (_message.Message,), dict(
-  DESCRIPTOR = _LISTMYMARKETSREQUEST,
+ListMyPredictionsRequest = _reflection.GeneratedProtocolMessageType('ListMyPredictionsRequest', (_message.Message,), dict(
+  DESCRIPTOR = _LISTMYPREDICTIONSREQUEST,
   __module__ = 'protobuf.mvp_pb2'
-  # @@protoc_insertion_point(class_scope:biatob.proto.mvp.ListMyMarketsRequest)
+  # @@protoc_insertion_point(class_scope:biatob.proto.mvp.ListMyPredictionsRequest)
   ))
-_sym_db.RegisterMessage(ListMyMarketsRequest)
+_sym_db.RegisterMessage(ListMyPredictionsRequest)
 
-ListMyMarketsResponse = _reflection.GeneratedProtocolMessageType('ListMyMarketsResponse', (_message.Message,), dict(
+ListMyPredictionsResponse = _reflection.GeneratedProtocolMessageType('ListMyPredictionsResponse', (_message.Message,), dict(
 
   Error = _reflection.GeneratedProtocolMessageType('Error', (_message.Message,), dict(
-    DESCRIPTOR = _LISTMYMARKETSRESPONSE_ERROR,
+    DESCRIPTOR = _LISTMYPREDICTIONSRESPONSE_ERROR,
     __module__ = 'protobuf.mvp_pb2'
-    # @@protoc_insertion_point(class_scope:biatob.proto.mvp.ListMyMarketsResponse.Error)
+    # @@protoc_insertion_point(class_scope:biatob.proto.mvp.ListMyPredictionsResponse.Error)
     ))
   ,
-  DESCRIPTOR = _LISTMYMARKETSRESPONSE,
+  DESCRIPTOR = _LISTMYPREDICTIONSRESPONSE,
   __module__ = 'protobuf.mvp_pb2'
-  # @@protoc_insertion_point(class_scope:biatob.proto.mvp.ListMyMarketsResponse)
+  # @@protoc_insertion_point(class_scope:biatob.proto.mvp.ListMyPredictionsResponse)
   ))
-_sym_db.RegisterMessage(ListMyMarketsResponse)
-_sym_db.RegisterMessage(ListMyMarketsResponse.Error)
+_sym_db.RegisterMessage(ListMyPredictionsResponse)
+_sym_db.RegisterMessage(ListMyPredictionsResponse.Error)
 
-MarketsById = _reflection.GeneratedProtocolMessageType('MarketsById', (_message.Message,), dict(
+PredictionsById = _reflection.GeneratedProtocolMessageType('PredictionsById', (_message.Message,), dict(
 
-  MarketsEntry = _reflection.GeneratedProtocolMessageType('MarketsEntry', (_message.Message,), dict(
-    DESCRIPTOR = _MARKETSBYID_MARKETSENTRY,
+  PredictionsEntry = _reflection.GeneratedProtocolMessageType('PredictionsEntry', (_message.Message,), dict(
+    DESCRIPTOR = _PREDICTIONSBYID_PREDICTIONSENTRY,
     __module__ = 'protobuf.mvp_pb2'
-    # @@protoc_insertion_point(class_scope:biatob.proto.mvp.MarketsById.MarketsEntry)
+    # @@protoc_insertion_point(class_scope:biatob.proto.mvp.PredictionsById.PredictionsEntry)
     ))
   ,
-  DESCRIPTOR = _MARKETSBYID,
+  DESCRIPTOR = _PREDICTIONSBYID,
   __module__ = 'protobuf.mvp_pb2'
-  # @@protoc_insertion_point(class_scope:biatob.proto.mvp.MarketsById)
+  # @@protoc_insertion_point(class_scope:biatob.proto.mvp.PredictionsById)
   ))
-_sym_db.RegisterMessage(MarketsById)
-_sym_db.RegisterMessage(MarketsById.MarketsEntry)
+_sym_db.RegisterMessage(PredictionsById)
+_sym_db.RegisterMessage(PredictionsById.PredictionsEntry)
 
 StakeRequest = _reflection.GeneratedProtocolMessageType('StakeRequest', (_message.Message,), dict(
   DESCRIPTOR = _STAKEREQUEST,
@@ -2664,8 +2664,8 @@ _sym_db.RegisterMessage(ChangePasswordResponse.Error)
 
 _WORLDSTATE_USERNAMEUSERSENTRY.has_options = True
 _WORLDSTATE_USERNAMEUSERSENTRY._options = _descriptor._ParseOptions(descriptor_pb2.MessageOptions(), _b('8\001'))
-_WORLDSTATE_MARKETSENTRY.has_options = True
-_WORLDSTATE_MARKETSENTRY._options = _descriptor._ParseOptions(descriptor_pb2.MessageOptions(), _b('8\001'))
-_MARKETSBYID_MARKETSENTRY.has_options = True
-_MARKETSBYID_MARKETSENTRY._options = _descriptor._ParseOptions(descriptor_pb2.MessageOptions(), _b('8\001'))
+_WORLDSTATE_PREDICTIONSENTRY.has_options = True
+_WORLDSTATE_PREDICTIONSENTRY._options = _descriptor._ParseOptions(descriptor_pb2.MessageOptions(), _b('8\001'))
+_PREDICTIONSBYID_PREDICTIONSENTRY.has_options = True
+_PREDICTIONSBYID_PREDICTIONSENTRY._options = _descriptor._ParseOptions(descriptor_pb2.MessageOptions(), _b('8\001'))
 # @@protoc_insertion_point(module_scope)

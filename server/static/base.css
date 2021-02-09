@@ -20,12 +20,12 @@ h1, h2, h3 {
   text-align: center;
 }
 
-.create-market-form {
+.new-prediction-form {
   list-style: none;
   padding: 0;
 }
 
-.create-market-form li {
+.new-prediction-form li {
   margin: 1ex;
   padding: 1ex;
   background-color: #ddffff;

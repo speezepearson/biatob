@@ -26,7 +26,7 @@ type alias Config msg =
   , onStake : {bettorIsASkeptic:Bool, bettorStakeCents:Int} -> msg
   , nevermind : msg
   , disableCommit : Bool
-  , market : Pb.UserMarketView
+  , prediction : Pb.UserPredictionView
   }
 
 type alias State =
@@ -42,18 +42,18 @@ type alias State =
 view : Config msg -> State -> Html msg
 view config state =
   let
-    creator = Utils.mustMarketCreator config.market
-    certainty = Utils.mustMarketCertainty config.market
+    creator = Utils.mustPredictionCreator config.prediction
+    certainty = Utils.mustPredictionCertainty config.prediction
 
-    isClosed = Time.posixToMillis state.now > 1000*config.market.closesUnixtime
-    disableInputs = isClosed || Utils.resolutionIsTerminal (Utils.currentResolution config.market)
+    isClosed = Time.posixToMillis state.now > 1000*config.prediction.closesUnixtime
+    disableInputs = isClosed || Utils.resolutionIsTerminal (Utils.currentResolution config.prediction)
     disableCommit = disableInputs || config.disableCommit
-    winCentsIfYes = config.market.yourTrades |> List.map (\t -> if t.bettorIsASkeptic then -t.bettorStakeCents else t.creatorStakeCents) |> List.sum
-    winCentsIfNo = config.market.yourTrades |> List.map (\t -> if t.bettorIsASkeptic then t.creatorStakeCents else -t.bettorStakeCents) |> List.sum
+    winCentsIfYes = config.prediction.yourTrades |> List.map (\t -> if t.bettorIsASkeptic then -t.bettorStakeCents else t.creatorStakeCents) |> List.sum
+    winCentsIfNo = config.prediction.yourTrades |> List.map (\t -> if t.bettorIsASkeptic then t.creatorStakeCents else -t.bettorStakeCents) |> List.sum
     creatorStakeFactorVsBelievers = (1 - certainty.high) / certainty.high
     creatorStakeFactorVsSkeptics = certainty.low / (1 - certainty.low)
-    maxBelieverStakeCents = if creatorStakeFactorVsBelievers == 0 then 0 else toFloat config.market.remainingStakeCentsVsBelievers / creatorStakeFactorVsBelievers + 0.001 |> floor
-    maxSkepticStakeCents = if creatorStakeFactorVsSkeptics == 0 then 0 else toFloat config.market.remainingStakeCentsVsSkeptics / creatorStakeFactorVsSkeptics + 0.001 |> floor
+    maxBelieverStakeCents = if creatorStakeFactorVsBelievers == 0 then 0 else toFloat config.prediction.remainingStakeCentsVsBelievers / creatorStakeFactorVsBelievers + 0.001 |> floor
+    maxSkepticStakeCents = if creatorStakeFactorVsSkeptics == 0 then 0 else toFloat config.prediction.remainingStakeCentsVsSkeptics / creatorStakeFactorVsSkeptics + 0.001 |> floor
   in
   H.div []
     [ H.text <| "Do you think " ++ creator.displayName ++ " is..."
@@ -131,8 +131,8 @@ type MsgForDemo = SetState State | Ignore
 main : Program () State MsgForDemo
 main =
   let
-    market : Pb.UserMarketView
-    market =
+    prediction : Pb.UserPredictionView
+    prediction =
       { prediction = "at least 50% of U.S. COVID-19 cases will be B117 or a derivative strain, as reported by the CDC"
       , certainty = Just {low = 0.8, high = 0.9}
       , maximumStakeCents = 10000
@@ -140,7 +140,7 @@ main =
       , remainingStakeCentsVsSkeptics = 5000
       , createdUnixtime = 0 -- TODO
       , closesUnixtime = 86400
-      , specialRules = "If the CDC doesn't publish statistics on this, I'll fall back to some other official organization, like the WHO; failing that, I'll look for journal papers on U.S. cases, and go with a consensus if I find one; failing that, the market is unresolvable."
+      , specialRules = "If the CDC doesn't publish statistics on this, I'll fall back to some other official organization, like the WHO; failing that, I'll look for journal papers on U.S. cases, and go with a consensus if I find one; failing that, the prediction is unresolvable."
       , creator = Just {displayName = "Spencer", isSelf=False, trustsYou=True, isTrusted=True}
       , resolutions = []
       , yourTrades = []
@@ -149,7 +149,7 @@ main =
   in
   Browser.sandbox
     { init = init
-    , view = view {market=market, onStake = (\_ -> Ignore), nevermind=Ignore, setState=SetState, disableCommit=True}
+    , view = view {prediction=prediction, onStake = (\_ -> Ignore), nevermind=Ignore, setState=SetState, disableCommit=True}
     , update = \msg model -> case msg of
         Ignore -> model
         SetState newState -> newState

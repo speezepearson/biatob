@@ -1,4 +1,4 @@
-port module ViewMarketPage exposing (..)
+port module ViewPredictionPage exposing (..)
 
 import Browser
 import Html as H exposing (Html)
@@ -24,8 +24,8 @@ port copy : String -> Cmd msg
 
 type alias Model =
   { stakeForm : StakeForm.State
-  , market : Pb.UserMarketView
-  , marketId : Int
+  , prediction : Pb.UserPredictionView
+  , predictionId : Int
   , auth : Maybe Pb.AuthToken
   , working : Bool
   , stakeError : Maybe String
@@ -45,14 +45,14 @@ type Msg
   | Tick Time.Posix
   | Ignore
 
-setMarket : Pb.UserMarketView -> Model -> Model
-setMarket market model = { model | market = market }
+setPrediction : Pb.UserPredictionView -> Model -> Model
+setPrediction prediction model = { model | prediction = prediction }
 
-initBase : { market : Pb.UserMarketView , marketId : Int , auth : Maybe Pb.AuthToken, now : Time.Posix } -> ( Model, Cmd Msg )
+initBase : { prediction : Pb.UserPredictionView , predictionId : Int , auth : Maybe Pb.AuthToken, now : Time.Posix } -> ( Model, Cmd Msg )
 initBase flags =
   ( { stakeForm = StakeForm.init
-    , market = flags.market
-    , marketId = flags.marketId
+    , prediction = flags.prediction
+    , predictionId = flags.predictionId
     , auth = flags.auth
     , working = False
     , stakeError = Nothing
@@ -66,8 +66,8 @@ initBase flags =
 init : JD.Value -> (Model, Cmd Msg)
 init flags =
   initBase
-    { market = Utils.mustDecodePbFromFlags Pb.userMarketViewDecoder "marketPbB64" flags
-    , marketId = Utils.mustDecodeFromFlags JD.int "marketId" flags
+    { prediction = Utils.mustDecodePbFromFlags Pb.userPredictionViewDecoder "predictionPbB64" flags
+    , predictionId = Utils.mustDecodeFromFlags JD.int "predictionId" flags
     , auth = Utils.decodePbFromFlags Pb.authTokenDecoder "authTokenPbB64" flags
     , now = Time.millisToPosix 0
     }
@@ -93,7 +93,7 @@ update msg model =
       ({ model | stakeForm = newState }, Cmd.none)
     Stake {bettorIsASkeptic, bettorStakeCents} ->
       ( { model | working = True , stakeError = Nothing }
-      , postStake {marketId=model.marketId, bettorIsASkeptic=bettorIsASkeptic, bettorStakeCents=bettorStakeCents}
+      , postStake {predictionId=model.predictionId, bettorIsASkeptic=bettorIsASkeptic, bettorStakeCents=bettorStakeCents}
       )
     StakeFinished (Err e) ->
       ( { model | working = False , stakeError = Just (Debug.toString e) }
@@ -117,7 +117,7 @@ update msg model =
       ( { model | resolutionNotes = s } , Cmd.none )
     Resolve resolution ->
       ( { model | working = True , resolveError = Nothing }
-      , postResolve {marketId=model.marketId, resolution=resolution, notes = ""}
+      , postResolve {predictionId=model.predictionId, resolution=resolution, notes = ""}
       )
     ResolveFinished (Err e) ->
       ( { model | working = False , resolveError = Just (Debug.toString e) }
@@ -146,15 +146,15 @@ update msg model =
 
 viewStakeFormOrExcuse : Model -> Html Msg
 viewStakeFormOrExcuse model =
-  let creator = Utils.mustMarketCreator model.market in
-  if Utils.resolutionIsTerminal (Utils.currentResolution model.market) then
-    H.text "This market has resolved, so cannot be bet in."
-  else if Utils.secondsToClose model.now model.market <= 0 then
-    H.text <| "This market closed on " ++ Utils.dateStr Time.utc (Utils.marketClosesTime model.market) ++ " (UTC)."
+  let creator = Utils.mustPredictionCreator model.prediction in
+  if Utils.resolutionIsTerminal (Utils.currentResolution model.prediction) then
+    H.text "This prediction has resolved, so cannot be bet in."
+  else if Utils.secondsToClose model.now model.prediction <= 0 then
+    H.text <| "This prediction closed on " ++ Utils.dateStr Time.utc (Utils.predictionClosesTime model.prediction) ++ " (UTC)."
   else case model.auth of
     Nothing ->
       H.div []
-        [ H.text "You must be logged in to participate in this market!"
+        [ H.text "You must be logged in to participate in this prediction!"
         ]
     Just auth_ ->
       if creator.isSelf then
@@ -169,7 +169,7 @@ viewStakeFormOrExcuse model =
           ]
       else if not creator.isTrusted then
         H.text <|
-          "You don't trust the market creator!"
+          "You don't trust the prediction creator!"
           ++ " If you think that you *do* trust them in real life, ask them for a link to their user page,"
           ++ " and mark them as trusted."
       else
@@ -193,15 +193,15 @@ enumerateWinnings winningsByUser =
     |> List.map (\(b, win) -> H.li [] [H.text <| stateWinnings b win])
     )
 
-viewMarketState : Model -> Html Msg
-viewMarketState model =
+viewPredictionState : Model -> Html Msg
+viewPredictionState model =
   let
     auditLog : Html Msg
     auditLog =
-      if List.isEmpty model.market.resolutions then H.text "" else
+      if List.isEmpty model.prediction.resolutions then H.text "" else
       H.details [HA.style "opacity" "50%"]
         [ H.summary [] [H.text "Details"]
-        , model.market.resolutions
+        , model.prediction.resolutions
           |> List.map (\event -> H.li []
               [ H.text <| "[" ++ Utils.isoStr Time.utc (Utils.unixtimeToTime event.unixtime) ++ " UTC] "
               , H.text <| case event.resolution of
@@ -215,24 +215,24 @@ viewMarketState model =
         ]
   in
   H.div []
-    [ case Utils.currentResolution model.market of
+    [ case Utils.currentResolution model.prediction of
       Pb.ResolutionYes ->
-        H.text "This market has resolved YES. "
+        H.text "This prediction has resolved YES. "
       Pb.ResolutionNo ->
-        H.text "This market has resolved NO. "
+        H.text "This prediction has resolved NO. "
       Pb.ResolutionInvalid ->
-        H.text "This market has resolved INVALID. "
+        H.text "This prediction has resolved INVALID. "
       Pb.ResolutionNoneYet ->
         let
           nowUnixtime = Time.posixToMillis model.now // 1000
-          secondsToClose = model.market.closesUnixtime - nowUnixtime
-          secondsToResolve = model.market.resolvesAtUnixtime - nowUnixtime
+          secondsToClose = model.prediction.closesUnixtime - nowUnixtime
+          secondsToResolve = model.prediction.resolvesAtUnixtime - nowUnixtime
         in
           H.text <|
             ( if secondsToClose > 0 then
-                "This market closes in " ++ Utils.renderIntervalSeconds secondsToClose ++ ", and "
+                "This prediction closes in " ++ Utils.renderIntervalSeconds secondsToClose ++ ", and "
               else
-                "This market closed " ++ Utils.renderIntervalSeconds (abs secondsToClose) ++ " ago, and "
+                "This prediction closed " ++ Utils.renderIntervalSeconds (abs secondsToClose) ++ " ago, and "
             ) ++
             ( if secondsToResolve > 0 then
                 "should resolve in " ++ Utils.renderIntervalSeconds secondsToResolve ++ ". "
@@ -241,7 +241,7 @@ viewMarketState model =
             )
       Pb.ResolutionUnrecognized_ _ ->
         H.span [HA.style "color" "red"]
-          [H.text "Oh dear, something has gone very strange with this market. Please email TODO with this URL to report it!"]
+          [H.text "Oh dear, something has gone very strange with this prediction. Please email TODO with this URL to report it!"]
     , auditLog
     ]
 
@@ -250,10 +250,10 @@ viewWinnings model =
   let
     auditLog : Html Msg
     auditLog =
-      if List.isEmpty model.market.yourTrades then H.text "" else
+      if List.isEmpty model.prediction.yourTrades then H.text "" else
       H.details [HA.style "opacity" "50%"]
         [ H.summary [] [H.text "Details"]
-        , model.market.yourTrades
+        , model.prediction.yourTrades
           |> List.map (\t -> H.li [] [ H.text <| "[" ++ Utils.isoStr Time.utc (Utils.unixtimeToTime t.transactedUnixtime) ++ " UTC] "
                                      , Utils.renderUser (Utils.mustTradeBettor t)
                                      , H.text <| " bet " ++ (if t.bettorIsASkeptic then "NO" else "YES") ++ " staking " ++ Utils.formatCents t.bettorStakeCents ++ " against " ++ Utils.formatCents t.creatorStakeCents])
@@ -261,16 +261,16 @@ viewWinnings model =
         ]
     ifRes : Bool -> Html Msg
     ifRes res =
-      creatorWinningsByBettor res model.market.yourTrades
-        |> let creator = Utils.mustMarketCreator model.market in
+      creatorWinningsByBettor res model.prediction.yourTrades
+        |> let creator = Utils.mustPredictionCreator model.prediction in
             if creator.isSelf then
               enumerateWinnings
             else
               (D.values >> List.sum >> (\n -> -n) >> stateWinnings creator.displayName >> H.text)
   in
-  if List.isEmpty model.market.yourTrades then H.text "" else
+  if List.isEmpty model.prediction.yourTrades then H.text "" else
   H.div []
-    [ case Utils.currentResolution model.market of
+    [ case Utils.currentResolution model.prediction of
       Pb.ResolutionYes ->
         ifRes True
       Pb.ResolutionNo ->
@@ -289,9 +289,9 @@ viewWinnings model =
 viewCreationParams : Model -> Html Msg
 viewCreationParams model =
   let
-    creator = Utils.mustMarketCreator model.market
-    openTime = model.market.createdUnixtime |> (*) 1000 |> Time.millisToPosix
-    certainty = Utils.mustMarketCertainty model.market
+    creator = Utils.mustPredictionCreator model.prediction
+    openTime = model.prediction.createdUnixtime |> (*) 1000 |> Time.millisToPosix
+    certainty = Utils.mustPredictionCertainty model.prediction
   in
   H.p []
     [ H.text <| "On " ++ Utils.dateStr Time.utc openTime ++ " UTC, "
@@ -301,8 +301,8 @@ viewCreationParams model =
     , H.text "-"
     , certainty.high |> (*) 100 |> round |> String.fromInt |> H.text
     , H.text "% chance, and staked "
-    , model.market.maximumStakeCents |> Utils.formatCents |> H.text
-    , case (model.market.maximumStakeCents - model.market.remainingStakeCentsVsSkeptics, model.market.maximumStakeCents - model.market.remainingStakeCentsVsBelievers) of
+    , model.prediction.maximumStakeCents |> Utils.formatCents |> H.text
+    , case (model.prediction.maximumStakeCents - model.prediction.remainingStakeCentsVsSkeptics, model.prediction.maximumStakeCents - model.prediction.remainingStakeCentsVsBelievers) of
         (0, 0) -> H.text ""
         (promisedToSkeptics, 0) -> H.span [HA.style "opacity" "50%"] [H.text <| " (though they've already promised away " ++ Utils.formatCents promisedToSkeptics ++ " if they're too credulous)"]
         (0, promisedToBelievers) -> H.span [HA.style "opacity" "50%"] [H.text <| " (though they've already promised away " ++ Utils.formatCents promisedToBelievers ++ " if they're too skeptical)"]
@@ -312,17 +312,17 @@ viewCreationParams model =
 
 viewResolveButtons : Model -> Html Msg
 viewResolveButtons model =
-  if (Utils.mustMarketCreator model.market).isSelf then
+  if (Utils.mustPredictionCreator model.prediction).isSelf then
     H.div []
       [ let
           mistakeDetails =
             H.details [HA.style "color" "gray"]
               [ H.summary [] [H.text "Mistake?"]
-              , H.text "If you resolved this market incorrectly, you can "
+              , H.text "If you resolved this prediction incorrectly, you can "
               , H.button [HE.onClick (Resolve Pb.ResolutionNoneYet)] [H.text "un-resolve it."]
               ]
         in
-        case Utils.currentResolution model.market of
+        case Utils.currentResolution model.prediction of
           Pb.ResolutionYes ->
             mistakeDetails
           Pb.ResolutionNo ->
@@ -346,16 +346,16 @@ viewResolveButtons model =
 view : Model -> Html Msg
 view model =
   let
-    creator = Utils.mustMarketCreator model.market
+    creator = Utils.mustPredictionCreator model.prediction
   in
   H.div []
-    [ H.h2 [] [H.text <| "Prediction: " ++ model.market.prediction ++ ", by " ++ (String.left 10 <| Iso8601.fromTime <| Time.millisToPosix <| model.market.resolvesAtUnixtime * 1000)]
-    , viewMarketState model
+    [ H.h2 [] [H.text <| "Prediction: " ++ model.prediction.prediction ++ ", by " ++ (String.left 10 <| Iso8601.fromTime <| Time.millisToPosix <| model.prediction.resolvesAtUnixtime * 1000)]
+    , viewPredictionState model
     , viewResolveButtons model
     , viewWinnings model
     , H.hr [] []
     , viewCreationParams model
-    , case model.market.specialRules of
+    , case model.prediction.specialRules of
         "" ->
           H.text ""
         rules ->
@@ -370,7 +370,7 @@ view model =
     , if creator.isSelf then
         H.div []
           [ H.hr [] []
-          , H.text "As the creator of this market, you might want to link to it in your writing! Here are some snippets of HTML you could copy-paste."
+          , H.text "As the creator of this prediction, you might want to link to it in your writing! Here are some snippets of HTML you could copy-paste."
           , viewEmbedInfo model
           ]
       else
@@ -380,19 +380,19 @@ view model =
 viewEmbedInfo : Model -> Html Msg
 viewEmbedInfo model =
   let
-    linkUrl = "/market/" ++ String.fromInt model.marketId
-    imgUrl = "/market/" ++ String.fromInt model.marketId ++ "/embed.png"
+    linkUrl = "/p/" ++ String.fromInt model.predictionId
+    imgUrl = "/p/" ++ String.fromInt model.predictionId ++ "/embed.png"
     imgStyles = [("max-height","1.5ex"), ("border-bottom","1px solid #008800")]
     imgCode =
       "<a href=\"" ++ linkUrl ++ "\">"
       ++ "<img style=\"" ++ (imgStyles |> List.map (\(k,v) -> k++":"++v) |> String.join ";") ++ "\" src=\"" ++ imgUrl ++ "\" /></a>"
     linkText =
       "["
-      ++ Utils.formatCents (model.market.maximumStakeCents // 100 * 100)
+      ++ Utils.formatCents (model.prediction.maximumStakeCents // 100 * 100)
       ++ " @ "
-      ++ String.fromInt (round <| (Utils.mustMarketCertainty model.market).low * 100)
+      ++ String.fromInt (round <| (Utils.mustPredictionCertainty model.prediction).low * 100)
       ++ "-"
-      ++ String.fromInt (round <| (Utils.mustMarketCertainty model.market).high * 100)
+      ++ String.fromInt (round <| (Utils.mustPredictionCertainty model.prediction).high * 100)
       ++ "%]"
     linkCode =
       "<a href=\"" ++ linkUrl ++ "\">" ++ linkText ++ "</a>"
@@ -422,8 +422,8 @@ stakeFormConfig model =
   { setState = SetStakeFormState
   , onStake = Stake
   , nevermind = Ignore
-  , disableCommit = (model.auth == Nothing || (Utils.mustMarketCreator model.market).isSelf)
-  , market = model.market
+  , disableCommit = (model.auth == Nothing || (Utils.mustPredictionCreator model.prediction).isSelf)
+  , prediction = model.prediction
   }
 
 subscriptions : Model -> Sub Msg

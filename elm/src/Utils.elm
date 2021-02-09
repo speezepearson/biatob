@@ -67,11 +67,11 @@ mustDecodeFromFlags dec field val =
   |> Result.toMaybe
   |> must ("bad " ++ field)
 
-mustMarketCreator : Pb.UserMarketView -> Pb.UserUserView
-mustMarketCreator {creator} = must "all markets must have creators" creator
+mustPredictionCreator : Pb.UserPredictionView -> Pb.UserUserView
+mustPredictionCreator {creator} = must "all predictions must have creators" creator
 
-mustMarketCertainty : Pb.UserMarketView -> Pb.CertaintyRange
-mustMarketCertainty {certainty} = must "all markets must have certainties" certainty
+mustPredictionCertainty : Pb.UserPredictionView -> Pb.CertaintyRange
+mustPredictionCertainty {certainty} = must "all predictions must have certainties" certainty
 
 mustTradeBettor : Pb.Trade -> Pb.UserId
 mustTradeBettor {bettor} = must "all trades must have bettors" bettor
@@ -82,12 +82,12 @@ mustUserKind {kind} = must "all UserIds must have kinds" kind
 mustTokenOwner : Pb.AuthToken -> Pb.UserId
 mustTokenOwner {owner} = must "all AuthTokens must have owners" owner
 
-mustMarketsById : Pb.MarketsById -> Dict Int Pb.UserMarketView
-mustMarketsById {markets} = markets |> Dict.map (\_ v -> must "no null values are allowed in a MarketsById" v)
+mustPredictionsById : Pb.PredictionsById -> Dict Int Pb.UserPredictionView
+mustPredictionsById {predictions} = predictions |> Dict.map (\_ v -> must "no null values are allowed in a PredictionsById" v)
 
-currentResolution : Pb.UserMarketView -> Pb.Resolution
-currentResolution market =
-  List.head (List.reverse market.resolutions)
+currentResolution : Pb.UserPredictionView -> Pb.Resolution
+currentResolution prediction =
+  List.head (List.reverse prediction.resolutions)
   |> Maybe.map .resolution
   |> Maybe.withDefault Pb.ResolutionNoneYet
 
@@ -160,14 +160,14 @@ renderIntervalSeconds seconds =
     if m /= 0 then String.fromInt m ++ "m " ++ String.fromInt s ++ "s" else
     String.fromInt s ++ "s"
 
-marketCreatedTime : Pb.UserMarketView -> Time.Posix
-marketCreatedTime market = market.createdUnixtime * 1000 |> Time.millisToPosix
+predictionCreatedTime : Pb.UserPredictionView -> Time.Posix
+predictionCreatedTime prediction = prediction.createdUnixtime * 1000 |> Time.millisToPosix
 
-marketClosesTime : Pb.UserMarketView -> Time.Posix
-marketClosesTime market = market.closesUnixtime * 1000 |> Time.millisToPosix
+predictionClosesTime : Pb.UserPredictionView -> Time.Posix
+predictionClosesTime prediction = prediction.closesUnixtime * 1000 |> Time.millisToPosix
 
-secondsToClose : Time.Posix -> Pb.UserMarketView -> Int
-secondsToClose now market = market.closesUnixtime - Time.posixToMillis now // 1000
+secondsToClose : Time.Posix -> Pb.UserPredictionView -> Int
+secondsToClose now prediction = prediction.closesUnixtime - Time.posixToMillis now // 1000
 
 pathToUserPage : Pb.UserId -> String
 pathToUserPage user =

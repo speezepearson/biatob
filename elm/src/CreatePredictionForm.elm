@@ -1,4 +1,4 @@
-module CreateMarketForm exposing (..)
+module CreatePredictionForm exposing (..)
 
 import Browser
 import Html as H exposing (Html)
@@ -48,7 +48,7 @@ type alias Model =
   , now : Time.Posix
   }
 
-toCreateRequest : Model -> Maybe Pb.CreateMarketRequest
+toCreateRequest : Model -> Maybe Pb.CreatePredictionRequest
 toCreateRequest model =
   Field.parse () model.predictionField |> Result.andThen (\prediction ->
   Field.parse {now=model.now} model.resolvesAtField |> Result.andThen (\resolvesAt ->
@@ -95,11 +95,11 @@ view model =
     placeholders =
       { prediction = "at least 50% of U.S. COVID-19 cases will be B117 or a derivative strain, as reported by the CDC"
       , stake = "100"
-      , specialRules = "If the CDC doesn't publish statistics on this, I'll fall back to some other official organization, like the WHO; failing that, I'll look for journal papers on U.S. cases, and go with a consensus if I find one; failing that, the market is unresolvable."
+      , specialRules = "If the CDC doesn't publish statistics on this, I'll fall back to some other official organization, like the WHO; failing that, I'll look for journal papers on U.S. cases, and go with a consensus if I find one; failing that, the prediction is unresolvable."
       }
   in
   H.div []
-    [ H.ul [HA.class "create-market-form"]
+    [ H.ul [HA.class "new-prediction-form"]
         [ H.li []
             [ H.text "I predict that..."
             , H.br [] []
@@ -190,7 +190,7 @@ view model =
             , H.text "."
             ]
         , H.li []
-            [ H.text "Special rules (events that might invalidate the market, or what counts as cheating):"
+            [ H.text "Special rules (implicit assumptions, or what counts as cheating):"
             , Field.inputFor SetSpecialRules () model.specialRulesField
                 H.textarea
                 [ HA.style "width" "100%"

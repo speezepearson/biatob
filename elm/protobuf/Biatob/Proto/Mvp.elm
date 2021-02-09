@@ -2,9 +2,9 @@
 
 
 module Biatob.Proto.Mvp exposing
-    ( Void(..), Resolution(..), Kind(..), UserId, AuthToken, WorldState, WorldStateGenericUserInfo, WorldStateUsernameInfo, WorldStateMarket, ResolutionEvent, Trade, WhoamiRequest, WhoamiResponse, SignOutRequest, SignOutResponse, RegisterUsernameRequest, RegisterUsernameResult(..), RegisterUsernameResponse, RegisterUsernameResponseError, LogInUsernameRequest, LogInUsernameResult(..), LogInUsernameResponse, LogInUsernameResponseError, CertaintyRange, PrivacyKind(..), MarketPrivacy, MarketPrivacyEmails, CreateMarketRequest, CreateMarketResult(..), CreateMarketResponse, CreateMarketResponseError, GetMarketRequest, GetMarketResult(..), GetMarketResponse, GetMarketResponseError, UserMarketView, UserUserView, ListMyMarketsRequest, ListMyMarketsResult(..), ListMyMarketsResponse, ListMyMarketsResponseError, MarketsById, StakeRequest, StakeResult(..), StakeResponse, StakeResponseError, ResolveRequest, ResolveResult(..), ResolveResponse, ResolveResponseError, SetTrustedRequest, SetTrustedResult(..), SetTrustedResponse, SetTrustedResponseError, GetUserRequest, GetUserResult(..), GetUserResponse, GetUserResponseError, ChangePasswordRequest, ChangePasswordResult(..), ChangePasswordResponse, ChangePasswordResponseError
-    , userIdDecoder, authTokenDecoder, worldStateDecoder, resolutionEventDecoder, tradeDecoder, whoamiRequestDecoder, whoamiResponseDecoder, signOutRequestDecoder, signOutResponseDecoder, registerUsernameRequestDecoder, registerUsernameResponseDecoder, logInUsernameRequestDecoder, logInUsernameResponseDecoder, certaintyRangeDecoder, marketPrivacyDecoder, createMarketRequestDecoder, createMarketResponseDecoder, getMarketRequestDecoder, getMarketResponseDecoder, userMarketViewDecoder, userUserViewDecoder, listMyMarketsRequestDecoder, listMyMarketsResponseDecoder, marketsByIdDecoder, stakeRequestDecoder, stakeResponseDecoder, resolveRequestDecoder, resolveResponseDecoder, setTrustedRequestDecoder, setTrustedResponseDecoder, getUserRequestDecoder, getUserResponseDecoder, changePasswordRequestDecoder, changePasswordResponseDecoder
-    , toUserIdEncoder, toAuthTokenEncoder, toWorldStateEncoder, toResolutionEventEncoder, toTradeEncoder, toWhoamiRequestEncoder, toWhoamiResponseEncoder, toSignOutRequestEncoder, toSignOutResponseEncoder, toRegisterUsernameRequestEncoder, toRegisterUsernameResponseEncoder, toLogInUsernameRequestEncoder, toLogInUsernameResponseEncoder, toCertaintyRangeEncoder, toMarketPrivacyEncoder, toCreateMarketRequestEncoder, toCreateMarketResponseEncoder, toGetMarketRequestEncoder, toGetMarketResponseEncoder, toUserMarketViewEncoder, toUserUserViewEncoder, toListMyMarketsRequestEncoder, toListMyMarketsResponseEncoder, toMarketsByIdEncoder, toStakeRequestEncoder, toStakeResponseEncoder, toResolveRequestEncoder, toResolveResponseEncoder, toSetTrustedRequestEncoder, toSetTrustedResponseEncoder, toGetUserRequestEncoder, toGetUserResponseEncoder, toChangePasswordRequestEncoder, toChangePasswordResponseEncoder
+    ( Void(..), Resolution(..), Kind(..), UserId, AuthToken, WorldState, WorldStateGenericUserInfo, WorldStateUsernameInfo, WorldStatePrediction, ResolutionEvent, Trade, WhoamiRequest, WhoamiResponse, SignOutRequest, SignOutResponse, RegisterUsernameRequest, RegisterUsernameResult(..), RegisterUsernameResponse, RegisterUsernameResponseError, LogInUsernameRequest, LogInUsernameResult(..), LogInUsernameResponse, LogInUsernameResponseError, CertaintyRange, PrivacyKind(..), PredictionPrivacy, PredictionPrivacyEmails, CreatePredictionRequest, CreatePredictionResult(..), CreatePredictionResponse, CreatePredictionResponseError, GetPredictionRequest, GetPredictionResult(..), GetPredictionResponse, GetPredictionResponseError, UserPredictionView, UserUserView, ListMyPredictionsRequest, ListMyPredictionsResult(..), ListMyPredictionsResponse, ListMyPredictionsResponseError, PredictionsById, StakeRequest, StakeResult(..), StakeResponse, StakeResponseError, ResolveRequest, ResolveResult(..), ResolveResponse, ResolveResponseError, SetTrustedRequest, SetTrustedResult(..), SetTrustedResponse, SetTrustedResponseError, GetUserRequest, GetUserResult(..), GetUserResponse, GetUserResponseError, ChangePasswordRequest, ChangePasswordResult(..), ChangePasswordResponse, ChangePasswordResponseError
+    , userIdDecoder, authTokenDecoder, worldStateDecoder, resolutionEventDecoder, tradeDecoder, whoamiRequestDecoder, whoamiResponseDecoder, signOutRequestDecoder, signOutResponseDecoder, registerUsernameRequestDecoder, registerUsernameResponseDecoder, logInUsernameRequestDecoder, logInUsernameResponseDecoder, certaintyRangeDecoder, predictionPrivacyDecoder, createPredictionRequestDecoder, createPredictionResponseDecoder, getPredictionRequestDecoder, getPredictionResponseDecoder, userPredictionViewDecoder, userUserViewDecoder, listMyPredictionsRequestDecoder, listMyPredictionsResponseDecoder, predictionsByIdDecoder, stakeRequestDecoder, stakeResponseDecoder, resolveRequestDecoder, resolveResponseDecoder, setTrustedRequestDecoder, setTrustedResponseDecoder, getUserRequestDecoder, getUserResponseDecoder, changePasswordRequestDecoder, changePasswordResponseDecoder
+    , toUserIdEncoder, toAuthTokenEncoder, toWorldStateEncoder, toResolutionEventEncoder, toTradeEncoder, toWhoamiRequestEncoder, toWhoamiResponseEncoder, toSignOutRequestEncoder, toSignOutResponseEncoder, toRegisterUsernameRequestEncoder, toRegisterUsernameResponseEncoder, toLogInUsernameRequestEncoder, toLogInUsernameResponseEncoder, toCertaintyRangeEncoder, toPredictionPrivacyEncoder, toCreatePredictionRequestEncoder, toCreatePredictionResponseEncoder, toGetPredictionRequestEncoder, toGetPredictionResponseEncoder, toUserPredictionViewEncoder, toUserUserViewEncoder, toListMyPredictionsRequestEncoder, toListMyPredictionsResponseEncoder, toPredictionsByIdEncoder, toStakeRequestEncoder, toStakeResponseEncoder, toResolveRequestEncoder, toResolveResponseEncoder, toSetTrustedRequestEncoder, toSetTrustedResponseEncoder, toGetUserRequestEncoder, toGetUserResponseEncoder, toChangePasswordRequestEncoder, toChangePasswordResponseEncoder
     )
 
 {-| ProtoBuf module: `Biatob.Proto.Mvp`
@@ -20,17 +20,17 @@ To run it use [`elm-protocol-buffers`](https://package.elm-lang.org/packages/eri
 
 # Model
 
-@docs Void, Resolution, Kind, UserId, AuthToken, WorldState, WorldStateGenericUserInfo, WorldStateUsernameInfo, WorldStateMarket, ResolutionEvent, Trade, WhoamiRequest, WhoamiResponse, SignOutRequest, SignOutResponse, RegisterUsernameRequest, RegisterUsernameResult, RegisterUsernameResponse, RegisterUsernameResponseError, LogInUsernameRequest, LogInUsernameResult, LogInUsernameResponse, LogInUsernameResponseError, CertaintyRange, PrivacyKind, MarketPrivacy, MarketPrivacyEmails, CreateMarketRequest, CreateMarketResult, CreateMarketResponse, CreateMarketResponseError, GetMarketRequest, GetMarketResult, GetMarketResponse, GetMarketResponseError, UserMarketView, UserUserView, ListMyMarketsRequest, ListMyMarketsResult, ListMyMarketsResponse, ListMyMarketsResponseError, MarketsById, StakeRequest, StakeResult, StakeResponse, StakeResponseError, ResolveRequest, ResolveResult, ResolveResponse, ResolveResponseError, SetTrustedRequest, SetTrustedResult, SetTrustedResponse, SetTrustedResponseError, GetUserRequest, GetUserResult, GetUserResponse, GetUserResponseError, ChangePasswordRequest, ChangePasswordResult, ChangePasswordResponse, ChangePasswordResponseError
+@docs Void, Resolution, Kind, UserId, AuthToken, WorldState, WorldStateGenericUserInfo, WorldStateUsernameInfo, WorldStatePrediction, ResolutionEvent, Trade, WhoamiRequest, WhoamiResponse, SignOutRequest, SignOutResponse, RegisterUsernameRequest, RegisterUsernameResult, RegisterUsernameResponse, RegisterUsernameResponseError, LogInUsernameRequest, LogInUsernameResult, LogInUsernameResponse, LogInUsernameResponseError, CertaintyRange, PrivacyKind, PredictionPrivacy, PredictionPrivacyEmails, CreatePredictionRequest, CreatePredictionResult, CreatePredictionResponse, CreatePredictionResponseError, GetPredictionRequest, GetPredictionResult, GetPredictionResponse, GetPredictionResponseError, UserPredictionView, UserUserView, ListMyPredictionsRequest, ListMyPredictionsResult, ListMyPredictionsResponse, ListMyPredictionsResponseError, PredictionsById, StakeRequest, StakeResult, StakeResponse, StakeResponseError, ResolveRequest, ResolveResult, ResolveResponse, ResolveResponseError, SetTrustedRequest, SetTrustedResult, SetTrustedResponse, SetTrustedResponseError, GetUserRequest, GetUserResult, GetUserResponse, GetUserResponseError, ChangePasswordRequest, ChangePasswordResult, ChangePasswordResponse, ChangePasswordResponseError
 
 
 # Decoder
 
-@docs userIdDecoder, authTokenDecoder, worldStateDecoder, resolutionEventDecoder, tradeDecoder, whoamiRequestDecoder, whoamiResponseDecoder, signOutRequestDecoder, signOutResponseDecoder, registerUsernameRequestDecoder, registerUsernameResponseDecoder, logInUsernameRequestDecoder, logInUsernameResponseDecoder, certaintyRangeDecoder, marketPrivacyDecoder, createMarketRequestDecoder, createMarketResponseDecoder, getMarketRequestDecoder, getMarketResponseDecoder, userMarketViewDecoder, userUserViewDecoder, listMyMarketsRequestDecoder, listMyMarketsResponseDecoder, marketsByIdDecoder, stakeRequestDecoder, stakeResponseDecoder, resolveRequestDecoder, resolveResponseDecoder, setTrustedRequestDecoder, setTrustedResponseDecoder, getUserRequestDecoder, getUserResponseDecoder, changePasswordRequestDecoder, changePasswordResponseDecoder
+@docs userIdDecoder, authTokenDecoder, worldStateDecoder, resolutionEventDecoder, tradeDecoder, whoamiRequestDecoder, whoamiResponseDecoder, signOutRequestDecoder, signOutResponseDecoder, registerUsernameRequestDecoder, registerUsernameResponseDecoder, logInUsernameRequestDecoder, logInUsernameResponseDecoder, certaintyRangeDecoder, predictionPrivacyDecoder, createPredictionRequestDecoder, createPredictionResponseDecoder, getPredictionRequestDecoder, getPredictionResponseDecoder, userPredictionViewDecoder, userUserViewDecoder, listMyPredictionsRequestDecoder, listMyPredictionsResponseDecoder, predictionsByIdDecoder, stakeRequestDecoder, stakeResponseDecoder, resolveRequestDecoder, resolveResponseDecoder, setTrustedRequestDecoder, setTrustedResponseDecoder, getUserRequestDecoder, getUserResponseDecoder, changePasswordRequestDecoder, changePasswordResponseDecoder
 
 
 # Encoder
 
-@docs toUserIdEncoder, toAuthTokenEncoder, toWorldStateEncoder, toResolutionEventEncoder, toTradeEncoder, toWhoamiRequestEncoder, toWhoamiResponseEncoder, toSignOutRequestEncoder, toSignOutResponseEncoder, toRegisterUsernameRequestEncoder, toRegisterUsernameResponseEncoder, toLogInUsernameRequestEncoder, toLogInUsernameResponseEncoder, toCertaintyRangeEncoder, toMarketPrivacyEncoder, toCreateMarketRequestEncoder, toCreateMarketResponseEncoder, toGetMarketRequestEncoder, toGetMarketResponseEncoder, toUserMarketViewEncoder, toUserUserViewEncoder, toListMyMarketsRequestEncoder, toListMyMarketsResponseEncoder, toMarketsByIdEncoder, toStakeRequestEncoder, toStakeResponseEncoder, toResolveRequestEncoder, toResolveResponseEncoder, toSetTrustedRequestEncoder, toSetTrustedResponseEncoder, toGetUserRequestEncoder, toGetUserResponseEncoder, toChangePasswordRequestEncoder, toChangePasswordResponseEncoder
+@docs toUserIdEncoder, toAuthTokenEncoder, toWorldStateEncoder, toResolutionEventEncoder, toTradeEncoder, toWhoamiRequestEncoder, toWhoamiResponseEncoder, toSignOutRequestEncoder, toSignOutResponseEncoder, toRegisterUsernameRequestEncoder, toRegisterUsernameResponseEncoder, toLogInUsernameRequestEncoder, toLogInUsernameResponseEncoder, toCertaintyRangeEncoder, toPredictionPrivacyEncoder, toCreatePredictionRequestEncoder, toCreatePredictionResponseEncoder, toGetPredictionRequestEncoder, toGetPredictionResponseEncoder, toUserPredictionViewEncoder, toUserUserViewEncoder, toListMyPredictionsRequestEncoder, toListMyPredictionsResponseEncoder, toPredictionsByIdEncoder, toStakeRequestEncoder, toStakeResponseEncoder, toResolveRequestEncoder, toResolveResponseEncoder, toSetTrustedRequestEncoder, toSetTrustedResponseEncoder, toGetUserRequestEncoder, toGetUserResponseEncoder, toChangePasswordRequestEncoder, toChangePasswordResponseEncoder
 
 -}
 
@@ -88,7 +88,7 @@ type alias AuthToken =
 -}
 type alias WorldState =
     { usernameUsers : Dict.Dict String (Maybe WorldStateUsernameInfo)
-    , markets : Dict.Dict Int (Maybe WorldStateMarket)
+    , predictions : Dict.Dict Int (Maybe WorldStatePrediction)
     }
 
 
@@ -107,9 +107,9 @@ type alias WorldStateUsernameInfo =
     }
 
 
-{-| `WorldStateMarket` message
+{-| `WorldStatePrediction` message
 -}
-type alias WorldStateMarket =
+type alias WorldStatePrediction =
     { prediction : String
     , certainty : Maybe CertaintyRange
     , maximumStakeCents : Int
@@ -239,28 +239,28 @@ type alias CertaintyRange =
 -}
 type PrivacyKind
     = PrivacyKindAllTrustedByAuthor Void
-    | PrivacyKindSpecificUsers MarketPrivacyEmails
+    | PrivacyKindSpecificUsers PredictionPrivacyEmails
 
 
-{-| `MarketPrivacy` message
+{-| `PredictionPrivacy` message
 -}
-type alias MarketPrivacy =
+type alias PredictionPrivacy =
     { privacyKind : Maybe PrivacyKind
     }
 
 
-{-| `MarketPrivacyEmails` message
+{-| `PredictionPrivacyEmails` message
 -}
-type alias MarketPrivacyEmails =
+type alias PredictionPrivacyEmails =
     { emails : List String
     }
 
 
-{-| `CreateMarketRequest` message
+{-| `CreatePredictionRequest` message
 -}
-type alias CreateMarketRequest =
+type alias CreatePredictionRequest =
     { prediction : String
-    , privacy : Maybe MarketPrivacy
+    , privacy : Maybe PredictionPrivacy
     , certainty : Maybe CertaintyRange
     , maximumStakeCents : Int
     , openSeconds : Int
@@ -269,59 +269,59 @@ type alias CreateMarketRequest =
     }
 
 
-{-| CreateMarketResult
+{-| CreatePredictionResult
 -}
-type CreateMarketResult
-    = CreateMarketResultNewMarketId Int
-    | CreateMarketResultError CreateMarketResponseError
+type CreatePredictionResult
+    = CreatePredictionResultNewPredictionId Int
+    | CreatePredictionResultError CreatePredictionResponseError
 
 
-{-| `CreateMarketResponse` message
+{-| `CreatePredictionResponse` message
 -}
-type alias CreateMarketResponse =
-    { createMarketResult : Maybe CreateMarketResult
+type alias CreatePredictionResponse =
+    { createPredictionResult : Maybe CreatePredictionResult
     }
 
 
-{-| `CreateMarketResponseError` message
+{-| `CreatePredictionResponseError` message
 -}
-type alias CreateMarketResponseError =
+type alias CreatePredictionResponseError =
     { catchall : String
     }
 
 
-{-| `GetMarketRequest` message
+{-| `GetPredictionRequest` message
 -}
-type alias GetMarketRequest =
-    { marketId : Int
+type alias GetPredictionRequest =
+    { predictionId : Int
     }
 
 
-{-| GetMarketResult
+{-| GetPredictionResult
 -}
-type GetMarketResult
-    = GetMarketResultMarket UserMarketView
-    | GetMarketResultError GetMarketResponseError
+type GetPredictionResult
+    = GetPredictionResultPrediction UserPredictionView
+    | GetPredictionResultError GetPredictionResponseError
 
 
-{-| `GetMarketResponse` message
+{-| `GetPredictionResponse` message
 -}
-type alias GetMarketResponse =
-    { getMarketResult : Maybe GetMarketResult
+type alias GetPredictionResponse =
+    { getPredictionResult : Maybe GetPredictionResult
     }
 
 
-{-| `GetMarketResponseError` message
+{-| `GetPredictionResponseError` message
 -}
-type alias GetMarketResponseError =
+type alias GetPredictionResponseError =
     { catchall : String
-    , noSuchMarket : Void
+    , noSuchPrediction : Void
     }
 
 
-{-| `UserMarketView` message
+{-| `UserPredictionView` message
 -}
-type alias UserMarketView =
+type alias UserPredictionView =
     { prediction : String
     , certainty : Maybe CertaintyRange
     , maximumStakeCents : Int
@@ -347,45 +347,45 @@ type alias UserUserView =
     }
 
 
-{-| `ListMyMarketsRequest` message
+{-| `ListMyPredictionsRequest` message
 -}
-type alias ListMyMarketsRequest =
+type alias ListMyPredictionsRequest =
     {}
 
 
-{-| ListMyMarketsResult
+{-| ListMyPredictionsResult
 -}
-type ListMyMarketsResult
-    = ListMyMarketsResultOk MarketsById
-    | ListMyMarketsResultError ListMyMarketsResponseError
+type ListMyPredictionsResult
+    = ListMyPredictionsResultOk PredictionsById
+    | ListMyPredictionsResultError ListMyPredictionsResponseError
 
 
-{-| `ListMyMarketsResponse` message
+{-| `ListMyPredictionsResponse` message
 -}
-type alias ListMyMarketsResponse =
-    { listMyMarketsResult : Maybe ListMyMarketsResult
+type alias ListMyPredictionsResponse =
+    { listMyPredictionsResult : Maybe ListMyPredictionsResult
     }
 
 
-{-| `ListMyMarketsResponseError` message
+{-| `ListMyPredictionsResponseError` message
 -}
-type alias ListMyMarketsResponseError =
+type alias ListMyPredictionsResponseError =
     { catchall : String
-    , noSuchMarket : Void
+    , noSuchPrediction : Void
     }
 
 
-{-| `MarketsById` message
+{-| `PredictionsById` message
 -}
-type alias MarketsById =
-    { markets : Dict.Dict Int (Maybe UserMarketView)
+type alias PredictionsById =
+    { predictions : Dict.Dict Int (Maybe UserPredictionView)
     }
 
 
 {-| `StakeRequest` message
 -}
 type alias StakeRequest =
-    { marketId : Int
+    { predictionId : Int
     , bettorIsASkeptic : Bool
     , bettorStakeCents : Int
     }
@@ -415,7 +415,7 @@ type alias StakeResponseError =
 {-| `ResolveRequest` message
 -}
 type alias ResolveRequest =
-    { marketId : Int
+    { predictionId : Int
     , resolution : Resolution
     , notes : String
     }
@@ -599,7 +599,7 @@ worldStateDecoder : Decode.Decoder WorldState
 worldStateDecoder =
     Decode.message (WorldState Dict.empty Dict.empty)
         [ Decode.mapped 1 ( "", Nothing ) Decode.string (Decode.map Just worldStateUsernameInfoDecoder) .usernameUsers setUsernameUsers
-        , Decode.mapped 2 ( 0, Nothing ) Decode.uint32 (Decode.map Just worldStateMarketDecoder) .markets setMarkets
+        , Decode.mapped 2 ( 0, Nothing ) Decode.uint32 (Decode.map Just worldStatePredictionDecoder) .predictions setPredictions
         ]
 
 
@@ -618,9 +618,9 @@ worldStateUsernameInfoDecoder =
         ]
 
 
-worldStateMarketDecoder : Decode.Decoder WorldStateMarket
-worldStateMarketDecoder =
-    Decode.message (WorldStateMarket "" Nothing 0 0 0 0 "" Nothing [] [])
+worldStatePredictionDecoder : Decode.Decoder WorldStatePrediction
+worldStatePredictionDecoder =
+    Decode.message (WorldStatePrediction "" Nothing 0 0 0 0 "" Nothing [] [])
         [ Decode.optional 1 Decode.string setPrediction
         , Decode.optional 2 (Decode.map Just certaintyRangeDecoder) setCertainty
         , Decode.optional 3 Decode.uint32 setMaximumStakeCents
@@ -762,33 +762,33 @@ certaintyRangeDecoder =
         ]
 
 
-{-| `MarketPrivacy` decoder
+{-| `PredictionPrivacy` decoder
 -}
-marketPrivacyDecoder : Decode.Decoder MarketPrivacy
-marketPrivacyDecoder =
-    Decode.message (MarketPrivacy Nothing)
+predictionPrivacyDecoder : Decode.Decoder PredictionPrivacy
+predictionPrivacyDecoder =
+    Decode.message (PredictionPrivacy Nothing)
         [ Decode.oneOf
             [ ( 1, Decode.map PrivacyKindAllTrustedByAuthor voidDecoder )
-            , ( 2, Decode.map PrivacyKindSpecificUsers marketPrivacyEmailsDecoder )
+            , ( 2, Decode.map PrivacyKindSpecificUsers predictionPrivacyEmailsDecoder )
             ]
             setPrivacyKind
         ]
 
 
-marketPrivacyEmailsDecoder : Decode.Decoder MarketPrivacyEmails
-marketPrivacyEmailsDecoder =
-    Decode.message (MarketPrivacyEmails [])
+predictionPrivacyEmailsDecoder : Decode.Decoder PredictionPrivacyEmails
+predictionPrivacyEmailsDecoder =
+    Decode.message (PredictionPrivacyEmails [])
         [ Decode.repeated 1 Decode.string .emails setEmails
         ]
 
 
-{-| `CreateMarketRequest` decoder
+{-| `CreatePredictionRequest` decoder
 -}
-createMarketRequestDecoder : Decode.Decoder CreateMarketRequest
-createMarketRequestDecoder =
-    Decode.message (CreateMarketRequest "" Nothing Nothing 0 0 "" 0)
+createPredictionRequestDecoder : Decode.Decoder CreatePredictionRequest
+createPredictionRequestDecoder =
+    Decode.message (CreatePredictionRequest "" Nothing Nothing 0 0 "" 0)
         [ Decode.optional 2 Decode.string setPrediction
-        , Decode.optional 3 (Decode.map Just marketPrivacyDecoder) setPrivacy
+        , Decode.optional 3 (Decode.map Just predictionPrivacyDecoder) setPrivacy
         , Decode.optional 4 (Decode.map Just certaintyRangeDecoder) setCertainty
         , Decode.optional 5 Decode.uint32 setMaximumStakeCents
         , Decode.optional 6 Decode.uint32 setOpenSeconds
@@ -797,61 +797,61 @@ createMarketRequestDecoder =
         ]
 
 
-{-| `CreateMarketResponse` decoder
+{-| `CreatePredictionResponse` decoder
 -}
-createMarketResponseDecoder : Decode.Decoder CreateMarketResponse
-createMarketResponseDecoder =
-    Decode.message (CreateMarketResponse Nothing)
+createPredictionResponseDecoder : Decode.Decoder CreatePredictionResponse
+createPredictionResponseDecoder =
+    Decode.message (CreatePredictionResponse Nothing)
         [ Decode.oneOf
-            [ ( 1, Decode.map CreateMarketResultNewMarketId Decode.uint32 )
-            , ( 2, Decode.map CreateMarketResultError createMarketResponseErrorDecoder )
+            [ ( 1, Decode.map CreatePredictionResultNewPredictionId Decode.uint32 )
+            , ( 2, Decode.map CreatePredictionResultError createPredictionResponseErrorDecoder )
             ]
-            setCreateMarketResult
+            setCreatePredictionResult
         ]
 
 
-createMarketResponseErrorDecoder : Decode.Decoder CreateMarketResponseError
-createMarketResponseErrorDecoder =
-    Decode.message (CreateMarketResponseError "")
+createPredictionResponseErrorDecoder : Decode.Decoder CreatePredictionResponseError
+createPredictionResponseErrorDecoder =
+    Decode.message (CreatePredictionResponseError "")
         [ Decode.optional 1 Decode.string setCatchall
         ]
 
 
-{-| `GetMarketRequest` decoder
+{-| `GetPredictionRequest` decoder
 -}
-getMarketRequestDecoder : Decode.Decoder GetMarketRequest
-getMarketRequestDecoder =
-    Decode.message (GetMarketRequest 0)
-        [ Decode.optional 2 Decode.uint32 setMarketId
+getPredictionRequestDecoder : Decode.Decoder GetPredictionRequest
+getPredictionRequestDecoder =
+    Decode.message (GetPredictionRequest 0)
+        [ Decode.optional 2 Decode.uint32 setPredictionId
         ]
 
 
-{-| `GetMarketResponse` decoder
+{-| `GetPredictionResponse` decoder
 -}
-getMarketResponseDecoder : Decode.Decoder GetMarketResponse
-getMarketResponseDecoder =
-    Decode.message (GetMarketResponse Nothing)
+getPredictionResponseDecoder : Decode.Decoder GetPredictionResponse
+getPredictionResponseDecoder =
+    Decode.message (GetPredictionResponse Nothing)
         [ Decode.oneOf
-            [ ( 1, Decode.map GetMarketResultMarket userMarketViewDecoder )
-            , ( 2, Decode.map GetMarketResultError getMarketResponseErrorDecoder )
+            [ ( 1, Decode.map GetPredictionResultPrediction userPredictionViewDecoder )
+            , ( 2, Decode.map GetPredictionResultError getPredictionResponseErrorDecoder )
             ]
-            setGetMarketResult
+            setGetPredictionResult
         ]
 
 
-getMarketResponseErrorDecoder : Decode.Decoder GetMarketResponseError
-getMarketResponseErrorDecoder =
-    Decode.message (GetMarketResponseError "" Void)
+getPredictionResponseErrorDecoder : Decode.Decoder GetPredictionResponseError
+getPredictionResponseErrorDecoder =
+    Decode.message (GetPredictionResponseError "" Void)
         [ Decode.optional 1 Decode.string setCatchall
-        , Decode.optional 2 voidDecoder setNoSuchMarket
+        , Decode.optional 2 voidDecoder setNoSuchPrediction
         ]
 
 
-{-| `UserMarketView` decoder
+{-| `UserPredictionView` decoder
 -}
-userMarketViewDecoder : Decode.Decoder UserMarketView
-userMarketViewDecoder =
-    Decode.message (UserMarketView "" Nothing 0 0 0 0 0 "" Nothing [] [] 0)
+userPredictionViewDecoder : Decode.Decoder UserPredictionView
+userPredictionViewDecoder =
+    Decode.message (UserPredictionView "" Nothing 0 0 0 0 0 "" Nothing [] [] 0)
         [ Decode.optional 1 Decode.string setPrediction
         , Decode.optional 2 (Decode.map Just certaintyRangeDecoder) setCertainty
         , Decode.optional 3 Decode.uint32 setMaximumStakeCents
@@ -879,41 +879,41 @@ userUserViewDecoder =
         ]
 
 
-{-| `ListMyMarketsRequest` decoder
+{-| `ListMyPredictionsRequest` decoder
 -}
-listMyMarketsRequestDecoder : Decode.Decoder ListMyMarketsRequest
-listMyMarketsRequestDecoder =
-    Decode.message ListMyMarketsRequest
+listMyPredictionsRequestDecoder : Decode.Decoder ListMyPredictionsRequest
+listMyPredictionsRequestDecoder =
+    Decode.message ListMyPredictionsRequest
         []
 
 
-{-| `ListMyMarketsResponse` decoder
+{-| `ListMyPredictionsResponse` decoder
 -}
-listMyMarketsResponseDecoder : Decode.Decoder ListMyMarketsResponse
-listMyMarketsResponseDecoder =
-    Decode.message (ListMyMarketsResponse Nothing)
+listMyPredictionsResponseDecoder : Decode.Decoder ListMyPredictionsResponse
+listMyPredictionsResponseDecoder =
+    Decode.message (ListMyPredictionsResponse Nothing)
         [ Decode.oneOf
-            [ ( 1, Decode.map ListMyMarketsResultOk marketsByIdDecoder )
-            , ( 2, Decode.map ListMyMarketsResultError listMyMarketsResponseErrorDecoder )
+            [ ( 1, Decode.map ListMyPredictionsResultOk predictionsByIdDecoder )
+            , ( 2, Decode.map ListMyPredictionsResultError listMyPredictionsResponseErrorDecoder )
             ]
-            setListMyMarketsResult
+            setListMyPredictionsResult
         ]
 
 
-listMyMarketsResponseErrorDecoder : Decode.Decoder ListMyMarketsResponseError
-listMyMarketsResponseErrorDecoder =
-    Decode.message (ListMyMarketsResponseError "" Void)
+listMyPredictionsResponseErrorDecoder : Decode.Decoder ListMyPredictionsResponseError
+listMyPredictionsResponseErrorDecoder =
+    Decode.message (ListMyPredictionsResponseError "" Void)
         [ Decode.optional 1 Decode.string setCatchall
-        , Decode.optional 2 voidDecoder setNoSuchMarket
+        , Decode.optional 2 voidDecoder setNoSuchPrediction
         ]
 
 
-{-| `MarketsById` decoder
+{-| `PredictionsById` decoder
 -}
-marketsByIdDecoder : Decode.Decoder MarketsById
-marketsByIdDecoder =
-    Decode.message (MarketsById Dict.empty)
-        [ Decode.mapped 1 ( 0, Nothing ) Decode.uint32 (Decode.map Just userMarketViewDecoder) .markets setMarkets
+predictionsByIdDecoder : Decode.Decoder PredictionsById
+predictionsByIdDecoder =
+    Decode.message (PredictionsById Dict.empty)
+        [ Decode.mapped 1 ( 0, Nothing ) Decode.uint32 (Decode.map Just userPredictionViewDecoder) .predictions setPredictions
         ]
 
 
@@ -922,7 +922,7 @@ marketsByIdDecoder =
 stakeRequestDecoder : Decode.Decoder StakeRequest
 stakeRequestDecoder =
     Decode.message (StakeRequest 0 False 0)
-        [ Decode.optional 2 Decode.uint32 setMarketId
+        [ Decode.optional 2 Decode.uint32 setPredictionId
         , Decode.optional 3 Decode.bool setBettorIsASkeptic
         , Decode.optional 4 Decode.uint32 setBettorStakeCents
         ]
@@ -953,7 +953,7 @@ stakeResponseErrorDecoder =
 resolveRequestDecoder : Decode.Decoder ResolveRequest
 resolveRequestDecoder =
     Decode.message (ResolveRequest 0 ResolutionNoneYet "")
-        [ Decode.optional 1 Decode.uint32 setMarketId
+        [ Decode.optional 1 Decode.uint32 setPredictionId
         , Decode.optional 2 resolutionDecoder setResolution
         , Decode.optional 3 Decode.string setNotes
         ]
@@ -1137,7 +1137,7 @@ toWorldStateEncoder : WorldState -> Encode.Encoder
 toWorldStateEncoder model =
     Encode.message
         [ ( 1, Encode.dict Encode.string (Maybe.withDefault Encode.none << Maybe.map toWorldStateUsernameInfoEncoder) model.usernameUsers )
-        , ( 2, Encode.dict Encode.uint32 (Maybe.withDefault Encode.none << Maybe.map toWorldStateMarketEncoder) model.markets )
+        , ( 2, Encode.dict Encode.uint32 (Maybe.withDefault Encode.none << Maybe.map toWorldStatePredictionEncoder) model.predictions )
         ]
 
 
@@ -1156,8 +1156,8 @@ toWorldStateUsernameInfoEncoder model =
         ]
 
 
-toWorldStateMarketEncoder : WorldStateMarket -> Encode.Encoder
-toWorldStateMarketEncoder model =
+toWorldStatePredictionEncoder : WorldStatePrediction -> Encode.Encoder
+toWorldStatePredictionEncoder model =
     Encode.message
         [ ( 1, Encode.string model.prediction )
         , ( 2, (Maybe.withDefault Encode.none << Maybe.map toCertaintyRangeEncoder) model.certainty )
@@ -1319,32 +1319,32 @@ toPrivacyKindEncoder model =
             ( 1, toVoidEncoder value )
 
         PrivacyKindSpecificUsers value ->
-            ( 2, toMarketPrivacyEmailsEncoder value )
+            ( 2, toPredictionPrivacyEmailsEncoder value )
 
 
-{-| `MarketPrivacy` encoder
+{-| `PredictionPrivacy` encoder
 -}
-toMarketPrivacyEncoder : MarketPrivacy -> Encode.Encoder
-toMarketPrivacyEncoder model =
+toPredictionPrivacyEncoder : PredictionPrivacy -> Encode.Encoder
+toPredictionPrivacyEncoder model =
     Encode.message
         [ Maybe.withDefault ( 0, Encode.none ) <| Maybe.map toPrivacyKindEncoder model.privacyKind
         ]
 
 
-toMarketPrivacyEmailsEncoder : MarketPrivacyEmails -> Encode.Encoder
-toMarketPrivacyEmailsEncoder model =
+toPredictionPrivacyEmailsEncoder : PredictionPrivacyEmails -> Encode.Encoder
+toPredictionPrivacyEmailsEncoder model =
     Encode.message
         [ ( 1, Encode.list Encode.string model.emails )
         ]
 
 
-{-| `CreateMarketRequest` encoder
+{-| `CreatePredictionRequest` encoder
 -}
-toCreateMarketRequestEncoder : CreateMarketRequest -> Encode.Encoder
-toCreateMarketRequestEncoder model =
+toCreatePredictionRequestEncoder : CreatePredictionRequest -> Encode.Encoder
+toCreatePredictionRequestEncoder model =
     Encode.message
         [ ( 2, Encode.string model.prediction )
-        , ( 3, (Maybe.withDefault Encode.none << Maybe.map toMarketPrivacyEncoder) model.privacy )
+        , ( 3, (Maybe.withDefault Encode.none << Maybe.map toPredictionPrivacyEncoder) model.privacy )
         , ( 4, (Maybe.withDefault Encode.none << Maybe.map toCertaintyRangeEncoder) model.certainty )
         , ( 5, Encode.uint32 model.maximumStakeCents )
         , ( 6, Encode.uint32 model.openSeconds )
@@ -1353,72 +1353,72 @@ toCreateMarketRequestEncoder model =
         ]
 
 
-toCreateMarketResultEncoder : CreateMarketResult -> ( Int, Encode.Encoder )
-toCreateMarketResultEncoder model =
+toCreatePredictionResultEncoder : CreatePredictionResult -> ( Int, Encode.Encoder )
+toCreatePredictionResultEncoder model =
     case model of
-        CreateMarketResultNewMarketId value ->
+        CreatePredictionResultNewPredictionId value ->
             ( 1, Encode.uint32 value )
 
-        CreateMarketResultError value ->
-            ( 2, toCreateMarketResponseErrorEncoder value )
+        CreatePredictionResultError value ->
+            ( 2, toCreatePredictionResponseErrorEncoder value )
 
 
-{-| `CreateMarketResponse` encoder
+{-| `CreatePredictionResponse` encoder
 -}
-toCreateMarketResponseEncoder : CreateMarketResponse -> Encode.Encoder
-toCreateMarketResponseEncoder model =
+toCreatePredictionResponseEncoder : CreatePredictionResponse -> Encode.Encoder
+toCreatePredictionResponseEncoder model =
     Encode.message
-        [ Maybe.withDefault ( 0, Encode.none ) <| Maybe.map toCreateMarketResultEncoder model.createMarketResult
+        [ Maybe.withDefault ( 0, Encode.none ) <| Maybe.map toCreatePredictionResultEncoder model.createPredictionResult
         ]
 
 
-toCreateMarketResponseErrorEncoder : CreateMarketResponseError -> Encode.Encoder
-toCreateMarketResponseErrorEncoder model =
+toCreatePredictionResponseErrorEncoder : CreatePredictionResponseError -> Encode.Encoder
+toCreatePredictionResponseErrorEncoder model =
     Encode.message
         [ ( 1, Encode.string model.catchall )
         ]
 
 
-{-| `GetMarketRequest` encoder
+{-| `GetPredictionRequest` encoder
 -}
-toGetMarketRequestEncoder : GetMarketRequest -> Encode.Encoder
-toGetMarketRequestEncoder model =
+toGetPredictionRequestEncoder : GetPredictionRequest -> Encode.Encoder
+toGetPredictionRequestEncoder model =
     Encode.message
-        [ ( 2, Encode.uint32 model.marketId )
+        [ ( 2, Encode.uint32 model.predictionId )
         ]
 
 
-toGetMarketResultEncoder : GetMarketResult -> ( Int, Encode.Encoder )
-toGetMarketResultEncoder model =
+toGetPredictionResultEncoder : GetPredictionResult -> ( Int, Encode.Encoder )
+toGetPredictionResultEncoder model =
     case model of
-        GetMarketResultMarket value ->
-            ( 1, toUserMarketViewEncoder value )
+        GetPredictionResultPrediction value ->
+            ( 1, toUserPredictionViewEncoder value )
 
-        GetMarketResultError value ->
-            ( 2, toGetMarketResponseErrorEncoder value )
+        GetPredictionResultError value ->
+            ( 2, toGetPredictionResponseErrorEncoder value )
 
 
-{-| `GetMarketResponse` encoder
+{-| `GetPredictionResponse` encoder
 -}
-toGetMarketResponseEncoder : GetMarketResponse -> Encode.Encoder
-toGetMarketResponseEncoder model =
+toGetPredictionResponseEncoder : GetPredictionResponse -> Encode.Encoder
+toGetPredictionResponseEncoder model =
     Encode.message
-        [ Maybe.withDefault ( 0, Encode.none ) <| Maybe.map toGetMarketResultEncoder model.getMarketResult
+        [ Maybe.withDefault ( 0, Encode.none ) <| Maybe.map toGetPredictionResultEncoder model.getPredictionResult
         ]
 
 
-toGetMarketResponseErrorEncoder : GetMarketResponseError -> Encode.Encoder
-toGetMarketResponseErrorEncoder model =
+toGetPredictionResponseErrorEncoder : GetPredictionResponseError -> Encode.Encoder
+toGetPredictionResponseErrorEncoder model =
     Encode.message
         [ ( 1, Encode.string model.catchall )
-        , ( 2, toVoidEncoder model.noSuchMarket )
+        , ( 2, toVoidEncoder model.noSuchPrediction )
         ]
 
 
-{-| `UserMarketView` encoder
+{-| `UserPredictionView` encoder
 -}
-toUserMarketViewEncoder : UserMarketView -> Encode.Encoder
-toUserMarketViewEncoder model =
+toUserPredictionViewEncoder : UserPredictionView -> Encode.Encoder
+toUserPredictionViewEncoder model =
     Encode.message
         [ ( 1, Encode.string model.prediction )
         , ( 2, (Maybe.withDefault Encode.none << Maybe.map toCertaintyRangeEncoder) model.certainty )
@@ -1447,47 +1447,47 @@ toUserUserViewEncoder model =
         ]
 
 
-{-| `ListMyMarketsRequest` encoder
+{-| `ListMyPredictionsRequest` encoder
 -}
-toListMyMarketsRequestEncoder : ListMyMarketsRequest -> Encode.Encoder
-toListMyMarketsRequestEncoder model =
+toListMyPredictionsRequestEncoder : ListMyPredictionsRequest -> Encode.Encoder
+toListMyPredictionsRequestEncoder model =
     Encode.message
         []
 
 
-toListMyMarketsResultEncoder : ListMyMarketsResult -> ( Int, Encode.Encoder )
-toListMyMarketsResultEncoder model =
+toListMyPredictionsResultEncoder : ListMyPredictionsResult -> ( Int, Encode.Encoder )
+toListMyPredictionsResultEncoder model =
     case model of
-        ListMyMarketsResultOk value ->
-            ( 1, toMarketsByIdEncoder value )
+        ListMyPredictionsResultOk value ->
+            ( 1, toPredictionsByIdEncoder value )
 
-        ListMyMarketsResultError value ->
-            ( 2, toListMyMarketsResponseErrorEncoder value )
+        ListMyPredictionsResultError value ->
+            ( 2, toListMyPredictionsResponseErrorEncoder value )
 
 
-{-| `ListMyMarketsResponse` encoder
+{-| `ListMyPredictionsResponse` encoder
 -}
-toListMyMarketsResponseEncoder : ListMyMarketsResponse -> Encode.Encoder
-toListMyMarketsResponseEncoder model =
+toListMyPredictionsResponseEncoder : ListMyPredictionsResponse -> Encode.Encoder
+toListMyPredictionsResponseEncoder model =
     Encode.message
-        [ Maybe.withDefault ( 0, Encode.none ) <| Maybe.map toListMyMarketsResultEncoder model.listMyMarketsResult
+        [ Maybe.withDefault ( 0, Encode.none ) <| Maybe.map toListMyPredictionsResultEncoder model.listMyPredictionsResult
         ]
 
 
-toListMyMarketsResponseErrorEncoder : ListMyMarketsResponseError -> Encode.Encoder
-toListMyMarketsResponseErrorEncoder model =
+toListMyPredictionsResponseErrorEncoder : ListMyPredictionsResponseError -> Encode.Encoder
+toListMyPredictionsResponseErrorEncoder model =
     Encode.message
         [ ( 1, Encode.string model.catchall )
-        , ( 2, toVoidEncoder model.noSuchMarket )
+        , ( 2, toVoidEncoder model.noSuchPrediction )
         ]
 
 
-{-| `MarketsById` encoder
+{-| `PredictionsById` encoder
 -}
-toMarketsByIdEncoder : MarketsById -> Encode.Encoder
-toMarketsByIdEncoder model =
+toPredictionsByIdEncoder : PredictionsById -> Encode.Encoder
+toPredictionsByIdEncoder model =
     Encode.message
-        [ ( 1, Encode.dict Encode.uint32 (Maybe.withDefault Encode.none << Maybe.map toUserMarketViewEncoder) model.markets )
+        [ ( 1, Encode.dict Encode.uint32 (Maybe.withDefault Encode.none << Maybe.map toUserPredictionViewEncoder) model.predictions )
         ]
 
 
@@ -1496,7 +1496,7 @@ toMarketsByIdEncoder model =
 toStakeRequestEncoder : StakeRequest -> Encode.Encoder
 toStakeRequestEncoder model =
     Encode.message
-        [ ( 2, Encode.uint32 model.marketId )
+        [ ( 2, Encode.uint32 model.predictionId )
         , ( 3, Encode.bool model.bettorIsASkeptic )
         , ( 4, Encode.uint32 model.bettorStakeCents )
         ]
@@ -1533,7 +1533,7 @@ toStakeResponseErrorEncoder model =
 toResolveRequestEncoder : ResolveRequest -> Encode.Encoder
 toResolveRequestEncoder model =
     Encode.message
-        [ ( 1, Encode.uint32 model.marketId )
+        [ ( 1, Encode.uint32 model.predictionId )
         , ( 2, toResolutionEncoder model.resolution )
         , ( 3, Encode.string model.notes )
         ]
@@ -1706,9 +1706,9 @@ setUsernameUsers value model =
     { model | usernameUsers = value }
 
 
-setMarkets : a -> { b | markets : a } -> { b | markets : a }
-setMarkets value model =
-    { model | markets = value }
+setPredictions : a -> { b | predictions : a } -> { b | predictions : a }
+setPredictions value model =
+    { model | predictions = value }
 
 
 setTrustedUsers : a -> { b | trustedUsers : a } -> { b | trustedUsers : a }
@@ -1881,24 +1881,24 @@ setOpenSeconds value model =
     { model | openSeconds = value }
 
 
-setCreateMarketResult : a -> { b | createMarketResult : a } -> { b | createMarketResult : a }
-setCreateMarketResult value model =
-    { model | createMarketResult = value }
+setCreatePredictionResult : a -> { b | createPredictionResult : a } -> { b | createPredictionResult : a }
+setCreatePredictionResult value model =
+    { model | createPredictionResult = value }
 
 
-setMarketId : a -> { b | marketId : a } -> { b | marketId : a }
-setMarketId value model =
-    { model | marketId = value }
+setPredictionId : a -> { b | predictionId : a } -> { b | predictionId : a }
+setPredictionId value model =
+    { model | predictionId = value }
 
 
-setGetMarketResult : a -> { b | getMarketResult : a } -> { b | getMarketResult : a }
-setGetMarketResult value model =
-    { model | getMarketResult = value }
+setGetPredictionResult : a -> { b | getPredictionResult : a } -> { b | getPredictionResult : a }
+setGetPredictionResult value model =
+    { model | getPredictionResult = value }
 
 
-setNoSuchMarket : a -> { b | noSuchMarket : a } -> { b | noSuchMarket : a }
-setNoSuchMarket value model =
-    { model | noSuchMarket = value }
+setNoSuchPrediction : a -> { b | noSuchPrediction : a } -> { b | noSuchPrediction : a }
+setNoSuchPrediction value model =
+    { model | noSuchPrediction = value }
 
 
 setRemainingStakeCentsVsBelievers : a -> { b | remainingStakeCentsVsBelievers : a } -> { b | remainingStakeCentsVsBelievers : a }
@@ -1936,9 +1936,9 @@ setTrustsYou value model =
     { model | trustsYou = value }
 
 
-setListMyMarketsResult : a -> { b | listMyMarketsResult : a } -> { b | listMyMarketsResult : a }
-setListMyMarketsResult value model =
-    { model | listMyMarketsResult = value }
+setListMyPredictionsResult : a -> { b | listMyPredictionsResult : a } -> { b | listMyPredictionsResult : a }
+setListMyPredictionsResult value model =
+    { model | listMyPredictionsResult = value }
 
 
 setStakeResult : a -> { b | stakeResult : a } -> { b | stakeResult : a }

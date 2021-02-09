@@ -25,7 +25,7 @@ message WorldState {
   // map<string, GoogleOauthInfo> google_oauth_users = 5;
   // map<string, FacebookOauthInfo> facebook_oauth_users = 6;
 
-  map<uint32, Market> markets = 2;
+  map<uint32, Prediction> predictions = 2;
 
   message GenericUserInfo {
     repeated UserId trusted_users = 1;
@@ -40,7 +40,7 @@ message WorldState {
   // message FacebookOauthInfo {
   //   GenericUserInfo info = 1;
   // }
-  message Market {
+  message Prediction {
     // Set upon creation, never changed
     string prediction = 1;
     CertaintyRange certainty = 2;
@@ -124,7 +124,7 @@ message CertaintyRange {
   float low = 1;
   float high = 2;
 }
-message MarketPrivacy {
+message PredictionPrivacy {
   oneof privacy_kind {
     Void all_trusted_by_author = 1;
     Emails specific_users = 2;
@@ -133,18 +133,18 @@ message MarketPrivacy {
     repeated string emails = 1;
   }
 }
-message CreateMarketRequest {
+message CreatePredictionRequest {
   string prediction = 2;
-  MarketPrivacy privacy = 3;
+  PredictionPrivacy privacy = 3;
   CertaintyRange certainty = 4;
   uint32 maximum_stake_cents = 5;
   uint32 open_seconds = 6;
   string special_rules = 7;
   uint32 resolves_at_unixtime = 8;
 }
-message CreateMarketResponse {
-  oneof create_market_result {
-    uint32 new_market_id = 1;
+message CreatePredictionResponse {
+  oneof create_prediction_result {
+    uint32 new_prediction_id = 1;
     Error error = 2;
   }
   message Error {
@@ -152,20 +152,20 @@ message CreateMarketResponse {
   }
 }
 
-message GetMarketRequest {
-  uint32 market_id = 2;
+message GetPredictionRequest {
+  uint32 prediction_id = 2;
 }
-message GetMarketResponse {
-  oneof get_market_result {
-    UserMarketView market = 1;
+message GetPredictionResponse {
+  oneof get_prediction_result {
+    UserPredictionView prediction = 1;
     Error error = 2;
   }
   message Error {
     string catchall = 1;
-    Void no_such_market = 2;
+    Void no_such_prediction = 2;
   }
 }
-message UserMarketView {
+message UserPredictionView {
   string prediction = 1;
   CertaintyRange certainty = 2;
   uint32 maximum_stake_cents = 3;
@@ -186,24 +186,24 @@ message UserUserView {
   bool trusts_you = 4;
 }
 
-message ListMyMarketsRequest {
+message ListMyPredictionsRequest {
 }
-message ListMyMarketsResponse {
-  oneof list_my_markets_result {
-    MarketsById ok = 1;
+message ListMyPredictionsResponse {
+  oneof list_my_predictions_result {
+    PredictionsById ok = 1;
     Error error = 2;
   }
   message Error {
     string catchall = 1;
-    Void no_such_market = 2;
+    Void no_such_prediction = 2;
   }
 }
-message MarketsById {
-  map<uint32, UserMarketView> markets = 1;
+message PredictionsById {
+  map<uint32, UserPredictionView> predictions = 1;
 }
 
 message StakeRequest {
-  uint32 market_id = 2;
+  uint32 prediction_id = 2;
   bool bettor_is_a_skeptic = 3;
   uint32 bettor_stake_cents = 4;
 }
@@ -218,7 +218,7 @@ message StakeResponse {
 }
 
 message ResolveRequest {
-  uint32 market_id = 1;
+  uint32 prediction_id = 1;
   Resolution resolution = 2;
   string notes = 3;
 }

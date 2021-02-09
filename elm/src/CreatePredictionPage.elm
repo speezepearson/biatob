@@ -1,4 +1,4 @@
-port module CreateMarketPage exposing (..)
+port module CreatePredictionPage exposing (..)
 
 import Browser
 import Html as H exposing (Html)
@@ -14,13 +14,13 @@ import Time
 import Task
 
 import Biatob.Proto.Mvp as Pb
-import CreateMarketForm as Form
+import CreatePredictionForm as Form
 import Utils
 
-import ViewMarketPage
+import ViewPredictionPage
 import Http exposing (request)
 
-port createdMarket : Int -> Cmd msg
+port createdPrediction : Int -> Cmd msg
 
 type alias Model =
   { form : Form.Model
@@ -33,7 +33,7 @@ type alias Model =
 type Msg
   = FormMsg Form.Msg
   | Create
-  | CreateFinished (Result Http.Error Pb.CreateMarketResponse)
+  | CreateFinished (Result Http.Error Pb.CreatePredictionResponse)
   | Tick Time.Posix
   | Ignore
 
@@ -68,12 +68,12 @@ init flags =
   , Cmd.batch [Task.perform Tick Time.now, Cmd.map FormMsg formCmd]
   )
 
-postCreate : Pb.CreateMarketRequest -> Cmd Msg
+postCreate : Pb.CreatePredictionRequest -> Cmd Msg
 postCreate req =
   Http.post
-    { url = "/api/CreateMarket"
-    , body = Http.bytesBody "application/octet-stream" <| PE.encode <| Pb.toCreateMarketRequestEncoder req
-    , expect = PD.expectBytes CreateFinished Pb.createMarketResponseDecoder }
+    { url = "/api/CreatePrediction"
+    , body = Http.bytesBody "application/octet-stream" <| PE.encode <| Pb.toCreatePredictionRequestEncoder req
+    , expect = PD.expectBytes CreateFinished Pb.createPredictionResponseDecoder }
 
 
 update : Msg -> Model -> (Model, Cmd Msg)
@@ -97,12 +97,12 @@ update msg model =
       , Cmd.none
       )
     CreateFinished (Ok resp) ->
-      case resp.createMarketResult of
-        Just (Pb.CreateMarketResultNewMarketId id) ->
+      case resp.createPredictionResult of
+        Just (Pb.CreatePredictionResultNewPredictionId id) ->
           ( model
-          , createdMarket id
+          , createdPrediction id
           )
-        Just (Pb.CreateMarketResultError e) ->
+        Just (Pb.CreatePredictionResultError e) ->
           ( { model | working = False , createError = Just (Debug.toString e) }
           , Cmd.none
           )
@@ -123,7 +123,7 @@ view model =
        Just _ -> H.text ""
        Nothing ->
         H.div []
-          [ H.span [HA.style "color" "red"] [H.text "You need to log in to create a market!"]
+          [ H.span [HA.style "color" "red"] [H.text "You need to log in to create a new prediction!"]
           , H.hr [] []
           ]
     , Form.view model.form |> H.map FormMsg
@@ -142,18 +142,18 @@ view model =
     , H.div [HA.style "border" "1px solid black", HA.style "padding" "1em", HA.style "margin" "1em"]
         [ case Form.toCreateRequest model.form of
             Just req ->
-              previewMarket {request=req, creatorName=authName model.auth, createdAt=model.now}
-              |> (\market -> ViewMarketPage.initBase {market=market, marketId=12345, auth=model.auth, now=model.now})
+              previewPrediction {request=req, creatorName=authName model.auth, createdAt=model.now}
+              |> (\prediction -> ViewPredictionPage.initBase {prediction=prediction, predictionId=12345, auth=model.auth, now=model.now})
               |> Tuple.first
-              |> ViewMarketPage.view
+              |> ViewPredictionPage.view
               |> H.map (always Ignore)
             Nothing ->
-              H.span [HA.style "color" "red"] [H.text "(invalid market)"]
+              H.span [HA.style "color" "red"] [H.text "(invalid prediction)"]
         ]
     ]
 
-previewMarket : {request:Pb.CreateMarketRequest, creatorName:String, createdAt:Time.Posix} -> Pb.UserMarketView
-previewMarket {request, creatorName, createdAt} =
+previewPrediction : {request:Pb.CreatePredictionRequest, creatorName:String, createdAt:Time.Posix} -> Pb.UserPredictionView
+previewPrediction {request, creatorName, createdAt} =
   { prediction = request.prediction
   , certainty = request.certainty
   , maximumStakeCents = request.maximumStakeCents

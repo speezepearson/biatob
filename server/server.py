@@ -23,7 +23,7 @@ import bcrypt  # type: ignore
 from aiohttp import web
 from .protobuf import mvp_pb2
 
-MarketId = NewType('MarketId', int)
+PredictionId = NewType('PredictionId', int)
 
 try: IMAGE_EMBED_FONT = ImageFont.truetype('FreeSans.ttf', 18)
 except Exception: IMAGE_EMBED_FONT = ImageFont.load_default()
@@ -76,25 +76,25 @@ def describe_password_problems(password: str) -> Optional[str]:
         return 'password must not exceed 256 characters, good lord'
     return None
 
-def view_market(wstate: mvp_pb2.WorldState, viewer: Optional[mvp_pb2.UserId], ws_market: mvp_pb2.WorldState.Market) -> mvp_pb2.UserMarketView:
-    creator_is_self = (viewer == ws_market.creator)
-    return mvp_pb2.UserMarketView(
-        prediction=ws_market.prediction,
-        certainty=ws_market.certainty,
-        maximum_stake_cents=ws_market.maximum_stake_cents,
-        remaining_stake_cents_vs_believers=ws_market.maximum_stake_cents - sum(t.creator_stake_cents for t in ws_market.trades if not t.bettor_is_a_skeptic),
-        remaining_stake_cents_vs_skeptics=ws_market.maximum_stake_cents - sum(t.creator_stake_cents for t in ws_market.trades if t.bettor_is_a_skeptic),
-        created_unixtime=ws_market.created_unixtime,
-        closes_unixtime=ws_market.closes_unixtime,
-        resolves_at_unixtime=ws_market.resolves_at_unixtime,
-        special_rules=ws_market.special_rules,
+def view_prediction(wstate: mvp_pb2.WorldState, viewer: Optional[mvp_pb2.UserId], ws_prediction: mvp_pb2.WorldState.Prediction) -> mvp_pb2.UserPredictionView:
+    creator_is_self = (viewer == ws_prediction.creator)
+    return mvp_pb2.UserPredictionView(
+        prediction=ws_prediction.prediction,
+        certainty=ws_prediction.certainty,
+        maximum_stake_cents=ws_prediction.maximum_stake_cents,
+        remaining_stake_cents_vs_believers=ws_prediction.maximum_stake_cents - sum(t.creator_stake_cents for t in ws_prediction.trades if not t.bettor_is_a_skeptic),
+        remaining_stake_cents_vs_skeptics=ws_prediction.maximum_stake_cents - sum(t.creator_stake_cents for t in ws_prediction.trades if t.bettor_is_a_skeptic),
+        created_unixtime=ws_prediction.created_unixtime,
+        closes_unixtime=ws_prediction.closes_unixtime,
+        resolves_at_unixtime=ws_prediction.resolves_at_unixtime,
+        special_rules=ws_prediction.special_rules,
         creator=mvp_pb2.UserUserView(
-            display_name=ws_market.creator.username if ws_market.creator.WhichOneof('kind')=='username' else 'TODO',
+            display_name=ws_prediction.creator.username if ws_prediction.creator.WhichOneof('kind')=='username' else 'TODO',
             is_self=creator_is_self,
-            is_trusted=trusts(wstate, viewer, ws_market.creator) if (viewer is not None) else False,
-            trusts_you=trusts(wstate, ws_market.creator, viewer) if (viewer is not None) else False,
+            is_trusted=trusts(wstate, viewer, ws_prediction.creator) if (viewer is not None) else False,
+            trusts_you=trusts(wstate, ws_prediction.creator, viewer) if (viewer is not None) else False,
         ),
-        resolutions=ws_market.resolutions,
+        resolutions=ws_prediction.resolutions,
         your_trades=[
             mvp_pb2.Trade(
                 bettor=t.bettor,
@@ -103,7 +103,7 @@ def view_market(wstate: mvp_pb2.WorldState, viewer: Optional[mvp_pb2.UserId], ws
                 bettor_stake_cents=t.bettor_stake_cents,
                 transacted_unixtime=t.transacted_unixtime,
             )
-            for t in ws_market.trades
+            for t in ws_prediction.trades
             if (t.bettor == viewer or creator_is_self)
         ],
     )
@@ -156,9 +156,9 @@ class Servicer(abc.ABC):
     def SignOut(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.SignOutRequest) -> mvp_pb2.SignOutResponse: pass
     def RegisterUsername(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.RegisterUsernameRequest) -> mvp_pb2.RegisterUsernameResponse: pass
     def LogInUsername(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.LogInUsernameRequest) -> mvp_pb2.LogInUsernameResponse: pass
-    def CreateMarket(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.CreateMarketRequest) -> mvp_pb2.CreateMarketResponse: pass
-    def GetMarket(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.GetMarketRequest) -> mvp_pb2.GetMarketResponse: pass
-    def ListMyMarkets(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.ListMyMarketsRequest) -> mvp_pb2.ListMyMarketsResponse: pass
+    def CreatePrediction(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.CreatePredictionRequest) -> mvp_pb2.CreatePredictionResponse: pass
+    def GetPrediction(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.GetPredictionRequest) -> mvp_pb2.GetPredictionResponse: pass
+    def ListMyPredictions(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.ListMyPredictionsRequest) -> mvp_pb2.ListMyPredictionsResponse: pass
     def Stake(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.StakeRequest) -> mvp_pb2.StakeResponse: pass
     def Resolve(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.ResolveRequest) -> mvp_pb2.ResolveResponse: pass
     def SetTrusted(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.SetTrustedRequest) -> mvp_pb2.SetTrustedResponse: pass
@@ -248,28 +248,28 @@ class FsBackedServicer(Servicer):
         return mvp_pb2.LogInUsernameResponse(ok=token)
 
     @checks_token
-    def CreateMarket(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.CreateMarketRequest) -> mvp_pb2.CreateMarketResponse:
+    def CreatePrediction(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.CreatePredictionRequest) -> mvp_pb2.CreatePredictionResponse:
         if token is None:
-            return mvp_pb2.CreateMarketResponse(error=mvp_pb2.CreateMarketResponse.Error(catchall='must log in to create markets'))
+            return mvp_pb2.CreatePredictionResponse(error=mvp_pb2.CreatePredictionResponse.Error(catchall='must log in to create predictions'))
 
         now = int(self._clock())
 
         if not request.prediction:
-            return mvp_pb2.CreateMarketResponse(error=mvp_pb2.CreateMarketResponse.Error(catchall='must have a prediction field'))
+            return mvp_pb2.CreatePredictionResponse(error=mvp_pb2.CreatePredictionResponse.Error(catchall='must have a prediction field'))
         if not request.certainty:
-            return mvp_pb2.CreateMarketResponse(error=mvp_pb2.CreateMarketResponse.Error(catchall='must have a certainty'))
+            return mvp_pb2.CreatePredictionResponse(error=mvp_pb2.CreatePredictionResponse.Error(catchall='must have a certainty'))
         if not (request.certainty.low < request.certainty.high):
-            return mvp_pb2.CreateMarketResponse(error=mvp_pb2.CreateMarketResponse.Error(catchall='certainty must have low < high'))
+            return mvp_pb2.CreatePredictionResponse(error=mvp_pb2.CreatePredictionResponse.Error(catchall='certainty must have low < high'))
         if not (request.maximum_stake_cents <= MAX_LEGAL_STAKE_CENTS):
-            return mvp_pb2.CreateMarketResponse(error=mvp_pb2.CreateMarketResponse.Error(catchall=f'stake must not exceed ${MAX_LEGAL_STAKE_CENTS//100}'))
+            return mvp_pb2.CreatePredictionResponse(error=mvp_pb2.CreatePredictionResponse.Error(catchall=f'stake must not exceed ${MAX_LEGAL_STAKE_CENTS//100}'))
         if not (request.open_seconds > 0):
-            return mvp_pb2.CreateMarketResponse(error=mvp_pb2.CreateMarketResponse.Error(catchall=f'market must be open for a positive number of seconds'))
+            return mvp_pb2.CreatePredictionResponse(error=mvp_pb2.CreatePredictionResponse.Error(catchall=f'prediction must be open for a positive number of seconds'))
         if not (request.resolves_at_unixtime > now):
-            return mvp_pb2.CreateMarketResponse(error=mvp_pb2.CreateMarketResponse.Error(catchall=f'market must resolve in the future'))
+            return mvp_pb2.CreatePredictionResponse(error=mvp_pb2.CreatePredictionResponse.Error(catchall=f'prediction must resolve in the future'))
 
         with self._mutate_state() as wstate:
-            mid = MarketId(weak_rand_not_in(self._rng, limit=2**32, xs=wstate.markets.keys()))
-            market = mvp_pb2.WorldState.Market(
+            mid = PredictionId(weak_rand_not_in(self._rng, limit=2**32, xs=wstate.predictions.keys()))
+            prediction = mvp_pb2.WorldState.Prediction(
                 prediction=request.prediction,
                 certainty=request.certainty,
                 maximum_stake_cents=request.maximum_stake_cents,
@@ -281,31 +281,31 @@ class FsBackedServicer(Servicer):
                 trades=[],
                 resolutions=[],
             )
-            wstate.markets[mid].MergeFrom(market)
-            return mvp_pb2.CreateMarketResponse(new_market_id=mid)
+            wstate.predictions[mid].MergeFrom(prediction)
+            return mvp_pb2.CreatePredictionResponse(new_prediction_id=mid)
 
     @checks_token
-    def GetMarket(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.GetMarketRequest) -> mvp_pb2.GetMarketResponse:
+    def GetPrediction(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.GetPredictionRequest) -> mvp_pb2.GetPredictionResponse:
         wstate = self._get_state()
-        ws_market = wstate.markets.get(request.market_id)
-        if ws_market is None:
-            return mvp_pb2.GetMarketResponse(error=mvp_pb2.GetMarketResponse.Error(no_such_market=mvp_pb2.VOID))
+        ws_prediction = wstate.predictions.get(request.prediction_id)
+        if ws_prediction is None:
+            return mvp_pb2.GetPredictionResponse(error=mvp_pb2.GetPredictionResponse.Error(no_such_prediction=mvp_pb2.VOID))
 
-        return mvp_pb2.GetMarketResponse(market=view_market(wstate, (token.owner if token is not None else None), ws_market))
+        return mvp_pb2.GetPredictionResponse(prediction=view_prediction(wstate, (token.owner if token is not None else None), ws_prediction))
 
     @checks_token
-    def ListMyMarkets(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.ListMyMarketsRequest) -> mvp_pb2.ListMyMarketsResponse:
+    def ListMyPredictions(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.ListMyPredictionsRequest) -> mvp_pb2.ListMyPredictionsResponse:
         wstate = self._get_state()
         if token is None:
-            return mvp_pb2.ListMyMarketsResponse(ok=mvp_pb2.MarketsById(markets={}))
+            return mvp_pb2.ListMyPredictionsResponse(ok=mvp_pb2.PredictionsById(predictions={}))
 
         result = {
-            market_id: view_market(wstate, (token.owner if token is not None else None), market)
-            for market_id, market in wstate.markets.items()
-            if market.creator == token.owner or any(trade.bettor == token.owner for trade in market.trades)
+            prediction_id: view_prediction(wstate, (token.owner if token is not None else None), prediction)
+            for prediction_id, prediction in wstate.predictions.items()
+            if prediction.creator == token.owner or any(trade.bettor == token.owner for trade in prediction.trades)
         }
 
-        return mvp_pb2.ListMyMarketsResponse(ok=mvp_pb2.MarketsById(markets=result))
+        return mvp_pb2.ListMyPredictionsResponse(ok=mvp_pb2.PredictionsById(predictions=result))
 
     @checks_token
     def Stake(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.StakeRequest) -> mvp_pb2.StakeResponse:
@@ -314,29 +314,29 @@ class FsBackedServicer(Servicer):
         assert request.bettor_stake_cents >= 0, 'protobuf should enforce this being a uint, but just in case...'
 
         with self._mutate_state() as wstate:
-            market = wstate.markets.get(request.market_id)
-            if market is None:
-                return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall='no such market'))
-            if not trusts(wstate, market.creator, token.owner):
+            prediction = wstate.predictions.get(request.prediction_id)
+            if prediction is None:
+                return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall='no such prediction'))
+            if not trusts(wstate, prediction.creator, token.owner):
                 return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall="creator doesn't trust you"))
-            if not trusts(wstate, token.owner, market.creator):
+            if not trusts(wstate, token.owner, prediction.creator):
                 return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall="you don't trust the creator"))
             if request.bettor_is_a_skeptic:
-                lowP = market.certainty.low
+                lowP = prediction.certainty.low
                 creator_stake_cents = int(request.bettor_stake_cents * lowP/(1-lowP))
-                existing_stake = sum(t.creator_stake_cents for t in market.trades if t.bettor_is_a_skeptic)
-                if existing_stake + creator_stake_cents > market.maximum_stake_cents:
+                existing_stake = sum(t.creator_stake_cents for t in prediction.trades if t.bettor_is_a_skeptic)
+                if existing_stake + creator_stake_cents > prediction.maximum_stake_cents:
                     return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall='bet would exceed creator tolerance'))
             else:
-                highP = market.certainty.high
+                highP = prediction.certainty.high
                 creator_stake_cents = int(request.bettor_stake_cents * (1-highP)/highP)
-                existing_stake = sum(t.creator_stake_cents for t in market.trades if not t.bettor_is_a_skeptic)
-            if existing_stake + creator_stake_cents > market.maximum_stake_cents:
-                return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall=f'bet would exceed creator tolerance ({existing_stake} existing + {creator_stake_cents} new stake > {market.maximum_stake_cents} max)'))
-            existing_bettor_exposure = sum(t.bettor_stake_cents for t in market.trades if t.bettor == token.owner and t.bettor_is_a_skeptic == request.bettor_is_a_skeptic)
+                existing_stake = sum(t.creator_stake_cents for t in prediction.trades if not t.bettor_is_a_skeptic)
+            if existing_stake + creator_stake_cents > prediction.maximum_stake_cents:
+                return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall=f'bet would exceed creator tolerance ({existing_stake} existing + {creator_stake_cents} new stake > {prediction.maximum_stake_cents} max)'))
+            existing_bettor_exposure = sum(t.bettor_stake_cents for t in prediction.trades if t.bettor == token.owner and t.bettor_is_a_skeptic == request.bettor_is_a_skeptic)
             if existing_bettor_exposure + request.bettor_stake_cents > MAX_LEGAL_STAKE_CENTS:
-                return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall=f'your existing stake of ~${existing_bettor_exposure//100} plus your new stake ~${request.bettor_stake_cents//100} cents would put you over the limit of ${MAX_LEGAL_STAKE_CENTS//100} staked in a single market'))
-            market.trades.append(mvp_pb2.Trade(
+                return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall=f'your existing stake of ~${existing_bettor_exposure//100} plus your new stake ~${request.bettor_stake_cents//100} cents would put you over the limit of ${MAX_LEGAL_STAKE_CENTS//100} staked in a single prediction'))
+            prediction.trades.append(mvp_pb2.Trade(
                 bettor=token.owner,
                 bettor_is_a_skeptic=request.bettor_is_a_skeptic,
                 creator_stake_cents=creator_stake_cents,
@@ -351,12 +351,12 @@ class FsBackedServicer(Servicer):
             return mvp_pb2.ResolveResponse(error=mvp_pb2.ResolveResponse.Error(catchall='must log in to bet'))
 
         with self._mutate_state() as wstate:
-            market = wstate.markets.get(request.market_id)
-            if market is None:
-                return mvp_pb2.ResolveResponse(error=mvp_pb2.ResolveResponse.Error(catchall='no such market'))
-            if token.owner != market.creator:
+            prediction = wstate.predictions.get(request.prediction_id)
+            if prediction is None:
+                return mvp_pb2.ResolveResponse(error=mvp_pb2.ResolveResponse.Error(catchall='no such prediction'))
+            if token.owner != prediction.creator:
                 return mvp_pb2.ResolveResponse(error=mvp_pb2.ResolveResponse.Error(catchall="you are not the creator"))
-            market.resolutions.append(mvp_pb2.ResolutionEvent(unixtime=int(self._clock()), resolution=request.resolution, notes=request.notes))
+            prediction.resolutions.append(mvp_pb2.ResolutionEvent(unixtime=int(self._clock()), resolution=request.resolution, notes=request.notes))
             return mvp_pb2.ResolveResponse(ok=mvp_pb2.VOID)
 
     @checks_token
@@ -522,12 +522,12 @@ class ApiServer:
             if pb_resp.WhichOneof('log_in_username_result') == 'ok':
                 self._token_glue.set_cookie(pb_resp.ok, http_resp)
             return http_resp
-        @routes.post('/api/CreateMarket')
-        async def api_CreateMarket(http_req: web.Request) -> web.Response:
-            return proto_response(self._servicer.CreateMarket(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.CreateMarketRequest)))
-        @routes.post('/api/GetMarket')
-        async def api_GetMarket(http_req: web.Request) -> web.Response:
-            return proto_response(self._servicer.GetMarket(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.GetMarketRequest)))
+        @routes.post('/api/CreatePrediction')
+        async def api_CreatePrediction(http_req: web.Request) -> web.Response:
+            return proto_response(self._servicer.CreatePrediction(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.CreatePredictionRequest)))
+        @routes.post('/api/GetPrediction')
+        async def api_GetPrediction(http_req: web.Request) -> web.Response:
+            return proto_response(self._servicer.GetPrediction(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.GetPredictionRequest)))
         @routes.post('/api/Stake')
         async def api_Stake(http_req: web.Request) -> web.Response:
             return proto_response(self._servicer.Stake(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.StakeRequest)))
@@ -558,11 +558,11 @@ class WebServer:
         routes = web.RouteTableDef()
 
         @routes.get('/static/{filename}') # type: ignore
-        async def get_elm_module(req: web.Request) -> web.StreamResponse:
+        async def get_static(req: web.Request) -> web.StreamResponse:
             filename = req.match_info['filename']
             if (not filename) or filename.startswith('.'):
-                return web.HTTPBadRequest()
-            return web.FileResponse(_HERE/'static'/filename)
+                raise web.HTTPBadRequest()
+            return web.FileResponse(_HERE/'static'/filename)  # type: ignore
 
         @routes.get('/elm/{module}.js') # type: ignore
         async def get_elm_module(req: web.Request) -> web.Response:
@@ -575,7 +575,7 @@ class WebServer:
             if auth is None:
                 return await get_welcome(req)
             else:
-                return await get_my_markets(req)
+                return await get_my_predictions(req)
 
         @routes.get('/welcome')
         async def get_welcome(req: web.Request) -> web.Response:
@@ -587,43 +587,43 @@ class WebServer:
 
 
         @routes.get('/new')
-        async def get_create_market_page(req: web.Request) -> web.Response:
+        async def get_create_prediction_page(req: web.Request) -> web.Response:
             auth = self._token_glue.get()
             return web.Response(
                 content_type='text/html',
-                body=(_HERE/'templates'/'CreateMarketPage.html').read_text()
+                body=(_HERE/'templates'/'CreatePredictionPage.html').read_text()
                         .replace(r'{{auth_token_pb_b64}}', pb_b64_json(auth) if auth else 'null'))
 
-        @routes.get('/market/{market_id:[0-9]+}')
-        async def get_view_market_page(req: web.Request) -> web.Response:
+        @routes.get('/p/{prediction_id:[0-9]+}')
+        async def get_view_prediction_page(req: web.Request) -> web.Response:
             auth = self._token_glue.get()
-            market_id = int(req.match_info['market_id'])
-            get_market_resp = self._servicer.GetMarket(auth, mvp_pb2.GetMarketRequest(market_id=market_id))
-            if get_market_resp.WhichOneof('get_market_result') == 'error':
-                return web.Response(status=404, body=str(get_market_resp.error))
+            prediction_id = int(req.match_info['prediction_id'])
+            get_prediction_resp = self._servicer.GetPrediction(auth, mvp_pb2.GetPredictionRequest(prediction_id=prediction_id))
+            if get_prediction_resp.WhichOneof('get_prediction_result') == 'error':
+                return web.Response(status=404, body=str(get_prediction_resp.error))
 
-            assert get_market_resp.WhichOneof('get_market_result') == 'market'
+            assert get_prediction_resp.WhichOneof('get_prediction_result') == 'prediction'
             return web.Response(
                 content_type='text/html',
-                body=(_HERE/'templates'/'ViewMarketPage.html').read_text()
+                body=(_HERE/'templates'/'ViewPredictionPage.html').read_text()
                         .replace(r'{{auth_token_pb_b64}}', pb_b64_json(auth) if auth else 'null')
-                        .replace(r'{{market_pb_b64}}', pb_b64_json(get_market_resp.market))
-                        .replace(r'{{market_id}}', str(market_id)))
+                        .replace(r'{{prediction_pb_b64}}', pb_b64_json(get_prediction_resp.prediction))
+                        .replace(r'{{prediction_id}}', str(prediction_id)))
 
-        @routes.get('/market/{market_id:[0-9]+}/embed.png')
-        async def get_market_img_embed(req: web.Request) -> web.Response:
+        @routes.get('/p/{prediction_id:[0-9]+}/embed.png')
+        async def get_prediction_img_embed(req: web.Request) -> web.Response:
             auth = self._token_glue.get()
-            market_id = int(req.match_info['market_id'])
-            get_market_resp = self._servicer.GetMarket(auth, mvp_pb2.GetMarketRequest(market_id=market_id))
-            if get_market_resp.WhichOneof('get_market_result') == 'error':
-                return web.Response(status=404, body=str(get_market_resp.error))
+            prediction_id = int(req.match_info['prediction_id'])
+            get_prediction_resp = self._servicer.GetPrediction(auth, mvp_pb2.GetPredictionRequest(prediction_id=prediction_id))
+            if get_prediction_resp.WhichOneof('get_prediction_result') == 'error':
+                return web.Response(status=404, body=str(get_prediction_resp.error))
 
-            assert get_market_resp.WhichOneof('get_market_result') == 'market'
+            assert get_prediction_resp.WhichOneof('get_prediction_result') == 'prediction'
             def format_cents(n: int) -> str:
                 if n < 0: return '-' + format_cents(-n)
                 return f'${n//100}' + ('' if n%100 == 0 else f'.{n%100 :02d}')
-            market = get_market_resp.market
-            text = f'[{format_cents(market.maximum_stake_cents)} @ {round(market.certainty.low*100)}-{round(market.certainty.high*100)}%]'
+            prediction = get_prediction_resp.prediction
+            text = f'[{format_cents(prediction.maximum_stake_cents)} @ {round(prediction.certainty.low*100)}-{round(prediction.certainty.high*100)}%]'
             size = IMAGE_EMBED_FONT.getsize(text)
             img = Image.new('RGBA', size, color=(255,255,255,0))
             ImageDraw.Draw(img).text((0,0), text, fill=(0,128,0,255), font=IMAGE_EMBED_FONT)
@@ -631,18 +631,18 @@ class WebServer:
             img.save(buf, format='png')
             return web.Response(content_type='image/png', body=buf.getvalue())
 
-        @routes.get('/my_markets')
-        async def get_my_markets(req: web.Request) -> web.Response:
+        @routes.get('/my_predictions')
+        async def get_my_predictions(req: web.Request) -> web.Response:
             auth = self._token_glue.get()
-            list_my_markets_resp = self._servicer.ListMyMarkets(auth, mvp_pb2.ListMyMarketsRequest())
-            if list_my_markets_resp.WhichOneof('list_my_markets_result') == 'error':
-                return web.Response(status=400, body=str(list_my_markets_resp.error))
-            assert list_my_markets_resp.WhichOneof('list_my_markets_result') == 'ok'
+            list_my_predictions_resp = self._servicer.ListMyPredictions(auth, mvp_pb2.ListMyPredictionsRequest())
+            if list_my_predictions_resp.WhichOneof('list_my_predictions_result') == 'error':
+                return web.Response(status=400, body=str(list_my_predictions_resp.error))
+            assert list_my_predictions_resp.WhichOneof('list_my_predictions_result') == 'ok'
             return web.Response(
                 content_type='text/html',
-                body=(_HERE/'templates'/'MyMarketsPage.html').read_text()
+                body=(_HERE/'templates'/'MyPredictionsPage.html').read_text()
                             .replace(r'{{auth_token_pb_b64}}', pb_b64_json(auth) if auth else 'null')
-                            .replace(r'{{markets_pb_b64}}', pb_b64_json(list_my_markets_resp.ok)))
+                            .replace(r'{{predictions_pb_b64}}', pb_b64_json(list_my_predictions_resp.ok)))
 
         @routes.get('/username/{username:[a-zA-Z0-9_-]+}')
         async def get_username(req: web.Request) -> web.Response:

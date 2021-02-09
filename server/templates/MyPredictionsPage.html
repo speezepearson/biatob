@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <title>Main</title>
   <link rel="shortcut icon"type="image/x-icon" href="data:image/x-icon;,">
-  <script type="text/javascript" src="/elm/MyMarketsPage.js"></script>
+  <script type="text/javascript" src="/elm/MyPredictionsPage.js"></script>
   <script type="text/javascript" src="/elm/Navbar.js"></script>
   <link rel="stylesheet" href="/static/base.css">
 </head>
@@ -15,7 +15,7 @@
   <script type="text/javascript">
 
     var authTokenPbB64 = {{auth_token_pb_b64}};
-    var marketsPbB64 = {{markets_pb_b64}};
+    var predictionsPbB64 = {{predictions_pb_b64}};
 
     var navbar = Elm.Navbar.init({
       node: document.getElementById('navbar'),
@@ -25,16 +25,16 @@
     var usernameField = document.getElementsByClassName('username-field')[0];
     if (usernameField) usernameField.focus();
 
-    var main = Elm.MyMarketsPage.init({
+    var main = Elm.MyPredictionsPage.init({
       node: document.getElementById('main'),
-      flags: {authTokenPbB64, marketsPbB64},
+      flags: {authTokenPbB64, predictionsPbB64},
     });
     main.ports.copy.subscribe((id) => {
       console.log('copy');
       document.getElementById(id).select();
       document.execCommand('copy');
     });
-    main.ports.changed.subscribe((marketId) => {
+    main.ports.changed.subscribe((predictionId) => {
       window.location.reload();
     });
 

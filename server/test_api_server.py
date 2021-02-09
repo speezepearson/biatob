@@ -47,8 +47,8 @@ async def test_Whoami_and_RegisterUsername(aiohttp_client, app):
   (http_resp, pb_resp) = await post_proto(cli, '/api/Whoami', mvp_pb2.WhoamiRequest(), mvp_pb2.WhoamiResponse)
   assert pb_resp.auth.owner == mvp_pb2.UserId(username='potato'), pb_resp
 
-async def test_CreateMarket_and_GetMarket(aiohttp_client, app, clock):
-  create_pb_req = mvp_pb2.CreateMarketRequest(
+async def test_CreatePrediction_and_GetPrediction(aiohttp_client, app, clock):
+  create_pb_req = mvp_pb2.CreatePredictionRequest(
     prediction="Is 1 > 2?",
     certainty=mvp_pb2.CertaintyRange(low=0.90, high=1.00),
     maximum_stake_cents=100_00,
@@ -58,29 +58,29 @@ async def test_CreateMarket_and_GetMarket(aiohttp_client, app, clock):
   )
 
   cli = await aiohttp_client(app)
-  (http_resp, create_pb_resp) = await post_proto(cli, '/api/CreateMarket', create_pb_req, mvp_pb2.CreateMarketResponse)
-  assert create_pb_resp.WhichOneof('create_market_result') == 'error', create_pb_resp
+  (http_resp, create_pb_resp) = await post_proto(cli, '/api/CreatePrediction', create_pb_req, mvp_pb2.CreatePredictionResponse)
+  assert create_pb_resp.WhichOneof('create_prediction_result') == 'error', create_pb_resp
 
   (http_resp, register_resp) = await post_proto(cli, '/api/RegisterUsername', mvp_pb2.RegisterUsernameRequest(username='potato', password='secret'), mvp_pb2.RegisterUsernameResponse)
   assert register_resp.WhichOneof('register_username_result') == 'ok', register_resp
 
-  (http_resp, create_pb_resp) = await post_proto(cli, '/api/CreateMarket', create_pb_req, mvp_pb2.CreateMarketResponse)
-  assert create_pb_resp.new_market_id > 0, create_pb_resp
+  (http_resp, create_pb_resp) = await post_proto(cli, '/api/CreatePrediction', create_pb_req, mvp_pb2.CreatePredictionResponse)
+  assert create_pb_resp.new_prediction_id > 0, create_pb_resp
 
-  (http_resp, get_pb_resp) = await post_proto(cli, '/api/GetMarket', mvp_pb2.GetMarketRequest(market_id=create_pb_resp.new_market_id), mvp_pb2.GetMarketResponse)
-  returned_market = get_pb_resp.market
-  assert returned_market.prediction == create_pb_req.prediction
-  assert returned_market.certainty == create_pb_req.certainty
-  assert returned_market.maximum_stake_cents == create_pb_req.maximum_stake_cents
-  assert returned_market.remaining_stake_cents_vs_believers == create_pb_req.maximum_stake_cents
-  assert returned_market.remaining_stake_cents_vs_skeptics == create_pb_req.maximum_stake_cents
-  assert returned_market.created_unixtime == clock.now()
-  assert returned_market.closes_unixtime == returned_market.created_unixtime + create_pb_req.open_seconds
-  assert returned_market.special_rules == create_pb_req.special_rules
+  (http_resp, get_pb_resp) = await post_proto(cli, '/api/GetPrediction', mvp_pb2.GetPredictionRequest(prediction_id=create_pb_resp.new_prediction_id), mvp_pb2.GetPredictionResponse)
+  returned_prediction = get_pb_resp.prediction
+  assert returned_prediction.prediction == create_pb_req.prediction
+  assert returned_prediction.certainty == create_pb_req.certainty
+  assert returned_prediction.maximum_stake_cents == create_pb_req.maximum_stake_cents
+  assert returned_prediction.remaining_stake_cents_vs_believers == create_pb_req.maximum_stake_cents
+  assert returned_prediction.remaining_stake_cents_vs_skeptics == create_pb_req.maximum_stake_cents
+  assert returned_prediction.created_unixtime == clock.now()
+  assert returned_prediction.closes_unixtime == returned_prediction.created_unixtime + create_pb_req.open_seconds
+  assert returned_prediction.special_rules == create_pb_req.special_rules
 
 
-async def test_CreateMarket_enforces_future_resolution(aiohttp_client, app, clock):
-  create_pb_req = mvp_pb2.CreateMarketRequest(
+async def test_CreatePrediction_enforces_future_resolution(aiohttp_client, app, clock):
+  create_pb_req = mvp_pb2.CreatePredictionRequest(
     prediction="Is 1 > 2?",
     certainty=mvp_pb2.CertaintyRange(low=0.90, high=1.00),
     maximum_stake_cents=100_00,
@@ -93,7 +93,7 @@ async def test_CreateMarket_enforces_future_resolution(aiohttp_client, app, cloc
   (http_resp, register_resp) = await post_proto(cli, '/api/RegisterUsername', mvp_pb2.RegisterUsernameRequest(username='potato', password='secret'), mvp_pb2.RegisterUsernameResponse)
   assert register_resp.WhichOneof('register_username_result') == 'ok', register_resp
 
-  (http_resp, create_pb_resp) = await post_proto(cli, '/api/CreateMarket', create_pb_req, mvp_pb2.CreateMarketResponse)
+  (http_resp, create_pb_resp) = await post_proto(cli, '/api/CreatePrediction', create_pb_req, mvp_pb2.CreatePredictionResponse)
   assert 'must resolve in the future' in str(create_pb_resp.error), create_pb_resp
 
 

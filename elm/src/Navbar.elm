@@ -28,9 +28,9 @@ view : Model -> Html Msg
 view model =
   H.ul [HA.class "navbar-content"]
     [ H.li [HA.style "margin" "0.5ex 1ex"] [H.a [HA.href "/"] [H.text "Home"]]
-    , H.li [HA.style "margin" "0.5ex 1ex"] [H.a [HA.href "/new"] [H.text "New market"]]
+    , H.li [HA.style "margin" "0.5ex 1ex"] [H.a [HA.href "/new"] [H.text "New prediction"]]
     , if AuthWidget.hasAuth model.authWidget then
-        H.li [HA.style "margin" "0.5ex 1ex"] [H.a [HA.href "/my_markets"] [H.text "My markets"]]
+        H.li [HA.style "margin" "0.5ex 1ex"] [H.a [HA.href "/my_predictions"] [H.text "My predictions"]]
       else
         H.text ""
     , case AuthWidget.getAuth model.authWidget of

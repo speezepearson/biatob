@@ -26,7 +26,7 @@ def alice_bob_tokens(fs_servicer: FsBackedServicer) -> Tuple[mvp_pb2.AuthToken, 
 
   return (token_a, token_b)
 
-def some_create_market_request(**kwargs) -> mvp_pb2.CreateMarketRequest:
+def some_create_prediction_request(**kwargs) -> mvp_pb2.CreatePredictionRequest:
   init_kwargs = dict(
     prediction='prediction!',
     certainty=mvp_pb2.CertaintyRange(low=0.80, high=0.90),
@@ -36,7 +36,7 @@ def some_create_market_request(**kwargs) -> mvp_pb2.CreateMarketRequest:
     special_rules='rules!',
   )
   init_kwargs.update(kwargs)
-  return mvp_pb2.CreateMarketRequest(**init_kwargs)  # type: ignore
+  return mvp_pb2.CreatePredictionRequest(**init_kwargs)  # type: ignore
 
 def test_Whoami(fs_servicer: FsBackedServicer):
   resp = fs_servicer.Whoami(None, mvp_pb2.WhoamiRequest())
@@ -76,22 +76,22 @@ def test_RegisterUsername(fs_servicer: FsBackedServicer):
 
 
 
-def test_CreateMarket_returns_distinct_ids(token_mint, fs_servicer):
+def test_CreatePrediction_returns_distinct_ids(token_mint, fs_servicer):
   token = new_user_token(fs_servicer, 'rando')
-  ids = {fs_servicer.CreateMarket(token, some_create_market_request()).new_market_id for _ in range(30)}
+  ids = {fs_servicer.CreatePrediction(token, some_create_prediction_request()).new_prediction_id for _ in range(30)}
   assert len(ids) == 30
 
 
-def test_GetMarket(fs_servicer: FsBackedServicer, clock: MockClock):
-  req = some_create_market_request()
+def test_GetPrediction(fs_servicer: FsBackedServicer, clock: MockClock):
+  req = some_create_prediction_request()
   rando_token = new_user_token(fs_servicer, 'rando')
-  market_id = fs_servicer.CreateMarket(
+  prediction_id = fs_servicer.CreatePrediction(
     token=rando_token,
     request=copy.deepcopy(req),
-  ).new_market_id
+  ).new_prediction_id
 
-  resp = fs_servicer.GetMarket(rando_token, mvp_pb2.GetMarketRequest(market_id=market_id))
-  assert resp == mvp_pb2.GetMarketResponse(market=mvp_pb2.UserMarketView(
+  resp = fs_servicer.GetPrediction(rando_token, mvp_pb2.GetPredictionRequest(prediction_id=prediction_id))
+  assert resp == mvp_pb2.GetPredictionResponse(prediction=mvp_pb2.UserPredictionView(
     prediction=req.prediction,
     certainty=req.certainty,
     maximum_stake_cents=req.maximum_stake_cents,
@@ -107,49 +107,49 @@ def test_GetMarket(fs_servicer: FsBackedServicer, clock: MockClock):
   ))
 
 
-def test_ListMyMarkets(fs_servicer: FsBackedServicer):
+def test_ListMyPredictions(fs_servicer: FsBackedServicer):
   alice_token, bob_token = alice_bob_tokens(fs_servicer)
-  market_1_id = fs_servicer.CreateMarket(token=alice_token, request=some_create_market_request()).new_market_id
-  market_2_id = fs_servicer.CreateMarket(token=alice_token, request=some_create_market_request()).new_market_id
-  market_3_id = fs_servicer.CreateMarket(token=alice_token, request=some_create_market_request()).new_market_id
+  prediction_1_id = fs_servicer.CreatePrediction(token=alice_token, request=some_create_prediction_request()).new_prediction_id
+  prediction_2_id = fs_servicer.CreatePrediction(token=alice_token, request=some_create_prediction_request()).new_prediction_id
+  prediction_3_id = fs_servicer.CreatePrediction(token=alice_token, request=some_create_prediction_request()).new_prediction_id
 
-  resp = fs_servicer.ListMyMarkets(bob_token, mvp_pb2.ListMyMarketsRequest())
-  assert resp.WhichOneof('list_my_markets_result') == 'ok'
-  assert set(resp.ok.markets.keys()) == set()
+  resp = fs_servicer.ListMyPredictions(bob_token, mvp_pb2.ListMyPredictionsRequest())
+  assert resp.WhichOneof('list_my_predictions_result') == 'ok'
+  assert set(resp.ok.predictions.keys()) == set()
 
-  fs_servicer.Stake(bob_token, mvp_pb2.StakeRequest(market_id=market_1_id, bettor_is_a_skeptic=True, bettor_stake_cents=10))
-  resp = fs_servicer.ListMyMarkets(bob_token, mvp_pb2.ListMyMarketsRequest())
-  assert resp.WhichOneof('list_my_markets_result') == 'ok'
-  assert set(resp.ok.markets.keys()) == {market_1_id}
+  fs_servicer.Stake(bob_token, mvp_pb2.StakeRequest(prediction_id=prediction_1_id, bettor_is_a_skeptic=True, bettor_stake_cents=10))
+  resp = fs_servicer.ListMyPredictions(bob_token, mvp_pb2.ListMyPredictionsRequest())
+  assert resp.WhichOneof('list_my_predictions_result') == 'ok'
+  assert set(resp.ok.predictions.keys()) == {prediction_1_id}
 
-  fs_servicer.Stake(bob_token, mvp_pb2.StakeRequest(market_id=market_2_id, bettor_is_a_skeptic=True, bettor_stake_cents=10))
-  resp = fs_servicer.ListMyMarkets(bob_token, mvp_pb2.ListMyMarketsRequest())
-  assert resp.WhichOneof('list_my_markets_result') == 'ok'
-  assert set(resp.ok.markets.keys()) == {market_1_id, market_2_id}
+  fs_servicer.Stake(bob_token, mvp_pb2.StakeRequest(prediction_id=prediction_2_id, bettor_is_a_skeptic=True, bettor_stake_cents=10))
+  resp = fs_servicer.ListMyPredictions(bob_token, mvp_pb2.ListMyPredictionsRequest())
+  assert resp.WhichOneof('list_my_predictions_result') == 'ok'
+  assert set(resp.ok.predictions.keys()) == {prediction_1_id, prediction_2_id}
 
 
 def test_Stake(fs_servicer, clock):
   alice_token, bob_token = alice_bob_tokens(fs_servicer)
-  market_id = fs_servicer.CreateMarket(
+  prediction_id = fs_servicer.CreatePrediction(
     token=alice_token,
-    request=some_create_market_request(
+    request=some_create_prediction_request(
       certainty=mvp_pb2.CertaintyRange(low=0.80, high=0.90),
       maximum_stake_cents=100_00,
     ),
-  ).new_market_id
-  assert market_id != 0
+  ).new_prediction_id
+  assert prediction_id != 0
 
   fs_servicer.Stake(token=bob_token, request=mvp_pb2.StakeRequest(
-    market_id=market_id,
+    prediction_id=prediction_id,
     bettor_is_a_skeptic=True,
     bettor_stake_cents=20_00,
   ))
   fs_servicer.Stake(token=bob_token, request=mvp_pb2.StakeRequest(
-    market_id=market_id,
+    prediction_id=prediction_id,
     bettor_is_a_skeptic=False,
     bettor_stake_cents=90_00,
   ))
-  assert list(fs_servicer.GetMarket(alice_token, mvp_pb2.GetMarketRequest(market_id=market_id)).market.your_trades) == [
+  assert list(fs_servicer.GetPrediction(alice_token, mvp_pb2.GetPredictionRequest(prediction_id=prediction_id)).prediction.your_trades) == [
     mvp_pb2.Trade(
       bettor=bob_token.owner,
       bettor_is_a_skeptic=True,
@@ -168,33 +168,33 @@ def test_Stake(fs_servicer, clock):
 
 def test_Stake_protects_against_overpromising(fs_servicer: FsBackedServicer):
   alice_token, bob_token = alice_bob_tokens(fs_servicer)
-  market_id = fs_servicer.CreateMarket(
+  prediction_id = fs_servicer.CreatePrediction(
     token=alice_token,
-    request=some_create_market_request(
+    request=some_create_prediction_request(
       certainty=mvp_pb2.CertaintyRange(low=0.80, high=0.90),
       maximum_stake_cents=100_00,
     ),
-  ).new_market_id
-  assert market_id != 0
+  ).new_prediction_id
+  assert prediction_id != 0
 
   fs_servicer.Stake(token=bob_token, request=mvp_pb2.StakeRequest(
-    market_id=market_id,
+    prediction_id=prediction_id,
     bettor_is_a_skeptic=True,
     bettor_stake_cents=25_00,
   ))
   fs_servicer.Stake(token=bob_token, request=mvp_pb2.StakeRequest(
-    market_id=market_id,
+    prediction_id=prediction_id,
     bettor_is_a_skeptic=False,
     bettor_stake_cents=900_00,
   ))
 
   assert fs_servicer.Stake(bob_token, mvp_pb2.StakeRequest(
-    market_id=market_id,
+    prediction_id=prediction_id,
     bettor_is_a_skeptic=True,
     bettor_stake_cents=1,
   )).WhichOneof('stake_result') == 'error'
   assert fs_servicer.Stake(bob_token, mvp_pb2.StakeRequest(
-    market_id=market_id,
+    prediction_id=prediction_id,
     bettor_is_a_skeptic=False,
     bettor_stake_cents=9,
   )).WhichOneof('stake_result') == 'error'
@@ -202,14 +202,14 @@ def test_Stake_protects_against_overpromising(fs_servicer: FsBackedServicer):
 def test_Stake_enforces_trust(fs_servicer: FsBackedServicer):
   alice_token, bob_token = alice_bob_tokens(fs_servicer)
   rando_token = new_user_token(fs_servicer, 'rando')
-  market_id = fs_servicer.CreateMarket(
+  prediction_id = fs_servicer.CreatePrediction(
     token=alice_token,
-    request=some_create_market_request(),
-  ).new_market_id
-  assert market_id != 0
+    request=some_create_prediction_request(),
+  ).new_prediction_id
+  assert prediction_id != 0
 
   stake_req = mvp_pb2.StakeRequest(
-    market_id=market_id,
+    prediction_id=prediction_id,
     bettor_is_a_skeptic=False,
     bettor_stake_cents=10_00,
   )
@@ -229,10 +229,10 @@ def test_Stake_enforces_trust(fs_servicer: FsBackedServicer):
 
 def test_Resolve(fs_servicer: FsBackedServicer, clock: MockClock):
   rando_token = new_user_token(fs_servicer, 'rando')
-  market_id = fs_servicer.CreateMarket(
+  prediction_id = fs_servicer.CreatePrediction(
     token=rando_token,
-    request=some_create_market_request(),
-  ).new_market_id
+    request=some_create_prediction_request(),
+  ).new_prediction_id
 
   t0 = clock.now()
   planned_events = [
@@ -241,34 +241,34 @@ def test_Resolve(fs_servicer: FsBackedServicer, clock: MockClock):
     mvp_pb2.ResolutionEvent(unixtime=t0+2, resolution=mvp_pb2.RESOLUTION_NO),
   ]
 
-  resolve_resp = fs_servicer.Resolve(rando_token, mvp_pb2.ResolveRequest(market_id=market_id, resolution=mvp_pb2.RESOLUTION_YES))
+  resolve_resp = fs_servicer.Resolve(rando_token, mvp_pb2.ResolveRequest(prediction_id=prediction_id, resolution=mvp_pb2.RESOLUTION_YES))
   assert resolve_resp.WhichOneof('resolve_result') == 'ok', resolve_resp
-  get_resp = fs_servicer.GetMarket(rando_token, mvp_pb2.GetMarketRequest(market_id=market_id))
-  assert list(get_resp.market.resolutions) == planned_events[:1]
+  get_resp = fs_servicer.GetPrediction(rando_token, mvp_pb2.GetPredictionRequest(prediction_id=prediction_id))
+  assert list(get_resp.prediction.resolutions) == planned_events[:1]
 
   clock.tick()
   t1 = clock.now()
-  resolve_resp = fs_servicer.Resolve(rando_token, mvp_pb2.ResolveRequest(market_id=market_id, resolution=mvp_pb2.RESOLUTION_NONE_YET))
+  resolve_resp = fs_servicer.Resolve(rando_token, mvp_pb2.ResolveRequest(prediction_id=prediction_id, resolution=mvp_pb2.RESOLUTION_NONE_YET))
   assert resolve_resp.WhichOneof('resolve_result') == 'ok', resolve_resp
-  get_resp = fs_servicer.GetMarket(rando_token, mvp_pb2.GetMarketRequest(market_id=market_id))
-  assert list(get_resp.market.resolutions) == planned_events[:2]
+  get_resp = fs_servicer.GetPrediction(rando_token, mvp_pb2.GetPredictionRequest(prediction_id=prediction_id))
+  assert list(get_resp.prediction.resolutions) == planned_events[:2]
 
   clock.tick()
   t2 = clock.now()
-  resolve_resp = fs_servicer.Resolve(rando_token, mvp_pb2.ResolveRequest(market_id=market_id, resolution=mvp_pb2.RESOLUTION_NO))
+  resolve_resp = fs_servicer.Resolve(rando_token, mvp_pb2.ResolveRequest(prediction_id=prediction_id, resolution=mvp_pb2.RESOLUTION_NO))
   assert resolve_resp.WhichOneof('resolve_result') == 'ok', resolve_resp
-  get_resp = fs_servicer.GetMarket(rando_token, mvp_pb2.GetMarketRequest(market_id=market_id))
-  assert list(get_resp.market.resolutions) == planned_events
+  get_resp = fs_servicer.GetPrediction(rando_token, mvp_pb2.GetPredictionRequest(prediction_id=prediction_id))
+  assert list(get_resp.prediction.resolutions) == planned_events
 
 
 def test_Resolve_ensures_creator(fs_servicer: FsBackedServicer):
   alice_token, bob_token = alice_bob_tokens(fs_servicer)
-  market_id = fs_servicer.CreateMarket(
+  prediction_id = fs_servicer.CreatePrediction(
     token=alice_token,
-    request=some_create_market_request(),
-  ).new_market_id
+    request=some_create_prediction_request(),
+  ).new_prediction_id
 
-  resp = fs_servicer.Resolve(bob_token, mvp_pb2.ResolveRequest(market_id=market_id, resolution=mvp_pb2.RESOLUTION_NO))
+  resp = fs_servicer.Resolve(bob_token, mvp_pb2.ResolveRequest(prediction_id=prediction_id, resolution=mvp_pb2.RESOLUTION_NO))
   assert resp.WhichOneof('resolve_result') == 'error', resp
   assert 'not the creator' in str(resp.error)
 
