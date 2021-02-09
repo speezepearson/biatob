@@ -61,11 +61,9 @@ def task_elm():
     'file_dep': ['elm/elm.json', *src.glob('**/*.elm'), *[t for d in task_proto() for t in d['targets'] if d['name']=='elm']],
     'targets': [
       *[dist/f'{mod}.js' for mod in modules],
-      *[dist/f'{mod}.html' for mod in modules],
     ],
     'actions': [f'mkdir -p {dist}']
                + [f'cd elm && elm make src/{mod}.elm --output=dist/{mod}.js' for mod in modules]
-               + [f'cd elm && elm make src/{mod}.elm && mv index.html dist/{mod}.html' for mod in modules]
                ,
   }
 
