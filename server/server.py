@@ -291,7 +291,7 @@ class FsBackedServicer(Servicer):
     def ListMyMarkets(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.ListMyMarketsRequest) -> mvp_pb2.ListMyMarketsResponse:
         wstate = self._get_state()
         if token is None:
-            return mvp_pb2.ListMyMarketsResponse(error=mvp_pb2.ListMyMarketsResponse.Error(catchall='listing "your markets" when you\'re not logged in is meaningless'))
+            return mvp_pb2.ListMyMarketsResponse(ok=mvp_pb2.MarketsById(markets={}))
 
         result = {
             market_id: view_market(wstate, (token.owner if token is not None else None), market)

@@ -61,7 +61,9 @@ view : Model -> Html Msg
 view model =
   H.div []
     [ H.h2 [] [H.text "My Markets"]
-    , if Dict.isEmpty model.markets then
+    , if model.auth == Nothing then
+        H.text "You're not logged in, so I don't know what markets to show you!"
+      else if Dict.isEmpty model.markets then
         H.div []
           [ H.text "You haven't participated in any markets yet!"
           , H.br [] []
