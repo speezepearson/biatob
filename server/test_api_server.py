@@ -49,7 +49,7 @@ async def test_Whoami_and_RegisterUsername(aiohttp_client, app):
 
 async def test_CreateMarket_and_GetMarket(aiohttp_client, app, clock):
   create_pb_req = mvp_pb2.CreateMarketRequest(
-    question="Is 1 > 2?",
+    prediction="Is 1 > 2?",
     certainty=mvp_pb2.CertaintyRange(low=0.90, high=1.00),
     maximum_stake_cents=100_00,
     open_seconds=60*60*24*7,
@@ -69,7 +69,7 @@ async def test_CreateMarket_and_GetMarket(aiohttp_client, app, clock):
 
   (http_resp, get_pb_resp) = await post_proto(cli, '/api/GetMarket', mvp_pb2.GetMarketRequest(market_id=create_pb_resp.new_market_id), mvp_pb2.GetMarketResponse)
   returned_market = get_pb_resp.market
-  assert returned_market.question == create_pb_req.question
+  assert returned_market.prediction == create_pb_req.prediction
   assert returned_market.certainty == create_pb_req.certainty
   assert returned_market.maximum_stake_cents == create_pb_req.maximum_stake_cents
   assert returned_market.remaining_stake_cents_vs_believers == create_pb_req.maximum_stake_cents
@@ -81,7 +81,7 @@ async def test_CreateMarket_and_GetMarket(aiohttp_client, app, clock):
 
 async def test_CreateMarket_enforces_future_resolution(aiohttp_client, app, clock):
   create_pb_req = mvp_pb2.CreateMarketRequest(
-    question="Is 1 > 2?",
+    prediction="Is 1 > 2?",
     certainty=mvp_pb2.CertaintyRange(low=0.90, high=1.00),
     maximum_stake_cents=100_00,
     open_seconds=60*60*24*7,

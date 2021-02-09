@@ -336,7 +336,7 @@ view model =
     creator = Utils.mustMarketCreator model.market
   in
   H.div []
-    [ H.h2 [] [H.text model.market.question]
+    [ H.h2 [] [H.text model.market.prediction]
     , viewMarketState model
     , viewResolveButtons model
     , viewWinnings model

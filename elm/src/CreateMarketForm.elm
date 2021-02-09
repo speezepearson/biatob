@@ -24,7 +24,7 @@ unitToSeconds u =
     Weeks -> unitToSeconds Days * 7
 
 type Msg
-  = SetQuestion String
+  = SetPrediction String
   | SetResolvesTime String
   | SetStake String
   | SetLowP String
@@ -35,7 +35,7 @@ type Msg
   | Tick Time.Posix
 
 type alias Model =
-  { questionField : Field () String
+  { predictionField : Field () String
   , resolvesAtField : Field {now:Time.Posix} Time.Posix
   , stakeField : Field () Int
   , lowPField : Field () Float
@@ -49,7 +49,7 @@ type alias Model =
 
 toCreateRequest : Model -> Maybe Pb.CreateMarketRequest
 toCreateRequest model =
-  Field.parse () model.questionField |> Result.andThen (\question ->
+  Field.parse () model.predictionField |> Result.andThen (\prediction ->
   Field.parse () model.stakeField |> Result.andThen (\stake ->
   Field.parse () model.lowPField |> Result.andThen (\lowP ->
   Field.parse {lowP=lowP} model.highPField |> Result.andThen (\highP ->
@@ -58,7 +58,7 @@ toCreateRequest model =
   Field.parse () model.specialRulesField |> Result.andThen (\specialRules ->
   Field.parse {now=model.now} model.resolvesAtField |> Result.andThen (\resolvesAt ->
     Ok
-      { question = question
+      { prediction = prediction
       , privacy = Nothing  -- TODO: delete this field
       , certainty = Just { low=lowP, high=highP }
       , maximumStakeCents = stake
@@ -72,7 +72,7 @@ toCreateRequest model =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
   case msg of
-    SetQuestion s -> ({ model | questionField = model.questionField |> Field.setStr s}, Cmd.none)
+    SetPrediction s -> ({ model | predictionField = model.predictionField |> Field.setStr s}, Cmd.none)
     SetResolvesTime s -> ({ model | resolvesAtField = model.resolvesAtField |> Field.setStr s}, Cmd.none)
     SetStake s -> ({ model | stakeField = model.stakeField |> Field.setStr s}, Cmd.none)
     SetLowP s -> ({ model | lowPField = model.lowPField |> Field.setStr s}, Cmd.none)
@@ -92,7 +92,7 @@ view model =
     highPCtx = {lowP = Field.parse () model.lowPField |> Result.withDefault 0}
     openForSecondsCtx = {unit = Field.parse () model.openForUnitField |> Result.withDefault Days}
     placeholders =
-      { question = "By 2021-08-01, will at least 50% of U.S. COVID-19 cases be B117 or a derivative strain, as reported by the CDC?"
+      { prediction = "at least 50% of U.S. COVID-19 cases be B117 or a derivative strain, as reported by the CDC"
       , stake = "100"
       , specialRules = "If the CDC doesn't publish statistics on this, I'll fall back to some other official organization, like the WHO; failing that, I'll look for journal papers on U.S. cases, and go with a consensus if I find one; failing that, the market is unresolvable."
       }
@@ -104,12 +104,12 @@ view model =
             , H.a [HA.href howToWriteGoodBetsUrl] [H.text "how to write good bets"]
             , H.text ") "
             , H.br [] []
-            , Field.inputFor SetQuestion () model.questionField
+            , Field.inputFor SetPrediction () model.predictionField
                 H.textarea
                 [ HA.style "width" "100%"
-                , HA.placeholder placeholders.question
+                , HA.placeholder placeholders.prediction
                 , HA.disabled model.disabled
-                , HA.class "question-field"
+                , HA.class "prediction-field"
                 ] []
             ]
         , H.li []
@@ -200,7 +200,7 @@ view model =
 
 init : () -> ( Model , Cmd Msg )
 init () =
-  ( { questionField = Field.init "" <| \() s -> if String.isEmpty s then Err "must not be empty" else Ok s
+  ( { predictionField = Field.init "" <| \() s -> if String.isEmpty s then Err "must not be empty" else Ok s
     , resolvesAtField = Field.init "" <| \{now} s ->
         case Iso8601.toTime s of
           Err _ -> Err ""

@@ -28,7 +28,7 @@ mockAuthToken =
 
 mockMarket : Pb.UserMarketView
 mockMarket =
-  { question = "By 2021-08-01, will at least 50% of U.S. COVID-19 cases be B117 or a derivative strain, as reported by the CDC?"
+  { prediction = "at least 50% of U.S. COVID-19 cases be B117 or a derivative strain, as reported by the CDC"
   , certainty = Just {low = 0.8, high = 0.9}
   , maximumStakeCents = 10000
   , remainingStakeCentsVsBelievers = 10000

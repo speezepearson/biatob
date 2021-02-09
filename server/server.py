@@ -79,7 +79,7 @@ def describe_password_problems(password: str) -> Optional[str]:
 def view_market(wstate: mvp_pb2.WorldState, viewer: Optional[mvp_pb2.UserId], ws_market: mvp_pb2.WorldState.Market) -> mvp_pb2.UserMarketView:
     creator_is_self = (viewer == ws_market.creator)
     return mvp_pb2.UserMarketView(
-        question=ws_market.question,
+        prediction=ws_market.prediction,
         certainty=ws_market.certainty,
         maximum_stake_cents=ws_market.maximum_stake_cents,
         remaining_stake_cents_vs_believers=ws_market.maximum_stake_cents - sum(t.creator_stake_cents for t in ws_market.trades if not t.bettor_is_a_skeptic),
@@ -254,8 +254,8 @@ class FsBackedServicer(Servicer):
 
         now = int(self._clock())
 
-        if not request.question:
-            return mvp_pb2.CreateMarketResponse(error=mvp_pb2.CreateMarketResponse.Error(catchall='must have a question field'))
+        if not request.prediction:
+            return mvp_pb2.CreateMarketResponse(error=mvp_pb2.CreateMarketResponse.Error(catchall='must have a prediction field'))
         if not request.certainty:
             return mvp_pb2.CreateMarketResponse(error=mvp_pb2.CreateMarketResponse.Error(catchall='must have a certainty'))
         if not (request.certainty.low < request.certainty.high):
@@ -270,7 +270,7 @@ class FsBackedServicer(Servicer):
         with self._mutate_state() as wstate:
             mid = MarketId(weak_rand_not_in(self._rng, limit=2**32, xs=wstate.markets.keys()))
             market = mvp_pb2.WorldState.Market(
-                question=request.question,
+                prediction=request.prediction,
                 certainty=request.certainty,
                 maximum_stake_cents=request.maximum_stake_cents,
                 created_unixtime=now,

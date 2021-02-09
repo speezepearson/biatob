@@ -28,7 +28,7 @@ def alice_bob_tokens(fs_servicer: FsBackedServicer) -> Tuple[mvp_pb2.AuthToken, 
 
 def some_create_market_request(**kwargs) -> mvp_pb2.CreateMarketRequest:
   init_kwargs = dict(
-    question='question!',
+    prediction='prediction!',
     certainty=mvp_pb2.CertaintyRange(low=0.80, high=0.90),
     maximum_stake_cents=100_00,
     open_seconds=123,
@@ -92,7 +92,7 @@ def test_GetMarket(fs_servicer: FsBackedServicer, clock: MockClock):
 
   resp = fs_servicer.GetMarket(rando_token, mvp_pb2.GetMarketRequest(market_id=market_id))
   assert resp == mvp_pb2.GetMarketResponse(market=mvp_pb2.UserMarketView(
-    question=req.question,
+    prediction=req.prediction,
     certainty=req.certainty,
     maximum_stake_cents=req.maximum_stake_cents,
     remaining_stake_cents_vs_believers=req.maximum_stake_cents,

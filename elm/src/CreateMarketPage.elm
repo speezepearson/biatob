@@ -153,7 +153,7 @@ view model =
 
 previewMarket : {request:Pb.CreateMarketRequest, creatorName:String, createdAt:Time.Posix} -> Pb.UserMarketView
 previewMarket {request, creatorName, createdAt} =
-  { question = request.question
+  { prediction = request.prediction
   , certainty = request.certainty
   , maximumStakeCents = request.maximumStakeCents
   , remainingStakeCentsVsBelievers = request.maximumStakeCents

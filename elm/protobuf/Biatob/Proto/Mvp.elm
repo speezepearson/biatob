@@ -110,7 +110,7 @@ type alias WorldStateUsernameInfo =
 {-| `WorldStateMarket` message
 -}
 type alias WorldStateMarket =
-    { question : String
+    { prediction : String
     , certainty : Maybe CertaintyRange
     , maximumStakeCents : Int
     , createdUnixtime : Int
@@ -259,7 +259,7 @@ type alias MarketPrivacyEmails =
 {-| `CreateMarketRequest` message
 -}
 type alias CreateMarketRequest =
-    { question : String
+    { prediction : String
     , privacy : Maybe MarketPrivacy
     , certainty : Maybe CertaintyRange
     , maximumStakeCents : Int
@@ -322,7 +322,7 @@ type alias GetMarketResponseError =
 {-| `UserMarketView` message
 -}
 type alias UserMarketView =
-    { question : String
+    { prediction : String
     , certainty : Maybe CertaintyRange
     , maximumStakeCents : Int
     , remainingStakeCentsVsBelievers : Int
@@ -621,7 +621,7 @@ worldStateUsernameInfoDecoder =
 worldStateMarketDecoder : Decode.Decoder WorldStateMarket
 worldStateMarketDecoder =
     Decode.message (WorldStateMarket "" Nothing 0 0 0 0 "" Nothing [] [])
-        [ Decode.optional 1 Decode.string setQuestion
+        [ Decode.optional 1 Decode.string setPrediction
         , Decode.optional 2 (Decode.map Just certaintyRangeDecoder) setCertainty
         , Decode.optional 3 Decode.uint32 setMaximumStakeCents
         , Decode.optional 4 Decode.uint32 setCreatedUnixtime
@@ -787,7 +787,7 @@ marketPrivacyEmailsDecoder =
 createMarketRequestDecoder : Decode.Decoder CreateMarketRequest
 createMarketRequestDecoder =
     Decode.message (CreateMarketRequest "" Nothing Nothing 0 0 "" 0)
-        [ Decode.optional 2 Decode.string setQuestion
+        [ Decode.optional 2 Decode.string setPrediction
         , Decode.optional 3 (Decode.map Just marketPrivacyDecoder) setPrivacy
         , Decode.optional 4 (Decode.map Just certaintyRangeDecoder) setCertainty
         , Decode.optional 5 Decode.uint32 setMaximumStakeCents
@@ -852,7 +852,7 @@ getMarketResponseErrorDecoder =
 userMarketViewDecoder : Decode.Decoder UserMarketView
 userMarketViewDecoder =
     Decode.message (UserMarketView "" Nothing 0 0 0 0 0 "" Nothing [] [] 0)
-        [ Decode.optional 1 Decode.string setQuestion
+        [ Decode.optional 1 Decode.string setPrediction
         , Decode.optional 2 (Decode.map Just certaintyRangeDecoder) setCertainty
         , Decode.optional 3 Decode.uint32 setMaximumStakeCents
         , Decode.optional 4 Decode.uint32 setRemainingStakeCentsVsBelievers
@@ -1159,7 +1159,7 @@ toWorldStateUsernameInfoEncoder model =
 toWorldStateMarketEncoder : WorldStateMarket -> Encode.Encoder
 toWorldStateMarketEncoder model =
     Encode.message
-        [ ( 1, Encode.string model.question )
+        [ ( 1, Encode.string model.prediction )
         , ( 2, (Maybe.withDefault Encode.none << Maybe.map toCertaintyRangeEncoder) model.certainty )
         , ( 3, Encode.uint32 model.maximumStakeCents )
         , ( 4, Encode.uint32 model.createdUnixtime )
@@ -1343,7 +1343,7 @@ toMarketPrivacyEmailsEncoder model =
 toCreateMarketRequestEncoder : CreateMarketRequest -> Encode.Encoder
 toCreateMarketRequestEncoder model =
     Encode.message
-        [ ( 2, Encode.string model.question )
+        [ ( 2, Encode.string model.prediction )
         , ( 3, (Maybe.withDefault Encode.none << Maybe.map toMarketPrivacyEncoder) model.privacy )
         , ( 4, (Maybe.withDefault Encode.none << Maybe.map toCertaintyRangeEncoder) model.certainty )
         , ( 5, Encode.uint32 model.maximumStakeCents )
@@ -1420,7 +1420,7 @@ toGetMarketResponseErrorEncoder model =
 toUserMarketViewEncoder : UserMarketView -> Encode.Encoder
 toUserMarketViewEncoder model =
     Encode.message
-        [ ( 1, Encode.string model.question )
+        [ ( 1, Encode.string model.prediction )
         , ( 2, (Maybe.withDefault Encode.none << Maybe.map toCertaintyRangeEncoder) model.certainty )
         , ( 3, Encode.uint32 model.maximumStakeCents )
         , ( 4, Encode.uint32 model.remainingStakeCentsVsBelievers )
@@ -1726,9 +1726,9 @@ setPasswordBcrypt value model =
     { model | passwordBcrypt = value }
 
 
-setQuestion : a -> { b | question : a } -> { b | question : a }
-setQuestion value model =
-    { model | question = value }
+setPrediction : a -> { b | prediction : a } -> { b | prediction : a }
+setPrediction value model =
+    { model | prediction = value }
 
 
 setCertainty : a -> { b | certainty : a } -> { b | certainty : a }

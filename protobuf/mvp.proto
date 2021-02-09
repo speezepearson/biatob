@@ -42,7 +42,7 @@ message WorldState {
   // }
   message Market {
     // Set upon creation, never changed
-    string question = 1;
+    string prediction = 1;
     CertaintyRange certainty = 2;
     uint32 maximum_stake_cents = 3;
     uint32 created_unixtime = 4;
@@ -134,7 +134,7 @@ message MarketPrivacy {
   }
 }
 message CreateMarketRequest {
-  string question = 2;
+  string prediction = 2;
   MarketPrivacy privacy = 3;
   CertaintyRange certainty = 4;
   uint32 maximum_stake_cents = 5;
@@ -166,7 +166,7 @@ message GetMarketResponse {
   }
 }
 message UserMarketView {
-  string question = 1;
+  string prediction = 1;
   CertaintyRange certainty = 2;
   uint32 maximum_stake_cents = 3;
   uint32 remaining_stake_cents_vs_believers = 4;

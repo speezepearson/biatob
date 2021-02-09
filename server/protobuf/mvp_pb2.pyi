@@ -225,7 +225,7 @@ class WorldState(google___protobuf___message___Message):
 
     class Market(google___protobuf___message___Message):
         DESCRIPTOR: google___protobuf___descriptor___Descriptor = ...
-        question = ... # type: typing___Text
+        prediction = ... # type: typing___Text
         maximum_stake_cents = ... # type: builtin___int
         created_unixtime = ... # type: builtin___int
         closes_unixtime = ... # type: builtin___int
@@ -246,7 +246,7 @@ class WorldState(google___protobuf___message___Message):
 
         def __init__(self,
             *,
-            question : typing___Optional[typing___Text] = None,
+            prediction : typing___Optional[typing___Text] = None,
             certainty : typing___Optional[global___CertaintyRange] = None,
             maximum_stake_cents : typing___Optional[builtin___int] = None,
             created_unixtime : typing___Optional[builtin___int] = None,
@@ -266,7 +266,7 @@ class WorldState(google___protobuf___message___Message):
         def MergeFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
         def CopyFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
         def HasField(self, field_name: typing_extensions___Literal[u"certainty",b"certainty",u"creator",b"creator"]) -> builtin___bool: ...
-        def ClearField(self, field_name: typing_extensions___Literal[u"certainty",b"certainty",u"closes_unixtime",b"closes_unixtime",u"created_unixtime",b"created_unixtime",u"creator",b"creator",u"maximum_stake_cents",b"maximum_stake_cents",u"question",b"question",u"resolutions",b"resolutions",u"resolves_at_unixtime",b"resolves_at_unixtime",u"special_rules",b"special_rules",u"trades",b"trades"]) -> None: ...
+        def ClearField(self, field_name: typing_extensions___Literal[u"certainty",b"certainty",u"closes_unixtime",b"closes_unixtime",u"created_unixtime",b"created_unixtime",u"creator",b"creator",u"maximum_stake_cents",b"maximum_stake_cents",u"prediction",b"prediction",u"resolutions",b"resolutions",u"resolves_at_unixtime",b"resolves_at_unixtime",u"special_rules",b"special_rules",u"trades",b"trades"]) -> None: ...
     global___Market = Market
 
 
@@ -615,7 +615,7 @@ global___MarketPrivacy = MarketPrivacy
 
 class CreateMarketRequest(google___protobuf___message___Message):
     DESCRIPTOR: google___protobuf___descriptor___Descriptor = ...
-    question = ... # type: typing___Text
+    prediction = ... # type: typing___Text
     maximum_stake_cents = ... # type: builtin___int
     open_seconds = ... # type: builtin___int
     special_rules = ... # type: typing___Text
@@ -629,7 +629,7 @@ class CreateMarketRequest(google___protobuf___message___Message):
 
     def __init__(self,
         *,
-        question : typing___Optional[typing___Text] = None,
+        prediction : typing___Optional[typing___Text] = None,
         privacy : typing___Optional[global___MarketPrivacy] = None,
         certainty : typing___Optional[global___CertaintyRange] = None,
         maximum_stake_cents : typing___Optional[builtin___int] = None,
@@ -646,7 +646,7 @@ class CreateMarketRequest(google___protobuf___message___Message):
     def MergeFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
     def CopyFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
     def HasField(self, field_name: typing_extensions___Literal[u"certainty",b"certainty",u"privacy",b"privacy"]) -> builtin___bool: ...
-    def ClearField(self, field_name: typing_extensions___Literal[u"certainty",b"certainty",u"maximum_stake_cents",b"maximum_stake_cents",u"open_seconds",b"open_seconds",u"privacy",b"privacy",u"question",b"question",u"resolves_at_unixtime",b"resolves_at_unixtime",u"special_rules",b"special_rules"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions___Literal[u"certainty",b"certainty",u"maximum_stake_cents",b"maximum_stake_cents",u"open_seconds",b"open_seconds",u"prediction",b"prediction",u"privacy",b"privacy",u"resolves_at_unixtime",b"resolves_at_unixtime",u"special_rules",b"special_rules"]) -> None: ...
 global___CreateMarketRequest = CreateMarketRequest
 
 class CreateMarketResponse(google___protobuf___message___Message):
@@ -762,7 +762,7 @@ global___GetMarketResponse = GetMarketResponse
 
 class UserMarketView(google___protobuf___message___Message):
     DESCRIPTOR: google___protobuf___descriptor___Descriptor = ...
-    question = ... # type: typing___Text
+    prediction = ... # type: typing___Text
     maximum_stake_cents = ... # type: builtin___int
     remaining_stake_cents_vs_believers = ... # type: builtin___int
     remaining_stake_cents_vs_skeptics = ... # type: builtin___int
@@ -785,7 +785,7 @@ class UserMarketView(google___protobuf___message___Message):
 
     def __init__(self,
         *,
-        question : typing___Optional[typing___Text] = None,
+        prediction : typing___Optional[typing___Text] = None,
         certainty : typing___Optional[global___CertaintyRange] = None,
         maximum_stake_cents : typing___Optional[builtin___int] = None,
         remaining_stake_cents_vs_believers : typing___Optional[builtin___int] = None,
@@ -807,7 +807,7 @@ class UserMarketView(google___protobuf___message___Message):
     def MergeFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
     def CopyFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
     def HasField(self, field_name: typing_extensions___Literal[u"certainty",b"certainty",u"creator",b"creator"]) -> builtin___bool: ...
-    def ClearField(self, field_name: typing_extensions___Literal[u"certainty",b"certainty",u"closes_unixtime",b"closes_unixtime",u"created_unixtime",b"created_unixtime",u"creator",b"creator",u"maximum_stake_cents",b"maximum_stake_cents",u"question",b"question",u"remaining_stake_cents_vs_believers",b"remaining_stake_cents_vs_believers",u"remaining_stake_cents_vs_skeptics",b"remaining_stake_cents_vs_skeptics",u"resolutions",b"resolutions",u"resolves_at_unixtime",b"resolves_at_unixtime",u"special_rules",b"special_rules",u"your_trades",b"your_trades"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions___Literal[u"certainty",b"certainty",u"closes_unixtime",b"closes_unixtime",u"created_unixtime",b"created_unixtime",u"creator",b"creator",u"maximum_stake_cents",b"maximum_stake_cents",u"prediction",b"prediction",u"remaining_stake_cents_vs_believers",b"remaining_stake_cents_vs_believers",u"remaining_stake_cents_vs_skeptics",b"remaining_stake_cents_vs_skeptics",u"resolutions",b"resolutions",u"resolves_at_unixtime",b"resolves_at_unixtime",u"special_rules",b"special_rules",u"your_trades",b"your_trades"]) -> None: ...
 global___UserMarketView = UserMarketView
 
 class UserUserView(google___protobuf___message___Message):
