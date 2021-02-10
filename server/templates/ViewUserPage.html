@@ -17,6 +17,7 @@
     var authTokenPbB64 = {{auth_token_pb_b64}};
     var userIdPbB64 = {{userIdPbB64}};
     var userViewPbB64 = {{userViewPbB64}};
+    var emailFlowPbB64 = {{emailFlowPbB64}};
 
     var navbar = Elm.Navbar.init({
       node: document.getElementById('navbar'),
@@ -28,7 +29,7 @@
 
     var main = Elm.ViewUserPage.init({
       node: document.getElementById('main'),
-      flags: {authTokenPbB64, userIdPbB64, userViewPbB64},
+      flags: {authTokenPbB64, userIdPbB64, userViewPbB64, emailFlowPbB64},
     });
     main.ports.changed.subscribe((predictionId) => {
       window.location.reload();

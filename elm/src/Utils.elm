@@ -1,6 +1,6 @@
 module Utils exposing (..)
 
-import Html as H
+import Html as H exposing (Html)
 import Html.Attributes as HA
 import Json.Decode as JD
 import Time
@@ -173,3 +173,6 @@ pathToUserPage : Pb.UserId -> String
 pathToUserPage user =
   case mustUserKind user of
     Pb.KindUsername username -> "/username/" ++ username
+
+redText : String -> Html msg
+redText s = H.span [HA.style "color" "red"] [H.text s]

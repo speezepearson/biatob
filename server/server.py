@@ -17,11 +17,20 @@ import secrets
 import string
 import time
 from typing import Iterator, Optional, Container, NewType, Callable, NoReturn, Tuple
+import argparse
+import logging
+import os
+import smtplib
+from email.mime.text import MIMEText
 
 from PIL import Image, ImageDraw, ImageFont  # type: ignore
 import bcrypt  # type: ignore
 from aiohttp import web
+import google.protobuf.text_format  # type: ignore
+
 from .protobuf import mvp_pb2
+
+logger = logging.getLogger(__name__)
 
 PredictionId = NewType('PredictionId', int)
 
@@ -108,6 +117,21 @@ def view_prediction(wstate: mvp_pb2.WorldState, viewer: Optional[mvp_pb2.UserId]
         ],
     )
 
+class Emailer:
+    def __init__(self, username: str, password: str) -> None:
+        self._username = username
+        self._password = password
+
+    def send(self, *, to: str, subject: str, body: str) -> None:
+        send_as = f'{self._username}@gmail.com'
+        logger.debug('creating SMTP client')
+        with smtplib.SMTP_SSL('smtp.gmail.com') as client:
+            client.login(self._username, self._password)
+            message = MIMEText(body)
+            message['Subject'] = subject
+            logger.debug('sending from %s to %s:\n%s', send_as, to, message.as_string())
+            client.sendmail(send_as, to, message.as_string())
+
 
 class TokenMint:
 
@@ -164,6 +188,8 @@ class Servicer(abc.ABC):
     def SetTrusted(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.SetTrustedRequest) -> mvp_pb2.SetTrustedResponse: pass
     def GetUser(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.GetUserRequest) -> mvp_pb2.GetUserResponse: pass
     def ChangePassword(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.ChangePasswordRequest) -> mvp_pb2.ChangePasswordResponse: pass
+    def SetEmail(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.SetEmailRequest) -> mvp_pb2.SetEmailResponse: pass
+    def VerifyEmail(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.VerifyEmailRequest) -> mvp_pb2.VerifyEmailResponse: pass
 
 
 def checks_token(f):
@@ -176,9 +202,10 @@ def checks_token(f):
     return wrapped
 
 class FsBackedServicer(Servicer):
-    def __init__(self, state_path: Path, token_mint: TokenMint, random_seed: Optional[int] = None, clock: Callable[[], float] = time.time) -> None:
+    def __init__(self, state_path: Path, token_mint: TokenMint, emailer: Emailer, random_seed: Optional[int] = None, clock: Callable[[], float] = time.time) -> None:
         self._state_path = state_path
         self._token_mint = token_mint
+        self._emailer = emailer
         self._rng = random.Random(random_seed)
         self._clock = clock
 
@@ -414,6 +441,45 @@ class FsBackedServicer(Servicer):
 
             return mvp_pb2.ChangePasswordResponse(ok=mvp_pb2.VOID)
 
+    @checks_token
+    def SetEmail(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.SetEmailRequest) -> mvp_pb2.SetEmailResponse:
+        if token is None:
+            return mvp_pb2.SetEmailResponse(error=mvp_pb2.SetEmailResponse.Error(catchall='must log in to set an email'))
+
+        # TODO: prevent an email address from getting "too many" emails if somebody abuses us
+        code = secrets.token_urlsafe(nbytes=16)
+        self._emailer.send(
+            to=request.email,
+            subject='Your Biatob email-verification',
+            body=f"Here's your code: {code}",  # TODO: handle abuse
+        )  # TODO: this blocks the event loop; toss it to another thread?
+
+        with self._mutate_state() as wstate:
+            requester_info = get_generic_user_info(self._get_state(), token.owner)
+            if requester_info is None:
+                raise ForgottenTokenError(token)
+            requester_info.email.MergeFrom(mvp_pb2.EmailFlowState(code_sent=mvp_pb2.EmailFlowState.CodeSent(email=request.email, code_bcrypt=bcrypt.hashpw(code.encode('ascii'), bcrypt.gensalt()))))
+            wstate.username_users[token.owner.username].info.MergeFrom(requester_info) # TODO: hack
+            return mvp_pb2.SetEmailResponse(ok=mvp_pb2.VOID)
+
+    @checks_token
+    def VerifyEmail(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.VerifyEmailRequest) -> mvp_pb2.VerifyEmailResponse:
+        if token is None:
+            return mvp_pb2.VerifyEmailResponse(error=mvp_pb2.VerifyEmailResponse.Error(catchall='must log in to change your password'))
+
+        with self._mutate_state() as wstate:
+            requester_info = get_generic_user_info(self._get_state(), token.owner)
+            if requester_info is None:
+                raise ForgottenTokenError(token)
+            if not (requester_info.email and requester_info.email.WhichOneof('email_flow_state_kind') == 'code_sent'):
+                return mvp_pb2.VerifyEmailResponse(error=mvp_pb2.VerifyEmailResponse.Error(catchall='you have no pending email-verification flow'))
+            code_sent_state = requester_info.email.code_sent
+            if not bcrypt.checkpw(request.code.encode('ascii'), code_sent_state.code_bcrypt):
+                return mvp_pb2.VerifyEmailResponse(error=mvp_pb2.VerifyEmailResponse.Error(catchall='bad code'))
+            requester_info.email.Clear()
+            requester_info.email.MergeFrom(mvp_pb2.EmailFlowState(verified=code_sent_state.email))
+            return mvp_pb2.VerifyEmailResponse(verified_email=code_sent_state.email)
+
 
 from typing import TypeVar, Type, Tuple, Union, Awaitable
 from google.protobuf.message import Message
@@ -543,6 +609,12 @@ class ApiServer:
         @routes.post('/api/ChangePassword')
         async def api_ChangePassword(http_req: web.Request) -> web.Response:
             return proto_response(self._servicer.ChangePassword(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.ChangePasswordRequest)))
+        @routes.post('/api/SetEmail')
+        async def api_SetEmail(http_req: web.Request) -> web.Response:
+            return proto_response(self._servicer.SetEmail(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.SetEmailRequest)))
+        @routes.post('/api/VerifyEmail')
+        async def api_VerifyEmail(http_req: web.Request) -> web.Response:
+            return proto_response(self._servicer.VerifyEmail(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.VerifyEmailRequest)))
 
         self._token_glue.add_to_app(app)
         app.add_routes(routes)
@@ -652,13 +724,15 @@ class WebServer:
             if get_user_resp.WhichOneof('get_user_result') == 'error':
                 return web.Response(status=400, body=str(get_user_resp.error))
             assert get_user_resp.WhichOneof('get_user_result') == 'ok'
+            email_flow = self._servicer._get_state().username_users[username].info.email  # type: ignore # TODO: hack
             return web.Response(
                 content_type='text/html',
                 body=(_HERE/'templates'/'ViewUserPage.html').read_text()
                             .replace(r'{{auth_token_pb_b64}}', pb_b64_json(auth) if auth else 'null')
                             .replace(r'{{userViewPbB64}}', pb_b64_json(get_user_resp.ok))
-                            .replace(r'{{userIdPbB64}}', pb_b64_json(user_id)))
-
+                            .replace(r'{{userIdPbB64}}', pb_b64_json(user_id))
+                            .replace(r'{{emailFlowPbB64}}', pb_b64_json(email_flow))  # TODO: I really don't like how this unfiltered piece of server state gets passed to the client
+                            )
 
         self._token_glue.add_to_app(app)
         app.add_routes(routes)
@@ -671,13 +745,18 @@ parser.add_argument("-H", "--host", default="localhost")
 parser.add_argument("-p", "--port", type=int, default=8080)
 parser.add_argument("--elm-dist", type=Path, default="elm/dist")
 parser.add_argument("--state-path", type=Path, required=True)
+parser.add_argument("--credentials-path", type=Path, required=True)
 
 if __name__ == '__main__':
     args = parser.parse_args()
     app = web.Application()
-    token_mint = TokenMint(secret_key=b'TODO super secret')
+
+    credentials = google.protobuf.text_format.Parse(args.credentials_path.read_text(), mvp_pb2.CredentialsConfig())
+
+    emailer = Emailer(username=credentials.smtp_username, password=credentials.smtp_password)
+    token_mint = TokenMint(secret_key=credentials.token_signing_secret)
     token_glue = HttpTokenGlue(token_mint=token_mint)
-    servicer = FsBackedServicer(state_path=args.state_path, token_mint=token_mint)
+    servicer = FsBackedServicer(state_path=args.state_path, token_mint=token_mint, emailer=emailer)
 
     token_glue.add_to_app(app)
     WebServer(

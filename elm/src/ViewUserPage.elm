@@ -14,6 +14,7 @@ import Utils
 
 import Biatob.Proto.Mvp exposing (StakeResult(..))
 import ChangePasswordWidget
+import SetEmailWidget
 
 port changed : () -> Cmd msg
 
@@ -24,17 +25,20 @@ type alias Model =
   , working : Bool
   , setTrustedError : Maybe String
   , changePasswordWidget : ChangePasswordWidget.Model
+  , setEmailWidget : SetEmailWidget.Model
   }
 
 type Msg
   = SetTrusted Bool
   | SetTrustedFinished (Result Http.Error Pb.SetTrustedResponse)
   | ChangePasswordMsg ChangePasswordWidget.Msg
+  | SetEmailMsg SetEmailWidget.Msg
 
 init : JD.Value -> (Model, Cmd Msg)
 init flags =
   let
-    (changePasswordWidget, cmd) = ChangePasswordWidget.init ()
+    (changePasswordWidget, changePasswordCmd) = ChangePasswordWidget.init ()
+    (setEmailWidget, setEmailCmd) = SetEmailWidget.init flags
   in
   ( { userId = Utils.mustDecodePbFromFlags Pb.userIdDecoder "userIdPbB64" flags
     , userView = Utils.mustDecodePbFromFlags Pb.userUserViewDecoder "userViewPbB64" flags
@@ -42,8 +46,12 @@ init flags =
     , working = False
     , setTrustedError = Nothing
     , changePasswordWidget = changePasswordWidget
+    , setEmailWidget = setEmailWidget
     }
-  , Cmd.map ChangePasswordMsg cmd
+  , Cmd.batch
+      [ Cmd.map ChangePasswordMsg changePasswordCmd
+      , Cmd.map SetEmailMsg setEmailCmd
+      ]
   )
 
 postSetTrusted : Pb.SetTrustedRequest -> Cmd Msg
@@ -81,6 +89,9 @@ update msg model =
     ChangePasswordMsg widgetMsg ->
       let (newWidget, cmd) = ChangePasswordWidget.update widgetMsg model.changePasswordWidget in
       ( { model | changePasswordWidget = newWidget }, Cmd.map ChangePasswordMsg cmd)
+    SetEmailMsg widgetMsg ->
+      let (newWidget, cmd) = SetEmailWidget.update widgetMsg model.setEmailWidget in
+      ( { model | setEmailWidget = newWidget }, Cmd.map SetEmailMsg cmd)
 
 
 view : Model -> Html Msg
@@ -131,6 +142,7 @@ viewOwnSettings model =
     [ H.h3 [] [H.text "Settings"]
     , H.ul []
         [ H.li [] [H.map ChangePasswordMsg <| ChangePasswordWidget.view model.changePasswordWidget]
+        , H.li [] [H.map SetEmailMsg <| SetEmailWidget.view model.setEmailWidget]
         ]
     ]
 

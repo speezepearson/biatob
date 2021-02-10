@@ -1,5 +1,6 @@
 import random
 import pytest
+import unittest.mock
 
 from .server import TokenMint, FsBackedServicer
 
@@ -24,6 +25,7 @@ def token_mint(clock):
 def fs_servicer(tmp_path, clock, token_mint):
   return FsBackedServicer(
     state_path=tmp_path / 'state.WorldState.pb',
+    emailer=unittest.mock.Mock(),  # TODO: make this a fixture
     random_seed=0,
     clock=clock.now,
     token_mint=token_mint,
