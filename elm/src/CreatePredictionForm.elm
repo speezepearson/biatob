@@ -60,7 +60,6 @@ toCreateRequest model =
   Field.parse () model.specialRulesField |> Result.andThen (\specialRules ->
     Ok
       { prediction = prediction
-      , privacy = Nothing  -- TODO: delete this field
       , certainty = Just { low=lowP, high=highP }
       , maximumStakeCents = stake
       , openSeconds = openForSeconds

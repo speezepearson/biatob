@@ -124,18 +124,9 @@ message CertaintyRange {
   float low = 1;
   float high = 2;
 }
-message PredictionPrivacy {
-  oneof privacy_kind {
-    Void all_trusted_by_author = 1;
-    Emails specific_users = 2;
-  }
-  message Emails {
-    repeated string emails = 1;
-  }
-}
 message CreatePredictionRequest {
   string prediction = 2;
-  PredictionPrivacy privacy = 3;
+  // PredictionPrivacy privacy = 3;
   CertaintyRange certainty = 4;
   uint32 maximum_stake_cents = 5;
   uint32 open_seconds = 6;
