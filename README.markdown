@@ -23,39 +23,66 @@ TODO
 - link from My Predictions to the actual prediction pages
 
 ### P2: make this something other hardcore betting nerds might use
-- tell authors how to invite people to their markets
-- explain the difference between close time and resolve time
-- explain why you need to mark people as trusted
-- rename "My Predictions" to be more like... I dunno, "My Stakes"?
-- consider a better model of user identity -- UserUserView is gross
-- add an invitation feature: Alice can create an "invitation" nonce-link and send it to Bob. If Bob already has an account, the nonce-link lets him claim Alice's trust; else, it lets register an account that has Alice's trust. Or something like that.
-- finish the tutorial, integrate it into ViewMarketPage and the home page
-- make the betting mechanism "more intuitive"
-- write copy explaining how to operationalize a bet well (or find somebody else's explanation)
-- display remaining stake even to people who can't bet
-- add "Sign in with [identity provider]"
-- make "bet"/"wager"/"market"/"stake"/"bettor"/"challenger" terminology consistent
-- offer to shame users by emailing the participants if they greatly exceed the resolution deadline
+
+- **Features:**
+
+    - invitations: let Alice generate a link she can send Bob to let Bob claim her trust, without worrying about whether Bob has an account already
+
+- **UI:**
+
+    - rename "My Predictions" to be more like... I dunno, "My Stakes"? And add filters for "mine"/"not mine"/"closed"/...
+    - write copy explaining how to operationalize a bet well (or find somebody else's explanation)
+    - add /settings
+
+- **Explanations:**
+
+    - tell authors how to invite people to their markets
+    - explain the difference between close time and resolve time
+    - explain why you need to mark people as trusted
+    - finish the tutorial, integrate it into ViewMarketPage and the home page
+
+- **Internals:**
+
+    - consider simplifying by ditching Oauth placeholders; only usernames for now
+    - consider a better model of user identity -- UserUserView is gross
+    - add GetMySettings / SetMySettings endpoints
 
 ### P3: make this something Less Wrongers might use
-- tutorial video
-- add more fields to CreateMarketRequest:
-    - "bettors are forbidden from trying to affect the outcome? [y/n]"
-    - "if the result is disputed, who will arbitrate?"
-    - "when will this market definitely be resolvable?"
-- show users their balances with other users
-- figure out how users can undo accidental bets
-- scale test
-- regular backups of state
-- do fancy stuff with dynamic images, displaying how much money's left in the pot
-- cache images?
-- add "hide embeds" button for bettophobes (deceptively complicated! The user doesn't log in, so we have to store it in their cookie, but it should appear on some pages (all pages? Just Settings?))
-- let people subscribe to their mutuals' bets (RSS?)
-- consider letting people download a list of all their bets (Is this satisfied just Ctrl-S on an "All my markets" page?)
-- advertise to Caplan/Hanson/LessWrong/EAG/CFAR?
+- **Features:**
+
+    - show users their balances with other users
+    - provide a way for users to undo accidental bets
+    - add "hide embeds" button for bettophobes (deceptively complicated! The user doesn't log in, so we have to store it in their cookie, but it should appear on some pages (all pages? Just Settings?))
+    - offer to shame users by emailing the participants if they greatly exceed the resolution deadline
+    - enhance "trust" to have a maximum acceptable exposure across all markets
+
+- **UI:**
+
+    - consider mentioning arbitration on the "Special Rules" field
+    - consider making "Special Rules" show up not just as an H.text
+    - add donation instructions
+
+- **Explanations:**
+
+    - add alternative framings to the betting mechanism "more intuitive"
+    - tutorial video
+
+- **Internals:**
+
+    - scale test
+    - regular backups of state
+    - cache images?
+    - consider letting people download a list of all their bets (Is this satisfied just Ctrl-S on an "All my markets" page?)
+
+- **Advertisement:**
+
+    - advertise to Caplan/Hanson/LessWrong/EAG/CFAR?
 
 ### P4: things I'll do once I quit my software engineering job to follow this dream
 - monetize via freemium or subscription?
 - market privacy controls
 - consider allowing "soft resolutions" so a market can resolve "80% yes"
 - show users each other's calibratedness / score / bets
+- add "Sign in with [identity provider]"
+- do fancy stuff with dynamic images, displaying how much money's left in the pot
+- let people subscribe to their mutuals' bets (RSS?)
