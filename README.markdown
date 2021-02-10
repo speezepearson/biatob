@@ -20,10 +20,15 @@ TODO
 
 ### P1: make this something _I_ want to use
 - offer to email users to remind them to resolve bets
+- link from My Predictions to the actual prediction pages
 
 ### P2: make this something other hardcore betting nerds might use
+- tell authors how to invite people to their markets
+- explain the difference between close time and resolve time
+- explain why you need to mark people as trusted
+- rename "My Predictions" to be more like... I dunno, "My Stakes"?
 - consider a better model of user identity -- UserUserView is gross
-- add an actual home page
+- add an invitation feature: Alice can create an "invitation" nonce-link and send it to Bob. If Bob already has an account, the nonce-link lets him claim Alice's trust; else, it lets register an account that has Alice's trust. Or something like that.
 - finish the tutorial, integrate it into ViewMarketPage and the home page
 - make the betting mechanism "more intuitive"
 - write copy explaining how to operationalize a bet well (or find somebody else's explanation)
