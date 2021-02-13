@@ -69,12 +69,25 @@ def task_elm():
 
 def task_test():
   yield {
-    'name': 'python',
+    'name': 'mypy',
     'file_dep': [*Path('server').glob('**/*.py'), *Path('server').glob('**/*.pyi')],
     'actions': [
       # 'pip3 install -r server/requirements.txt',
       'mypy server',
-      'cd server && pytest --color=yes',
+    ]
+  }
+  yield {
+    'name': 'pytest',
+    'file_dep': [*Path('server').glob('**/*.py'), *Path('server').glob('**/*.pyi')],
+    'params': [
+      {'name': 'test_filter',
+       'short': 'k',
+       'default': '',
+       'help': f'only run tests with this substring'},
+    ],
+    'actions': [
+      # 'pip3 install -r server/requirements.txt',
+      'pytest --color=yes -k=%(test_filter)s',
     ]
   }
 
