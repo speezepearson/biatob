@@ -14,9 +14,9 @@
   <main id="main-wrapper"><div id="main"></div></main>
   <script type="text/javascript">
 
-    var authTokenPbB64 = {{auth_token_pb_b64}};
-    var predictionPbB64 = {{prediction_pb_b64}};
-    var predictionId = {{prediction_id}};
+    var authTokenPbB64 = {{ auth_token_pb_b64 | tojson }};
+    var predictionPbB64 = {{ prediction_pb_b64 | tojson }};
+    var predictionId = {{ prediction_id | tojson }};
     var linkToAuthority = window.location.origin;
 
     var navbar = Elm.Navbar.init({

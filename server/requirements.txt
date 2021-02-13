@@ -3,6 +3,7 @@ protobuf
 bcrypt
 requests
 Pillow
+Jinja2
 
 # testing
 pytest-aiohttp

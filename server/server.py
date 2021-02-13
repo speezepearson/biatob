@@ -22,6 +22,7 @@ import os
 import smtplib
 from email.mime.text import MIMEText
 
+import jinja2
 from PIL import Image, ImageDraw, ImageFont  # type: ignore
 import bcrypt  # type: ignore
 from aiohttp import web
@@ -617,6 +618,12 @@ class WebServer:
         self._elm_dist = elm_dist
         self._token_glue = token_glue
 
+        self._jinja = jinja2.Environment( # adapted from https://jinja.palletsprojects.com/en/2.11.x/api/#basics
+            loader=jinja2.FileSystemLoader(searchpath=[_HERE/'templates'], encoding='utf-8'),
+            autoescape=jinja2.select_autoescape(['html', 'xml']),
+        )
+        self._jinja.undefined = jinja2.StrictUndefined  # raise exception if a template uses an undefined variable; adapted from https://stackoverflow.com/a/39127941/8877656
+
     async def get_static(self, req: web.Request) -> web.StreamResponse:
         filename = req.match_info['filename']
         if (not filename) or filename.startswith('.'):
@@ -638,15 +645,17 @@ class WebServer:
         auth = self._token_glue.parse_cookie(req)
         return web.Response(
             content_type='text/html',
-            body=(_HERE/'templates'/'Welcome.html').read_text()
-                    .replace(r'{{auth_token_pb_b64}}', pb_b64_json(auth) if auth else 'null'))
+            body=self._jinja.get_template('Welcome.html').render(
+                auth_token_pb_b64=None if auth is None else pb_b64(auth),
+            ))
 
     async def get_create_prediction_page(self, req: web.Request) -> web.Response:
         auth = self._token_glue.parse_cookie(req)
         return web.Response(
             content_type='text/html',
-            body=(_HERE/'templates'/'CreatePredictionPage.html').read_text()
-                    .replace(r'{{auth_token_pb_b64}}', pb_b64_json(auth) if auth else 'null'))
+            body=self._jinja.get_template('CreatePredictionPage.html').render(
+                auth_token_pb_b64=pb_b64(auth),
+            ))
 
     async def get_view_prediction_page(self, req: web.Request) -> web.Response:
         auth = self._token_glue.parse_cookie(req)
@@ -658,10 +667,11 @@ class WebServer:
         assert get_prediction_resp.WhichOneof('get_prediction_result') == 'prediction'
         return web.Response(
             content_type='text/html',
-            body=(_HERE/'templates'/'ViewPredictionPage.html').read_text()
-                    .replace(r'{{auth_token_pb_b64}}', pb_b64_json(auth) if auth else 'null')
-                    .replace(r'{{prediction_pb_b64}}', pb_b64_json(get_prediction_resp.prediction))
-                    .replace(r'{{prediction_id}}', str(prediction_id)))
+            body=self._jinja.get_template('ViewPredictionPage.html').render(
+                auth_token_pb_b64=pb_b64(auth),
+                prediction_pb_b64=pb_b64(get_prediction_resp.prediction),
+                prediction_id=prediction_id,
+            ))
 
     async def get_prediction_img_embed(self, req: web.Request) -> web.Response:
         auth = self._token_glue.parse_cookie(req)
@@ -691,9 +701,10 @@ class WebServer:
         assert list_my_predictions_resp.WhichOneof('list_my_predictions_result') == 'ok'
         return web.Response(
             content_type='text/html',
-            body=(_HERE/'templates'/'MyPredictionsPage.html').read_text()
-                        .replace(r'{{auth_token_pb_b64}}', pb_b64_json(auth) if auth else 'null')
-                        .replace(r'{{predictions_pb_b64}}', pb_b64_json(list_my_predictions_resp.ok)))
+            body=self._jinja.get_template('MyPredictionsPage.html').render(
+                auth_token_pb_b64=pb_b64(auth),
+                predictions_pb_b64=pb_b64(list_my_predictions_resp.ok),
+            ))
 
     async def get_username(self, req: web.Request) -> web.Response:
         auth = self._token_glue.parse_cookie(req)
@@ -705,12 +716,12 @@ class WebServer:
         email_flow = mvp_pb2.EmailFlowState()  # TODO
         return web.Response(
             content_type='text/html',
-            body=(_HERE/'templates'/'ViewUserPage.html').read_text()
-                        .replace(r'{{auth_token_pb_b64}}', pb_b64_json(auth) if auth else 'null')
-                        .replace(r'{{userViewPbB64}}', pb_b64_json(get_user_resp.ok))
-                        .replace(r'{{userIdPbB64}}', pb_b64_json(user_id))
-                        .replace(r'{{emailFlowPbB64}}', pb_b64_json(email_flow))  # TODO: I really don't like how this unfiltered piece of server state gets passed to the client
-                        )
+            body=self._jinja.get_template('ViewUserPage.html').render(
+                auth_token_pb_b64=pb_b64(auth),
+                user_view_pb_b64=pb_b64(get_user_resp.ok),
+                user_id_pb_b64=pb_b64(user_id),
+                email_flow_pb_b64=pb_b64(email_flow),  # TODO: I really don't like how this unfiltered piece of server state gets passed to the client
+            ))
 
     def add_to_app(self, app: web.Application) -> None:
 
@@ -727,8 +738,10 @@ class WebServer:
         app.router.add_get('/username/{username:[a-zA-Z0-9_-]+}', self.get_username)
 
 
-def pb_b64_json(message: Message) -> str:
-    return json.dumps(base64.b64encode(message.SerializeToString()).decode('ascii'))
+def pb_b64(message: Optional[Message]) -> Optional[str]:
+    if message is None:
+        return None
+    return base64.b64encode(message.SerializeToString()).decode('ascii')
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-H", "--host", default="localhost")

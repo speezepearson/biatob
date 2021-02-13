@@ -14,10 +14,10 @@
   <main id="main-wrapper"><div id="main"></div></main>
   <script type="text/javascript">
 
-    var authTokenPbB64 = {{auth_token_pb_b64}};
-    var userIdPbB64 = {{userIdPbB64}};
-    var userViewPbB64 = {{userViewPbB64}};
-    var emailFlowPbB64 = {{emailFlowPbB64}};
+    var authTokenPbB64 = {{ auth_token_pb_b64 | tojson }};
+    var userIdPbB64 = {{ user_id_pb_b64 | tojson }};
+    var userViewPbB64 = {{ user_view_pb_b64 | tojson }};
+    var emailFlowPbB64 = {{ email_flow_pb_b64 | tojson }};
 
     var navbar = Elm.Navbar.init({
       node: document.getElementById('navbar'),

@@ -78,7 +78,11 @@ def task_test():
   }
   yield {
     'name': 'pytest',
-    'file_dep': [*Path('server').glob('**/*.py'), *Path('server').glob('**/*.pyi')],
+    'file_dep': [
+      *Path('server').glob('**/*.py'),
+      *Path('server').glob('**/*.pyi'),
+      *[p for p in Path('server/templates').glob('**') if p.is_file()],
+    ],
     'params': [
       {'name': 'test_filter',
        'short': 'k',

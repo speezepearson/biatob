@@ -11,7 +11,7 @@
 <body>
   <nav id="navbar-wrapper"><div id="navbar"></div></nav>
   <script type="text/javascript">
-    var authTokenPbB64 = {{auth_token_pb_b64}};
+    var authTokenPbB64 = {{ auth_token_pb_b64 | tojson }};
     var navbar = Elm.Navbar.init({
       node: document.getElementById('navbar'),
       flags: {authTokenPbB64},
