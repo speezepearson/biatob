@@ -5,12 +5,11 @@
   <title>Main</title>
   <link rel="shortcut icon"type="image/x-icon" href="data:image/x-icon;,">
   <script type="text/javascript" src="/elm/ViewUserPage.js"></script>
-  <script type="text/javascript" src="/elm/Navbar.js"></script>
   <link rel="stylesheet" href="/static/base.css">
 </head>
 
 <body>
-  <nav id="navbar-wrapper"><div id="navbar"></div></nav>
+  {% include 'Navbar.html' %}
   <main id="main-wrapper"><div id="main"></div></main>
   <script type="text/javascript">
 
@@ -18,14 +17,6 @@
     var userIdPbB64 = {{ user_id_pb_b64 | tojson }};
     var userViewPbB64 = {{ user_view_pb_b64 | tojson }};
     var emailFlowPbB64 = {{ email_flow_pb_b64 | tojson }};
-
-    var navbar = Elm.Navbar.init({
-      node: document.getElementById('navbar'),
-      flags: {authTokenPbB64},
-    })
-    navbar.ports.authChanged.subscribe(() => window.location.reload());
-    var usernameField = document.getElementsByClassName('username-field')[0];
-    if (usernameField) usernameField.focus();
 
     var main = Elm.ViewUserPage.init({
       node: document.getElementById('main'),

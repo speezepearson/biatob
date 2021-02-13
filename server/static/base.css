@@ -10,6 +10,9 @@
   list-style: none;
   align-items: center;
 }
+#navbar-wrapper li {
+  margin: 0.5ex 1ex;
+}
 
 main {
   max-width: 45em;

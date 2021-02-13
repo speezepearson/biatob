@@ -5,25 +5,16 @@
   <title>Main</title>
   <link rel="shortcut icon"type="image/x-icon" href="data:image/x-icon;,">
   <script type="text/javascript" src="/elm/MyPredictionsPage.js"></script>
-  <script type="text/javascript" src="/elm/Navbar.js"></script>
   <link rel="stylesheet" href="/static/base.css">
 </head>
 
 <body>
-  <nav id="navbar-wrapper"><div id="navbar"></div></nav>
+  {% include 'Navbar.html' %}
   <main id="main-wrapper"><div id="main"></div></main>
   <script type="text/javascript">
 
     var authTokenPbB64 = {{ auth_token_pb_b64 | tojson }};
     var predictionsPbB64 = {{ predictions_pb_b64 | tojson }};
-
-    var navbar = Elm.Navbar.init({
-      node: document.getElementById('navbar'),
-      flags: {authTokenPbB64},
-    })
-    navbar.ports.authChanged.subscribe(({loggedIn}) => (loggedIn ? window.location.reload() : window.location='/'));
-    var usernameField = document.getElementsByClassName('username-field')[0];
-    if (usernameField) usernameField.focus();
 
     var main = Elm.MyPredictionsPage.init({
       node: document.getElementById('main'),
