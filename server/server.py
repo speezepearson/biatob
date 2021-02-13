@@ -619,6 +619,7 @@ class ApiServer:
         self._token_glue.add_to_app(app)
         app.add_routes(routes)
 
+
 _HERE = Path(__file__).parent
 class WebServer:
     def __init__(self, servicer: Servicer, elm_dist: Path, token_glue: HttpTokenGlue) -> None:
@@ -626,116 +627,115 @@ class WebServer:
         self._elm_dist = elm_dist
         self._token_glue = token_glue
 
-    def add_to_app(self, app: web.Application) -> None:
-        routes = web.RouteTableDef()
+    async def get_static(self, req: web.Request) -> web.StreamResponse:
+        filename = req.match_info['filename']
+        if (not filename) or filename.startswith('.'):
+            raise web.HTTPBadRequest()
+        return web.FileResponse(_HERE/'static'/filename)  # type: ignore
 
-        @routes.get('/static/{filename}') # type: ignore
-        async def get_static(req: web.Request) -> web.StreamResponse:
-            filename = req.match_info['filename']
-            if (not filename) or filename.startswith('.'):
-                raise web.HTTPBadRequest()
-            return web.FileResponse(_HERE/'static'/filename)  # type: ignore
+    async def get_elm_module(self, req: web.Request) -> web.Response:
+        module = req.match_info['module']
+        return web.Response(content_type='text/javascript', body=(_HERE.parent/f'elm/dist/{module}.js').read_text()) # type: ignore
 
-        @routes.get('/elm/{module}.js') # type: ignore
-        async def get_elm_module(req: web.Request) -> web.Response:
-            module = req.match_info['module']
-            return web.Response(content_type='text/javascript', body=(_HERE.parent/f'elm/dist/{module}.js').read_text()) # type: ignore
+    async def get_index(self, req: web.Request) -> web.StreamResponse:
+        auth = self._token_glue.get()
+        if auth is None:
+            return await self.get_welcome(req)
+        else:
+            return await self.get_my_predictions(req)
 
-        @routes.get('/')
-        async def get_index(req: web.Request) -> web.StreamResponse:
-            auth = self._token_glue.get()
-            if auth is None:
-                return await get_welcome(req)
-            else:
-                return await get_my_predictions(req)
+    async def get_welcome(self, req: web.Request) -> web.Response:
+        auth = self._token_glue.get()
+        return web.Response(
+            content_type='text/html',
+            body=(_HERE/'templates'/'Welcome.html').read_text()
+                    .replace(r'{{auth_token_pb_b64}}', pb_b64_json(auth) if auth else 'null'))
 
-        @routes.get('/welcome')
-        async def get_welcome(req: web.Request) -> web.Response:
-            auth = self._token_glue.get()
-            return web.Response(
-                content_type='text/html',
-                body=(_HERE/'templates'/'Welcome.html').read_text()
-                        .replace(r'{{auth_token_pb_b64}}', pb_b64_json(auth) if auth else 'null'))
+    async def get_create_prediction_page(self, req: web.Request) -> web.Response:
+        auth = self._token_glue.get()
+        return web.Response(
+            content_type='text/html',
+            body=(_HERE/'templates'/'CreatePredictionPage.html').read_text()
+                    .replace(r'{{auth_token_pb_b64}}', pb_b64_json(auth) if auth else 'null'))
 
+    async def get_view_prediction_page(self, req: web.Request) -> web.Response:
+        auth = self._token_glue.get()
+        prediction_id = int(req.match_info['prediction_id'])
+        get_prediction_resp = self._servicer.GetPrediction(auth, mvp_pb2.GetPredictionRequest(prediction_id=prediction_id))
+        if get_prediction_resp.WhichOneof('get_prediction_result') == 'error':
+            return web.Response(status=404, body=str(get_prediction_resp.error))
 
-        @routes.get('/new')
-        async def get_create_prediction_page(req: web.Request) -> web.Response:
-            auth = self._token_glue.get()
-            return web.Response(
-                content_type='text/html',
-                body=(_HERE/'templates'/'CreatePredictionPage.html').read_text()
-                        .replace(r'{{auth_token_pb_b64}}', pb_b64_json(auth) if auth else 'null'))
+        assert get_prediction_resp.WhichOneof('get_prediction_result') == 'prediction'
+        return web.Response(
+            content_type='text/html',
+            body=(_HERE/'templates'/'ViewPredictionPage.html').read_text()
+                    .replace(r'{{auth_token_pb_b64}}', pb_b64_json(auth) if auth else 'null')
+                    .replace(r'{{prediction_pb_b64}}', pb_b64_json(get_prediction_resp.prediction))
+                    .replace(r'{{prediction_id}}', str(prediction_id)))
 
-        @routes.get('/p/{prediction_id:[0-9]+}')
-        async def get_view_prediction_page(req: web.Request) -> web.Response:
-            auth = self._token_glue.get()
-            prediction_id = int(req.match_info['prediction_id'])
-            get_prediction_resp = self._servicer.GetPrediction(auth, mvp_pb2.GetPredictionRequest(prediction_id=prediction_id))
-            if get_prediction_resp.WhichOneof('get_prediction_result') == 'error':
-                return web.Response(status=404, body=str(get_prediction_resp.error))
+    async def get_prediction_img_embed(self, req: web.Request) -> web.Response:
+        auth = self._token_glue.get()
+        prediction_id = int(req.match_info['prediction_id'])
+        get_prediction_resp = self._servicer.GetPrediction(auth, mvp_pb2.GetPredictionRequest(prediction_id=prediction_id))
+        if get_prediction_resp.WhichOneof('get_prediction_result') == 'error':
+            return web.Response(status=404, body=str(get_prediction_resp.error))
 
-            assert get_prediction_resp.WhichOneof('get_prediction_result') == 'prediction'
-            return web.Response(
-                content_type='text/html',
-                body=(_HERE/'templates'/'ViewPredictionPage.html').read_text()
+        assert get_prediction_resp.WhichOneof('get_prediction_result') == 'prediction'
+        def format_cents(n: int) -> str:
+            if n < 0: return '-' + format_cents(-n)
+            return f'${n//100}' + ('' if n%100 == 0 else f'.{n%100 :02d}')
+        prediction = get_prediction_resp.prediction
+        text = f'[{format_cents(prediction.maximum_stake_cents)} @ {round(prediction.certainty.low*100)}-{round(prediction.certainty.high*100)}%]'
+        size = IMAGE_EMBED_FONT.getsize(text)
+        img = Image.new('RGBA', size, color=(255,255,255,0))
+        ImageDraw.Draw(img).text((0,0), text, fill=(0,128,0,255), font=IMAGE_EMBED_FONT)
+        buf = io.BytesIO()
+        img.save(buf, format='png')
+        return web.Response(content_type='image/png', body=buf.getvalue())
+
+    async def get_my_predictions(self, req: web.Request) -> web.Response:
+        auth = self._token_glue.get()
+        list_my_predictions_resp = self._servicer.ListMyPredictions(auth, mvp_pb2.ListMyPredictionsRequest())
+        if list_my_predictions_resp.WhichOneof('list_my_predictions_result') == 'error':
+            return web.Response(status=400, body=str(list_my_predictions_resp.error))
+        assert list_my_predictions_resp.WhichOneof('list_my_predictions_result') == 'ok'
+        return web.Response(
+            content_type='text/html',
+            body=(_HERE/'templates'/'MyPredictionsPage.html').read_text()
                         .replace(r'{{auth_token_pb_b64}}', pb_b64_json(auth) if auth else 'null')
-                        .replace(r'{{prediction_pb_b64}}', pb_b64_json(get_prediction_resp.prediction))
-                        .replace(r'{{prediction_id}}', str(prediction_id)))
+                        .replace(r'{{predictions_pb_b64}}', pb_b64_json(list_my_predictions_resp.ok)))
 
-        @routes.get('/p/{prediction_id:[0-9]+}/embed.png')
-        async def get_prediction_img_embed(req: web.Request) -> web.Response:
-            auth = self._token_glue.get()
-            prediction_id = int(req.match_info['prediction_id'])
-            get_prediction_resp = self._servicer.GetPrediction(auth, mvp_pb2.GetPredictionRequest(prediction_id=prediction_id))
-            if get_prediction_resp.WhichOneof('get_prediction_result') == 'error':
-                return web.Response(status=404, body=str(get_prediction_resp.error))
+    async def get_username(self, req: web.Request) -> web.Response:
+        auth = self._token_glue.get()
+        user_id = mvp_pb2.UserId(username=req.match_info['username'])
+        get_user_resp = self._servicer.GetUser(auth, mvp_pb2.GetUserRequest(who=user_id))
+        if get_user_resp.WhichOneof('get_user_result') == 'error':
+            return web.Response(status=400, body=str(get_user_resp.error))
+        assert get_user_resp.WhichOneof('get_user_result') == 'ok'
+        email_flow = mvp_pb2.EmailFlowState()  # TODO
+        return web.Response(
+            content_type='text/html',
+            body=(_HERE/'templates'/'ViewUserPage.html').read_text()
+                        .replace(r'{{auth_token_pb_b64}}', pb_b64_json(auth) if auth else 'null')
+                        .replace(r'{{userViewPbB64}}', pb_b64_json(get_user_resp.ok))
+                        .replace(r'{{userIdPbB64}}', pb_b64_json(user_id))
+                        .replace(r'{{emailFlowPbB64}}', pb_b64_json(email_flow))  # TODO: I really don't like how this unfiltered piece of server state gets passed to the client
+                        )
 
-            assert get_prediction_resp.WhichOneof('get_prediction_result') == 'prediction'
-            def format_cents(n: int) -> str:
-                if n < 0: return '-' + format_cents(-n)
-                return f'${n//100}' + ('' if n%100 == 0 else f'.{n%100 :02d}')
-            prediction = get_prediction_resp.prediction
-            text = f'[{format_cents(prediction.maximum_stake_cents)} @ {round(prediction.certainty.low*100)}-{round(prediction.certainty.high*100)}%]'
-            size = IMAGE_EMBED_FONT.getsize(text)
-            img = Image.new('RGBA', size, color=(255,255,255,0))
-            ImageDraw.Draw(img).text((0,0), text, fill=(0,128,0,255), font=IMAGE_EMBED_FONT)
-            buf = io.BytesIO()
-            img.save(buf, format='png')
-            return web.Response(content_type='image/png', body=buf.getvalue())
-
-        @routes.get('/my_predictions')
-        async def get_my_predictions(req: web.Request) -> web.Response:
-            auth = self._token_glue.get()
-            list_my_predictions_resp = self._servicer.ListMyPredictions(auth, mvp_pb2.ListMyPredictionsRequest())
-            if list_my_predictions_resp.WhichOneof('list_my_predictions_result') == 'error':
-                return web.Response(status=400, body=str(list_my_predictions_resp.error))
-            assert list_my_predictions_resp.WhichOneof('list_my_predictions_result') == 'ok'
-            return web.Response(
-                content_type='text/html',
-                body=(_HERE/'templates'/'MyPredictionsPage.html').read_text()
-                            .replace(r'{{auth_token_pb_b64}}', pb_b64_json(auth) if auth else 'null')
-                            .replace(r'{{predictions_pb_b64}}', pb_b64_json(list_my_predictions_resp.ok)))
-
-        @routes.get('/username/{username:[a-zA-Z0-9_-]+}')
-        async def get_username(req: web.Request) -> web.Response:
-            auth = self._token_glue.get()
-            user_id = mvp_pb2.UserId(username=req.match_info['username'])
-            get_user_resp = self._servicer.GetUser(auth, mvp_pb2.GetUserRequest(who=user_id))
-            if get_user_resp.WhichOneof('get_user_result') == 'error':
-                return web.Response(status=400, body=str(get_user_resp.error))
-            assert get_user_resp.WhichOneof('get_user_result') == 'ok'
-            email_flow = self._servicer._get_state().username_users[username].info.email  # type: ignore # TODO: hack
-            return web.Response(
-                content_type='text/html',
-                body=(_HERE/'templates'/'ViewUserPage.html').read_text()
-                            .replace(r'{{auth_token_pb_b64}}', pb_b64_json(auth) if auth else 'null')
-                            .replace(r'{{userViewPbB64}}', pb_b64_json(get_user_resp.ok))
-                            .replace(r'{{userIdPbB64}}', pb_b64_json(user_id))
-                            .replace(r'{{emailFlowPbB64}}', pb_b64_json(email_flow))  # TODO: I really don't like how this unfiltered piece of server state gets passed to the client
-                            )
+    def add_to_app(self, app: web.Application) -> None:
 
         self._token_glue.add_to_app(app)
-        app.add_routes(routes)
+
+        app.router.add_get('/', self.get_index)
+        app.router.add_get('/static/{filename}', self.get_static)
+        app.router.add_get('/elm/{module}.js', self.get_elm_module)
+        app.router.add_get('/welcome', self.get_welcome)
+        app.router.add_get('/new', self.get_create_prediction_page)
+        app.router.add_get('/p/{prediction_id:[0-9]+}', self.get_view_prediction_page)
+        app.router.add_get('/p/{prediction_id:[0-9]+}/embed.png', self.get_prediction_img_embed)
+        app.router.add_get('/my_predictions', self.get_my_predictions)
+        app.router.add_get('/username/{username:[a-zA-Z0-9_-]+}', self.get_username)
+
 
 def pb_b64_json(message: Message) -> str:
     return json.dumps(base64.b64encode(message.SerializeToString()).decode('ascii'))
