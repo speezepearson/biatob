@@ -106,7 +106,7 @@ async def test_forgotten_token_recovery(aiohttp_client, app, fs_servicer):
 
   fs_servicer._set_state(mvp_pb2.WorldState())
   http_resp = await cli.post(
-    '/api/RegisterUsername',
+    '/api/Whoami',
     headers={'Content-Type': 'application/octet-stream'},
     data=mvp_pb2.WhoamiRequest().SerializeToString(),
   )
@@ -115,3 +115,20 @@ async def test_forgotten_token_recovery(aiohttp_client, app, fs_servicer):
 
   (http_resp, pb_resp) = await post_proto(cli, '/api/Whoami', mvp_pb2.WhoamiRequest(), mvp_pb2.WhoamiResponse)
   assert pb_resp.auth.owner.WhichOneof('kind') == None, pb_resp
+
+
+async def test_smoke(aiohttp_client, app):
+  cli = await aiohttp_client(app)
+  await post_proto(cli, '/api/Whoami', mvp_pb2.WhoamiRequest(), mvp_pb2.WhoamiResponse)
+  await post_proto(cli, '/api/SignOut', mvp_pb2.SignOutRequest(), mvp_pb2.SignOutResponse)
+  await post_proto(cli, '/api/RegisterUsername', mvp_pb2.RegisterUsernameRequest(), mvp_pb2.RegisterUsernameResponse)
+  await post_proto(cli, '/api/LogInUsername', mvp_pb2.LogInUsernameRequest(), mvp_pb2.LogInUsernameResponse)
+  await post_proto(cli, '/api/CreatePrediction', mvp_pb2.CreatePredictionRequest(), mvp_pb2.CreatePredictionResponse)
+  await post_proto(cli, '/api/GetPrediction', mvp_pb2.GetPredictionRequest(), mvp_pb2.GetPredictionResponse)
+  await post_proto(cli, '/api/Stake', mvp_pb2.StakeRequest(), mvp_pb2.StakeResponse)
+  await post_proto(cli, '/api/Resolve', mvp_pb2.ResolveRequest(), mvp_pb2.ResolveResponse)
+  await post_proto(cli, '/api/SetTrusted', mvp_pb2.SetTrustedRequest(), mvp_pb2.SetTrustedResponse)
+  await post_proto(cli, '/api/GetUser', mvp_pb2.GetUserRequest(), mvp_pb2.GetUserResponse)
+  await post_proto(cli, '/api/ChangePassword', mvp_pb2.ChangePasswordRequest(), mvp_pb2.ChangePasswordResponse)
+  await post_proto(cli, '/api/SetEmail', mvp_pb2.SetEmailRequest(), mvp_pb2.SetEmailResponse)
+  await post_proto(cli, '/api/VerifyEmail', mvp_pb2.VerifyEmailRequest(), mvp_pb2.VerifyEmailResponse)

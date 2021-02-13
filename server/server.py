@@ -57,7 +57,8 @@ def get_generic_user_info(wstate: mvp_pb2.WorldState, user: mvp_pb2.UserId) -> O
         username_info = wstate.username_users.get(user.username)
         return username_info.info if (username_info is not None) else None
     else:
-        assert False, f'unrecognized UserId kind: {user!r}'
+        logger.warn(f'unrecognized UserId kind: {user!r}')
+        return None
 
 def user_exists(wstate: mvp_pb2.WorldState, user: mvp_pb2.UserId) -> bool:
     return get_generic_user_info(wstate, user) is not None
