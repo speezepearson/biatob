@@ -5,7 +5,6 @@ import abc
 import argparse
 import base64
 import contextlib
-import contextvars
 import copy
 import functools
 import hmac
@@ -511,26 +510,19 @@ class HttpTokenGlue:
 
     def __init__(self, token_mint: TokenMint):
         self._mint = token_mint
-        self._ctxvar: contextvars.ContextVar[Optional[mvp_pb2.AuthToken]] = contextvars.ContextVar('token', default=None)
 
     def add_to_app(self, app: web.Application) -> None:
         if self.middleware not in app.middlewares:
             app.middlewares.append(self.middleware)
 
-    def get(self):
-        return self._ctxvar.get()
-
     @web.middleware
     async def middleware(self, request, handler):
-        ctxtok = self._ctxvar.set(self.parse_cookie(request))
         try:
             return await handler(request)
         except ForgottenTokenError:
             response = web.HTTPInternalServerError(reason="I, uh, may have accidentally obliterated your entire account. Crap. I'm sorry.")
             self.del_cookie(request, response)
             return response
-        finally:
-            self._ctxvar.reset(ctxtok)
 
     def set_cookie(self, token: mvp_pb2.AuthToken, response: web.Response) -> mvp_pb2.AuthToken:
         response.set_cookie(self._AUTH_COOKIE_NAME, base64.b64encode(token.SerializeToString()).decode('ascii'))
@@ -564,41 +556,41 @@ class ApiServer:
         self._clock = clock
 
     async def Whoami(self, http_req: web.Request) -> web.Response:
-        return proto_response(self._servicer.Whoami(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.WhoamiRequest)))
+        return proto_response(self._servicer.Whoami(token=self._token_glue.parse_cookie(http_req), request=await parse_proto(http_req, mvp_pb2.WhoamiRequest)))
     async def SignOut(self, http_req: web.Request) -> web.Response:
-        http_resp = proto_response(self._servicer.SignOut(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.SignOutRequest)))
+        http_resp = proto_response(self._servicer.SignOut(token=self._token_glue.parse_cookie(http_req), request=await parse_proto(http_req, mvp_pb2.SignOutRequest)))
         self._token_glue.del_cookie(http_req, http_resp)
         return http_resp
     async def RegisterUsername(self, http_req: web.Request) -> web.Response:
-        pb_resp = self._servicer.RegisterUsername(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.RegisterUsernameRequest))
+        pb_resp = self._servicer.RegisterUsername(token=self._token_glue.parse_cookie(http_req), request=await parse_proto(http_req, mvp_pb2.RegisterUsernameRequest))
         http_resp = proto_response(pb_resp)
         if pb_resp.WhichOneof('register_username_result') == 'ok':
             self._token_glue.set_cookie(pb_resp.ok, http_resp)
         return http_resp
     async def LogInUsername(self, http_req: web.Request) -> web.Response:
-        pb_resp = self._servicer.LogInUsername(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.LogInUsernameRequest))
+        pb_resp = self._servicer.LogInUsername(token=self._token_glue.parse_cookie(http_req), request=await parse_proto(http_req, mvp_pb2.LogInUsernameRequest))
         http_resp = proto_response(pb_resp)
         if pb_resp.WhichOneof('log_in_username_result') == 'ok':
             self._token_glue.set_cookie(pb_resp.ok, http_resp)
         return http_resp
     async def CreatePrediction(self, http_req: web.Request) -> web.Response:
-        return proto_response(self._servicer.CreatePrediction(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.CreatePredictionRequest)))
+        return proto_response(self._servicer.CreatePrediction(token=self._token_glue.parse_cookie(http_req), request=await parse_proto(http_req, mvp_pb2.CreatePredictionRequest)))
     async def GetPrediction(self, http_req: web.Request) -> web.Response:
-        return proto_response(self._servicer.GetPrediction(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.GetPredictionRequest)))
+        return proto_response(self._servicer.GetPrediction(token=self._token_glue.parse_cookie(http_req), request=await parse_proto(http_req, mvp_pb2.GetPredictionRequest)))
     async def Stake(self, http_req: web.Request) -> web.Response:
-        return proto_response(self._servicer.Stake(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.StakeRequest)))
+        return proto_response(self._servicer.Stake(token=self._token_glue.parse_cookie(http_req), request=await parse_proto(http_req, mvp_pb2.StakeRequest)))
     async def Resolve(self, http_req: web.Request) -> web.Response:
-        return proto_response(self._servicer.Resolve(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.ResolveRequest)))
+        return proto_response(self._servicer.Resolve(token=self._token_glue.parse_cookie(http_req), request=await parse_proto(http_req, mvp_pb2.ResolveRequest)))
     async def SetTrusted(self, http_req: web.Request) -> web.Response:
-        return proto_response(self._servicer.SetTrusted(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.SetTrustedRequest)))
+        return proto_response(self._servicer.SetTrusted(token=self._token_glue.parse_cookie(http_req), request=await parse_proto(http_req, mvp_pb2.SetTrustedRequest)))
     async def GetUser(self, http_req: web.Request) -> web.Response:
-        return proto_response(self._servicer.GetUser(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.GetUserRequest)))
+        return proto_response(self._servicer.GetUser(token=self._token_glue.parse_cookie(http_req), request=await parse_proto(http_req, mvp_pb2.GetUserRequest)))
     async def ChangePassword(self, http_req: web.Request) -> web.Response:
-        return proto_response(self._servicer.ChangePassword(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.ChangePasswordRequest)))
+        return proto_response(self._servicer.ChangePassword(token=self._token_glue.parse_cookie(http_req), request=await parse_proto(http_req, mvp_pb2.ChangePasswordRequest)))
     async def SetEmail(self, http_req: web.Request) -> web.Response:
-        return proto_response(self._servicer.SetEmail(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.SetEmailRequest)))
+        return proto_response(self._servicer.SetEmail(token=self._token_glue.parse_cookie(http_req), request=await parse_proto(http_req, mvp_pb2.SetEmailRequest)))
     async def VerifyEmail(self, http_req: web.Request) -> web.Response:
-        return proto_response(self._servicer.VerifyEmail(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.VerifyEmailRequest)))
+        return proto_response(self._servicer.VerifyEmail(token=self._token_glue.parse_cookie(http_req), request=await parse_proto(http_req, mvp_pb2.VerifyEmailRequest)))
 
     def add_to_app(self, app: web.Application) -> None:
         app.router.add_post('/api/Whoami', self.Whoami)
@@ -635,28 +627,28 @@ class WebServer:
         return web.Response(content_type='text/javascript', body=(_HERE.parent/f'elm/dist/{module}.js').read_text()) # type: ignore
 
     async def get_index(self, req: web.Request) -> web.StreamResponse:
-        auth = self._token_glue.get()
+        auth = self._token_glue.parse_cookie(req)
         if auth is None:
             return await self.get_welcome(req)
         else:
             return await self.get_my_predictions(req)
 
     async def get_welcome(self, req: web.Request) -> web.Response:
-        auth = self._token_glue.get()
+        auth = self._token_glue.parse_cookie(req)
         return web.Response(
             content_type='text/html',
             body=(_HERE/'templates'/'Welcome.html').read_text()
                     .replace(r'{{auth_token_pb_b64}}', pb_b64_json(auth) if auth else 'null'))
 
     async def get_create_prediction_page(self, req: web.Request) -> web.Response:
-        auth = self._token_glue.get()
+        auth = self._token_glue.parse_cookie(req)
         return web.Response(
             content_type='text/html',
             body=(_HERE/'templates'/'CreatePredictionPage.html').read_text()
                     .replace(r'{{auth_token_pb_b64}}', pb_b64_json(auth) if auth else 'null'))
 
     async def get_view_prediction_page(self, req: web.Request) -> web.Response:
-        auth = self._token_glue.get()
+        auth = self._token_glue.parse_cookie(req)
         prediction_id = int(req.match_info['prediction_id'])
         get_prediction_resp = self._servicer.GetPrediction(auth, mvp_pb2.GetPredictionRequest(prediction_id=prediction_id))
         if get_prediction_resp.WhichOneof('get_prediction_result') == 'error':
@@ -671,7 +663,7 @@ class WebServer:
                     .replace(r'{{prediction_id}}', str(prediction_id)))
 
     async def get_prediction_img_embed(self, req: web.Request) -> web.Response:
-        auth = self._token_glue.get()
+        auth = self._token_glue.parse_cookie(req)
         prediction_id = int(req.match_info['prediction_id'])
         get_prediction_resp = self._servicer.GetPrediction(auth, mvp_pb2.GetPredictionRequest(prediction_id=prediction_id))
         if get_prediction_resp.WhichOneof('get_prediction_result') == 'error':
@@ -691,7 +683,7 @@ class WebServer:
         return web.Response(content_type='image/png', body=buf.getvalue())
 
     async def get_my_predictions(self, req: web.Request) -> web.Response:
-        auth = self._token_glue.get()
+        auth = self._token_glue.parse_cookie(req)
         list_my_predictions_resp = self._servicer.ListMyPredictions(auth, mvp_pb2.ListMyPredictionsRequest())
         if list_my_predictions_resp.WhichOneof('list_my_predictions_result') == 'error':
             return web.Response(status=400, body=str(list_my_predictions_resp.error))
@@ -703,7 +695,7 @@ class WebServer:
                         .replace(r'{{predictions_pb_b64}}', pb_b64_json(list_my_predictions_resp.ok)))
 
     async def get_username(self, req: web.Request) -> web.Response:
-        auth = self._token_glue.get()
+        auth = self._token_glue.parse_cookie(req)
         user_id = mvp_pb2.UserId(username=req.match_info['username'])
         get_user_resp = self._servicer.GetUser(auth, mvp_pb2.GetUserRequest(who=user_id))
         if get_user_resp.WhichOneof('get_user_result') == 'error':
