@@ -563,61 +563,58 @@ class ApiServer:
         self._servicer = servicer
         self._clock = clock
 
+    async def Whoami(self, http_req: web.Request) -> web.Response:
+        return proto_response(self._servicer.Whoami(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.WhoamiRequest)))
+    async def SignOut(self, http_req: web.Request) -> web.Response:
+        http_resp = proto_response(self._servicer.SignOut(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.SignOutRequest)))
+        self._token_glue.del_cookie(http_req, http_resp)
+        return http_resp
+    async def RegisterUsername(self, http_req: web.Request) -> web.Response:
+        pb_resp = self._servicer.RegisterUsername(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.RegisterUsernameRequest))
+        http_resp = proto_response(pb_resp)
+        if pb_resp.WhichOneof('register_username_result') == 'ok':
+            self._token_glue.set_cookie(pb_resp.ok, http_resp)
+        return http_resp
+    async def LogInUsername(self, http_req: web.Request) -> web.Response:
+        pb_resp = self._servicer.LogInUsername(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.LogInUsernameRequest))
+        http_resp = proto_response(pb_resp)
+        if pb_resp.WhichOneof('log_in_username_result') == 'ok':
+            self._token_glue.set_cookie(pb_resp.ok, http_resp)
+        return http_resp
+    async def CreatePrediction(self, http_req: web.Request) -> web.Response:
+        return proto_response(self._servicer.CreatePrediction(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.CreatePredictionRequest)))
+    async def GetPrediction(self, http_req: web.Request) -> web.Response:
+        return proto_response(self._servicer.GetPrediction(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.GetPredictionRequest)))
+    async def Stake(self, http_req: web.Request) -> web.Response:
+        return proto_response(self._servicer.Stake(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.StakeRequest)))
+    async def Resolve(self, http_req: web.Request) -> web.Response:
+        return proto_response(self._servicer.Resolve(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.ResolveRequest)))
+    async def SetTrusted(self, http_req: web.Request) -> web.Response:
+        return proto_response(self._servicer.SetTrusted(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.SetTrustedRequest)))
+    async def GetUser(self, http_req: web.Request) -> web.Response:
+        return proto_response(self._servicer.GetUser(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.GetUserRequest)))
+    async def ChangePassword(self, http_req: web.Request) -> web.Response:
+        return proto_response(self._servicer.ChangePassword(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.ChangePasswordRequest)))
+    async def SetEmail(self, http_req: web.Request) -> web.Response:
+        return proto_response(self._servicer.SetEmail(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.SetEmailRequest)))
+    async def VerifyEmail(self, http_req: web.Request) -> web.Response:
+        return proto_response(self._servicer.VerifyEmail(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.VerifyEmailRequest)))
+
     def add_to_app(self, app: web.Application) -> None:
-        routes = web.RouteTableDef()
-
-        @routes.post('/api/Whoami')
-        async def api_Whoami(http_req: web.Request) -> web.Response:
-            return proto_response(self._servicer.Whoami(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.WhoamiRequest)))
-        @routes.post('/api/SignOut')
-        async def api_SignOut(http_req: web.Request) -> web.Response:
-            http_resp = proto_response(self._servicer.SignOut(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.SignOutRequest)))
-            self._token_glue.del_cookie(http_req, http_resp)
-            return http_resp
-        @routes.post('/api/RegisterUsername')
-        async def api_RegisterUsername(http_req: web.Request) -> web.Response:
-            pb_resp = self._servicer.RegisterUsername(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.RegisterUsernameRequest))
-            http_resp = proto_response(pb_resp)
-            if pb_resp.WhichOneof('register_username_result') == 'ok':
-                self._token_glue.set_cookie(pb_resp.ok, http_resp)
-            return http_resp
-        @routes.post('/api/LogInUsername')
-        async def api_LogInUsername(http_req: web.Request) -> web.Response:
-            pb_resp = self._servicer.LogInUsername(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.LogInUsernameRequest))
-            http_resp = proto_response(pb_resp)
-            if pb_resp.WhichOneof('log_in_username_result') == 'ok':
-                self._token_glue.set_cookie(pb_resp.ok, http_resp)
-            return http_resp
-        @routes.post('/api/CreatePrediction')
-        async def api_CreatePrediction(http_req: web.Request) -> web.Response:
-            return proto_response(self._servicer.CreatePrediction(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.CreatePredictionRequest)))
-        @routes.post('/api/GetPrediction')
-        async def api_GetPrediction(http_req: web.Request) -> web.Response:
-            return proto_response(self._servicer.GetPrediction(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.GetPredictionRequest)))
-        @routes.post('/api/Stake')
-        async def api_Stake(http_req: web.Request) -> web.Response:
-            return proto_response(self._servicer.Stake(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.StakeRequest)))
-        @routes.post('/api/Resolve')
-        async def api_Resolve(http_req: web.Request) -> web.Response:
-            return proto_response(self._servicer.Resolve(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.ResolveRequest)))
-        @routes.post('/api/SetTrusted')
-        async def api_SetTrusted(http_req: web.Request) -> web.Response:
-            return proto_response(self._servicer.SetTrusted(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.SetTrustedRequest)))
-        @routes.post('/api/GetUser')
-        async def api_GetUser(http_req: web.Request) -> web.Response:
-            return proto_response(self._servicer.GetUser(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.GetUserRequest)))
-        @routes.post('/api/ChangePassword')
-        async def api_ChangePassword(http_req: web.Request) -> web.Response:
-            return proto_response(self._servicer.ChangePassword(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.ChangePasswordRequest)))
-        @routes.post('/api/SetEmail')
-        async def api_SetEmail(http_req: web.Request) -> web.Response:
-            return proto_response(self._servicer.SetEmail(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.SetEmailRequest)))
-        @routes.post('/api/VerifyEmail')
-        async def api_VerifyEmail(http_req: web.Request) -> web.Response:
-            return proto_response(self._servicer.VerifyEmail(token=self._token_glue.get(), request=await parse_proto(http_req, mvp_pb2.VerifyEmailRequest)))
-
+        app.router.add_post('/api/Whoami', self.Whoami)
+        app.router.add_post('/api/SignOut', self.SignOut)
+        app.router.add_post('/api/RegisterUsername', self.RegisterUsername)
+        app.router.add_post('/api/LogInUsername', self.LogInUsername)
+        app.router.add_post('/api/CreatePrediction', self.CreatePrediction)
+        app.router.add_post('/api/GetPrediction', self.GetPrediction)
+        app.router.add_post('/api/Stake', self.Stake)
+        app.router.add_post('/api/Resolve', self.Resolve)
+        app.router.add_post('/api/SetTrusted', self.SetTrusted)
+        app.router.add_post('/api/GetUser', self.GetUser)
+        app.router.add_post('/api/ChangePassword', self.ChangePassword)
+        app.router.add_post('/api/SetEmail', self.SetEmail)
+        app.router.add_post('/api/VerifyEmail', self.VerifyEmail)
         self._token_glue.add_to_app(app)
-        app.add_routes(routes)
 
 
 _HERE = Path(__file__).parent
