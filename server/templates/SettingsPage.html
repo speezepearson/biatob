@@ -20,6 +20,7 @@
       node: document.getElementById('main'),
       flags: {authTokenPbB64, settingsRespPbB64},
     });
+    main.ports.changed.subscribe(() => window.location.reload());
   </script>
 </body>
 </html>
