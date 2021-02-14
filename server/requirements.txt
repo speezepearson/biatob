@@ -1,6 +1,5 @@
 aiohttp
 protobuf
-bcrypt
 requests
 Pillow
 Jinja2

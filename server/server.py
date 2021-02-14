@@ -7,6 +7,7 @@ import base64
 import contextlib
 import copy
 import functools
+import hashlib
 import hmac
 import io
 import json
@@ -24,7 +25,6 @@ from email.mime.text import MIMEText
 
 import jinja2
 from PIL import Image, ImageDraw, ImageFont  # type: ignore
-import bcrypt  # type: ignore
 from aiohttp import web
 import google.protobuf.text_format  # type: ignore
 
@@ -43,6 +43,16 @@ class UsernameAlreadyRegisteredError(Exception): pass
 class NoSuchUserError(Exception): pass
 class BadPasswordError(Exception): pass
 class ForgottenTokenError(RuntimeError): pass
+
+def secret_eq(a: bytes, b: bytes) -> bool:
+    return len(a) == len(b) and all(a[i]==b[i] for i in range(len(a)))
+def scrypt(password: str, salt: bytes) -> bytes:
+    return hashlib.scrypt(password.encode('utf8'), salt=salt, n=16384, r=8, p=1)
+def new_hashed_password(password: str) -> mvp_pb2.HashedPassword:
+    salt = secrets.token_bytes(4)
+    return mvp_pb2.HashedPassword(salt=salt, scrypt=scrypt(password, salt))
+def check_password(password: str, hashed: mvp_pb2.HashedPassword) -> bool:
+    return secret_eq(hashed.scrypt, scrypt(password, hashed.salt))
 
 def weak_rand_not_in(rng: random.Random, limit: int, xs: Container[int]) -> int:
     result = rng.randrange(0, limit)
@@ -250,7 +260,7 @@ class FsBackedServicer(Servicer):
             if request.username in wstate.username_users:
                 return mvp_pb2.RegisterUsernameResponse(error=mvp_pb2.RegisterUsernameResponse.Error(catchall='username taken'))
             wstate.username_users[request.username].MergeFrom(mvp_pb2.WorldState.UsernameInfo(
-                password_bcrypt=bcrypt.hashpw(request.password.encode('utf8'), bcrypt.gensalt()),
+                password=new_hashed_password(request.password),
                 info=mvp_pb2.WorldState.GenericUserInfo(trusted_users=[]),
             ))
             return mvp_pb2.RegisterUsernameResponse(ok=self._token_mint.mint_token(owner=mvp_pb2.UserId(username=request.username), ttl_seconds=60*60*24*7))
@@ -269,7 +279,7 @@ class FsBackedServicer(Servicer):
         info = self._get_state().username_users.get(request.username)
         if info is None:
             return mvp_pb2.LogInUsernameResponse(error=mvp_pb2.LogInUsernameResponse.Error(catchall='no such user'))
-        if not bcrypt.checkpw(request.password.encode('utf8'), info.password_bcrypt):
+        if not check_password(request.password, info.password):
             return mvp_pb2.LogInUsernameResponse(error=mvp_pb2.LogInUsernameResponse.Error(catchall='bad password'))
 
         token = self._token_mint.mint_token(owner=mvp_pb2.UserId(username=request.username), ttl_seconds=86400)
@@ -435,10 +445,10 @@ class FsBackedServicer(Servicer):
             if info is None:
                 raise ForgottenTokenError(token)
 
-            if not bcrypt.checkpw(request.old_password.encode('utf8'), info.password_bcrypt):
+            if not check_password(request.old_password, info.password):
                 return mvp_pb2.ChangePasswordResponse(error=mvp_pb2.ChangePasswordResponse.Error(catchall='bad password'))
 
-            info.password_bcrypt = bcrypt.hashpw(request.new_password.encode('utf8'), bcrypt.gensalt())
+            info.password.CopyFrom(new_hashed_password(request.new_password))
 
             return mvp_pb2.ChangePasswordResponse(ok=mvp_pb2.VOID)
 
@@ -456,11 +466,11 @@ class FsBackedServicer(Servicer):
         )  # TODO: this blocks the event loop; toss it to another thread?
 
         with self._mutate_state() as wstate:
-            requester_info = get_generic_user_info(self._get_state(), token.owner)
+            requester_info = get_generic_user_info(wstate, token.owner)
             if requester_info is None:
                 raise ForgottenTokenError(token)
-            requester_info.email.MergeFrom(mvp_pb2.EmailFlowState(code_sent=mvp_pb2.EmailFlowState.CodeSent(email=request.email, code_bcrypt=bcrypt.hashpw(code.encode('ascii'), bcrypt.gensalt()))))
-            wstate.username_users[token.owner.username].info.MergeFrom(requester_info) # TODO: hack
+            requester_info.email.MergeFrom(mvp_pb2.EmailFlowState(code_sent=mvp_pb2.EmailFlowState.CodeSent(email=request.email, code=new_hashed_password(code))))
+            wstate.username_users[token.owner.username].info.CopyFrom(requester_info) # TODO: hack
             return mvp_pb2.SetEmailResponse(ok=mvp_pb2.VOID)
 
     @checks_token
@@ -469,16 +479,15 @@ class FsBackedServicer(Servicer):
             return mvp_pb2.VerifyEmailResponse(error=mvp_pb2.VerifyEmailResponse.Error(catchall='must log in to change your password'))
 
         with self._mutate_state() as wstate:
-            requester_info = get_generic_user_info(self._get_state(), token.owner)
+            requester_info = get_generic_user_info(wstate, token.owner)
             if requester_info is None:
                 raise ForgottenTokenError(token)
             if not (requester_info.email and requester_info.email.WhichOneof('email_flow_state_kind') == 'code_sent'):
                 return mvp_pb2.VerifyEmailResponse(error=mvp_pb2.VerifyEmailResponse.Error(catchall='you have no pending email-verification flow'))
             code_sent_state = requester_info.email.code_sent
-            if not bcrypt.checkpw(request.code.encode('ascii'), code_sent_state.code_bcrypt):
+            if not check_password(request.code, code_sent_state.code):
                 return mvp_pb2.VerifyEmailResponse(error=mvp_pb2.VerifyEmailResponse.Error(catchall='bad code'))
-            requester_info.email.Clear()
-            requester_info.email.MergeFrom(mvp_pb2.EmailFlowState(verified=code_sent_state.email))
+            requester_info.email.CopyFrom(mvp_pb2.EmailFlowState(verified=code_sent_state.email))
             return mvp_pb2.VerifyEmailResponse(verified_email=code_sent_state.email)
 
 

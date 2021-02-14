@@ -2,9 +2,9 @@
 
 
 module Biatob.Proto.Mvp exposing
-    ( Void(..), Resolution(..), Kind(..), UserId, AuthToken, CredentialsConfig, EmailFlowStateKind(..), EmailFlowState, EmailFlowStateCodeSent, WorldState, WorldStateGenericUserInfo, WorldStateUsernameInfo, WorldStatePrediction, ResolutionEvent, Trade, WhoamiRequest, WhoamiResponse, SignOutRequest, SignOutResponse, RegisterUsernameRequest, RegisterUsernameResult(..), RegisterUsernameResponse, RegisterUsernameResponseError, LogInUsernameRequest, LogInUsernameResult(..), LogInUsernameResponse, LogInUsernameResponseError, CertaintyRange, CreatePredictionRequest, CreatePredictionResult(..), CreatePredictionResponse, CreatePredictionResponseError, GetPredictionRequest, GetPredictionResult(..), GetPredictionResponse, GetPredictionResponseError, UserPredictionView, UserUserView, ListMyPredictionsRequest, ListMyPredictionsResult(..), ListMyPredictionsResponse, ListMyPredictionsResponseError, PredictionsById, StakeRequest, StakeResult(..), StakeResponse, StakeResponseError, ResolveRequest, ResolveResult(..), ResolveResponse, ResolveResponseError, SetTrustedRequest, SetTrustedResult(..), SetTrustedResponse, SetTrustedResponseError, GetUserRequest, GetUserResult(..), GetUserResponse, GetUserResponseError, ChangePasswordRequest, ChangePasswordResult(..), ChangePasswordResponse, ChangePasswordResponseError, SetEmailRequest, SetEmailResult(..), SetEmailResponse, SetEmailResponseError, VerifyEmailRequest, VerifyEmailResult(..), VerifyEmailResponse, VerifyEmailResponseError
-    , userIdDecoder, authTokenDecoder, credentialsConfigDecoder, emailFlowStateDecoder, worldStateDecoder, resolutionEventDecoder, tradeDecoder, whoamiRequestDecoder, whoamiResponseDecoder, signOutRequestDecoder, signOutResponseDecoder, registerUsernameRequestDecoder, registerUsernameResponseDecoder, logInUsernameRequestDecoder, logInUsernameResponseDecoder, certaintyRangeDecoder, createPredictionRequestDecoder, createPredictionResponseDecoder, getPredictionRequestDecoder, getPredictionResponseDecoder, userPredictionViewDecoder, userUserViewDecoder, listMyPredictionsRequestDecoder, listMyPredictionsResponseDecoder, predictionsByIdDecoder, stakeRequestDecoder, stakeResponseDecoder, resolveRequestDecoder, resolveResponseDecoder, setTrustedRequestDecoder, setTrustedResponseDecoder, getUserRequestDecoder, getUserResponseDecoder, changePasswordRequestDecoder, changePasswordResponseDecoder, setEmailRequestDecoder, setEmailResponseDecoder, verifyEmailRequestDecoder, verifyEmailResponseDecoder
-    , toUserIdEncoder, toAuthTokenEncoder, toCredentialsConfigEncoder, toEmailFlowStateEncoder, toWorldStateEncoder, toResolutionEventEncoder, toTradeEncoder, toWhoamiRequestEncoder, toWhoamiResponseEncoder, toSignOutRequestEncoder, toSignOutResponseEncoder, toRegisterUsernameRequestEncoder, toRegisterUsernameResponseEncoder, toLogInUsernameRequestEncoder, toLogInUsernameResponseEncoder, toCertaintyRangeEncoder, toCreatePredictionRequestEncoder, toCreatePredictionResponseEncoder, toGetPredictionRequestEncoder, toGetPredictionResponseEncoder, toUserPredictionViewEncoder, toUserUserViewEncoder, toListMyPredictionsRequestEncoder, toListMyPredictionsResponseEncoder, toPredictionsByIdEncoder, toStakeRequestEncoder, toStakeResponseEncoder, toResolveRequestEncoder, toResolveResponseEncoder, toSetTrustedRequestEncoder, toSetTrustedResponseEncoder, toGetUserRequestEncoder, toGetUserResponseEncoder, toChangePasswordRequestEncoder, toChangePasswordResponseEncoder, toSetEmailRequestEncoder, toSetEmailResponseEncoder, toVerifyEmailRequestEncoder, toVerifyEmailResponseEncoder
+    ( Void(..), Resolution(..), Kind(..), UserId, AuthToken, CredentialsConfig, EmailFlowStateKind(..), EmailFlowState, EmailFlowStateCodeSent, HashedPassword, WorldState, WorldStateGenericUserInfo, WorldStateUsernameInfo, WorldStatePrediction, ResolutionEvent, Trade, WhoamiRequest, WhoamiResponse, SignOutRequest, SignOutResponse, RegisterUsernameRequest, RegisterUsernameResult(..), RegisterUsernameResponse, RegisterUsernameResponseError, LogInUsernameRequest, LogInUsernameResult(..), LogInUsernameResponse, LogInUsernameResponseError, CertaintyRange, CreatePredictionRequest, CreatePredictionResult(..), CreatePredictionResponse, CreatePredictionResponseError, GetPredictionRequest, GetPredictionResult(..), GetPredictionResponse, GetPredictionResponseError, UserPredictionView, UserUserView, ListMyPredictionsRequest, ListMyPredictionsResult(..), ListMyPredictionsResponse, ListMyPredictionsResponseError, PredictionsById, StakeRequest, StakeResult(..), StakeResponse, StakeResponseError, ResolveRequest, ResolveResult(..), ResolveResponse, ResolveResponseError, SetTrustedRequest, SetTrustedResult(..), SetTrustedResponse, SetTrustedResponseError, GetUserRequest, GetUserResult(..), GetUserResponse, GetUserResponseError, ChangePasswordRequest, ChangePasswordResult(..), ChangePasswordResponse, ChangePasswordResponseError, SetEmailRequest, SetEmailResult(..), SetEmailResponse, SetEmailResponseError, VerifyEmailRequest, VerifyEmailResult(..), VerifyEmailResponse, VerifyEmailResponseError
+    , userIdDecoder, authTokenDecoder, credentialsConfigDecoder, emailFlowStateDecoder, hashedPasswordDecoder, worldStateDecoder, resolutionEventDecoder, tradeDecoder, whoamiRequestDecoder, whoamiResponseDecoder, signOutRequestDecoder, signOutResponseDecoder, registerUsernameRequestDecoder, registerUsernameResponseDecoder, logInUsernameRequestDecoder, logInUsernameResponseDecoder, certaintyRangeDecoder, createPredictionRequestDecoder, createPredictionResponseDecoder, getPredictionRequestDecoder, getPredictionResponseDecoder, userPredictionViewDecoder, userUserViewDecoder, listMyPredictionsRequestDecoder, listMyPredictionsResponseDecoder, predictionsByIdDecoder, stakeRequestDecoder, stakeResponseDecoder, resolveRequestDecoder, resolveResponseDecoder, setTrustedRequestDecoder, setTrustedResponseDecoder, getUserRequestDecoder, getUserResponseDecoder, changePasswordRequestDecoder, changePasswordResponseDecoder, setEmailRequestDecoder, setEmailResponseDecoder, verifyEmailRequestDecoder, verifyEmailResponseDecoder
+    , toUserIdEncoder, toAuthTokenEncoder, toCredentialsConfigEncoder, toEmailFlowStateEncoder, toHashedPasswordEncoder, toWorldStateEncoder, toResolutionEventEncoder, toTradeEncoder, toWhoamiRequestEncoder, toWhoamiResponseEncoder, toSignOutRequestEncoder, toSignOutResponseEncoder, toRegisterUsernameRequestEncoder, toRegisterUsernameResponseEncoder, toLogInUsernameRequestEncoder, toLogInUsernameResponseEncoder, toCertaintyRangeEncoder, toCreatePredictionRequestEncoder, toCreatePredictionResponseEncoder, toGetPredictionRequestEncoder, toGetPredictionResponseEncoder, toUserPredictionViewEncoder, toUserUserViewEncoder, toListMyPredictionsRequestEncoder, toListMyPredictionsResponseEncoder, toPredictionsByIdEncoder, toStakeRequestEncoder, toStakeResponseEncoder, toResolveRequestEncoder, toResolveResponseEncoder, toSetTrustedRequestEncoder, toSetTrustedResponseEncoder, toGetUserRequestEncoder, toGetUserResponseEncoder, toChangePasswordRequestEncoder, toChangePasswordResponseEncoder, toSetEmailRequestEncoder, toSetEmailResponseEncoder, toVerifyEmailRequestEncoder, toVerifyEmailResponseEncoder
     )
 
 {-| ProtoBuf module: `Biatob.Proto.Mvp`
@@ -20,17 +20,17 @@ To run it use [`elm-protocol-buffers`](https://package.elm-lang.org/packages/eri
 
 # Model
 
-@docs Void, Resolution, Kind, UserId, AuthToken, CredentialsConfig, EmailFlowStateKind, EmailFlowState, EmailFlowStateCodeSent, WorldState, WorldStateGenericUserInfo, WorldStateUsernameInfo, WorldStatePrediction, ResolutionEvent, Trade, WhoamiRequest, WhoamiResponse, SignOutRequest, SignOutResponse, RegisterUsernameRequest, RegisterUsernameResult, RegisterUsernameResponse, RegisterUsernameResponseError, LogInUsernameRequest, LogInUsernameResult, LogInUsernameResponse, LogInUsernameResponseError, CertaintyRange, CreatePredictionRequest, CreatePredictionResult, CreatePredictionResponse, CreatePredictionResponseError, GetPredictionRequest, GetPredictionResult, GetPredictionResponse, GetPredictionResponseError, UserPredictionView, UserUserView, ListMyPredictionsRequest, ListMyPredictionsResult, ListMyPredictionsResponse, ListMyPredictionsResponseError, PredictionsById, StakeRequest, StakeResult, StakeResponse, StakeResponseError, ResolveRequest, ResolveResult, ResolveResponse, ResolveResponseError, SetTrustedRequest, SetTrustedResult, SetTrustedResponse, SetTrustedResponseError, GetUserRequest, GetUserResult, GetUserResponse, GetUserResponseError, ChangePasswordRequest, ChangePasswordResult, ChangePasswordResponse, ChangePasswordResponseError, SetEmailRequest, SetEmailResult, SetEmailResponse, SetEmailResponseError, VerifyEmailRequest, VerifyEmailResult, VerifyEmailResponse, VerifyEmailResponseError
+@docs Void, Resolution, Kind, UserId, AuthToken, CredentialsConfig, EmailFlowStateKind, EmailFlowState, EmailFlowStateCodeSent, HashedPassword, WorldState, WorldStateGenericUserInfo, WorldStateUsernameInfo, WorldStatePrediction, ResolutionEvent, Trade, WhoamiRequest, WhoamiResponse, SignOutRequest, SignOutResponse, RegisterUsernameRequest, RegisterUsernameResult, RegisterUsernameResponse, RegisterUsernameResponseError, LogInUsernameRequest, LogInUsernameResult, LogInUsernameResponse, LogInUsernameResponseError, CertaintyRange, CreatePredictionRequest, CreatePredictionResult, CreatePredictionResponse, CreatePredictionResponseError, GetPredictionRequest, GetPredictionResult, GetPredictionResponse, GetPredictionResponseError, UserPredictionView, UserUserView, ListMyPredictionsRequest, ListMyPredictionsResult, ListMyPredictionsResponse, ListMyPredictionsResponseError, PredictionsById, StakeRequest, StakeResult, StakeResponse, StakeResponseError, ResolveRequest, ResolveResult, ResolveResponse, ResolveResponseError, SetTrustedRequest, SetTrustedResult, SetTrustedResponse, SetTrustedResponseError, GetUserRequest, GetUserResult, GetUserResponse, GetUserResponseError, ChangePasswordRequest, ChangePasswordResult, ChangePasswordResponse, ChangePasswordResponseError, SetEmailRequest, SetEmailResult, SetEmailResponse, SetEmailResponseError, VerifyEmailRequest, VerifyEmailResult, VerifyEmailResponse, VerifyEmailResponseError
 
 
 # Decoder
 
-@docs userIdDecoder, authTokenDecoder, credentialsConfigDecoder, emailFlowStateDecoder, worldStateDecoder, resolutionEventDecoder, tradeDecoder, whoamiRequestDecoder, whoamiResponseDecoder, signOutRequestDecoder, signOutResponseDecoder, registerUsernameRequestDecoder, registerUsernameResponseDecoder, logInUsernameRequestDecoder, logInUsernameResponseDecoder, certaintyRangeDecoder, createPredictionRequestDecoder, createPredictionResponseDecoder, getPredictionRequestDecoder, getPredictionResponseDecoder, userPredictionViewDecoder, userUserViewDecoder, listMyPredictionsRequestDecoder, listMyPredictionsResponseDecoder, predictionsByIdDecoder, stakeRequestDecoder, stakeResponseDecoder, resolveRequestDecoder, resolveResponseDecoder, setTrustedRequestDecoder, setTrustedResponseDecoder, getUserRequestDecoder, getUserResponseDecoder, changePasswordRequestDecoder, changePasswordResponseDecoder, setEmailRequestDecoder, setEmailResponseDecoder, verifyEmailRequestDecoder, verifyEmailResponseDecoder
+@docs userIdDecoder, authTokenDecoder, credentialsConfigDecoder, emailFlowStateDecoder, hashedPasswordDecoder, worldStateDecoder, resolutionEventDecoder, tradeDecoder, whoamiRequestDecoder, whoamiResponseDecoder, signOutRequestDecoder, signOutResponseDecoder, registerUsernameRequestDecoder, registerUsernameResponseDecoder, logInUsernameRequestDecoder, logInUsernameResponseDecoder, certaintyRangeDecoder, createPredictionRequestDecoder, createPredictionResponseDecoder, getPredictionRequestDecoder, getPredictionResponseDecoder, userPredictionViewDecoder, userUserViewDecoder, listMyPredictionsRequestDecoder, listMyPredictionsResponseDecoder, predictionsByIdDecoder, stakeRequestDecoder, stakeResponseDecoder, resolveRequestDecoder, resolveResponseDecoder, setTrustedRequestDecoder, setTrustedResponseDecoder, getUserRequestDecoder, getUserResponseDecoder, changePasswordRequestDecoder, changePasswordResponseDecoder, setEmailRequestDecoder, setEmailResponseDecoder, verifyEmailRequestDecoder, verifyEmailResponseDecoder
 
 
 # Encoder
 
-@docs toUserIdEncoder, toAuthTokenEncoder, toCredentialsConfigEncoder, toEmailFlowStateEncoder, toWorldStateEncoder, toResolutionEventEncoder, toTradeEncoder, toWhoamiRequestEncoder, toWhoamiResponseEncoder, toSignOutRequestEncoder, toSignOutResponseEncoder, toRegisterUsernameRequestEncoder, toRegisterUsernameResponseEncoder, toLogInUsernameRequestEncoder, toLogInUsernameResponseEncoder, toCertaintyRangeEncoder, toCreatePredictionRequestEncoder, toCreatePredictionResponseEncoder, toGetPredictionRequestEncoder, toGetPredictionResponseEncoder, toUserPredictionViewEncoder, toUserUserViewEncoder, toListMyPredictionsRequestEncoder, toListMyPredictionsResponseEncoder, toPredictionsByIdEncoder, toStakeRequestEncoder, toStakeResponseEncoder, toResolveRequestEncoder, toResolveResponseEncoder, toSetTrustedRequestEncoder, toSetTrustedResponseEncoder, toGetUserRequestEncoder, toGetUserResponseEncoder, toChangePasswordRequestEncoder, toChangePasswordResponseEncoder, toSetEmailRequestEncoder, toSetEmailResponseEncoder, toVerifyEmailRequestEncoder, toVerifyEmailResponseEncoder
+@docs toUserIdEncoder, toAuthTokenEncoder, toCredentialsConfigEncoder, toEmailFlowStateEncoder, toHashedPasswordEncoder, toWorldStateEncoder, toResolutionEventEncoder, toTradeEncoder, toWhoamiRequestEncoder, toWhoamiResponseEncoder, toSignOutRequestEncoder, toSignOutResponseEncoder, toRegisterUsernameRequestEncoder, toRegisterUsernameResponseEncoder, toLogInUsernameRequestEncoder, toLogInUsernameResponseEncoder, toCertaintyRangeEncoder, toCreatePredictionRequestEncoder, toCreatePredictionResponseEncoder, toGetPredictionRequestEncoder, toGetPredictionResponseEncoder, toUserPredictionViewEncoder, toUserUserViewEncoder, toListMyPredictionsRequestEncoder, toListMyPredictionsResponseEncoder, toPredictionsByIdEncoder, toStakeRequestEncoder, toStakeResponseEncoder, toResolveRequestEncoder, toResolveResponseEncoder, toSetTrustedRequestEncoder, toSetTrustedResponseEncoder, toGetUserRequestEncoder, toGetUserResponseEncoder, toChangePasswordRequestEncoder, toChangePasswordResponseEncoder, toSetEmailRequestEncoder, toSetEmailResponseEncoder, toVerifyEmailRequestEncoder, toVerifyEmailResponseEncoder
 
 -}
 
@@ -112,7 +112,15 @@ type alias EmailFlowState =
 -}
 type alias EmailFlowStateCodeSent =
     { email : String
-    , codeBcrypt : Bytes.Bytes
+    , code : Maybe HashedPassword
+    }
+
+
+{-| `HashedPassword` message
+-}
+type alias HashedPassword =
+    { salt : Bytes.Bytes
+    , scrypt : Bytes.Bytes
     }
 
 
@@ -136,7 +144,7 @@ type alias WorldStateGenericUserInfo =
 -}
 type alias WorldStateUsernameInfo =
     { info : Maybe WorldStateGenericUserInfo
-    , passwordBcrypt : Bytes.Bytes
+    , password : Maybe HashedPassword
     }
 
 
@@ -687,9 +695,19 @@ emailFlowStateDecoder =
 
 emailFlowStateCodeSentDecoder : Decode.Decoder EmailFlowStateCodeSent
 emailFlowStateCodeSentDecoder =
-    Decode.message (EmailFlowStateCodeSent "" (Encode.encode <| Encode.string ""))
+    Decode.message (EmailFlowStateCodeSent "" Nothing)
         [ Decode.optional 1 Decode.string setEmail
-        , Decode.optional 2 Decode.bytes setCodeBcrypt
+        , Decode.optional 2 (Decode.map Just hashedPasswordDecoder) setCode
+        ]
+
+
+{-| `HashedPassword` decoder
+-}
+hashedPasswordDecoder : Decode.Decoder HashedPassword
+hashedPasswordDecoder =
+    Decode.message (HashedPassword (Encode.encode <| Encode.string "") (Encode.encode <| Encode.string ""))
+        [ Decode.optional 1 Decode.bytes setSalt
+        , Decode.optional 2 Decode.bytes setScrypt
         ]
 
 
@@ -713,9 +731,9 @@ worldStateGenericUserInfoDecoder =
 
 worldStateUsernameInfoDecoder : Decode.Decoder WorldStateUsernameInfo
 worldStateUsernameInfoDecoder =
-    Decode.message (WorldStateUsernameInfo Nothing (Encode.encode <| Encode.string ""))
+    Decode.message (WorldStateUsernameInfo Nothing Nothing)
         [ Decode.optional 1 (Decode.map Just worldStateGenericUserInfoDecoder) setInfo
-        , Decode.optional 2 Decode.bytes setPasswordBcrypt
+        , Decode.optional 2 (Decode.map Just hashedPasswordDecoder) setPassword
         ]
 
 
@@ -1306,7 +1324,17 @@ toEmailFlowStateCodeSentEncoder : EmailFlowStateCodeSent -> Encode.Encoder
 toEmailFlowStateCodeSentEncoder model =
     Encode.message
         [ ( 1, Encode.string model.email )
-        , ( 2, Encode.bytes model.codeBcrypt )
+        , ( 2, (Maybe.withDefault Encode.none << Maybe.map toHashedPasswordEncoder) model.code )
+        ]
+
+
+{-| `HashedPassword` encoder
+-}
+toHashedPasswordEncoder : HashedPassword -> Encode.Encoder
+toHashedPasswordEncoder model =
+    Encode.message
+        [ ( 1, Encode.bytes model.salt )
+        , ( 2, Encode.bytes model.scrypt )
         ]
 
 
@@ -1332,7 +1360,7 @@ toWorldStateUsernameInfoEncoder : WorldStateUsernameInfo -> Encode.Encoder
 toWorldStateUsernameInfoEncoder model =
     Encode.message
         [ ( 1, (Maybe.withDefault Encode.none << Maybe.map toWorldStateGenericUserInfoEncoder) model.info )
-        , ( 2, Encode.bytes model.passwordBcrypt )
+        , ( 2, (Maybe.withDefault Encode.none << Maybe.map toHashedPasswordEncoder) model.password )
         ]
 
 
@@ -1949,9 +1977,19 @@ setEmail value model =
     { model | email = value }
 
 
-setCodeBcrypt : a -> { b | codeBcrypt : a } -> { b | codeBcrypt : a }
-setCodeBcrypt value model =
-    { model | codeBcrypt = value }
+setCode : a -> { b | code : a } -> { b | code : a }
+setCode value model =
+    { model | code = value }
+
+
+setSalt : a -> { b | salt : a } -> { b | salt : a }
+setSalt value model =
+    { model | salt = value }
+
+
+setScrypt : a -> { b | scrypt : a } -> { b | scrypt : a }
+setScrypt value model =
+    { model | scrypt = value }
 
 
 setUsernameUsers : a -> { b | usernameUsers : a } -> { b | usernameUsers : a }
@@ -1974,9 +2012,9 @@ setInfo value model =
     { model | info = value }
 
 
-setPasswordBcrypt : a -> { b | passwordBcrypt : a } -> { b | passwordBcrypt : a }
-setPasswordBcrypt value model =
-    { model | passwordBcrypt = value }
+setPassword : a -> { b | password : a } -> { b | password : a }
+setPassword value model =
+    { model | password = value }
 
 
 setPrediction : a -> { b | prediction : a } -> { b | prediction : a }
@@ -2077,11 +2115,6 @@ setAuth value model =
 setUsername : a -> { b | username : a } -> { b | username : a }
 setUsername value model =
     { model | username = value }
-
-
-setPassword : a -> { b | password : a } -> { b | password : a }
-setPassword value model =
-    { model | password = value }
 
 
 setRegisterUsernameResult : a -> { b | registerUsernameResult : a } -> { b | registerUsernameResult : a }
@@ -2227,11 +2260,6 @@ setChangePasswordResult value model =
 setSetEmailResult : a -> { b | setEmailResult : a } -> { b | setEmailResult : a }
 setSetEmailResult value model =
     { model | setEmailResult = value }
-
-
-setCode : a -> { b | code : a } -> { b | code : a }
-setCode value model =
-    { model | code = value }
 
 
 setVerifyEmailResult : a -> { b | verifyEmailResult : a } -> { b | verifyEmailResult : a }

@@ -31,8 +31,13 @@ message EmailFlowState {
   }
   message CodeSent {
     string email = 1;
-    bytes code_bcrypt = 2;
+    HashedPassword code = 2;
   }
+}
+
+message HashedPassword {
+  bytes salt = 1;
+  bytes scrypt = 2;
 }
 
 // For MVP purposes, we're just gonna store the entire worldstate in a protobuf blob. "Data base"? Huh?
@@ -51,7 +56,7 @@ message WorldState {
   }
   message UsernameInfo {
     GenericUserInfo info = 1;
-    bytes password_bcrypt = 2;
+    HashedPassword password = 2;
   }
   // message GoogleOauthInfo {
   //   GenericUserInfo info = 1;
