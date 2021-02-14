@@ -741,14 +741,24 @@ class WebServer:
         if get_user_resp.WhichOneof('get_user_result') == 'error':
             return web.Response(status=400, body=str(get_user_resp.error))
         assert get_user_resp.WhichOneof('get_user_result') == 'ok'
-        email_flow = mvp_pb2.EmailFlowState()  # TODO
         return web.Response(
             content_type='text/html',
             body=self._jinja.get_template('ViewUserPage.html').render(
                 auth_token_pb_b64=pb_b64(auth),
                 user_view_pb_b64=pb_b64(get_user_resp.ok),
                 user_id_pb_b64=pb_b64(user_id),
-                email_flow_pb_b64=pb_b64(email_flow),  # TODO: I really don't like how this unfiltered piece of server state gets passed to the client
+            ))
+
+    async def get_settings(self, req: web.Request) -> web.Response:
+        auth = self._token_glue.parse_cookie(req)
+        get_settings_response = self._servicer.GetSettings(auth, mvp_pb2.GetSettingsRequest())
+        if get_settings_response.WhichOneof('get_settings_result') == 'error':
+            return web.HTTPTemporaryRedirect('/')
+        return web.Response(
+            content_type='text/html',
+            body=self._jinja.get_template('SettingsPage.html').render(
+                auth_token_pb_b64=pb_b64(auth),
+                settings_response_pb_b64=pb_b64(get_settings_response),
             ))
 
     def add_to_app(self, app: web.Application) -> None:
@@ -764,6 +774,7 @@ class WebServer:
         app.router.add_get('/p/{prediction_id:[0-9]+}/embed.png', self.get_prediction_img_embed)
         app.router.add_get('/my_predictions', self.get_my_predictions)
         app.router.add_get('/username/{username:[a-zA-Z0-9_-]+}', self.get_username)
+        app.router.add_get('/settings', self.get_settings)
 
 
 def pb_b64(message: Optional[Message]) -> Optional[str]:

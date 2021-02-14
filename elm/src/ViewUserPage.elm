@@ -13,8 +13,6 @@ import Biatob.Proto.Mvp as Pb
 import Utils
 
 import Biatob.Proto.Mvp exposing (StakeResult(..))
-import ChangePasswordWidget
-import SetEmailWidget
 
 port changed : () -> Cmd msg
 
@@ -24,34 +22,21 @@ type alias Model =
   , auth : Maybe Pb.AuthToken
   , working : Bool
   , setTrustedError : Maybe String
-  , changePasswordWidget : ChangePasswordWidget.Model
-  , setEmailWidget : SetEmailWidget.Model
   }
 
 type Msg
   = SetTrusted Bool
   | SetTrustedFinished (Result Http.Error Pb.SetTrustedResponse)
-  | ChangePasswordMsg ChangePasswordWidget.Msg
-  | SetEmailMsg SetEmailWidget.Msg
 
 init : JD.Value -> (Model, Cmd Msg)
 init flags =
-  let
-    (changePasswordWidget, changePasswordCmd) = ChangePasswordWidget.init ()
-    (setEmailWidget, setEmailCmd) = SetEmailWidget.init flags
-  in
   ( { userId = Utils.mustDecodePbFromFlags Pb.userIdDecoder "userIdPbB64" flags
     , userView = Utils.mustDecodePbFromFlags Pb.userUserViewDecoder "userViewPbB64" flags
     , auth = Utils.decodePbFromFlags Pb.authTokenDecoder "authTokenPbB64" flags
     , working = False
     , setTrustedError = Nothing
-    , changePasswordWidget = changePasswordWidget
-    , setEmailWidget = setEmailWidget
     }
-  , Cmd.batch
-      [ Cmd.map ChangePasswordMsg changePasswordCmd
-      , Cmd.map SetEmailMsg setEmailCmd
-      ]
+  , Cmd.none
   )
 
 postSetTrusted : Pb.SetTrustedRequest -> Cmd Msg
@@ -86,13 +71,6 @@ update msg model =
           ( { model | working = False , setTrustedError = Just "Invalid server response (neither Ok nor Error in protobuf)" }
           , Cmd.none
           )
-    ChangePasswordMsg widgetMsg ->
-      let (newWidget, cmd) = ChangePasswordWidget.update widgetMsg model.changePasswordWidget in
-      ( { model | changePasswordWidget = newWidget }, Cmd.map ChangePasswordMsg cmd)
-    SetEmailMsg widgetMsg ->
-      let (newWidget, cmd) = SetEmailWidget.update widgetMsg model.setEmailWidget in
-      ( { model | setEmailWidget = newWidget }, Cmd.map SetEmailMsg cmd)
-
 
 view : Model -> Html Msg
 view model =
@@ -101,8 +79,9 @@ view model =
     , H.br [] []
     , if model.userView.isSelf then
         H.div []
-          [ H.text "This is you!"
-          , viewOwnSettings model
+          [ H.text "This is you! You might have meant to visit "
+          , H.a [HA.href "/settings"] [H.text "your settings"]
+          , H.text "?"
           ]
       else case model.auth of
         Nothing ->
@@ -134,16 +113,6 @@ view model =
                 Just e -> H.div [HA.style "color" "red"] [H.text e]
                 Nothing -> H.text ""
             ]
-    ]
-
-viewOwnSettings : Model -> Html Msg
-viewOwnSettings model =
-  H.div []
-    [ H.h3 [] [H.text "Settings"]
-    , H.ul []
-        [ H.li [] [H.map ChangePasswordMsg <| ChangePasswordWidget.view model.changePasswordWidget]
-        , H.li [] [H.map SetEmailMsg <| SetEmailWidget.view model.setEmailWidget]
-        ]
     ]
 
 subscriptions : Model -> Sub Msg

@@ -38,6 +38,7 @@ async def test_smoke(aiohttp_client, app, fs_servicer):
     f'/p/{prediction_id}/embed.png',
     '/my_predictions',
     '/username/alice',
+    '/settings',
   ]
   for path in paths:
     resp = await cli.get(path)

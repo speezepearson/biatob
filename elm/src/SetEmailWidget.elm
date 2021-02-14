@@ -59,19 +59,15 @@ initVerified email =
     { email = email
     }
 
-initFromFlowState : Pb.EmailFlowStateKind -> Model
+initFromFlowState : Pb.EmailFlowStateKind -> ( Model , Cmd Msg )
 initFromFlowState kind =
-  case kind of
-    Pb.EmailFlowStateKindUnstarted _ ->
-      initNoEmailYet
-    Pb.EmailFlowStateKindCodeSent _ ->
-      initNeedsVerification
-    Pb.EmailFlowStateKindVerified email ->
-      initVerified email
-
-init : JD.Value -> (Model, Cmd Msg)
-init flags =
-  ( initFromFlowState <| Maybe.withDefault (Pb.EmailFlowStateKindUnstarted Pb.Void) <| (Utils.mustDecodePbFromFlags Pb.emailFlowStateDecoder "emailFlowPbB64" flags).emailFlowStateKind
+  ( case kind of
+      Pb.EmailFlowStateKindUnstarted _ ->
+        initNoEmailYet
+      Pb.EmailFlowStateKindCodeSent _ ->
+        initNeedsVerification
+      Pb.EmailFlowStateKindVerified email ->
+        initVerified email
   , Cmd.none
   )
 
@@ -190,12 +186,3 @@ view model =
 
 subscriptions : Model -> Sub Msg
 subscriptions _ = Sub.none
-
-main : Program JD.Value Model Msg
-main =
-  Browser.element
-    { init = init
-    , subscriptions = subscriptions
-    , view = view
-    , update = update
-    }

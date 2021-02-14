@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <title>Main</title>
   <link rel="shortcut icon"type="image/x-icon" href="data:image/x-icon;,">
-  <script type="text/javascript" src="/elm/ViewUserPage.js"></script>
+  <script type="text/javascript" src="/elm/SettingsPage.js"></script>
   <link rel="stylesheet" href="/static/base.css">
 </head>
 
@@ -14,15 +14,11 @@
   <script type="text/javascript">
 
     var authTokenPbB64 = {{ auth_token_pb_b64 | tojson }};
-    var userIdPbB64 = {{ user_id_pb_b64 | tojson }};
-    var userViewPbB64 = {{ user_view_pb_b64 | tojson }};
+    var settingsRespPbB64 = {{ settings_response_pb_b64 | tojson }};
 
-    var main = Elm.ViewUserPage.init({
+    var main = Elm.SettingsPage.init({
       node: document.getElementById('main'),
-      flags: {authTokenPbB64, userIdPbB64, userViewPbB64},
-    });
-    main.ports.changed.subscribe((predictionId) => {
-      window.location.reload();
+      flags: {authTokenPbB64, settingsRespPbB64},
     });
   </script>
 </body>

@@ -82,6 +82,15 @@ mustUserKind {kind} = must "all UserIds must have kinds" kind
 mustTokenOwner : Pb.AuthToken -> Pb.UserId
 mustTokenOwner {owner} = must "all AuthTokens must have owners" owner
 
+mustUsernameGenericInfo : Pb.UsernameInfo -> Pb.GenericUserInfo
+mustUsernameGenericInfo {info} = must "all UserInfos must have GenericUserInfos" info
+
+mustUserInfoEmail : Pb.GenericUserInfo -> Pb.EmailFlowState
+mustUserInfoEmail {email} = must "all GenericUserInfos must have emails" email
+
+mustEmailFlowStateKind : Pb.EmailFlowState -> Pb.EmailFlowStateKind
+mustEmailFlowStateKind {emailFlowStateKind} = must "all EmailFlowStates must have kinds" emailFlowStateKind
+
 mustPredictionsById : Pb.PredictionsById -> Dict Int Pb.UserPredictionView
 mustPredictionsById {predictions} = predictions |> Dict.map (\_ v -> must "no null values are allowed in a PredictionsById" v)
 
