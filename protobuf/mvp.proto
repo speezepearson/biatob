@@ -43,6 +43,8 @@ message HashedPassword {
 message GenericUserInfo {
   repeated UserId trusted_users = 1;
   EmailFlowState email = 2;
+  bool email_reminders_to_resolve = 3;
+  bool email_resolution_notifications = 4;
 }
 message UsernameInfo {
   GenericUserInfo info = 1;

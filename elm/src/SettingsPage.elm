@@ -2,6 +2,7 @@ module SettingsPage exposing (..)
 
 import Browser
 import Html as H exposing (Html)
+import Html.Attributes as HA
 import Html.Events as HE
 import Json.Decode as JD
 
@@ -9,7 +10,7 @@ import Biatob.Proto.Mvp as Pb
 import Utils
 
 import ChangePasswordWidget
-import SetEmailWidget
+import EmailSettingsWidget
 import TrustedUsersWidget
 
 type UserTypeSpecificSettings
@@ -17,13 +18,13 @@ type UserTypeSpecificSettings
 
 type alias Model =
   { auth : Maybe Pb.AuthToken
-  , setEmailWidget : SetEmailWidget.Model
+  , emailSettingsWidget : EmailSettingsWidget.Model
   , trustedUsersWidget : TrustedUsersWidget.Model
   , userTypeSettings : UserTypeSpecificSettings
   }
 
 type Msg
-  = SetEmailMsg SetEmailWidget.Msg
+  = EmailSettingsMsg EmailSettingsWidget.Msg
   | TrustedUsersMsg TrustedUsersWidget.Msg
   | ChangePasswordMsg ChangePasswordWidget.Msg
 
@@ -36,7 +37,7 @@ init flags =
       Nothing -> Debug.todo "TODO: add a must to Utils"
       Just (Pb.GetSettingsResultError e) -> Debug.todo (Debug.toString e)
       Just (Pb.GetSettingsResultOkUsername usernameInfo) -> Utils.mustUsernameGenericInfo usernameInfo
-    (setEmailWidget, setEmailCmd) = SetEmailWidget.initFromFlowState <| Utils.mustEmailFlowStateKind <| Utils.mustUserInfoEmail genericInfo
+    (emailSettingsWidget, emailSettingsCmd) = EmailSettingsWidget.initFromUserInfo genericInfo
     (trustedUsersWidget, trustedUsersCmd) = TrustedUsersWidget.init <| genericInfo.trustedUsers
   in
   case pbResp.getSettingsResult of
@@ -47,14 +48,14 @@ init flags =
         (changePasswordWidget, changePasswordCmd) = ChangePasswordWidget.init ()
       in
       ( { auth = auth
-        , setEmailWidget = setEmailWidget
+        , emailSettingsWidget = emailSettingsWidget
         , trustedUsersWidget = trustedUsersWidget
         , userTypeSettings = UsernameSettings changePasswordWidget
         }
       , Cmd.batch
           [ Cmd.map ChangePasswordMsg changePasswordCmd
           , Cmd.map TrustedUsersMsg trustedUsersCmd
-          , Cmd.map SetEmailMsg setEmailCmd
+          , Cmd.map EmailSettingsMsg emailSettingsCmd
           ]
       )
 
@@ -69,9 +70,9 @@ update msg model =
           , Cmd.map ChangePasswordMsg cmd
           )
 
-    SetEmailMsg widgetMsg ->
-      let (newWidget, cmd) = SetEmailWidget.update widgetMsg model.setEmailWidget in
-      ( { model | setEmailWidget = newWidget }, Cmd.map SetEmailMsg cmd)
+    EmailSettingsMsg widgetMsg ->
+      let (newWidget, cmd) = EmailSettingsWidget.update widgetMsg model.emailSettingsWidget in
+      ( { model | emailSettingsWidget = newWidget }, Cmd.map EmailSettingsMsg cmd)
 
     TrustedUsersMsg widgetMsg ->
       let (newWidget, cmd) = TrustedUsersWidget.update widgetMsg model.trustedUsersWidget in
@@ -84,7 +85,7 @@ view model =
     [ H.h2 [] [H.text "Settings"]
     , H.hr [] []
     , H.h3 [] [H.text "Email"]
-    , H.map SetEmailMsg <| SetEmailWidget.view model.setEmailWidget
+    , H.map EmailSettingsMsg <| EmailSettingsWidget.view model.emailSettingsWidget
     , H.hr [] []
     , H.h3 [] [H.text "Trusted users:"]
     , H.map TrustedUsersMsg <| TrustedUsersWidget.view model.trustedUsersWidget
@@ -104,7 +105,7 @@ viewUserTypeSettings settings =
 subscriptions : Model -> Sub Msg
 subscriptions model =
   Sub.batch
-    [ SetEmailWidget.subscriptions model.setEmailWidget |> Sub.map SetEmailMsg
+    [ EmailSettingsWidget.subscriptions model.emailSettingsWidget |> Sub.map EmailSettingsMsg
     , case model.userTypeSettings of
         UsernameSettings changePasswordWidget ->
           ChangePasswordWidget.subscriptions changePasswordWidget |> Sub.map ChangePasswordMsg

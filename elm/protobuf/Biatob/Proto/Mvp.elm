@@ -129,6 +129,8 @@ type alias HashedPassword =
 type alias GenericUserInfo =
     { trustedUsers : List UserId
     , email : Maybe EmailFlowState
+    , emailRemindersToResolve : Bool
+    , emailResolutionNotifications : Bool
     }
 
 
@@ -742,9 +744,11 @@ hashedPasswordDecoder =
 -}
 genericUserInfoDecoder : Decode.Decoder GenericUserInfo
 genericUserInfoDecoder =
-    Decode.message (GenericUserInfo [] Nothing)
+    Decode.message (GenericUserInfo [] Nothing False False)
         [ Decode.repeated 1 userIdDecoder .trustedUsers setTrustedUsers
         , Decode.optional 2 (Decode.map Just emailFlowStateDecoder) setEmail
+        , Decode.optional 3 Decode.bool setEmailRemindersToResolve
+        , Decode.optional 4 Decode.bool setEmailResolutionNotifications
         ]
 
 
@@ -1404,6 +1408,8 @@ toGenericUserInfoEncoder model =
     Encode.message
         [ ( 1, Encode.list toUserIdEncoder model.trustedUsers )
         , ( 2, (Maybe.withDefault Encode.none << Maybe.map toEmailFlowStateEncoder) model.email )
+        , ( 3, Encode.bool model.emailRemindersToResolve )
+        , ( 4, Encode.bool model.emailResolutionNotifications )
         ]
 
 
@@ -2092,6 +2098,16 @@ setScrypt value model =
 setTrustedUsers : a -> { b | trustedUsers : a } -> { b | trustedUsers : a }
 setTrustedUsers value model =
     { model | trustedUsers = value }
+
+
+setEmailRemindersToResolve : a -> { b | emailRemindersToResolve : a } -> { b | emailRemindersToResolve : a }
+setEmailRemindersToResolve value model =
+    { model | emailRemindersToResolve = value }
+
+
+setEmailResolutionNotifications : a -> { b | emailResolutionNotifications : a } -> { b | emailResolutionNotifications : a }
+setEmailResolutionNotifications value model =
+    { model | emailResolutionNotifications = value }
 
 
 setInfo : a -> { b | info : a } -> { b | info : a }

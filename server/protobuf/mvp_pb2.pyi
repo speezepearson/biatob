@@ -224,6 +224,8 @@ global___HashedPassword = HashedPassword
 
 class GenericUserInfo(google___protobuf___message___Message):
     DESCRIPTOR: google___protobuf___descriptor___Descriptor = ...
+    email_reminders_to_resolve = ... # type: builtin___bool
+    email_resolution_notifications = ... # type: builtin___bool
 
     @property
     def trusted_users(self) -> google___protobuf___internal___containers___RepeatedCompositeFieldContainer[global___UserId]: ...
@@ -235,6 +237,8 @@ class GenericUserInfo(google___protobuf___message___Message):
         *,
         trusted_users : typing___Optional[typing___Iterable[global___UserId]] = None,
         email : typing___Optional[global___EmailFlowState] = None,
+        email_reminders_to_resolve : typing___Optional[builtin___bool] = None,
+        email_resolution_notifications : typing___Optional[builtin___bool] = None,
         ) -> None: ...
     if sys.version_info >= (3,):
         @classmethod
@@ -245,7 +249,7 @@ class GenericUserInfo(google___protobuf___message___Message):
     def MergeFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
     def CopyFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
     def HasField(self, field_name: typing_extensions___Literal[u"email",b"email"]) -> builtin___bool: ...
-    def ClearField(self, field_name: typing_extensions___Literal[u"email",b"email",u"trusted_users",b"trusted_users"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions___Literal[u"email",b"email",u"email_reminders_to_resolve",b"email_reminders_to_resolve",u"email_resolution_notifications",b"email_resolution_notifications",u"trusted_users",b"trusted_users"]) -> None: ...
 global___GenericUserInfo = GenericUserInfo
 
 class UsernameInfo(google___protobuf___message___Message):
