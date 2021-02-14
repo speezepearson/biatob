@@ -129,14 +129,41 @@ global___AuthToken = AuthToken
 
 class CredentialsConfig(google___protobuf___message___Message):
     DESCRIPTOR: google___protobuf___descriptor___Descriptor = ...
-    smtp_username = ... # type: typing___Text
-    smtp_password = ... # type: typing___Text
+    class SmtpCredentials(google___protobuf___message___Message):
+        DESCRIPTOR: google___protobuf___descriptor___Descriptor = ...
+        hostname = ... # type: typing___Text
+        port = ... # type: builtin___int
+        username = ... # type: typing___Text
+        password = ... # type: typing___Text
+        from_addr = ... # type: typing___Text
+
+        def __init__(self,
+            *,
+            hostname : typing___Optional[typing___Text] = None,
+            port : typing___Optional[builtin___int] = None,
+            username : typing___Optional[typing___Text] = None,
+            password : typing___Optional[typing___Text] = None,
+            from_addr : typing___Optional[typing___Text] = None,
+            ) -> None: ...
+        if sys.version_info >= (3,):
+            @classmethod
+            def FromString(cls, s: builtin___bytes) -> CredentialsConfig.SmtpCredentials: ...
+        else:
+            @classmethod
+            def FromString(cls, s: typing___Union[builtin___bytes, builtin___buffer, builtin___unicode]) -> CredentialsConfig.SmtpCredentials: ...
+        def MergeFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
+        def CopyFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
+        def ClearField(self, field_name: typing_extensions___Literal[u"from_addr",b"from_addr",u"hostname",b"hostname",u"password",b"password",u"port",b"port",u"username",b"username"]) -> None: ...
+    global___SmtpCredentials = SmtpCredentials
+
     token_signing_secret = ... # type: builtin___bytes
+
+    @property
+    def smtp(self) -> global___CredentialsConfig.SmtpCredentials: ...
 
     def __init__(self,
         *,
-        smtp_username : typing___Optional[typing___Text] = None,
-        smtp_password : typing___Optional[typing___Text] = None,
+        smtp : typing___Optional[global___CredentialsConfig.SmtpCredentials] = None,
         token_signing_secret : typing___Optional[builtin___bytes] = None,
         ) -> None: ...
     if sys.version_info >= (3,):
@@ -147,7 +174,8 @@ class CredentialsConfig(google___protobuf___message___Message):
         def FromString(cls, s: typing___Union[builtin___bytes, builtin___buffer, builtin___unicode]) -> CredentialsConfig: ...
     def MergeFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
     def CopyFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
-    def ClearField(self, field_name: typing_extensions___Literal[u"smtp_password",b"smtp_password",u"smtp_username",b"smtp_username",u"token_signing_secret",b"token_signing_secret"]) -> None: ...
+    def HasField(self, field_name: typing_extensions___Literal[u"smtp",b"smtp"]) -> builtin___bool: ...
+    def ClearField(self, field_name: typing_extensions___Literal[u"smtp",b"smtp",u"token_signing_secret",b"token_signing_secret"]) -> None: ...
 global___CredentialsConfig = CredentialsConfig
 
 class EmailFlowState(google___protobuf___message___Message):

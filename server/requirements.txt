@@ -4,6 +4,7 @@ requests
 Pillow
 Jinja2
 filelock
+aiosmtplib
 
 # testing
 pytest-aiohttp

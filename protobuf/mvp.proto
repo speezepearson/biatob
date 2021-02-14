@@ -18,9 +18,15 @@ message AuthToken {
 }
 
 message CredentialsConfig {
-  string smtp_username = 1;
-  string smtp_password = 2;
-  bytes token_signing_secret = 3;
+  SmtpCredentials smtp = 1;
+  bytes token_signing_secret = 2;
+  message SmtpCredentials {
+    string hostname = 1;
+    uint32 port = 2;
+    string username = 3;
+    string password = 4;
+    string from_addr = 5;
+  }
 }
 
 message EmailFlowState {

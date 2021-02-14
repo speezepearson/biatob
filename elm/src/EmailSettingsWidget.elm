@@ -63,7 +63,10 @@ initVerified email =
 initFromUserInfo : Pb.GenericUserInfo -> ( Model , Cmd Msg )
 initFromUserInfo info =
   ( { registration =
-        case info.email |> Utils.must "TODO: add a formal must" |> .emailFlowStateKind |> Utils.must "TODO: add a formal must" of
+        case info.email
+              |> Maybe.andThen .emailFlowStateKind
+              |> Maybe.withDefault (Pb.EmailFlowStateKindUnstarted Pb.Void)
+              of
           Pb.EmailFlowStateKindUnstarted _ ->
             initNoEmailYet
           Pb.EmailFlowStateKindCodeSent _ ->

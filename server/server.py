@@ -3,6 +3,7 @@
 
 import abc
 import argparse
+import asyncio
 import base64
 import contextlib
 import copy
@@ -24,12 +25,13 @@ import argparse
 import logging
 import os
 import smtplib
-from email.mime.text import MIMEText
+from email.message import EmailMessage
 
 import jinja2
 from PIL import Image, ImageDraw, ImageFont  # type: ignore
 from aiohttp import web
 import google.protobuf.text_format  # type: ignore
+import aiosmtplib
 
 from .protobuf import mvp_pb2
 
@@ -167,19 +169,41 @@ class FsStorage:
 
 
 class Emailer:
-    def __init__(self, username: str, password: str) -> None:
+    def __init__(
+        self,
+        hostname: str,
+        port: int,
+        username: str,
+        password: str,
+        from_addr: str,
+        *,
+        aiosmtplib_for_testing=aiosmtplib,
+    ) -> None:
+        self._hostname = hostname
+        self._port = port
         self._username = username
         self._password = password
+        self._from_addr = from_addr
+        self._aiosmtplib = aiosmtplib_for_testing
 
-    def send(self, *, to: str, subject: str, body: str) -> None:
-        send_as = f'{self._username}@gmail.com'
-        logger.debug('creating SMTP client')
-        with smtplib.SMTP_SSL('smtp.gmail.com') as client:
-            client.login(self._username, self._password)
-            message = MIMEText(body)
-            message['Subject'] = subject
-            logger.debug('sending from %s to %s:\n%s', send_as, to, message.as_string())
-            client.sendmail(send_as, to, message.as_string())
+    async def send(self, *, to: str, subject: str, body: str, content_type: str = 'text/html') -> None:
+        # adapted from https://aiosmtplib.readthedocs.io/en/stable/usage.html#authentication
+        message = EmailMessage()
+        message["From"] = self._from_addr
+        message["To"] = to
+        message["Subject"] = subject
+        print(f'content_type = {content_type}')
+        message.set_content(body)
+        message.set_type(content_type)
+        await self._aiosmtplib.send(
+            message=message,
+            hostname=self._hostname,
+            port=self._port,
+            username=self._username,
+            password=self._password,
+            use_tls=True,
+        )
+        logger.debug(f'sent {subject!r} to {to!r}')
 
 
 class TokenMint:
@@ -483,11 +507,11 @@ class FsBackedServicer(Servicer):
 
         # TODO: prevent an email address from getting "too many" emails if somebody abuses us
         code = secrets.token_urlsafe(nbytes=16)
-        self._emailer.send(
+        asyncio.get_running_loop().create_task(self._emailer.send(
             to=request.email,
             subject='Your Biatob email-verification',
             body=f"Here's your code: {code}",  # TODO: handle abuse
-        )  # TODO: this blocks the event loop; toss it to another thread?
+        ))
 
         with self._storage.mutate() as wstate:
             requester_info = get_generic_user_info(wstate, token.owner)
@@ -820,7 +844,13 @@ if __name__ == '__main__':
     credentials = google.protobuf.text_format.Parse(args.credentials_path.read_text(), mvp_pb2.CredentialsConfig())
 
     storage = FsStorage(state_path=args.state_path)
-    emailer = Emailer(username=credentials.smtp_username, password=credentials.smtp_password)
+    emailer = Emailer(
+        hostname=credentials.smtp.hostname,
+        port=credentials.smtp.port,
+        username=credentials.smtp.username,
+        password=credentials.smtp.password,
+        from_addr=credentials.smtp.from_addr,
+    )
     token_mint = TokenMint(secret_key=credentials.token_signing_secret)
     token_glue = HttpTokenGlue(token_mint=token_mint)
     servicer = FsBackedServicer(storage=storage, token_mint=token_mint, emailer=emailer)
