@@ -8,7 +8,7 @@ from google.protobuf.message import Message as PbMessage
 
 from .protobuf import mvp_pb2
 from .server import WebServer, _Req, _Resp, HttpTokenGlue
-from .test_utils import clock, fs_servicer, token_mint
+from .test_utils import *
 from .test_api_server import api_server
 from .test_fs_servicer import new_user_token, some_create_prediction_request
 

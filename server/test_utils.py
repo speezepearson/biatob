@@ -2,7 +2,7 @@ import random
 import pytest
 import unittest.mock
 
-from .server import TokenMint, FsBackedServicer
+from .server import TokenMint, FsBackedServicer, FsStorage
 
 
 class MockClock:
@@ -22,9 +22,13 @@ def token_mint(clock):
   return TokenMint(secret_key=b'test secret', clock=clock.now)
 
 @pytest.fixture
-def fs_servicer(tmp_path, clock, token_mint):
+def fs_storage(tmp_path):
+  return FsStorage(tmp_path / 'state.WorldState.pb')
+
+@pytest.fixture
+def fs_servicer(fs_storage, clock, token_mint):
   return FsBackedServicer(
-    state_path=tmp_path / 'state.WorldState.pb',
+    storage=fs_storage,
     emailer=unittest.mock.Mock(),  # TODO: make this a fixture
     random_seed=0,
     clock=clock.now,

@@ -7,6 +7,7 @@ import base64
 import contextlib
 import copy
 import datetime
+import filelock  # type: ignore
 import functools
 import hashlib
 import hmac
@@ -16,6 +17,7 @@ from pathlib import Path
 import random
 import secrets
 import string
+import tempfile
 import time
 from typing import Iterator, Optional, Container, NewType, Callable, NoReturn, Tuple
 import argparse
@@ -129,6 +131,41 @@ def view_prediction(wstate: mvp_pb2.WorldState, viewer: Optional[mvp_pb2.UserId]
         ],
     )
 
+
+class FsStorage:
+    def __init__(self, state_path: Path):
+        self._state_path = state_path
+
+    @property
+    def _lock(self) -> filelock.FileLock:
+        return filelock.FileLock(self._state_path.with_suffix(self._state_path.suffix + '.lock'))
+    def _get_nolock(self) -> mvp_pb2.WorldState:
+        result = mvp_pb2.WorldState()
+        if self._state_path.exists():
+            result.ParseFromString(self._state_path.read_bytes())
+        return result
+    def _put_nolock(self, wstate: mvp_pb2.WorldState) -> None:
+        path = Path(tempfile.mktemp(suffix='.WorldState.pb'))
+        path.write_bytes(wstate.SerializeToString())
+        path.rename(self._state_path)
+
+
+    def get(self) -> mvp_pb2.WorldState:
+        with self._lock:
+            return self._get_nolock()
+
+    def put(self, wstate: mvp_pb2.WorldState) -> None:
+        with self._lock:
+            self._put_nolock(wstate)
+
+    @contextlib.contextmanager
+    def mutate(self) -> Iterator[mvp_pb2.WorldState]:
+        with self._lock:
+            wstate = self._get_nolock()
+            yield wstate
+            self._put_nolock(wstate)
+
+
 class Emailer:
     def __init__(self, username: str, password: str) -> None:
         self._username = username
@@ -209,33 +246,18 @@ def checks_token(f):
     @functools.wraps(f)
     def wrapped(self: 'FsBackedServicer', token: Optional[mvp_pb2.AuthToken], *args, **kwargs):
         token = self._token_mint.check_token(token)
-        if (token is not None) and not user_exists(self._get_state(), token.owner):
+        if (token is not None) and not user_exists(self._storage.get(), token.owner):
             raise ForgottenTokenError(token)
         return f(self, token, *args, **kwargs)
     return wrapped
 
 class FsBackedServicer(Servicer):
-    def __init__(self, state_path: Path, token_mint: TokenMint, emailer: Emailer, random_seed: Optional[int] = None, clock: Callable[[], float] = time.time) -> None:
-        self._state_path = state_path
+    def __init__(self, storage: FsStorage, token_mint: TokenMint, emailer: Emailer, random_seed: Optional[int] = None, clock: Callable[[], float] = time.time) -> None:
+        self._storage = storage
         self._token_mint = token_mint
         self._emailer = emailer
         self._rng = random.Random(random_seed)
         self._clock = clock
-
-    def _get_state(self) -> mvp_pb2.WorldState:
-        result = mvp_pb2.WorldState()
-        if self._state_path.exists():
-            result.ParseFromString(self._state_path.read_bytes())
-        return result
-    def _set_state(self, wstate: mvp_pb2.WorldState) -> None:
-        bak = self._state_path.with_suffix('.bak')
-        bak.write_bytes(wstate.SerializeToString())
-        bak.rename(self._state_path)
-    @contextlib.contextmanager
-    def _mutate_state(self) -> Iterator[mvp_pb2.WorldState]:
-        wstate = self._get_state()
-        yield wstate
-        self._set_state(wstate)
 
     @checks_token
     def Whoami(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.WhoamiRequest) -> mvp_pb2.WhoamiResponse:
@@ -258,7 +280,7 @@ class FsBackedServicer(Servicer):
         if password_problems is not None:
             return mvp_pb2.RegisterUsernameResponse(error=mvp_pb2.RegisterUsernameResponse.Error(catchall=password_problems))
 
-        with self._mutate_state() as wstate:
+        with self._storage.mutate() as wstate:
             if request.username in wstate.username_users:
                 return mvp_pb2.RegisterUsernameResponse(error=mvp_pb2.RegisterUsernameResponse.Error(catchall='username taken'))
             wstate.username_users[request.username].MergeFrom(mvp_pb2.UsernameInfo(
@@ -278,7 +300,7 @@ class FsBackedServicer(Servicer):
         if password_problems is not None:
             return mvp_pb2.LogInUsernameResponse(error=mvp_pb2.LogInUsernameResponse.Error(catchall=password_problems))
 
-        info = self._get_state().username_users.get(request.username)
+        info = self._storage.get().username_users.get(request.username)
         if info is None:
             return mvp_pb2.LogInUsernameResponse(error=mvp_pb2.LogInUsernameResponse.Error(catchall='no such user'))
         if not check_password(request.password, info.password):
@@ -307,7 +329,7 @@ class FsBackedServicer(Servicer):
         if not (request.resolves_at_unixtime > now):
             return mvp_pb2.CreatePredictionResponse(error=mvp_pb2.CreatePredictionResponse.Error(catchall=f'prediction must resolve in the future'))
 
-        with self._mutate_state() as wstate:
+        with self._storage.mutate() as wstate:
             mid = PredictionId(weak_rand_not_in(self._rng, limit=2**32, xs=wstate.predictions.keys()))
             prediction = mvp_pb2.WorldState.Prediction(
                 prediction=request.prediction,
@@ -326,7 +348,7 @@ class FsBackedServicer(Servicer):
 
     @checks_token
     def GetPrediction(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.GetPredictionRequest) -> mvp_pb2.GetPredictionResponse:
-        wstate = self._get_state()
+        wstate = self._storage.get()
         ws_prediction = wstate.predictions.get(request.prediction_id)
         if ws_prediction is None:
             return mvp_pb2.GetPredictionResponse(error=mvp_pb2.GetPredictionResponse.Error(no_such_prediction=mvp_pb2.VOID))
@@ -335,7 +357,7 @@ class FsBackedServicer(Servicer):
 
     @checks_token
     def ListMyPredictions(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.ListMyPredictionsRequest) -> mvp_pb2.ListMyPredictionsResponse:
-        wstate = self._get_state()
+        wstate = self._storage.get()
         if token is None:
             return mvp_pb2.ListMyPredictionsResponse(ok=mvp_pb2.PredictionsById(predictions={}))
 
@@ -353,7 +375,7 @@ class FsBackedServicer(Servicer):
             return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall='must log in to bet'))
         assert request.bettor_stake_cents >= 0, 'protobuf should enforce this being a uint, but just in case...'
 
-        with self._mutate_state() as wstate:
+        with self._storage.mutate() as wstate:
             prediction = wstate.predictions.get(request.prediction_id)
             if prediction is None:
                 return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall='no such prediction'))
@@ -390,7 +412,7 @@ class FsBackedServicer(Servicer):
         if token is None:
             return mvp_pb2.ResolveResponse(error=mvp_pb2.ResolveResponse.Error(catchall='must log in to bet'))
 
-        with self._mutate_state() as wstate:
+        with self._storage.mutate() as wstate:
             prediction = wstate.predictions.get(request.prediction_id)
             if prediction is None:
                 return mvp_pb2.ResolveResponse(error=mvp_pb2.ResolveResponse.Error(catchall='no such prediction'))
@@ -404,7 +426,7 @@ class FsBackedServicer(Servicer):
         if token is None:
             return mvp_pb2.SetTrustedResponse(error=mvp_pb2.SetTrustedResponse.Error(catchall='must log in to trust folks'))
 
-        with self._mutate_state() as wstate:
+        with self._storage.mutate() as wstate:
             requester_info = get_generic_user_info(wstate, token.owner)
             if requester_info is None:
                 raise ForgottenTokenError(token)
@@ -418,7 +440,7 @@ class FsBackedServicer(Servicer):
 
     @checks_token
     def GetUser(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.GetUserRequest) -> mvp_pb2.GetUserResponse:
-        wstate = self._get_state()
+        wstate = self._storage.get()
         if not user_exists(wstate, request.who):
             return mvp_pb2.GetUserResponse(error=mvp_pb2.GetUserResponse.Error(catchall='no such user'))
 
@@ -442,7 +464,7 @@ class FsBackedServicer(Servicer):
         if password_problems is not None:
             return mvp_pb2.ChangePasswordResponse(error=mvp_pb2.ChangePasswordResponse.Error(catchall=password_problems))
 
-        with self._mutate_state() as wstate:
+        with self._storage.mutate() as wstate:
             info = wstate.username_users.get(token.owner.username)
             if info is None:
                 raise ForgottenTokenError(token)
@@ -467,7 +489,7 @@ class FsBackedServicer(Servicer):
             body=f"Here's your code: {code}",  # TODO: handle abuse
         )  # TODO: this blocks the event loop; toss it to another thread?
 
-        with self._mutate_state() as wstate:
+        with self._storage.mutate() as wstate:
             requester_info = get_generic_user_info(wstate, token.owner)
             if requester_info is None:
                 raise ForgottenTokenError(token)
@@ -480,7 +502,7 @@ class FsBackedServicer(Servicer):
         if token is None:
             return mvp_pb2.VerifyEmailResponse(error=mvp_pb2.VerifyEmailResponse.Error(catchall='must log in to change your password'))
 
-        with self._mutate_state() as wstate:
+        with self._storage.mutate() as wstate:
             requester_info = get_generic_user_info(wstate, token.owner)
             if requester_info is None:
                 raise ForgottenTokenError(token)
@@ -497,7 +519,7 @@ class FsBackedServicer(Servicer):
         if token is None:
             return mvp_pb2.GetSettingsResponse(error=mvp_pb2.GetSettingsResponse.Error(catchall='must log in to see your settings'))
 
-        wstate = self._get_state()
+        wstate = self._storage.get()
         if token.owner.WhichOneof('kind') == 'username':
             info = wstate.username_users.get(token.owner.username)
             if info is None:
@@ -797,10 +819,11 @@ if __name__ == '__main__':
 
     credentials = google.protobuf.text_format.Parse(args.credentials_path.read_text(), mvp_pb2.CredentialsConfig())
 
+    storage = FsStorage(state_path=args.state_path)
     emailer = Emailer(username=credentials.smtp_username, password=credentials.smtp_password)
     token_mint = TokenMint(secret_key=credentials.token_signing_secret)
     token_glue = HttpTokenGlue(token_mint=token_mint)
-    servicer = FsBackedServicer(state_path=args.state_path, token_mint=token_mint, emailer=emailer)
+    servicer = FsBackedServicer(storage=storage, token_mint=token_mint, emailer=emailer)
 
     token_glue.add_to_app(app)
     WebServer(

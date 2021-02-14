@@ -3,6 +3,7 @@ protobuf
 requests
 Pillow
 Jinja2
+filelock
 
 # testing
 pytest-aiohttp
