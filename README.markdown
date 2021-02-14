@@ -21,6 +21,7 @@ TODO
 ### P1: make this something _I_ want to use
 - offer to email users to remind them to resolve bets
 - link from My Predictions to the actual prediction pages
+- write automated tests for the core API flows (create account, log in, log out, create market, bet in market, view settings)
 
 ### P2: make this something other hardcore betting nerds might use
 
@@ -55,6 +56,7 @@ TODO
     - add "hide embeds" button for bettophobes (deceptively complicated! The user doesn't log in, so we have to store it in their cookie, but it should appear on some pages (all pages? Just Settings?))
     - offer to shame users by emailing the participants if they greatly exceed the resolution deadline
     - enhance "trust" to have a maximum acceptable exposure across all markets
+    - let the creator or challenger mark a particular trade as invalid
 
 - **UI:**
 
