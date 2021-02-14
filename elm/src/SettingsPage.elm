@@ -82,24 +82,24 @@ view : Model -> Html Msg
 view model =
   H.div []
     [ H.h2 [] [H.text "Settings"]
-    , H.ul []
-        [ H.li []
-            [ H.div [] [H.strong [] [H.text "Email:"]]
-            , H.map SetEmailMsg <| SetEmailWidget.view model.setEmailWidget
-            ]
-        , H.li []
-            [ H.div [] [H.strong [] [H.text "Trusted users:"]]
-            , H.map TrustedUsersMsg <| TrustedUsersWidget.view model.trustedUsersWidget
-            ]
-        , H.li [] [viewUserTypeSettings model.userTypeSettings]
-        ]
+    , H.hr [] []
+    , H.h3 [] [H.text "Email"]
+    , H.map SetEmailMsg <| SetEmailWidget.view model.setEmailWidget
+    , H.hr [] []
+    , H.h3 [] [H.text "Trusted users:"]
+    , H.map TrustedUsersMsg <| TrustedUsersWidget.view model.trustedUsersWidget
+    , H.hr [] []
+    , viewUserTypeSettings model.userTypeSettings
     ]
 
 viewUserTypeSettings : UserTypeSpecificSettings -> Html Msg
 viewUserTypeSettings settings =
   case settings of
     UsernameSettings changePasswordWidget ->
-      H.map ChangePasswordMsg <| ChangePasswordWidget.view changePasswordWidget
+      H.div []
+        [ H.h3 [] [H.text "Change password"]
+        , H.map ChangePasswordMsg <| ChangePasswordWidget.view changePasswordWidget
+        ]
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
