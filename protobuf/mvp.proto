@@ -40,6 +40,15 @@ message HashedPassword {
   bytes scrypt = 2;
 }
 
+message GenericUserInfo {
+  repeated UserId trusted_users = 1;
+  EmailFlowState email = 2;
+}
+message UsernameInfo {
+  GenericUserInfo info = 1;
+  HashedPassword password = 2;
+}
+
 // For MVP purposes, we're just gonna store the entire worldstate in a protobuf blob. "Data base"? Huh?
 // TODO(P3): ^ stop doing that
 message WorldState {
@@ -50,14 +59,6 @@ message WorldState {
 
   map<uint32, Prediction> predictions = 2;
 
-  message GenericUserInfo {
-    repeated UserId trusted_users = 1;
-    EmailFlowState email = 2;
-  }
-  message UsernameInfo {
-    GenericUserInfo info = 1;
-    HashedPassword password = 2;
-  }
   // message GoogleOauthInfo {
   //   GenericUserInfo info = 1;
   // }
@@ -307,6 +308,18 @@ message VerifyEmailRequest {
 message VerifyEmailResponse {
   oneof verify_email_result {
     string verified_email = 1;
+    Error error = 2;
+  }
+  message Error {
+    string catchall = 1;
+  }
+}
+
+message GetSettingsRequest {
+}
+message GetSettingsResponse {
+  oneof get_settings_result {
+    UsernameInfo ok_username = 1;
     Error error = 2;
   }
   message Error {

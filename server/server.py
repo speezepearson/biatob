@@ -63,7 +63,7 @@ def weak_rand_not_in(rng: random.Random, limit: int, xs: Container[int]) -> int:
 def indent(s: str) -> str:
     return '\n'.join('  '+line for line in s.splitlines())
 
-def get_generic_user_info(wstate: mvp_pb2.WorldState, user: mvp_pb2.UserId) -> Optional[mvp_pb2.WorldState.GenericUserInfo]:
+def get_generic_user_info(wstate: mvp_pb2.WorldState, user: mvp_pb2.UserId) -> Optional[mvp_pb2.GenericUserInfo]:
     if user.WhichOneof('kind') == 'username':
         username_info = wstate.username_users.get(user.username)
         return username_info.info if (username_info is not None) else None
@@ -201,6 +201,7 @@ class Servicer(abc.ABC):
     def ChangePassword(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.ChangePasswordRequest) -> mvp_pb2.ChangePasswordResponse: pass
     def SetEmail(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.SetEmailRequest) -> mvp_pb2.SetEmailResponse: pass
     def VerifyEmail(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.VerifyEmailRequest) -> mvp_pb2.VerifyEmailResponse: pass
+    def GetSettings(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.GetSettingsRequest) -> mvp_pb2.GetSettingsResponse: pass
 
 
 def checks_token(f):
@@ -259,9 +260,9 @@ class FsBackedServicer(Servicer):
         with self._mutate_state() as wstate:
             if request.username in wstate.username_users:
                 return mvp_pb2.RegisterUsernameResponse(error=mvp_pb2.RegisterUsernameResponse.Error(catchall='username taken'))
-            wstate.username_users[request.username].MergeFrom(mvp_pb2.WorldState.UsernameInfo(
+            wstate.username_users[request.username].MergeFrom(mvp_pb2.UsernameInfo(
                 password=new_hashed_password(request.password),
-                info=mvp_pb2.WorldState.GenericUserInfo(trusted_users=[]),
+                info=mvp_pb2.GenericUserInfo(trusted_users=[]),
             ))
             return mvp_pb2.RegisterUsernameResponse(ok=self._token_mint.mint_token(owner=mvp_pb2.UserId(username=request.username), ttl_seconds=60*60*24*7))
 
@@ -490,6 +491,21 @@ class FsBackedServicer(Servicer):
             requester_info.email.CopyFrom(mvp_pb2.EmailFlowState(verified=code_sent_state.email))
             return mvp_pb2.VerifyEmailResponse(verified_email=code_sent_state.email)
 
+    @checks_token
+    def GetSettings(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.GetSettingsRequest) -> mvp_pb2.GetSettingsResponse:
+        if token is None:
+            return mvp_pb2.GetSettingsResponse(error=mvp_pb2.GetSettingsResponse.Error(catchall='must log in to see your settings'))
+
+        wstate = self._get_state()
+        if token.owner.WhichOneof('kind') == 'username':
+            info = wstate.username_users.get(token.owner.username)
+            if info is None:
+                raise ForgottenTokenError(token)
+            return mvp_pb2.GetSettingsResponse(ok_username=info)
+        else:
+            logger.warn(f'valid-looking but mangled token: {token!r}')
+            return mvp_pb2.GetSettingsResponse(error=mvp_pb2.GetSettingsResponse.Error(catchall='your token is mangled, bro'))  # TODO
+
 
 from typing import TypeVar, Type, Tuple, Union, Awaitable
 from google.protobuf.message import Message
@@ -602,6 +618,8 @@ class ApiServer:
         return proto_response(self._servicer.SetEmail(token=self._token_glue.parse_cookie(http_req), request=await parse_proto(http_req, mvp_pb2.SetEmailRequest)))
     async def VerifyEmail(self, http_req: web.Request) -> web.Response:
         return proto_response(self._servicer.VerifyEmail(token=self._token_glue.parse_cookie(http_req), request=await parse_proto(http_req, mvp_pb2.VerifyEmailRequest)))
+    async def GetSettings(self, http_req: web.Request) -> web.Response:
+        return proto_response(self._servicer.GetSettings(token=self._token_glue.parse_cookie(http_req), request=await parse_proto(http_req, mvp_pb2.GetSettingsRequest)))
 
     def add_to_app(self, app: web.Application) -> None:
         app.router.add_post('/api/Whoami', self.Whoami)
@@ -617,6 +635,7 @@ class ApiServer:
         app.router.add_post('/api/ChangePassword', self.ChangePassword)
         app.router.add_post('/api/SetEmail', self.SetEmail)
         app.router.add_post('/api/VerifyEmail', self.VerifyEmail)
+        app.router.add_post('/api/GetSettings', self.GetSettings)
         self._token_glue.add_to_app(app)
 
 
