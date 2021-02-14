@@ -21,13 +21,9 @@ TODO
 ### P1: make this something _I_ want to use
 - offer to email users to remind them to resolve bets
 - link from My Predictions to the actual prediction pages
-- write automated tests for the core API flows (create account, log in, log out, create market, bet in market, view settings)
+- invitations: let Alice generate a link she can send Bob to let Bob claim her trust, without worrying about whether Bob has an account already
 
 ### P2: make this something other hardcore betting nerds might use
-
-- **Features:**
-
-    - invitations: let Alice generate a link she can send Bob to let Bob claim her trust, without worrying about whether Bob has an account already
 
 - **UI:**
 
@@ -46,6 +42,7 @@ TODO
     - consider simplifying by ditching Oauth placeholders; only usernames for now
     - consider a better model of user identity -- UserUserView is gross
     - add GetMySettings / SetMySettings endpoints
+    - write automated tests for the core API flows (create account, log in, log out, create market, bet in market, view settings)
 
 ### P3: make this something Less Wrongers might use
 - **Features:**
