@@ -10,10 +10,14 @@ import Html exposing (a)
 type alias Field ctx a =
   { string : String
   , parse : ctx -> String -> Result String a
+  , highlightErrorIfEmpty : Bool
   }
 
 init : String -> (ctx -> String -> Result String a ) -> Field ctx a
-init string parse_ = {string=string, parse=parse_}
+init string parse_ = {string=string, parse=parse_, highlightErrorIfEmpty=True}
+
+okIfEmpty : Field ctx a -> Field ctx a
+okIfEmpty f = { f | highlightErrorIfEmpty = False }
 
 raw : Field ctx a -> String
 raw f = f.string
@@ -24,7 +28,7 @@ setStr s f = { f | string = s }
 parse : ctx -> Field ctx a -> Result String a
 parse ctx f = f.parse ctx f.string
 
-isValid : ctx -> Field ctx a -> Basics.Bool
+isValid : ctx -> Field ctx a -> Bool
 isValid ctx f =
   case parse ctx f of
     Ok _ -> True
@@ -44,7 +48,7 @@ inputFor onInput ctx field ctor attrs children =
         [ ctor allAttrs children
         ]
     Err e ->
-      if List.member (HA.disabled True) attrs then
+      if List.member (HA.disabled True) attrs || (field.string == "" && not field.highlightErrorIfEmpty) then
         H.span []
           [ ctor allAttrs children
           ]

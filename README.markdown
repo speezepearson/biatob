@@ -33,7 +33,6 @@ TODO
 
     - rename "My Predictions" to be more like... I dunno, "My Stakes"? And add filters for "mine"/"not mine"/"closed"/...
     - write copy explaining how to operationalize a bet well (or find somebody else's explanation)
-    - add "okay if empty but untouched" flag to Field to reduce visual noise
 
 - **Explanations:**
 

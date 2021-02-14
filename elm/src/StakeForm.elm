@@ -124,8 +124,8 @@ init =
           let n = round (100*dollars) in
           if n < 0 || n > max then Err ("must be between $0 and " ++ Utils.formatCents max) else Ok n
   in
-  { believerStakeField = { string = "0" , parse = parseCents }
-  , skepticStakeField = { string = "0" , parse = parseCents }
+  { believerStakeField = Field.init "0" parseCents
+  , skepticStakeField = Field.init "0" parseCents
   , now = Time.millisToPosix 0
   }
 

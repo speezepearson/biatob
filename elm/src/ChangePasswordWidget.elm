@@ -12,10 +12,11 @@ import Biatob.Proto.Mvp as Pb
 
 import Biatob.Proto.Mvp exposing (StakeResult(..))
 import Field exposing (Field)
+import Field
 
 type alias Model =
-  { oldPasswordField : Field {okIfBlank:Bool} String
-  , newPasswordField : Field {okIfBlank:Bool} String
+  { oldPasswordField : Field () String
+  , newPasswordField : Field () String
   , working : Bool
   , error : Maybe String
   }
@@ -28,8 +29,8 @@ type Msg
 
 init : () -> (Model, Cmd Msg)
 init _ =
-  ( { oldPasswordField = Field.init "" <| \{okIfBlank} s -> if okIfBlank && s=="" then Ok "" else if s=="" then Err "" else Ok s
-    , newPasswordField = Field.init "" <| \{okIfBlank} s -> if okIfBlank && s=="" then Ok "" else if s=="" then Err "" else Ok s
+  ( { oldPasswordField = Field.okIfEmpty <| Field.init "" <| \() s -> if s=="" then Err "" else Ok s
+    , newPasswordField = Field.okIfEmpty <| Field.init "" <| \() s -> if s=="" then Err "" else Ok s
     , working = False
     , error = Nothing
     }
@@ -50,7 +51,7 @@ update msg model =
     SetNewPasswordField s -> ( { model | newPasswordField = model.newPasswordField |> Field.setStr s } , Cmd.none)
     ChangePassword ->
       ( { model | working = True , error = Nothing }
-      , case (Field.parse {okIfBlank=False} model.oldPasswordField, Field.parse {okIfBlank=False} model.newPasswordField) of
+      , case (Field.parse () model.oldPasswordField, Field.parse () model.newPasswordField) of
           (Ok old, Ok new) -> postChangePassword {oldPassword=old, newPassword=new}
           _ -> Cmd.none
       )
@@ -74,18 +75,16 @@ update msg model =
 view : Model -> Html Msg
 view model =
   let
-    disableButton = case (Field.parse {okIfBlank=False} model.oldPasswordField, Field.parse {okIfBlank=False} model.newPasswordField) of
-      (Ok _, Ok _) -> False
-      _ -> True
+    disableButton = not (Field.isValid () model.oldPasswordField && Field.isValid () model.newPasswordField)
   in
   H.div []
-    [ Field.inputFor SetOldPasswordField {okIfBlank=Field.raw model.newPasswordField == ""} model.oldPasswordField
+    [ Field.inputFor SetOldPasswordField () model.oldPasswordField
         H.input
         [ HA.type_ "password"
         , HA.disabled <| model.working
         , HA.placeholder "old password"
         ] []
-    , Field.inputFor SetNewPasswordField {okIfBlank=Field.raw model.oldPasswordField == ""} model.newPasswordField
+    , Field.inputFor SetNewPasswordField () model.newPasswordField
         H.input
         [ HA.type_ "password"
         , HA.disabled <| model.working

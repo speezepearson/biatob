@@ -22,8 +22,8 @@ port authChanged : {loggedIn:Bool} -> Cmd msg
 
 type Model
   = NoToken
-      { usernameField : Field {okIfBlank:Bool} String
-      , passwordField : Field {okIfBlank:Bool} String
+      { usernameField : Field () String
+      , passwordField : Field () String
       , working : Bool
       , error : Maybe String
       }
@@ -56,8 +56,8 @@ hasAuth model =
 initNoToken : Model
 initNoToken =
   NoToken
-    { usernameField = Field.init "" <| \{okIfBlank} s -> if okIfBlank && s=="" then Ok "" else if s=="" then Err "" else Ok s
-    , passwordField = Field.init "" <| \{okIfBlank} s -> if okIfBlank && s=="" then Ok "" else if s=="" then Err "" else Ok s
+    { usernameField = Field.okIfEmpty <| Field.init "" <| \() s -> if s=="" then Err "" else Ok s
+    , passwordField = Field.okIfEmpty <| Field.init "" <| \() s -> if s=="" then Err "" else Ok s
     , working = False
     , error = Nothing
     }
@@ -83,12 +83,12 @@ view model =
   case model of
     NoToken m ->
       let
-        disableButtons = case (Field.parse {okIfBlank=False} m.usernameField, Field.parse {okIfBlank=False} m.passwordField) of
+        disableButtons = case (Field.parse () m.usernameField, Field.parse () m.passwordField) of
           (Ok _, Ok _) -> False
           _ -> True
       in
       H.div []
-        [ Field.inputFor SetUsernameField {okIfBlank=Field.raw m.passwordField == ""} m.usernameField
+        [ Field.inputFor SetUsernameField () m.usernameField
             H.input
             [ HA.disabled m.working
             , HA.style "width" "8em"
@@ -96,7 +96,7 @@ view model =
             , HA.placeholder "username"
             , HA.class "username-field"
             ] []
-        , Field.inputFor SetPasswordField {okIfBlank=Field.raw m.usernameField == ""} m.passwordField
+        , Field.inputFor SetPasswordField () m.passwordField
             H.input
             [ HA.disabled m.working
             , HA.style "width" "8em"
@@ -162,7 +162,7 @@ update msg model =
     ( NoToken { m | passwordField = m.passwordField |> Field.setStr s } , Cmd.none )
   (LogInUsername, NoToken m) ->
     ( NoToken { m | working = True }
-    , case (Field.parse {okIfBlank=False} m.usernameField, Field.parse {okIfBlank=False} m.passwordField) of
+    , case (Field.parse () m.usernameField, Field.parse () m.passwordField) of
        (Ok username, Ok password) -> postLogInUsername {username=username, password=password}
        _ -> Cmd.none
     )
@@ -186,7 +186,7 @@ update msg model =
         )
   (RegisterUsername, NoToken m) ->
     ( NoToken { m | working = True }
-    , case (Field.parse {okIfBlank=False} m.usernameField, Field.parse {okIfBlank=False} m.passwordField) of
+    , case (Field.parse () m.usernameField, Field.parse () m.passwordField) of
        (Ok username, Ok password) -> postRegisterUsername {username=username, password=password}
        _ -> Cmd.none
     )

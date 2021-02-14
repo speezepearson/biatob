@@ -31,7 +31,7 @@ type Msg
 init : List Pb.UserId -> ( Model , Cmd Msg )
 init trustedUsers =
   ( { trustedUsers = trustedUsers
-    , addTrustedUserField = Field.init "" <| \() s -> if String.isEmpty s then Err "must not be empty" else Ok s
+    , addTrustedUserField = Field.okIfEmpty <| Field.init "" <| \() s -> if String.isEmpty s then Err "must not be empty" else Ok s
     , working = False
     , notification = H.text ""
     }
@@ -113,7 +113,7 @@ view model =
         [ HA.disabled model.working
         , HA.placeholder "username"
         ] []
-    , H.button [HE.onClick AddTrusted] [H.text "Add trust"]
+    , H.button [HE.onClick AddTrusted, HA.disabled <| not <| Field.isValid () model.addTrustedUserField] [H.text "Add trust"]
     ]
 
 subscriptions : Model -> Sub Msg
