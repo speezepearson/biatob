@@ -6,6 +6,7 @@ import argparse
 import base64
 import contextlib
 import copy
+import datetime
 import functools
 import hashlib
 import hmac
@@ -696,6 +697,7 @@ class WebServer:
         return web.Response(
             content_type='text/html',
             body=self._jinja.get_template('ViewPredictionPage.html').render(
+                title=f'Biatob - Prediction: by {datetime.datetime.fromtimestamp(get_prediction_resp.prediction.resolves_at_unixtime).strftime("%Y-%m-%d")}, {get_prediction_resp.prediction.prediction}',
                 auth_token_pb_b64=pb_b64(auth),
                 prediction_pb_b64=pb_b64(get_prediction_resp.prediction),
                 prediction_id=prediction_id,

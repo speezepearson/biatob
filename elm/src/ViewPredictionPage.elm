@@ -354,7 +354,7 @@ view model =
     creator = Utils.mustPredictionCreator model.prediction
   in
   H.div []
-    [ H.h2 [] [H.text <| "Prediction: " ++ model.prediction.prediction ++ ", by " ++ (String.left 10 <| Iso8601.fromTime <| Time.millisToPosix <| model.prediction.resolvesAtUnixtime * 1000)]
+    [ H.h2 [] [H.text <| "Prediction: by " ++ (String.left 10 <| Iso8601.fromTime <| Time.millisToPosix <| model.prediction.resolvesAtUnixtime * 1000) ++ ", " ++ model.prediction.prediction]
     , viewPredictionState model
     , viewResolveButtons model
     , viewWinnings model
