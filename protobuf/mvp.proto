@@ -29,6 +29,17 @@ message CredentialsConfig {
   }
 }
 
+message InvitationId {
+  UserId inviter = 1;
+  string nonce = 2;
+}
+message Invitation {
+  uint32 created_unixtime = 2;
+  string notes = 3;
+  UserId accepted_by = 4;
+  uint32 accepted_unixtime = 5;
+}
+
 message EmailFlowState {
   oneof email_flow_state_kind {
     Void unstarted = 1;
@@ -51,6 +62,7 @@ message GenericUserInfo {
   EmailFlowState email = 2;
   bool email_reminders_to_resolve = 3;
   bool email_resolution_notifications = 4;
+  map<string, Invitation> invitations = 5;
 }
 message UsernameInfo {
   GenericUserInfo info = 1;
@@ -345,6 +357,36 @@ message UpdateSettingsRequest {
 message UpdateSettingsResponse {
   oneof update_settings_result {
     GenericUserInfo ok = 1;
+    Error error = 2;
+  }
+  message Error {
+    string catchall = 1;
+  }
+}
+
+message CreateInvitationRequest {
+  string notes = 1;
+}
+message CreateInvitationResponse {
+  oneof create_invitation_result {
+    Result ok = 1;
+    Error error = 2;
+  }
+  message Result {
+    string nonce = 1;
+    Invitation invitation = 2;
+  }
+  message Error {
+    string catchall = 1;
+  }
+}
+
+message AcceptInvitationRequest {
+  InvitationId invitation_id = 1;
+}
+message AcceptInvitationResponse {
+  oneof accept_invitation_result {
+    Void ok = 1;
     Error error = 2;
   }
   message Error {

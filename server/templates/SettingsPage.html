@@ -16,6 +16,10 @@
     var authTokenPbB64 = {{ auth_token_pb_b64 | tojson }};
     var settingsRespPbB64 = {{ settings_response_pb_b64 | tojson }};
 
+    if (!authTokenPbB64) {
+      window.location = "/"; // TODO(P2): should be /login
+    }
+
     var main = Elm.SettingsPage.init({
       node: document.getElementById('main'),
       flags: {authTokenPbB64, settingsRespPbB64},

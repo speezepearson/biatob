@@ -43,6 +43,7 @@ TODO
     - consider a better model of user identity -- UserUserView is gross
     - add GetMySettings / SetMySettings endpoints
     - write automated tests for the core API flows (create account, log in, log out, create market, bet in market, view settings)
+    - CSRF for XSS safety
 
 ### P3: make this something Less Wrongers might use
 - **Features:**

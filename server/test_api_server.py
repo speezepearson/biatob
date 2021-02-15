@@ -134,3 +134,5 @@ async def test_smoke(aiohttp_client, app):
   await post_proto(cli, '/api/VerifyEmail', mvp_pb2.VerifyEmailRequest(), mvp_pb2.VerifyEmailResponse)
   await post_proto(cli, '/api/GetSettings', mvp_pb2.GetSettingsRequest(), mvp_pb2.GetSettingsResponse)
   await post_proto(cli, '/api/UpdateSettings', mvp_pb2.UpdateSettingsRequest(), mvp_pb2.UpdateSettingsResponse)
+  await post_proto(cli, '/api/CreateInvitation', mvp_pb2.CreateInvitationRequest(), mvp_pb2.CreateInvitationResponse)
+  await post_proto(cli, '/api/AcceptInvitation', mvp_pb2.AcceptInvitationRequest(), mvp_pb2.AcceptInvitationResponse)

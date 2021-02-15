@@ -17,7 +17,7 @@ type UserTypeSpecificSettings
   = UsernameSettings ChangePasswordWidget.Model
 
 type alias Model =
-  { auth : Maybe Pb.AuthToken
+  { auth : Pb.AuthToken
   , emailSettingsWidget : EmailSettingsWidget.Model
   , trustedUsersWidget : TrustedUsersWidget.Model
   , userTypeSettings : UserTypeSpecificSettings
@@ -31,14 +31,14 @@ type Msg
 init : JD.Value -> (Model, Cmd Msg)
 init flags =
   let
-    auth = Utils.decodePbFromFlags Pb.authTokenDecoder "authTokenPbB64" flags
+    auth = Utils.mustDecodePbFromFlags Pb.authTokenDecoder "authTokenPbB64" flags
     pbResp = Utils.mustDecodePbFromFlags Pb.getSettingsResponseDecoder "settingsRespPbB64" flags
     genericInfo = case pbResp.getSettingsResult of
       Nothing -> Debug.todo "TODO: add a must to Utils"
       Just (Pb.GetSettingsResultError e) -> Debug.todo (Debug.toString e)
       Just (Pb.GetSettingsResultOkUsername usernameInfo) -> Utils.mustUsernameGenericInfo usernameInfo
     (emailSettingsWidget, emailSettingsCmd) = EmailSettingsWidget.initFromUserInfo genericInfo
-    (trustedUsersWidget, trustedUsersCmd) = TrustedUsersWidget.init <| genericInfo.trustedUsers
+    (trustedUsersWidget, trustedUsersCmd) = TrustedUsersWidget.init {auth=auth, trustedUsers=genericInfo.trustedUsers, invitations=genericInfo.invitations |> Utils.mustMapValues}
   in
   case pbResp.getSettingsResult of
     Nothing -> Debug.todo "TODO: add a must to Utils"
@@ -87,7 +87,7 @@ view model =
     , H.h3 [] [H.text "Email"]
     , H.map EmailSettingsMsg <| EmailSettingsWidget.view model.emailSettingsWidget
     , H.hr [] []
-    , H.h3 [] [H.text "Trusted users:"]
+    , H.h3 [] [H.text "Trust"]
     , H.map TrustedUsersMsg <| TrustedUsersWidget.view model.trustedUsersWidget
     , H.hr [] []
     , viewUserTypeSettings model.userTypeSettings

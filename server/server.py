@@ -266,6 +266,8 @@ class Servicer(abc.ABC):
     def VerifyEmail(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.VerifyEmailRequest) -> mvp_pb2.VerifyEmailResponse: pass
     def GetSettings(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.GetSettingsRequest) -> mvp_pb2.GetSettingsResponse: pass
     def UpdateSettings(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.UpdateSettingsRequest) -> mvp_pb2.UpdateSettingsResponse: pass
+    def CreateInvitation(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.CreateInvitationRequest) -> mvp_pb2.CreateInvitationResponse: pass
+    def AcceptInvitation(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.AcceptInvitationRequest) -> mvp_pb2.AcceptInvitationResponse: pass
 
 
 def checks_token(f):
@@ -570,6 +572,56 @@ class FsBackedServicer(Servicer):
                 info.email_resolution_notifications = request.email_resolution_notifications.value
             return mvp_pb2.UpdateSettingsResponse(ok=info)
 
+    @checks_token
+    def CreateInvitation(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.CreateInvitationRequest) -> mvp_pb2.CreateInvitationResponse:
+        if token is None:
+            return mvp_pb2.CreateInvitationResponse(error=mvp_pb2.CreateInvitationResponse.Error(catchall='must log in to create an invitation'))
+
+        with self._storage.mutate() as wstate:
+            info = get_generic_user_info(wstate, token.owner)
+            if info is None:
+                raise ForgottenTokenError(token)
+
+            nonce = secrets.token_urlsafe(16)
+            invitation = mvp_pb2.Invitation(
+                created_unixtime=int(self._clock()),
+                notes=request.notes,
+                accepted_by=None,
+            )
+            info.invitations[nonce].CopyFrom(invitation)
+            return mvp_pb2.CreateInvitationResponse(ok=mvp_pb2.CreateInvitationResponse.Result(nonce=nonce, invitation=invitation))
+
+    @checks_token
+    def AcceptInvitation(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.AcceptInvitationRequest) -> mvp_pb2.AcceptInvitationResponse:
+        if token is None:
+            return mvp_pb2.AcceptInvitationResponse(error=mvp_pb2.AcceptInvitationResponse.Error(catchall='must log in to create an invitation'))
+
+        with self._storage.mutate() as wstate:
+            if request.invitation_id is None or request.invitation_id.inviter is None:
+                return mvp_pb2.AcceptInvitationResponse(error=mvp_pb2.AcceptInvitationResponse.Error(catchall='malformed invitation'))
+
+            accepter_info = get_generic_user_info(wstate, token.owner)
+            if accepter_info is None:
+                raise ForgottenTokenError(token)
+
+            inviter = request.invitation_id.inviter
+            inviter_info = get_generic_user_info(wstate, inviter)
+            if inviter_info is None:
+                return mvp_pb2.AcceptInvitationResponse(error=mvp_pb2.AcceptInvitationResponse.Error(catchall='no such invitation'))
+
+            for orig_nonce, orig_invitation in inviter_info.invitations.items():
+                if orig_nonce == request.invitation_id.nonce:
+                    if orig_invitation.accepted_by.ByteSize() != 0:
+                        return mvp_pb2.AcceptInvitationResponse(error=mvp_pb2.AcceptInvitationResponse.Error(catchall='invitation has already been used'))
+                    orig_invitation.accepted_by.CopyFrom(token.owner)
+                    orig_invitation.accepted_unixtime = int(self._clock())
+                    if inviter not in accepter_info.trusted_users:
+                        accepter_info.trusted_users.append(inviter)
+                    if token.owner not in inviter_info.trusted_users:
+                        inviter_info.trusted_users.append(token.owner)
+                    return mvp_pb2.AcceptInvitationResponse(ok=mvp_pb2.VOID)
+            return mvp_pb2.AcceptInvitationResponse(error=mvp_pb2.AcceptInvitationResponse.Error(catchall='no such invitation'))
+
 
 from typing import TypeVar, Type, Tuple, Union, Awaitable
 from google.protobuf.message import Message
@@ -686,6 +738,10 @@ class ApiServer:
         return proto_response(self._servicer.GetSettings(token=self._token_glue.parse_cookie(http_req), request=await parse_proto(http_req, mvp_pb2.GetSettingsRequest)))
     async def UpdateSettings(self, http_req: web.Request) -> web.Response:
         return proto_response(self._servicer.UpdateSettings(token=self._token_glue.parse_cookie(http_req), request=await parse_proto(http_req, mvp_pb2.UpdateSettingsRequest)))
+    async def CreateInvitation(self, http_req: web.Request) -> web.Response:
+        return proto_response(self._servicer.CreateInvitation(token=self._token_glue.parse_cookie(http_req), request=await parse_proto(http_req, mvp_pb2.CreateInvitationRequest)))
+    async def AcceptInvitation(self, http_req: web.Request) -> web.Response:
+        return proto_response(self._servicer.AcceptInvitation(token=self._token_glue.parse_cookie(http_req), request=await parse_proto(http_req, mvp_pb2.AcceptInvitationRequest)))
 
     def add_to_app(self, app: web.Application) -> None:
         app.router.add_post('/api/Whoami', self.Whoami)
@@ -703,6 +759,8 @@ class ApiServer:
         app.router.add_post('/api/VerifyEmail', self.VerifyEmail)
         app.router.add_post('/api/GetSettings', self.GetSettings)
         app.router.add_post('/api/UpdateSettings', self.UpdateSettings)
+        app.router.add_post('/api/CreateInvitation', self.CreateInvitation)
+        app.router.add_post('/api/AcceptInvitation', self.AcceptInvitation)
         self._token_glue.add_to_app(app)
 
 
@@ -819,15 +877,34 @@ class WebServer:
 
     async def get_settings(self, req: web.Request) -> web.Response:
         auth = self._token_glue.parse_cookie(req)
+        if auth is None:
+            return web.HTTPTemporaryRedirect('/')  # TODO(P2): hack, should be /login or something
         get_settings_response = self._servicer.GetSettings(auth, mvp_pb2.GetSettingsRequest())
         if get_settings_response.WhichOneof('get_settings_result') == 'error':
-            return web.HTTPTemporaryRedirect('/')
+            return web.HTTPBadRequest(reason=str(get_settings_response.error))
         return web.Response(
             content_type='text/html',
             body=self._jinja.get_template('SettingsPage.html').render(
                 auth_token_pb_b64=pb_b64(auth),
                 settings_response_pb_b64=pb_b64(get_settings_response),
             ))
+
+    async def get_invitation(self, req: web.Request) -> web.Response:
+        auth = self._token_glue.parse_cookie(req)
+        if auth is None:
+            return web.HTTPTemporaryRedirect('/')  # TODO(P2): hack, should be /login or something
+        invitation_id = mvp_pb2.InvitationId(
+            inviter=mvp_pb2.UserId(username=req.match_info['username']),
+            nonce=req.match_info['nonce'],
+        )
+        if invitation_id == auth.owner:
+            return web.Response(status=200, body="This is your own invitation!")
+        # TODO(P1): need an intermediary page with CSRF to avoid XSS
+        accept_invitation_response = self._servicer.AcceptInvitation(auth, mvp_pb2.AcceptInvitationRequest(invitation_id=invitation_id))
+        if accept_invitation_response.WhichOneof('accept_invitation_result') == 'error':
+            return web.HTTPBadRequest(text=str(accept_invitation_response.error))
+        assert accept_invitation_response.WhichOneof('accept_invitation_result') == 'ok'
+        return web.HTTPTemporaryRedirect('/settings')
 
     def add_to_app(self, app: web.Application) -> None:
 
@@ -843,6 +920,7 @@ class WebServer:
         app.router.add_get('/my_predictions', self.get_my_predictions)
         app.router.add_get('/username/{username:[a-zA-Z0-9_-]+}', self.get_username)
         app.router.add_get('/settings', self.get_settings)
+        app.router.add_get('/invitation/{username}/{nonce}', self.get_invitation)
 
 
 def pb_b64(message: Optional[Message]) -> Optional[str]:
@@ -925,6 +1003,7 @@ async def main(args):
     await runner.setup()
     site = web.TCPSite(runner, host=args.host, port=args.port)
     await site.start()
+    print(f'Running forever on http://{args.host}:{args.port}...', file=sys.stderr)
     try:
         while True:
             await asyncio.sleep(3600)
