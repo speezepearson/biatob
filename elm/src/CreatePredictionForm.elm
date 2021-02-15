@@ -97,7 +97,14 @@ view model =
   H.div []
     [ H.ul [HA.class "new-prediction-form"]
         [ H.li []
-            [ H.text "I predict that..."
+            [ H.text "I predict that, by "
+            , Field.inputFor SetResolvesTime {now=model.now} model.resolvesAtField
+                H.input
+                [ HA.type_ "date"
+                , HA.class "resolves-at-field"
+                , HA.disabled model.disabled
+                ] []
+            , H.text ", "
             , H.br [] []
             , Field.inputFor SetPrediction () model.predictionField
                 H.textarea
@@ -106,23 +113,12 @@ view model =
                 , HA.disabled model.disabled
                 , HA.class "prediction-field"
                 ] []
-            , H.br [] []
-            , H.div [HA.style "margin-left" "5em"]
-                [ H.text " ...by "
-                , Field.inputFor SetResolvesTime {now=model.now} model.resolvesAtField
-                    H.input
-                    [ HA.type_ "date"
-                    , HA.disabled model.disabled
-                    ] []
-                , H.text "."
-                -- TODO: , H.a [HA.href howToWriteGoodBetsUrl] [H.text "how to write good bets"]
-                ]
           ]
         , H.li []
             [ H.text "I think this as at least a"
             , Field.inputFor SetLowP () model.lowPField
                 H.input
-                [ HA.type_ "number", HA.min "0", HA.max "100"
+                [ HA.type_ "number", HA.min "0", HA.max "100", HA.step "any"
                 , HA.style "width" "5em"
                 , HA.disabled model.disabled
                 ] []
@@ -131,7 +127,7 @@ view model =
             , H.text "but not more than a "
             , Field.inputFor SetHighP highPCtx model.highPField
                 H.input
-                [ HA.type_ "number", HA.min (String.fromFloat <| Result.withDefault 100 <| Field.parse () model.lowPField), HA.max "100"
+                [ HA.type_ "number", HA.min (String.fromFloat <| Result.withDefault 100 <| Field.parse () model.lowPField), HA.max "100", HA.step "any"
                 , HA.style "width" "5em"
                 , HA.disabled model.disabled
                 ] []
