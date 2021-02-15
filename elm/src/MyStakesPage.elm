@@ -144,11 +144,13 @@ init flags =
     predictions : Dict Int Pb.UserPredictionView
     predictions = Utils.mustDecodePbFromFlags Pb.predictionsByIdDecoder "predictionsPbB64" flags |> Utils.mustPredictionsById
 
+    linkToAuthority = Utils.mustDecodeFromFlags JD.string "linkToAuthority" flags
+
     subinits : Dict Int (ViewPredictionPage.Model, Cmd ViewPredictionPage.Msg)
     subinits =
       Dict.map
         (\id m ->
-          let (submodel, subcmd) = ViewPredictionPage.initBase {predictionId=id, prediction=m, auth=Just auth, now=Time.millisToPosix 0} in
+          let (submodel, subcmd) = ViewPredictionPage.initBase {predictionId=id, prediction=m, auth=Just auth, now=Time.millisToPosix 0, linkToAuthority=linkToAuthority} in
           (submodel, subcmd)
         )
         predictions

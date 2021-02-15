@@ -5,6 +5,9 @@
   <title>Main</title>
   <link rel="shortcut icon"type="image/x-icon" href="data:image/x-icon;,">
   <script type="text/javascript" src="/elm/SettingsPage.js"></script>
+  <script type="text/javascript">
+    {% include 'Utils.js' %}
+  </script>
   <link rel="stylesheet" href="/static/base.css">
 </head>
 
@@ -15,6 +18,7 @@
 
     var authTokenPbB64 = {{ auth_token_pb_b64 | tojson }};
     var settingsRespPbB64 = {{ settings_response_pb_b64 | tojson }};
+    var linkToAuthority = window.location.origin;
 
     if (!authTokenPbB64) {
       window.location = "/"; // TODO(P2): should be /login
@@ -22,8 +26,9 @@
 
     var main = Elm.SettingsPage.init({
       node: document.getElementById('main'),
-      flags: {authTokenPbB64, settingsRespPbB64},
+      flags: {authTokenPbB64, settingsRespPbB64, linkToAuthority},
     });
+    subscribeToCopy(main);
     main.ports.changed.subscribe(() => window.location.reload());
   </script>
 </body>

@@ -17,6 +17,7 @@ import Time
 import Utils
 
 import SmallInvitationWidget
+import CopyWidget
 
 port changed : () -> Cmd msg
 
@@ -26,6 +27,7 @@ type alias Model =
   , invitationWidget : SmallInvitationWidget.Model
   , invitations : Dict String Pb.Invitation
   , addTrustedUserField : Field () String
+  , linkToAuthority : String
   , working : Bool
   , notification : Html Msg
   }
@@ -36,15 +38,17 @@ type Msg
   | AddTrusted
   | SetTrustedFinished (Result Http.Error Pb.SetTrustedResponse)
   | InvitationMsg SmallInvitationWidget.Msg
+  | Copy String
 
-init : { auth : Pb.AuthToken , trustedUsers : List Pb.UserId , invitations : Dict String Pb.Invitation } -> ( Model , Cmd Msg )
+init : { auth : Pb.AuthToken , trustedUsers : List Pb.UserId , invitations : Dict String Pb.Invitation , linkToAuthority : String } -> ( Model , Cmd Msg )
 init flags =
-  let (widget, widgetCmd) = SmallInvitationWidget.init {auth=flags.auth} in
+  let (widget, widgetCmd) = SmallInvitationWidget.init {auth=flags.auth, linkToAuthority=flags.linkToAuthority} in
   ( { auth = flags.auth
     , trustedUsers = flags.trustedUsers
     , invitationWidget = widget
     , invitations = flags.invitations
     , addTrustedUserField = Field.okIfEmpty <| Field.init "" <| \() s -> if String.isEmpty s then Err "must not be empty" else Ok s
+    , linkToAuthority = flags.linkToAuthority
     , working = False
     , notification = H.text ""
     }
@@ -110,6 +114,46 @@ update msg model =
       , Cmd.map InvitationMsg widgetCmd
       )
 
+    Copy s -> ( model , CopyWidget.copy s )
+
+viewInvitation : Model -> String -> Pb.Invitation -> Html Msg
+viewInvitation model nonce invitation =
+  case invitation.acceptedBy of
+    Just accepter ->
+      H.li []
+        [ H.text "Accepted by "
+        , Utils.renderUser accepter
+        , H.text <| " on " ++ Utils.dateStr Time.utc (Utils.unixtimeToTime invitation.createdUnixtime)
+        , H.text <| " (created " ++ Utils.dateStr Time.utc (Utils.unixtimeToTime invitation.createdUnixtime) ++ ")"
+        ]
+    Nothing ->
+      H.li []
+        [ let
+            id : Pb.InvitationId
+            id = { inviter = model.auth.owner , nonce = nonce }
+            username = case Utils.mustUserKind <| Utils.mustTokenOwner model.auth of
+                Pb.KindUsername u -> u
+          in
+            CopyWidget.view Copy (model.linkToAuthority ++ Utils.invitationPath id)
+        , H.text <| " (created " ++ Utils.dateStr Time.utc (Utils.unixtimeToTime invitation.createdUnixtime) ++ ")"
+        ]
+
+viewInvitations : Model -> (Pb.Invitation -> Bool) -> Html Msg
+viewInvitations model filter =
+  let
+    matches =
+      model.invitations
+      |> D.filter (always filter)
+      |> D.toList
+      |> List.sortBy (\(_, invitation) -> -invitation.createdUnixtime)
+  in
+  if List.isEmpty matches then
+    H.text " none yet!"
+  else
+    matches
+    |> List.map (\(nonce, invitation) -> H.li [] [viewInvitation model nonce invitation])
+    |> H.ul []
+
 view : Model -> Html Msg
 view model =
   H.div []
@@ -131,36 +175,8 @@ view model =
     , H.br [] []
     , H.strong [] [H.text "Invitations: "]
     , SmallInvitationWidget.view model.invitationWidget |> H.map InvitationMsg
-    , H.br [] []
-    , H.text "Outstanding:"
-    , if D.isEmpty model.invitations then
-        H.text " none yet!"
-      else
-        H.ul []
-        <| List.map (\(nonce, invitation) ->
-            case invitation.acceptedBy of
-              Just accepter ->
-                H.li []
-                  [ H.text "Accepted by "
-                  , Utils.renderUser accepter
-                  , H.text <| " on " ++ Utils.dateStr Time.utc (Utils.unixtimeToTime invitation.createdUnixtime)
-                  , H.text <| " (created " ++ Utils.dateStr Time.utc (Utils.unixtimeToTime invitation.createdUnixtime) ++ ")"
-                  ]
-              Nothing ->
-                H.li []
-                  [ let
-                      id : Pb.InvitationId
-                      id = { inviter = model.auth.owner , nonce = nonce }
-                      username = case Utils.mustUserKind <| Utils.mustTokenOwner model.auth of
-                         Pb.KindUsername u -> u
-                    in
-                    H.a [HA.href <| Utils.invitationPath id] [H.text "link"]
-                  , H.text <| " (created " ++ Utils.dateStr Time.utc (Utils.unixtimeToTime invitation.createdUnixtime) ++ ")"
-                  ]
-                )
-        <| List.sortBy (\(_, invitation) -> -invitation.createdUnixtime)
-        <| D.toList
-        <| model.invitations
+    , H.div [] [H.text "Outstanding:", viewInvitations model (\inv -> inv.acceptedBy == Nothing) ]
+    , H.div [] [H.text "Past:",        viewInvitations model (\inv -> inv.acceptedBy /= Nothing) ]
     ]
 
 subscriptions : Model -> Sub Msg

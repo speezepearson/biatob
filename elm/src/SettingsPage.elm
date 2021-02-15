@@ -21,6 +21,7 @@ type alias Model =
   , emailSettingsWidget : EmailSettingsWidget.Model
   , trustedUsersWidget : TrustedUsersWidget.Model
   , userTypeSettings : UserTypeSpecificSettings
+  , linkToAuthority : String
   }
 
 type Msg
@@ -32,12 +33,13 @@ init : JD.Value -> (Model, Cmd Msg)
 init flags =
   let
     auth = Utils.mustDecodePbFromFlags Pb.authTokenDecoder "authTokenPbB64" flags
+    linkToAuthority = Utils.mustDecodeFromFlags JD.string "linkToAuthority" flags
     pbResp = Utils.mustDecodePbFromFlags Pb.getSettingsResponseDecoder "settingsRespPbB64" flags
     genericInfo = case Utils.mustGetSettingsResult pbResp of
       Pb.GetSettingsResultError e -> Debug.todo (Debug.toString e)
       Pb.GetSettingsResultOkUsername usernameInfo -> Utils.mustUsernameGenericInfo usernameInfo
     (emailSettingsWidget, emailSettingsCmd) = EmailSettingsWidget.initFromUserInfo genericInfo
-    (trustedUsersWidget, trustedUsersCmd) = TrustedUsersWidget.init {auth=auth, trustedUsers=genericInfo.trustedUsers, invitations=genericInfo.invitations |> Utils.mustMapValues}
+    (trustedUsersWidget, trustedUsersCmd) = TrustedUsersWidget.init {auth=auth, trustedUsers=genericInfo.trustedUsers, invitations=genericInfo.invitations |> Utils.mustMapValues, linkToAuthority=linkToAuthority}
   in
   case Utils.mustGetSettingsResult pbResp of
     Pb.GetSettingsResultError e -> Debug.todo (Debug.toString e)
@@ -49,6 +51,7 @@ init flags =
         , emailSettingsWidget = emailSettingsWidget
         , trustedUsersWidget = trustedUsersWidget
         , userTypeSettings = UsernameSettings changePasswordWidget
+        , linkToAuthority = linkToAuthority
         }
       , Cmd.batch
           [ Cmd.map ChangePasswordMsg changePasswordCmd

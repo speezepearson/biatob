@@ -16,11 +16,10 @@ import Biatob.Proto.Mvp as Pb
 import Utils
 
 import StakeForm
-import Biatob.Proto.Mvp exposing (StakeResult(..))
 import Task
+import CopyWidget
 
 port changed : () -> Cmd msg
-port copy : String -> Cmd msg
 
 type alias Model =
   { stakeForm : StakeForm.State
@@ -32,6 +31,7 @@ type alias Model =
   , resolveError : Maybe String
   , now : Time.Posix
   , resolutionNotes : String
+  , linkToAuthority : String
   }
 
 type Msg
@@ -48,7 +48,7 @@ type Msg
 setPrediction : Pb.UserPredictionView -> Model -> Model
 setPrediction prediction model = { model | prediction = prediction }
 
-initBase : { prediction : Pb.UserPredictionView , predictionId : Int , auth : Maybe Pb.AuthToken, now : Time.Posix } -> ( Model, Cmd Msg )
+initBase : { prediction : Pb.UserPredictionView , predictionId : Int , auth : Maybe Pb.AuthToken, now : Time.Posix, linkToAuthority : String } -> ( Model, Cmd Msg )
 initBase flags =
   ( { stakeForm = StakeForm.init
     , prediction = flags.prediction
@@ -59,6 +59,7 @@ initBase flags =
     , resolveError = Nothing
     , now = flags.now
     , resolutionNotes = ""
+    , linkToAuthority = flags.linkToAuthority
     }
   , Task.perform Tick Time.now
   )
@@ -70,6 +71,7 @@ init flags =
     , predictionId = Utils.mustDecodeFromFlags JD.int "predictionId" flags
     , auth = Utils.decodePbFromFlags Pb.authTokenDecoder "authTokenPbB64" flags
     , now = Time.millisToPosix 0
+    , linkToAuthority = Utils.mustDecodeFromFlags JD.string "linkToAuthority" flags
     }
 
 postStake : Pb.StakeRequest -> Cmd Msg
@@ -137,8 +139,8 @@ update msg model =
           ( { model | working = False , resolveError = Just "Invalid server response (neither Ok nor Error in protobuf)" }
           , Cmd.none
           )
-    Copy id ->
-      ( model , copy id )
+    Copy s ->
+      ( model , CopyWidget.copy s )
     Tick t ->
       ( { model | now = t } , Cmd.none )
     Ignore ->
@@ -382,8 +384,8 @@ view model =
 viewEmbedInfo : Model -> Html Msg
 viewEmbedInfo model =
   let
-    linkUrl = "/p/" ++ String.fromInt model.predictionId  -- TODO(P0): needs origin to get stuck in text field
-    imgUrl = "/p/" ++ String.fromInt model.predictionId ++ "/embed.png"
+    linkUrl = model.linkToAuthority ++ "/p/" ++ String.fromInt model.predictionId  -- TODO(P0): needs origin to get stuck in text field
+    imgUrl = model.linkToAuthority ++ "/p/" ++ String.fromInt model.predictionId ++ "/embed.png"
     imgStyles = [("max-height","1.5ex"), ("border-bottom","1px solid #008800")]
     imgCode =
       "<a href=\"" ++ linkUrl ++ "\">"
@@ -402,8 +404,7 @@ viewEmbedInfo model =
     H.ul []
       [ H.li [] <|
         [ H.text "A linked inline image: "
-        , H.input [HA.id "imgCopypasta", HA.style "font" "monospace", HA.value imgCode] []
-        , H.button [HE.onClick (Copy "imgCopypasta")] [H.text "Copy"]
+        , CopyWidget.view Copy imgCode
         , H.br [] []
         , H.text "This would render as: "
         , H.a [HA.href linkUrl]
@@ -411,8 +412,7 @@ viewEmbedInfo model =
         ]
       , H.li [] <|
         [ H.text "A boring old link: "
-        , H.input [HA.id "linkCopypasta", HA.style "font" "monospace", HA.value linkCode] []
-        , H.button [HE.onClick (Copy "linkCopypasta")] [H.text "Copy"]
+        , CopyWidget.view Copy linkCode
         , H.br [] []
         , H.text "This would render as: "
         , H.a [HA.href linkUrl] [H.text linkText]

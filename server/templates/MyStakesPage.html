@@ -5,6 +5,9 @@
   <title>Biatob - My Stakes</title>
   <link rel="shortcut icon"type="image/x-icon" href="data:image/x-icon;,">
   <script type="text/javascript" src="/elm/MyStakesPage.js"></script>
+  <script type="text/javascript">
+    {% include 'Utils.js' %}
+  </script>
   <link rel="stylesheet" href="/static/base.css">
 </head>
 
@@ -15,6 +18,7 @@
 
     var authTokenPbB64 = {{ auth_token_pb_b64 | tojson }};
     var predictionsPbB64 = {{ predictions_pb_b64 | tojson }};
+    var linkToAuthority = window.location.origin;
 
     if (!authTokenPbB64) {
       window.location = "/"; // TODO(P2): should be /login
@@ -22,13 +26,9 @@
 
     var main = Elm.MyStakesPage.init({
       node: document.getElementById('main'),
-      flags: {authTokenPbB64, predictionsPbB64},
+      flags: {authTokenPbB64, predictionsPbB64, linkToAuthority},
     });
-    main.ports.copy.subscribe((id) => {
-      console.log('copy');
-      document.getElementById(id).select();
-      document.execCommand('copy');
-    });
+    subscribeToCopy(main);
     main.ports.changed.subscribe((predictionId) => {
       window.location.reload();
     });

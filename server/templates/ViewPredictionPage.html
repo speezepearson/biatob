@@ -5,6 +5,9 @@
   <title>{{title}}</title>
   <link rel="shortcut icon"type="image/x-icon" href="data:image/x-icon;,">
   <script type="text/javascript" src="/elm/ViewPredictionPage.js"></script>
+  <script type="text/javascript">
+    {% include 'Utils.js' %}
+  </script>
   <link rel="stylesheet" href="/static/base.css">
 </head>
 
@@ -22,11 +25,7 @@
       node: document.getElementById('main'),
       flags: {authTokenPbB64, predictionPbB64, predictionId, linkToAuthority},
     });
-    main.ports.copy.subscribe((id) => {
-      console.log('copy');
-      document.getElementById(id).select();
-      document.execCommand('copy');
-    });
+    subscribeToCopy(main);
     main.ports.changed.subscribe((predictionId) => {
       window.location.reload();
     });

@@ -143,7 +143,7 @@ view model =
         [ case Form.toCreateRequest model.form of
             Just req ->
               previewPrediction {request=req, creatorName=authName model.auth, createdAt=model.now}
-              |> (\prediction -> ViewPredictionPage.initBase {prediction=prediction, predictionId=12345, auth=model.auth, now=model.now})
+              |> (\prediction -> ViewPredictionPage.initBase {prediction=prediction, predictionId=12345, auth=model.auth, now=model.now, linkToAuthority="http://dummy"})
               |> Tuple.first
               |> ViewPredictionPage.view
               |> H.map (always Ignore)

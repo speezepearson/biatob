@@ -16,10 +16,12 @@ import Utils
 import Field exposing (Field)
 import Time
 import Utils
+import CopyWidget
 
 type alias Model =
   { auth : Pb.AuthToken
   , invitationId : Maybe Pb.InvitationId
+  , linkToAuthority : String
   , working : Bool
   , notification : Html Msg
   }
@@ -27,11 +29,13 @@ type alias Model =
 type Msg
   = CreateInvitation
   | CreateInvitationFinished (Result Http.Error Pb.CreateInvitationResponse)
+  | Copy String
 
-init : { auth : Pb.AuthToken } -> ( Model , Cmd Msg )
+init : { auth : Pb.AuthToken , linkToAuthority : String } -> ( Model , Cmd Msg )
 init flags =
   ( { auth = flags.auth
     , invitationId = Nothing
+    , linkToAuthority = flags.linkToAuthority
     , working = False
     , notification = H.text ""
     }
@@ -81,6 +85,8 @@ update msg model =
           , Cmd.none
           )
 
+    Copy s -> ( model , CopyWidget.copy s )
+
 view : Model -> Html Msg
 view model =
   let
@@ -99,7 +105,7 @@ view model =
     [ case model.invitationId of
         Nothing -> H.text ""
         Just id ->
-          let path = Utils.invitationPath id in H.a [HA.href path] [H.text path]
+          CopyWidget.view Copy (model.linkToAuthority ++ Utils.invitationPath id)
     , H.button
         [ HA.disabled model.working
         , HE.onClick CreateInvitation
