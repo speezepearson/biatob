@@ -911,7 +911,7 @@ class WebServer:
             inviter=mvp_pb2.UserId(username=req.match_info['username']),
             nonce=req.match_info['nonce'],
         )
-        if invitation_id == auth.owner:
+        if invitation_id.inviter == auth.owner:
             return web.Response(status=200, body="This is your own invitation!")
         # TODO(P1): need an intermediary page with CSRF to avoid XSS
         accept_invitation_response = self._servicer.AcceptInvitation(auth, mvp_pb2.AcceptInvitationRequest(invitation_id=invitation_id))
