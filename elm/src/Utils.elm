@@ -94,6 +94,9 @@ mustEmailFlowStateKind {emailFlowStateKind} = must "all EmailFlowStates must hav
 mustCreateInvitationResultInvitation : Pb.CreateInvitationResponseResult -> Pb.Invitation
 mustCreateInvitationResultInvitation {invitation} = must "all CreateInvitationResponseResults must have invitations" invitation
 
+mustGetSettingsResult : Pb.GetSettingsResponse -> Pb.GetSettingsResult
+mustGetSettingsResult {getSettingsResult} = must "all GetSettingsResponses must have results" getSettingsResult
+
 mustPredictionsById : Pb.PredictionsById -> Dict Int Pb.UserPredictionView
 mustPredictionsById {predictions} = predictions |> Dict.map (\_ v -> must "no null values are allowed in a PredictionsById" v)
 

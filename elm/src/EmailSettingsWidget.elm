@@ -115,7 +115,7 @@ update msg model =
           , emailResolutionNotifications = Nothing
           }
       )
-    ToggleEmailResolutionNotifications -> Debug.todo "TODO"
+    ToggleEmailResolutionNotifications ->
       ( { model | working = True , notification = H.text "" }
       , postUpdateSettings
           { emailRemindersToResolve = Nothing
@@ -160,7 +160,7 @@ update msg model =
               ( { model | working = True , notification = H.text "" }
               , postSetEmail {email=email}
               )
-            Err e -> Debug.todo e
+            Err e -> ( model , Cmd.none )
         _ -> ( model , Cmd.none )
 
     SetEmailFinished (Err e) ->

@@ -287,7 +287,7 @@ viewWinnings model =
           [ H.div [] [H.text "If this comes true: ", ifRes True]
           , H.div [] [H.text "Otherwise: ", ifRes False]
           ]
-      Pb.ResolutionUnrecognized_ _ -> Debug.todo ""
+      Pb.ResolutionUnrecognized_ _ -> Debug.todo "unrecognized resolution"
     , auditLog
     ]
 
@@ -340,7 +340,7 @@ viewResolveButtons model =
               , H.button [HE.onClick (Resolve Pb.ResolutionNo)] [H.text "Resolve NO"]
               , H.button [HE.onClick (Resolve Pb.ResolutionInvalid)] [H.text "Resolve INVALID"]
               ]
-          Pb.ResolutionUnrecognized_ _ -> Debug.todo ""
+          Pb.ResolutionUnrecognized_ _ -> Debug.todo "unrecognized resolution"
       , case model.resolveError of
           Just e -> H.span [] [H.text e]
           Nothing -> H.text ""

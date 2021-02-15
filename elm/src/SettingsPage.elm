@@ -33,17 +33,15 @@ init flags =
   let
     auth = Utils.mustDecodePbFromFlags Pb.authTokenDecoder "authTokenPbB64" flags
     pbResp = Utils.mustDecodePbFromFlags Pb.getSettingsResponseDecoder "settingsRespPbB64" flags
-    genericInfo = case pbResp.getSettingsResult of
-      Nothing -> Debug.todo "TODO: add a must to Utils"
-      Just (Pb.GetSettingsResultError e) -> Debug.todo (Debug.toString e)
-      Just (Pb.GetSettingsResultOkUsername usernameInfo) -> Utils.mustUsernameGenericInfo usernameInfo
+    genericInfo = case Utils.mustGetSettingsResult pbResp of
+      Pb.GetSettingsResultError e -> Debug.todo (Debug.toString e)
+      Pb.GetSettingsResultOkUsername usernameInfo -> Utils.mustUsernameGenericInfo usernameInfo
     (emailSettingsWidget, emailSettingsCmd) = EmailSettingsWidget.initFromUserInfo genericInfo
     (trustedUsersWidget, trustedUsersCmd) = TrustedUsersWidget.init {auth=auth, trustedUsers=genericInfo.trustedUsers, invitations=genericInfo.invitations |> Utils.mustMapValues}
   in
-  case pbResp.getSettingsResult of
-    Nothing -> Debug.todo "TODO: add a must to Utils"
-    Just (Pb.GetSettingsResultError e) -> Debug.todo (Debug.toString e)
-    Just (Pb.GetSettingsResultOkUsername usernameInfo) ->
+  case Utils.mustGetSettingsResult pbResp of
+    Pb.GetSettingsResultError e -> Debug.todo (Debug.toString e)
+    Pb.GetSettingsResultOkUsername _ ->
       let
         (changePasswordWidget, changePasswordCmd) = ChangePasswordWidget.init ()
       in
