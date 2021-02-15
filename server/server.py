@@ -849,6 +849,12 @@ class WebServer:
 
     async def get_my_predictions(self, req: web.Request) -> web.Response:
         auth = self._token_glue.parse_cookie(req)
+        if auth is None:
+            return web.Response(
+                content_type='text/html',
+                body=self._jinja.get_template('LoginPage.html').render(
+                    auth_token_pb_b64=None,
+                ))
         list_my_predictions_resp = self._servicer.ListMyPredictions(auth, mvp_pb2.ListMyPredictionsRequest())
         if list_my_predictions_resp.WhichOneof('list_my_predictions_result') == 'error':
             return web.Response(status=400, body=str(list_my_predictions_resp.error))
@@ -878,7 +884,11 @@ class WebServer:
     async def get_settings(self, req: web.Request) -> web.Response:
         auth = self._token_glue.parse_cookie(req)
         if auth is None:
-            return web.HTTPTemporaryRedirect('/')  # TODO(P2): hack, should be /login or something
+            return web.Response(
+                content_type='text/html',
+                body=self._jinja.get_template('LoginPage.html').render(
+                    auth_token_pb_b64=None,
+                ))
         get_settings_response = self._servicer.GetSettings(auth, mvp_pb2.GetSettingsRequest())
         if get_settings_response.WhichOneof('get_settings_result') == 'error':
             return web.HTTPBadRequest(reason=str(get_settings_response.error))
@@ -892,7 +902,11 @@ class WebServer:
     async def get_invitation(self, req: web.Request) -> web.Response:
         auth = self._token_glue.parse_cookie(req)
         if auth is None:
-            return web.HTTPTemporaryRedirect('/')  # TODO(P2): hack, should be /login or something
+            return web.Response(
+                content_type='text/html',
+                body=self._jinja.get_template('LoginPage.html').render(
+                    auth_token_pb_b64=None,
+                ))
         invitation_id = mvp_pb2.InvitationId(
             inviter=mvp_pb2.UserId(username=req.match_info['username']),
             nonce=req.match_info['nonce'],
