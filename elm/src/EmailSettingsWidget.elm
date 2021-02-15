@@ -5,14 +5,12 @@ import Html as H exposing (Html)
 import Html.Attributes as HA
 import Html.Events as HE
 import Http
-import Protobuf.Encode as PE
-import Protobuf.Decode as PD
-import Json.Decode as JD
 
 import Biatob.Proto.Mvp as Pb
 import Utils
 
 import Field exposing (Field)
+import API
 
 type alias Model =
   { registration : Registration
@@ -82,42 +80,19 @@ initFromUserInfo info =
   , Cmd.none
   )
 
-postSetEmail : Pb.SetEmailRequest -> Cmd Msg
-postSetEmail req =
-  Http.post
-    { url = "/api/SetEmail"
-    , body = Http.bytesBody "application/octet-stream" <| PE.encode <| Pb.toSetEmailRequestEncoder req
-    , expect = PD.expectBytes SetEmailFinished Pb.setEmailResponseDecoder }
-
-postVerifyEmail : Pb.VerifyEmailRequest -> Cmd Msg
-postVerifyEmail req =
-  Http.post
-    { url = "/api/VerifyEmail"
-    , body = Http.bytesBody "application/octet-stream" <| PE.encode <| Pb.toVerifyEmailRequestEncoder req
-    , expect = PD.expectBytes VerifyEmailFinished Pb.verifyEmailResponseDecoder
-    }
-
-postUpdateSettings : Pb.UpdateSettingsRequest -> Cmd Msg
-postUpdateSettings req =
-  Http.post
-    { url = "/api/UpdateSettings"
-    , body = Http.bytesBody "application/octet-stream" <| PE.encode <| Pb.toUpdateSettingsRequestEncoder req
-    , expect = PD.expectBytes UpdateSettingsFinished Pb.updateSettingsResponseDecoder
-    }
-
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
     ToggleEmailRemindersToResolve ->
       ( { model | working = True , notification = H.text "" }
-      , postUpdateSettings
+      , API.postUpdateSettings UpdateSettingsFinished
           { emailRemindersToResolve = Just <| Pb.MaybeBool <| not <| model.emailRemindersToResolve
           , emailResolutionNotifications = Nothing
           }
       )
     ToggleEmailResolutionNotifications ->
       ( { model | working = True , notification = H.text "" }
-      , postUpdateSettings
+      , API.postUpdateSettings UpdateSettingsFinished
           { emailRemindersToResolve = Nothing
           , emailResolutionNotifications = Just <| Pb.MaybeBool <| not <| model.emailResolutionNotifications
           }
@@ -158,7 +133,7 @@ update msg model =
           case Field.parse () m.emailField of
             Ok email ->
               ( { model | working = True , notification = H.text "" }
-              , postSetEmail {email=email}
+              , API.postSetEmail SetEmailFinished {email=email}
               )
             Err e -> ( model , Cmd.none )
         _ -> ( model , Cmd.none )
@@ -200,7 +175,7 @@ update msg model =
           case Field.parse () m.codeField of
             Ok code ->
               ( { model | working = True , notification = H.text "" }
-              , postVerifyEmail {code=code}
+              , API.postVerifyEmail VerifyEmailFinished {code=code}
               )
             Err e -> Debug.todo e
         _ -> ( model , Cmd.none )

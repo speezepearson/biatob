@@ -5,14 +5,12 @@ import Html as H exposing (Html)
 import Html.Attributes as HA
 import Html.Events as HE
 import Http
-import Protobuf.Encode as PE
-import Protobuf.Decode as PD
 
 import Biatob.Proto.Mvp as Pb
 
 import Biatob.Proto.Mvp exposing (StakeResult(..))
 import Field exposing (Field)
-import Field
+import API
 
 type alias Model =
   { oldPasswordField : Field () String
@@ -37,13 +35,6 @@ init _ =
   , Cmd.none
   )
 
-postChangePassword : Pb.ChangePasswordRequest -> Cmd Msg
-postChangePassword req =
-  Http.post
-    { url = "/api/ChangePassword"
-    , body = Http.bytesBody "application/octet-stream" <| PE.encode <| Pb.toChangePasswordRequestEncoder req
-    , expect = PD.expectBytes ChangePasswordFinished Pb.changePasswordResponseDecoder }
-
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
@@ -52,7 +43,7 @@ update msg model =
     ChangePassword ->
       ( { model | working = True , error = Nothing }
       , case (Field.parse () model.oldPasswordField, Field.parse () model.newPasswordField) of
-          (Ok old, Ok new) -> postChangePassword {oldPassword=old, newPassword=new}
+          (Ok old, Ok new) -> API.postChangePassword ChangePasswordFinished {oldPassword=old, newPassword=new}
           _ -> Cmd.none
       )
     ChangePasswordFinished (Err e) ->

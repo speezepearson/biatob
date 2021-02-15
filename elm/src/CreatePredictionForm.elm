@@ -11,7 +11,6 @@ import Task
 import Field exposing (Field)
 import Biatob.Proto.Mvp as Pb
 import Iso8601
-import Field
 
 howToWriteGoodBetsUrl = "http://example.com/TODO"
 maxLegalStakeCents = 500000

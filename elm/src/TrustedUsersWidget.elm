@@ -18,6 +18,7 @@ import Utils
 
 import SmallInvitationWidget
 import CopyWidget
+import API
 
 port changed : () -> Cmd msg
 
@@ -54,13 +55,6 @@ init flags =
   , Cmd.none
   )
 
-postSetTrusted : Pb.SetTrustedRequest -> Cmd Msg
-postSetTrusted req =
-  Http.post
-    { url = "/api/SetTrusted"
-    , body = Http.bytesBody "application/octet-stream" <| PE.encode <| Pb.toSetTrustedRequestEncoder req
-    , expect = PD.expectBytes SetTrustedFinished Pb.setTrustedResponseDecoder }
-
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
@@ -75,7 +69,7 @@ update msg model =
                     , working = True
                     , notification = H.text ""
             }
-          , postSetTrusted {who=Just {kind=Just (Pb.KindUsername username)}, trusted=True}
+          , API.postSetTrusted SetTrustedFinished {who=Just {kind=Just (Pb.KindUsername username)}, trusted=True}
           )
         Err _ ->
           ( model , Cmd.none )
@@ -84,7 +78,7 @@ update msg model =
         ( { model | working = True
                   , notification = H.text ""
           }
-        , postSetTrusted {who=Just victim, trusted=False}
+        , API.postSetTrusted SetTrustedFinished {who=Just victim, trusted=False}
         )
       else
         ( model , Cmd.none )

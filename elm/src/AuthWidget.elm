@@ -9,13 +9,12 @@ import Json.Encode as JE
 import Time
 import Html exposing (s)
 
-import Protobuf.Decode as PD
-import Protobuf.Encode as PE
 import Biatob.Proto.Mvp as Pb
 import Utils
 import Http
 import Task
 
+import API
 import Field exposing (Field)
 
 port authChanged : {loggedIn:Bool} -> Cmd msg
@@ -129,30 +128,6 @@ view model =
             Nothing -> H.text ""
         ]
 
-postLogInUsername : Pb.LogInUsernameRequest -> Cmd Msg
-postLogInUsername req =
-  Http.post
-    { url = "/api/LogInUsername"
-    , body = Http.bytesBody "application/octet-stream" <| PE.encode <| Pb.toLogInUsernameRequestEncoder req
-    , expect = PD.expectBytes LogInUsernameComplete Pb.logInUsernameResponseDecoder
-    }
-
-postRegisterUsername : Pb.RegisterUsernameRequest -> Cmd Msg
-postRegisterUsername req =
-  Http.post
-    { url = "/api/RegisterUsername"
-    , body = Http.bytesBody "application/octet-stream" <| PE.encode <| Pb.toRegisterUsernameRequestEncoder req
-    , expect = PD.expectBytes RegisterUsernameComplete Pb.registerUsernameResponseDecoder
-    }
-
-postSignOut : Cmd Msg
-postSignOut =
-  Http.post
-    { url = "/api/SignOut"
-    , body = Http.bytesBody "application/octet-stream" <| PE.encode <| Pb.toSignOutRequestEncoder {}
-    , expect = PD.expectBytes SignOutComplete Pb.signOutResponseDecoder
-    }
-
 update : Msg -> Model -> ( Model , Cmd Msg )
 update msg model =
   case (msg, model) of
@@ -163,7 +138,7 @@ update msg model =
   (LogInUsername, NoToken m) ->
     ( NoToken { m | working = True }
     , case (Field.parse () m.usernameField, Field.parse () m.passwordField) of
-       (Ok username, Ok password) -> postLogInUsername {username=username, password=password}
+       (Ok username, Ok password) -> API.postLogInUsername LogInUsernameComplete {username=username, password=password}
        _ -> Cmd.none
     )
   (LogInUsernameComplete (Err e), NoToken m) ->
@@ -187,7 +162,7 @@ update msg model =
   (RegisterUsername, NoToken m) ->
     ( NoToken { m | working = True }
     , case (Field.parse () m.usernameField, Field.parse () m.passwordField) of
-       (Ok username, Ok password) -> postRegisterUsername {username=username, password=password}
+       (Ok username, Ok password) -> API.postRegisterUsername RegisterUsernameComplete {username=username, password=password}
        _ -> Cmd.none
     )
   (RegisterUsernameComplete (Err e), NoToken m) ->
@@ -235,7 +210,7 @@ update msg model =
       ( model , Cmd.none )
   (SignOut, HasToken m) ->
     ( HasToken { m | working = True , error = Nothing }
-    , postSignOut
+    , API.postSignOut SignOutComplete {}
     )
   (SignOutComplete _, HasToken _) ->
     ( initNoToken , authChanged {loggedIn=False} )

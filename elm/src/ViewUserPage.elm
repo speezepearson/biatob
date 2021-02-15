@@ -6,13 +6,11 @@ import Html.Attributes as HA
 import Html.Events as HE
 import Http
 import Json.Decode as JD
-import Protobuf.Encode as PE
-import Protobuf.Decode as PD
 
 import Biatob.Proto.Mvp as Pb
 import Utils
 
-import Biatob.Proto.Mvp exposing (StakeResult(..))
+import API
 
 port changed : () -> Cmd msg
 
@@ -39,19 +37,12 @@ init flags =
   , Cmd.none
   )
 
-postSetTrusted : Pb.SetTrustedRequest -> Cmd Msg
-postSetTrusted req =
-  Http.post
-    { url = "/api/SetTrusted"
-    , body = Http.bytesBody "application/octet-stream" <| PE.encode <| Pb.toSetTrustedRequestEncoder req
-    , expect = PD.expectBytes SetTrustedFinished Pb.setTrustedResponseDecoder }
-
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
     SetTrusted trusted ->
       ( { model | working = True , setTrustedError = Nothing }
-      , postSetTrusted {who=Just model.userId, trusted=trusted}
+      , API.postSetTrusted SetTrustedFinished {who=Just model.userId, trusted=trusted}
       )
     SetTrustedFinished (Err e) ->
       ( { model | working = False , setTrustedError = Just (Debug.toString e) }

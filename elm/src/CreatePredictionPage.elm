@@ -6,8 +6,6 @@ import Html.Attributes as HA
 import Html.Events as HE
 import Http
 import Json.Decode as JD
-import Protobuf.Encode as PE
-import Protobuf.Decode as PD
 import Time
 import Bytes.Encode
 import Time
@@ -18,7 +16,7 @@ import CreatePredictionForm as Form
 import Utils
 
 import ViewPredictionPage
-import Http exposing (request)
+import API
 
 port createdPrediction : Int -> Cmd msg
 
@@ -68,13 +66,6 @@ init flags =
   , Cmd.batch [Task.perform Tick Time.now, Cmd.map FormMsg formCmd]
   )
 
-postCreate : Pb.CreatePredictionRequest -> Cmd Msg
-postCreate req =
-  Http.post
-    { url = "/api/CreatePrediction"
-    , body = Http.bytesBody "application/octet-stream" <| PE.encode <| Pb.toCreatePredictionRequestEncoder req
-    , expect = PD.expectBytes CreateFinished Pb.createPredictionResponseDecoder }
-
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
@@ -86,7 +77,7 @@ update msg model =
       case Form.toCreateRequest model.form of
         Just req ->
           ( { model | working = True , createError = Nothing }
-          , postCreate req
+          , API.postCreate CreateFinished req
           )
         Nothing ->
           ( { model | createError = Just "bad form" } -- TODO: improve error message

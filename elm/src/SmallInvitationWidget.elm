@@ -17,6 +17,7 @@ import Field exposing (Field)
 import Time
 import Utils
 import CopyWidget
+import API
 
 type alias Model =
   { auth : Pb.AuthToken
@@ -50,19 +51,12 @@ checkCreationSuccess msg =
         _ -> Nothing
     _ -> Nothing
 
-postCreateInvitation : Pb.CreateInvitationRequest -> Cmd Msg
-postCreateInvitation req =
-  Http.post
-    { url = "/api/CreateInvitation"
-    , body = Http.bytesBody "application/octet-stream" <| PE.encode <| Pb.toCreateInvitationRequestEncoder req
-    , expect = PD.expectBytes CreateInvitationFinished Pb.createInvitationResponseDecoder }
-
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
     CreateInvitation ->
       ( { model | working = True , notification = H.text "" }
-      , postCreateInvitation {notes = ""}  -- TODO(P3): add notes field
+      , API.postCreateInvitation CreateInvitationFinished {notes = ""}  -- TODO(P3): add notes field
       )
     CreateInvitationFinished (Err e) ->
       ( { model | working = False , notification = Utils.redText (Debug.toString e) }

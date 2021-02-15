@@ -19,6 +19,7 @@ import StakeForm
 import Task
 import CopyWidget
 import SmallInvitationWidget
+import API
 
 port changed : () -> Cmd msg
 
@@ -78,20 +79,6 @@ init flags =
     , linkToAuthority = Utils.mustDecodeFromFlags JD.string "linkToAuthority" flags
     }
 
-postStake : Pb.StakeRequest -> Cmd Msg
-postStake req =
-  Http.post
-    { url = "/api/Stake"
-    , body = Http.bytesBody "application/octet-stream" <| PE.encode <| Pb.toStakeRequestEncoder req
-    , expect = PD.expectBytes StakeFinished Pb.stakeResponseDecoder }
-
-postResolve : Pb.ResolveRequest -> Cmd Msg
-postResolve req =
-  Http.post
-    { url = "/api/Resolve"
-    , body = Http.bytesBody "application/octet-stream" <| PE.encode <| Pb.toResolveRequestEncoder req
-    , expect = PD.expectBytes ResolveFinished Pb.resolveResponseDecoder }
-
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
@@ -99,7 +86,7 @@ update msg model =
       ({ model | stakeForm = newState }, Cmd.none)
     Stake {bettorIsASkeptic, bettorStakeCents} ->
       ( { model | working = True , stakeError = Nothing }
-      , postStake {predictionId=model.predictionId, bettorIsASkeptic=bettorIsASkeptic, bettorStakeCents=bettorStakeCents}
+      , API.postStake StakeFinished {predictionId=model.predictionId, bettorIsASkeptic=bettorIsASkeptic, bettorStakeCents=bettorStakeCents}
       )
     StakeFinished (Err e) ->
       ( { model | working = False , stakeError = Just (Debug.toString e) }
@@ -123,7 +110,7 @@ update msg model =
       ( { model | resolutionNotes = s } , Cmd.none )
     Resolve resolution ->
       ( { model | working = True , resolveError = Nothing }
-      , postResolve {predictionId=model.predictionId, resolution=resolution, notes = ""}
+      , API.postResolve ResolveFinished {predictionId=model.predictionId, resolution=resolution, notes = ""}
       )
     ResolveFinished (Err e) ->
       ( { model | working = False , resolveError = Just (Debug.toString e) }
