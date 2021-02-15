@@ -21,7 +21,7 @@ import string
 import sys
 import tempfile
 import time
-from typing import Iterator, Optional, Container, NewType, Callable, NoReturn, Tuple
+from typing import Iterator, Optional, Container, NewType, Callable, NoReturn, Tuple, Iterable, Sequence, TypeVar
 import argparse
 import logging
 import os
@@ -32,6 +32,7 @@ import jinja2
 from PIL import Image, ImageDraw, ImageFont  # type: ignore
 from aiohttp import web
 import google.protobuf.text_format  # type: ignore
+from google.protobuf.message import Message
 import aiosmtplib
 
 from .protobuf import mvp_pb2
@@ -142,6 +143,17 @@ def view_prediction(wstate: mvp_pb2.WorldState, viewer: Optional[mvp_pb2.UserId]
             if (t.bettor == viewer or creator_is_self)
         ],
     )
+
+_M = TypeVar('_M', bound=Message)
+def unique_protos(messages: Iterable[_M]) -> Sequence[_M]:
+    result = []
+    seen_ser = set()
+    for m in messages:
+        ser = m.SerializeToString()
+        if ser not in seen_ser:
+            seen_ser.add(ser)
+            result.append(copy.deepcopy(m))
+    return result
 
 
 class FsStorage:
@@ -448,6 +460,8 @@ class FsBackedServicer(Servicer):
     def Resolve(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.ResolveRequest) -> mvp_pb2.ResolveResponse:
         if token is None:
             return mvp_pb2.ResolveResponse(error=mvp_pb2.ResolveResponse.Error(catchall='must log in to bet'))
+        if request.resolution not in {mvp_pb2.RESOLUTION_YES, mvp_pb2.RESOLUTION_NO, mvp_pb2.RESOLUTION_INVALID, mvp_pb2.RESOLUTION_NONE_YET}:
+            return mvp_pb2.ResolveResponse(error=mvp_pb2.ResolveResponse.Error(catchall='unrecognized resolution'))
 
         with self._storage.mutate() as wstate:
             prediction = wstate.predictions.get(request.prediction_id)
@@ -456,6 +470,22 @@ class FsBackedServicer(Servicer):
             if token.owner != prediction.creator:
                 return mvp_pb2.ResolveResponse(error=mvp_pb2.ResolveResponse.Error(catchall="you are not the creator"))
             prediction.resolutions.append(mvp_pb2.ResolutionEvent(unixtime=int(self._clock()), resolution=request.resolution, notes=request.notes))
+            for stakeholder in unique_protos([prediction.creator, *(trade.bettor for trade in prediction.trades)]):
+                info = get_generic_user_info(wstate, stakeholder)
+                if info is None:
+                    logger.error(f'prediction {request.prediction_id} references nonexistent user {stakeholder}')
+                    continue
+                elif info.email_resolution_notifications and info.email.WhichOneof('email_flow_state_kind') == 'verified':
+                    asyncio.create_task(self._emailer.send(
+                        to=info.email.verified,
+                        subject=f'Prediction resolved: {prediction.prediction!r}',
+                        body=(
+                            f'https://biatob.com/p/{request.prediction_id} has resolved YES' if request.resolution == mvp_pb2.RESOLUTION_YES else
+                            f'https://biatob.com/p/{request.prediction_id} has resolved NO' if request.resolution == mvp_pb2.RESOLUTION_NO else
+                            f'https://biatob.com/p/{request.prediction_id} has resolved INVALID' if request.resolution == mvp_pb2.RESOLUTION_INVALID else
+                            f'https://biatob.com/p/{request.prediction_id} has UN-resolved'
+                        ),
+                    ))
             return mvp_pb2.ResolveResponse(ok=mvp_pb2.VOID)
 
     @checks_token
