@@ -19,9 +19,7 @@ TODO
 --------------
 
 ### P1: make this something _I_ want to use
-- offer to email users to remind them to resolve bets
 - link from My Predictions to the actual prediction pages
-- invitations: let Alice generate a link she can send Bob to let Bob claim her trust, without worrying about whether Bob has an account already
 
 ### P2: make this something other hardcore betting nerds might use
 
