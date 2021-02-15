@@ -792,7 +792,7 @@ class WebServer:
         if auth is None:
             return await self.get_welcome(req)
         else:
-            return await self.get_my_predictions(req)
+            return await self.get_my_stakes(req)
 
     async def get_welcome(self, req: web.Request) -> web.Response:
         auth = self._token_glue.parse_cookie(req)
@@ -847,7 +847,7 @@ class WebServer:
         img.save(buf, format='png')
         return web.Response(content_type='image/png', body=buf.getvalue())
 
-    async def get_my_predictions(self, req: web.Request) -> web.Response:
+    async def get_my_stakes(self, req: web.Request) -> web.Response:
         auth = self._token_glue.parse_cookie(req)
         if auth is None:
             return web.Response(
@@ -861,7 +861,7 @@ class WebServer:
         assert list_my_predictions_resp.WhichOneof('list_my_predictions_result') == 'ok'
         return web.Response(
             content_type='text/html',
-            body=self._jinja.get_template('MyPredictionsPage.html').render(
+            body=self._jinja.get_template('MyStakesPage.html').render(
                 auth_token_pb_b64=pb_b64(auth),
                 predictions_pb_b64=pb_b64(list_my_predictions_resp.ok),
             ))
@@ -931,7 +931,7 @@ class WebServer:
         app.router.add_get('/new', self.get_create_prediction_page)
         app.router.add_get('/p/{prediction_id:[0-9]+}', self.get_view_prediction_page)
         app.router.add_get('/p/{prediction_id:[0-9]+}/embed.png', self.get_prediction_img_embed)
-        app.router.add_get('/my_predictions', self.get_my_predictions)
+        app.router.add_get('/my_stakes', self.get_my_stakes)
         app.router.add_get('/username/{username:[a-zA-Z0-9_-]+}', self.get_username)
         app.router.add_get('/settings', self.get_settings)
         app.router.add_get('/invitation/{username}/{nonce}', self.get_invitation)

@@ -1,4 +1,4 @@
-module MyPredictionsPage exposing (..)
+module MyStakesPage exposing (..)
 
 import Browser
 import Html as H exposing (Html)
@@ -194,7 +194,7 @@ update msg model =
 view : Model -> Html Msg
 view model =
   H.div []
-    [ H.h2 [] [H.text "My Predictions"]
+    [ H.h2 [] [H.text "My Stakes"]
     , H.text "Filter: "
     , viewFilterInput model.filter
     , H.text " Sort: "

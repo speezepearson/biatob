@@ -36,7 +36,7 @@ async def test_smoke(aiohttp_client, app, fs_servicer):
     '/new',
     f'/p/{prediction_id}',
     f'/p/{prediction_id}/embed.png',
-    '/my_predictions',
+    '/my_stakes',
     '/username/alice',
     '/settings',
   ]
