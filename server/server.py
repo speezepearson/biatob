@@ -929,9 +929,24 @@ def pb_b64(message: Optional[Message]) -> Optional[str]:
     return base64.b64encode(message.SerializeToString()).decode('ascii')
 
 
+async def email_daily_backups_forever(storage: FsStorage, emailer: Emailer, recipient_email: str):
+    while True:
+        now = datetime.datetime.now()
+        next_day = datetime.datetime.fromtimestamp(86400 * (1 + now.timestamp()//86400))
+        await asyncio.sleep((next_day - now).total_seconds())
+        logging.info('emailing backups')
+        await emailer.send(
+            to=recipient_email,
+            subject=f'Biatob backup for {now:%Y-%m-%d}',
+            body=google.protobuf.text_format.MessageToString(storage.get()),
+            content_type='text/plain',
+        )
+
 async def email_resolution_reminders_forever(storage: FsStorage, emailer: Emailer, interval: datetime.timedelta = datetime.timedelta(hours=1)):
     interval_secs = interval.total_seconds()
     while True:
+        logging.info('emailing resolution reminders...')
+        n_emails = 0
         cycle_start_time = int(time.time())
         wstate = storage.get()
 
@@ -945,11 +960,14 @@ async def email_resolution_reminders_forever(storage: FsStorage, emailer: Emaile
                 if creator_info.email is None:
                     continue
                 if creator_info.email_reminders_to_resolve and creator_info.email.WhichOneof('email_flow_state_kind') == 'verified':
+                    n_emails += 1
                     await emailer.send(
                         to=creator_info.email.verified,
                         subject='Resolve your prediction: ' + json.dumps(prediction.prediction),
                         body=f'https://biatob.com/p/{prediction_id} became resolvable recently.',
                     )
+
+        logging.info(f'send {n_emails} resolution reminders')
 
         with storage.mutate() as wstate:
             wstate.email_reminders_sent_up_to_unixtime = cycle_start_time
@@ -967,6 +985,7 @@ parser.add_argument("-p", "--port", type=int, default=8080)
 parser.add_argument("--elm-dist", type=Path, default="elm/dist")
 parser.add_argument("--state-path", type=Path, required=True)
 parser.add_argument("--credentials-path", type=Path, required=True)
+parser.add_argument("--email-daily-backups-to", help='send daily backups to this email address')
 
 async def main(args):
     app = web.Application()
@@ -974,12 +993,14 @@ async def main(args):
     credentials = google.protobuf.text_format.Parse(args.credentials_path.read_text(), mvp_pb2.CredentialsConfig())
 
     storage = FsStorage(state_path=args.state_path)
+    # from unittest.mock import Mock
     emailer = Emailer(
         hostname=credentials.smtp.hostname,
         port=credentials.smtp.port,
         username=credentials.smtp.username,
         password=credentials.smtp.password,
         from_addr=credentials.smtp.from_addr,
+        # aiosmtplib_for_testing=Mock(send=lambda *args, **kwargs: (print(args, kwargs), asyncio.sleep(0))[1])
     )
     token_mint = TokenMint(secret_key=credentials.token_signing_secret)
     token_glue = HttpTokenGlue(token_mint=token_mint)
@@ -997,6 +1018,8 @@ async def main(args):
     ).add_to_app(app)
 
     asyncio.get_running_loop().create_task(email_resolution_reminders_forever(storage=storage, emailer=emailer))
+    if args.email_daily_backups_to is not None:
+        asyncio.get_running_loop().create_task(email_daily_backups_forever(storage=storage, emailer=emailer, recipient_email=args.email_daily_backups_to))
 
     # adapted from https://docs.aiohttp.org/en/stable/web_advanced.html#application-runners
     runner = web.AppRunner(app)
