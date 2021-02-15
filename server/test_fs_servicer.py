@@ -40,7 +40,7 @@ def some_create_prediction_request(**kwargs) -> mvp_pb2.CreatePredictionRequest:
 
 def test_Whoami(fs_servicer: FsBackedServicer):
   resp = fs_servicer.Whoami(None, mvp_pb2.WhoamiRequest())
-  assert resp.auth.ByteSize() == 0
+  assert not resp.HasField('auth')
 
   rando_token = new_user_token(fs_servicer, 'rando')
   resp = fs_servicer.Whoami(rando_token, mvp_pb2.WhoamiRequest())
@@ -55,11 +55,11 @@ def test_LogInUsername(fs_servicer: FsBackedServicer):
 
   resp = fs_servicer.LogInUsername(None, mvp_pb2.LogInUsernameRequest(username='rando', password='WRONG'))
   assert resp.WhichOneof('log_in_username_result') == 'error', resp
-  assert resp.ok.ByteSize() == 0
+  assert not resp.HasField('ok')
 
   resp = fs_servicer.LogInUsername(rando_token, mvp_pb2.LogInUsernameRequest(username='rando', password='WRONG'))
   assert resp.WhichOneof('log_in_username_result') == 'error', resp
-  assert resp.ok.ByteSize() == 0
+  assert not resp.HasField('ok')
 
 
 def test_RegisterUsername(fs_servicer: FsBackedServicer):

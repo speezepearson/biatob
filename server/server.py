@@ -566,9 +566,9 @@ class FsBackedServicer(Servicer):
             info = get_generic_user_info(wstate, token.owner)
             if info is None:
                 raise ForgottenTokenError(token)
-            if request.email_reminders_to_resolve is not None:
+            if request.HasField('email_reminders_to_resolve'):
                 info.email_reminders_to_resolve = request.email_reminders_to_resolve.value
-            if request.email_resolution_notifications is not None:
+            if request.HasField('email_resolution_notifications'):
                 info.email_resolution_notifications = request.email_resolution_notifications.value
             return mvp_pb2.UpdateSettingsResponse(ok=info)
 
@@ -597,7 +597,7 @@ class FsBackedServicer(Servicer):
             return mvp_pb2.AcceptInvitationResponse(error=mvp_pb2.AcceptInvitationResponse.Error(catchall='must log in to create an invitation'))
 
         with self._storage.mutate() as wstate:
-            if request.invitation_id is None or request.invitation_id.inviter is None:
+            if (not request.HasField('invitation_id')) or (not request.invitation_id.HasField('inviter')):
                 return mvp_pb2.AcceptInvitationResponse(error=mvp_pb2.AcceptInvitationResponse.Error(catchall='malformed invitation'))
 
             accepter_info = get_generic_user_info(wstate, token.owner)
@@ -611,7 +611,7 @@ class FsBackedServicer(Servicer):
 
             for orig_nonce, orig_invitation in inviter_info.invitations.items():
                 if orig_nonce == request.invitation_id.nonce:
-                    if orig_invitation.accepted_by.ByteSize() != 0:
+                    if orig_invitation.HasField('accepted_by'):
                         return mvp_pb2.AcceptInvitationResponse(error=mvp_pb2.AcceptInvitationResponse.Error(catchall='invitation has already been used'))
                     orig_invitation.accepted_by.CopyFrom(token.owner)
                     orig_invitation.accepted_unixtime = int(self._clock())
@@ -971,7 +971,7 @@ async def email_resolution_reminders_forever(storage: FsStorage, emailer: Emaile
                 if creator_info is None:
                     logging.error(f"prediction {prediction_id}, created by {prediction.creator!r}, has no userinfo in worldstate")
                     continue
-                if creator_info.email is None:
+                if not creator_info.HasField('email'):
                     continue
                 if creator_info.email_reminders_to_resolve and creator_info.email.WhichOneof('email_flow_state_kind') == 'verified':
                     n_emails += 1
