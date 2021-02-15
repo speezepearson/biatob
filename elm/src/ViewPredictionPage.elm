@@ -18,6 +18,7 @@ import Utils
 import StakeForm
 import Task
 import CopyWidget
+import SmallInvitationWidget
 
 port changed : () -> Cmd msg
 
@@ -32,6 +33,7 @@ type alias Model =
   , now : Time.Posix
   , resolutionNotes : String
   , linkToAuthority : String
+  , invitationWidget : Maybe SmallInvitationWidget.Model
   }
 
 type Msg
@@ -43,6 +45,7 @@ type Msg
   | ResolveFinished (Result Http.Error Pb.ResolveResponse)
   | Copy String
   | Tick Time.Posix
+  | InvitationMsg SmallInvitationWidget.Msg
   | Ignore
 
 setPrediction : Pb.UserPredictionView -> Model -> Model
@@ -60,6 +63,7 @@ initBase flags =
     , now = flags.now
     , resolutionNotes = ""
     , linkToAuthority = flags.linkToAuthority
+    , invitationWidget = flags.auth |> Maybe.map (\auth_ -> SmallInvitationWidget.init {auth=auth_, linkToAuthority=flags.linkToAuthority})
     }
   , Task.perform Tick Time.now
   )
@@ -143,6 +147,14 @@ update msg model =
       ( model , CopyWidget.copy s )
     Tick t ->
       ( { model | now = t } , Cmd.none )
+    InvitationMsg widgetMsg ->
+      case model.invitationWidget of
+        Nothing -> Debug.todo "convolutedly impossible"
+        Just widget ->
+          let (newWidget, widgetCmd) = SmallInvitationWidget.update widgetMsg widget in
+          ( { model | invitationWidget = Just newWidget }
+          , Cmd.map InvitationMsg widgetCmd
+          )
     Ignore ->
       ( model , Cmd.none )
 
@@ -161,26 +173,37 @@ viewStakeFormOrExcuse model =
     Just auth_ ->
       if creator.isSelf then
         H.text ""
-      else if not creator.trustsYou then
-        H.span []
-          [ H.text "This user hasn't marked you as trusted! If you think that, in real life, they "
-          , H.i [] [H.text "do"]
-          , H.text " trust you to pay your debts, send them a link to "
-          , H.a [HA.href <| Utils.pathToUserPage <| Utils.mustTokenOwner auth_] [H.text "your user page"]
-          , H.text " and ask them to mark you as trusted."
-          ]
-      else if not creator.isTrusted then
-        H.text <|
-          "You don't trust the prediction creator!"
-          ++ " If you think that you *do* trust them in real life, ask them for a link to their user page,"
-          ++ " and mark them as trusted."
-      else
-        H.div []
-          [ StakeForm.view (stakeFormConfig model) model.stakeForm
-          , case model.stakeError of
-              Just e -> H.div [HA.style "color" "red"] [H.text e]
-              Nothing -> H.text ""
-          ]
+      else case (creator.trustsYou, creator.isTrusted) of
+        (True, True) ->
+          H.div []
+            [ StakeForm.view (stakeFormConfig model) model.stakeForm
+            , case model.stakeError of
+                Just e -> H.div [HA.style "color" "red"] [H.text e]
+                Nothing -> H.text ""
+            ]
+        (False, False) ->
+          H.div []
+            [ H.text <| "You and " ++ creator.displayName ++ " don't trust each other! If, in real life, you "
+            , H.i [] [H.text "do"]
+            , H.text " trust each other to pay your debts, send them an invitation! "
+            , case model.invitationWidget of
+                Nothing -> Debug.todo "convolutedly impossible"
+                Just widget -> SmallInvitationWidget.view widget |> H.map InvitationMsg
+            ]
+        (True, False) ->
+          H.div []
+            [ H.text <| "You don't trust " ++ creator.displayName ++ "."
+            -- TODO(P0)
+            ]
+        (False, True) ->
+          H.div []
+            [ H.text <| creator.displayName ++ " hasn't marked you as trusted! If you think that, in real life, they "
+            , H.i [] [H.text "do"]
+            , H.text " trust you to pay your debts, send them an invitation link: "
+            , case model.invitationWidget of
+                Nothing -> Debug.todo "convolutedly impossible"
+                Just widget -> SmallInvitationWidget.view widget |> H.map InvitationMsg
+            ]
 
 creatorWinningsByBettor : Bool -> List Pb.Trade -> Dict String Int -- TODO: avoid key serialization collisions
 creatorWinningsByBettor resolvedYes trades =

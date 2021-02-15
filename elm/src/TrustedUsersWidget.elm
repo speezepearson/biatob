@@ -42,17 +42,16 @@ type Msg
 
 init : { auth : Pb.AuthToken , trustedUsers : List Pb.UserId , invitations : Dict String Pb.Invitation , linkToAuthority : String } -> ( Model , Cmd Msg )
 init flags =
-  let (widget, widgetCmd) = SmallInvitationWidget.init {auth=flags.auth, linkToAuthority=flags.linkToAuthority} in
   ( { auth = flags.auth
     , trustedUsers = flags.trustedUsers
-    , invitationWidget = widget
+    , invitationWidget = SmallInvitationWidget.init {auth=flags.auth, linkToAuthority=flags.linkToAuthority}
     , invitations = flags.invitations
     , addTrustedUserField = Field.okIfEmpty <| Field.init "" <| \() s -> if String.isEmpty s then Err "must not be empty" else Ok s
     , linkToAuthority = flags.linkToAuthority
     , working = False
     , notification = H.text ""
     }
-  , Cmd.map InvitationMsg widgetCmd
+  , Cmd.none
   )
 
 postSetTrusted : Pb.SetTrustedRequest -> Cmd Msg

@@ -31,16 +31,14 @@ type Msg
   | CreateInvitationFinished (Result Http.Error Pb.CreateInvitationResponse)
   | Copy String
 
-init : { auth : Pb.AuthToken , linkToAuthority : String } -> ( Model , Cmd Msg )
+init : { auth : Pb.AuthToken , linkToAuthority : String } -> Model
 init flags =
-  ( { auth = flags.auth
-    , invitationId = Nothing
-    , linkToAuthority = flags.linkToAuthority
-    , working = False
-    , notification = H.text ""
-    }
-  , Cmd.none
-  )
+  { auth = flags.auth
+  , invitationId = Nothing
+  , linkToAuthority = flags.linkToAuthority
+  , working = False
+  , notification = H.text ""
+  }
 
 checkCreationSuccess : Msg -> Maybe Pb.CreateInvitationResponseResult
 checkCreationSuccess msg =
