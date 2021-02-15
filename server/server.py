@@ -43,6 +43,15 @@ PredictionId = NewType('PredictionId', int)
 try: IMAGE_EMBED_FONT = ImageFont.truetype('FreeSans.ttf', 18)
 except Exception: IMAGE_EMBED_FONT = ImageFont.load_default()
 
+@functools.lru_cache(maxsize=256)
+def render_text(text: str, file_format: str = 'png') -> bytes:
+    size = IMAGE_EMBED_FONT.getsize(text)
+    img = Image.new('RGBA', size, color=(255,255,255,0))
+    ImageDraw.Draw(img).text((0,0), text, fill=(0,128,0,255), font=IMAGE_EMBED_FONT)
+    buf = io.BytesIO()
+    img.save(buf, format=file_format)
+    return buf.getvalue()
+
 MAX_LEGAL_STAKE_CENTS = 5_000_00
 
 class UsernameAlreadyRegisteredError(Exception): pass
@@ -840,12 +849,8 @@ class WebServer:
             return f'${n//100}' + ('' if n%100 == 0 else f'.{n%100 :02d}')
         prediction = get_prediction_resp.prediction
         text = f'[{format_cents(prediction.maximum_stake_cents)} @ {round(prediction.certainty.low*100)}-{round(prediction.certainty.high*100)}%]'
-        size = IMAGE_EMBED_FONT.getsize(text)
-        img = Image.new('RGBA', size, color=(255,255,255,0))
-        ImageDraw.Draw(img).text((0,0), text, fill=(0,128,0,255), font=IMAGE_EMBED_FONT)
-        buf = io.BytesIO()
-        img.save(buf, format='png')
-        return web.Response(content_type='image/png', body=buf.getvalue())
+
+        return web.Response(content_type='image/png', body=render_text(text=text, file_format='png'))
 
     async def get_my_stakes(self, req: web.Request) -> web.Response:
         auth = self._token_glue.parse_cookie(req)
