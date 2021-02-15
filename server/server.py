@@ -18,6 +18,7 @@ from pathlib import Path
 import random
 import secrets
 import string
+import sys
 import tempfile
 import time
 from typing import Iterator, Optional, Container, NewType, Callable, NoReturn, Tuple
@@ -264,6 +265,7 @@ class Servicer(abc.ABC):
     def SetEmail(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.SetEmailRequest) -> mvp_pb2.SetEmailResponse: pass
     def VerifyEmail(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.VerifyEmailRequest) -> mvp_pb2.VerifyEmailResponse: pass
     def GetSettings(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.GetSettingsRequest) -> mvp_pb2.GetSettingsResponse: pass
+    def UpdateSettings(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.UpdateSettingsRequest) -> mvp_pb2.UpdateSettingsResponse: pass
 
 
 def checks_token(f):
@@ -553,6 +555,21 @@ class FsBackedServicer(Servicer):
             logger.warn(f'valid-looking but mangled token: {token!r}')
             return mvp_pb2.GetSettingsResponse(error=mvp_pb2.GetSettingsResponse.Error(catchall='your token is mangled, bro'))  # TODO
 
+    @checks_token
+    def UpdateSettings(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.UpdateSettingsRequest) -> mvp_pb2.UpdateSettingsResponse:
+        if token is None:
+            return mvp_pb2.UpdateSettingsResponse(error=mvp_pb2.UpdateSettingsResponse.Error(catchall='must log in to update your settings'))
+
+        with self._storage.mutate() as wstate:
+            info = get_generic_user_info(wstate, token.owner)
+            if info is None:
+                raise ForgottenTokenError(token)
+            if request.email_reminders_to_resolve is not None:
+                info.email_reminders_to_resolve = request.email_reminders_to_resolve.value
+            if request.email_resolution_notifications is not None:
+                info.email_resolution_notifications = request.email_resolution_notifications.value
+            return mvp_pb2.UpdateSettingsResponse(ok=info)
+
 
 from typing import TypeVar, Type, Tuple, Union, Awaitable
 from google.protobuf.message import Message
@@ -667,6 +684,8 @@ class ApiServer:
         return proto_response(self._servicer.VerifyEmail(token=self._token_glue.parse_cookie(http_req), request=await parse_proto(http_req, mvp_pb2.VerifyEmailRequest)))
     async def GetSettings(self, http_req: web.Request) -> web.Response:
         return proto_response(self._servicer.GetSettings(token=self._token_glue.parse_cookie(http_req), request=await parse_proto(http_req, mvp_pb2.GetSettingsRequest)))
+    async def UpdateSettings(self, http_req: web.Request) -> web.Response:
+        return proto_response(self._servicer.UpdateSettings(token=self._token_glue.parse_cookie(http_req), request=await parse_proto(http_req, mvp_pb2.UpdateSettingsRequest)))
 
     def add_to_app(self, app: web.Application) -> None:
         app.router.add_post('/api/Whoami', self.Whoami)
@@ -683,6 +702,7 @@ class ApiServer:
         app.router.add_post('/api/SetEmail', self.SetEmail)
         app.router.add_post('/api/VerifyEmail', self.VerifyEmail)
         app.router.add_post('/api/GetSettings', self.GetSettings)
+        app.router.add_post('/api/UpdateSettings', self.UpdateSettings)
         self._token_glue.add_to_app(app)
 
 
@@ -830,6 +850,39 @@ def pb_b64(message: Optional[Message]) -> Optional[str]:
         return None
     return base64.b64encode(message.SerializeToString()).decode('ascii')
 
+
+async def email_resolution_reminders_forever(storage: FsStorage, emailer: Emailer, interval: datetime.timedelta = datetime.timedelta(hours=1)):
+    interval_secs = interval.total_seconds()
+    while True:
+        cycle_start_time = int(time.time())
+        wstate = storage.get()
+
+        for prediction_id, prediction in wstate.predictions.items():
+            resolved_recently = wstate.email_reminders_sent_up_to_unixtime <= prediction.resolves_at_unixtime < cycle_start_time
+            if resolved_recently:
+                creator_info = get_generic_user_info(wstate, prediction.creator)
+                if creator_info is None:
+                    logging.error(f"prediction {prediction_id}, created by {prediction.creator!r}, has no userinfo in worldstate")
+                    continue
+                if creator_info.email is None:
+                    continue
+                if creator_info.email_reminders_to_resolve and creator_info.email.WhichOneof('email_flow_state_kind') == 'verified':
+                    await emailer.send(
+                        to=creator_info.email.verified,
+                        subject='Resolve your prediction: ' + json.dumps(prediction.prediction),
+                        body=f'https://biatob.com/p/{prediction_id} became resolvable recently.',
+                    )
+
+        with storage.mutate() as wstate:
+            wstate.email_reminders_sent_up_to_unixtime = cycle_start_time
+
+        next_cycle_time = cycle_start_time + interval_secs
+        time_to_next_cycle = next_cycle_time - time.time()
+        if time_to_next_cycle < interval_secs / 2:
+            logger.warn(f'tight on time: sending resolution-reminders took {time.time() - cycle_start_time} seconds out of {interval_secs}')
+        await asyncio.sleep(time_to_next_cycle)
+
+
 parser = argparse.ArgumentParser()
 parser.add_argument("-H", "--host", default="localhost")
 parser.add_argument("-p", "--port", type=int, default=8080)
@@ -837,8 +890,7 @@ parser.add_argument("--elm-dist", type=Path, default="elm/dist")
 parser.add_argument("--state-path", type=Path, required=True)
 parser.add_argument("--credentials-path", type=Path, required=True)
 
-if __name__ == '__main__':
-    args = parser.parse_args()
+async def main(args):
     app = web.Application()
 
     credentials = google.protobuf.text_format.Parse(args.credentials_path.read_text(), mvp_pb2.CredentialsConfig())
@@ -866,4 +918,20 @@ if __name__ == '__main__':
         servicer=servicer,
     ).add_to_app(app)
 
-    web.run_app(app, host=args.host, port=args.port)
+    asyncio.get_running_loop().create_task(email_resolution_reminders_forever(storage=storage, emailer=emailer))
+
+    # adapted from https://docs.aiohttp.org/en/stable/web_advanced.html#application-runners
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, host=args.host, port=args.port)
+    await site.start()
+    try:
+        while True:
+            await asyncio.sleep(3600)
+    except KeyboardInterrupt:
+        print('Shutting down server...', file=sys.stderr)
+        await runner.cleanup()
+        print('...server shut down.', file=sys.stderr)
+
+if __name__ == '__main__':
+    asyncio.run(main(parser.parse_args()))

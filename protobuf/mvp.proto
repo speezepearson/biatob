@@ -67,6 +67,8 @@ message WorldState {
 
   map<uint32, Prediction> predictions = 2;
 
+  uint32 email_reminders_sent_up_to_unixtime = 3;
+
   // message GoogleOauthInfo {
   //   GenericUserInfo info = 1;
   // }
@@ -328,6 +330,21 @@ message GetSettingsRequest {
 message GetSettingsResponse {
   oneof get_settings_result {
     UsernameInfo ok_username = 1;
+    Error error = 2;
+  }
+  message Error {
+    string catchall = 1;
+  }
+}
+
+message MaybeBool { bool value = 1; }
+message UpdateSettingsRequest {
+  MaybeBool email_reminders_to_resolve = 1;
+  MaybeBool email_resolution_notifications = 2;
+}
+message UpdateSettingsResponse {
+  oneof update_settings_result {
+    GenericUserInfo ok = 1;
     Error error = 2;
   }
   message Error {

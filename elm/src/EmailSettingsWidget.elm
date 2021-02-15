@@ -41,6 +41,7 @@ type Msg
   | VerifyEmailFinished (Result Http.Error Pb.VerifyEmailResponse)
   | ToggleEmailRemindersToResolve
   | ToggleEmailResolutionNotifications
+  | UpdateSettingsFinished (Result Http.Error Pb.UpdateSettingsResponse)
 
 initNoEmailYet : Registration
 initNoEmailYet =
@@ -96,11 +97,52 @@ postVerifyEmail req =
     , expect = PD.expectBytes VerifyEmailFinished Pb.verifyEmailResponseDecoder
     }
 
+postUpdateSettings : Pb.UpdateSettingsRequest -> Cmd Msg
+postUpdateSettings req =
+  Http.post
+    { url = "/api/UpdateSettings"
+    , body = Http.bytesBody "application/octet-stream" <| PE.encode <| Pb.toUpdateSettingsRequestEncoder req
+    , expect = PD.expectBytes UpdateSettingsFinished Pb.updateSettingsResponseDecoder
+    }
+
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
-    ToggleEmailRemindersToResolve -> Debug.todo "TODO"
+    ToggleEmailRemindersToResolve ->
+      ( { model | working = True , notification = H.text "" }
+      , postUpdateSettings
+          { emailRemindersToResolve = Just <| Pb.MaybeBool <| not <| model.emailRemindersToResolve
+          , emailResolutionNotifications = Nothing
+          }
+      )
     ToggleEmailResolutionNotifications -> Debug.todo "TODO"
+      ( { model | working = True , notification = H.text "" }
+      , postUpdateSettings
+          { emailRemindersToResolve = Nothing
+          , emailResolutionNotifications = Just <| Pb.MaybeBool <| not <| model.emailResolutionNotifications
+          }
+      )
+
+    UpdateSettingsFinished (Err e) ->
+      case model.registration of
+        NoEmailYet m ->
+          ( { model | working = False , notification = Utils.redText (Debug.toString e) }
+          , Cmd.none
+          )
+        _ -> ( model , Cmd.none )
+
+    UpdateSettingsFinished (Ok resp) ->
+      case resp.updateSettingsResult of
+        Just (Pb.UpdateSettingsResultOk newUserInfo) ->
+          initFromUserInfo newUserInfo
+        Just (Pb.UpdateSettingsResultError e) ->
+          ( { model | working = False , notification = Utils.redText (Debug.toString e) }
+          , Cmd.none
+          )
+        Nothing ->
+          ( { model | working = False , notification = Utils.redText "Invalid server response (neither Ok nor Error in protobuf)" }
+          , Cmd.none
+          )
 
     SetEmailField s ->
       case model.registration of
@@ -128,7 +170,7 @@ update msg model =
           , Cmd.none
           )
         _ -> ( model , Cmd.none )
-    
+
     SetEmailFinished (Ok resp) ->
       case model.registration of
         NoEmailYet m ->
@@ -225,18 +267,18 @@ view model =
         , H.div []
             [ H.input
                 [ HA.type_ "checkbox", HA.checked model.emailRemindersToResolve
-                , HA.disabled True -- TODO
+                , HA.disabled model.working
                 , HE.onInput (always ToggleEmailRemindersToResolve)
                 ] []
-            , H.text " (coming soon) Email reminders to resolve your predictions, when it's time?"
+            , H.text " Email reminders to resolve your predictions, when it's time?"
             ]
         , H.div []
             [ H.input
                 [ HA.type_ "checkbox", HA.checked model.emailResolutionNotifications
-                , HA.disabled True -- TODO
+                , HA.disabled model.working
                 , HE.onInput (always ToggleEmailResolutionNotifications)
                 ] []
-            , H.text " (coming soon) Email notifications when predictions you've bet on resolve?"
+            , H.text " Email notifications when predictions you've bet on resolve?"
             ]
         , H.br [] []
         , model.notification
