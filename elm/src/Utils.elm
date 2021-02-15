@@ -103,6 +103,9 @@ mustPredictionsById {predictions} = predictions |> Dict.map (\_ v -> must "no nu
 mustMapValues : Dict comparable (Maybe v) -> Dict comparable v
 mustMapValues d = d |> Dict.map (\_ v -> must "no null values are allowed in a map" v)
 
+mustInviter : Pb.InvitationId -> Pb.UserId
+mustInviter {inviter} = must "all invitations must have inviters" inviter
+
 currentResolution : Pb.UserPredictionView -> Pb.Resolution
 currentResolution prediction =
   List.head (List.reverse prediction.resolutions)
@@ -117,6 +120,15 @@ resolutionIsTerminal res =
     Pb.ResolutionNoneYet -> False
     Pb.ResolutionInvalid -> True
     Pb.ResolutionUnrecognized_ _ -> Debug.todo "unrecognized resolution"
+
+invitationPath : Pb.InvitationId -> String
+invitationPath id =
+  "/invitation/"
+  ++ (case mustUserKind <| mustInviter id of
+      Pb.KindUsername username -> username
+     )
+  ++ "/"
+  ++ id.nonce
 
 unixtimeToTime : Int -> Time.Posix
 unixtimeToTime n = Time.millisToPosix (n*1000)

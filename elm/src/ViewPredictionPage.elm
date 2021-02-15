@@ -382,7 +382,7 @@ view model =
 viewEmbedInfo : Model -> Html Msg
 viewEmbedInfo model =
   let
-    linkUrl = "/p/" ++ String.fromInt model.predictionId
+    linkUrl = "/p/" ++ String.fromInt model.predictionId  -- TODO(P0): needs origin to get stuck in text field
     imgUrl = "/p/" ++ String.fromInt model.predictionId ++ "/embed.png"
     imgStyles = [("max-height","1.5ex"), ("border-bottom","1px solid #008800")]
     imgCode =

@@ -14,12 +14,16 @@ import Utils
 
 import Field exposing (Field)
 import Time
+import Utils
+
+import SmallInvitationWidget
 
 port changed : () -> Cmd msg
 
 type alias Model =
   { auth : Pb.AuthToken
   , trustedUsers : List Pb.UserId
+  , invitationWidget : SmallInvitationWidget.Model
   , invitations : Dict String Pb.Invitation
   , addTrustedUserField : Field () String
   , working : Bool
@@ -31,19 +35,20 @@ type Msg
   | SetAddTrustedField String
   | AddTrusted
   | SetTrustedFinished (Result Http.Error Pb.SetTrustedResponse)
-  | CreateInvitation
-  | CreateInvitationFinished (Result Http.Error Pb.CreateInvitationResponse)
+  | InvitationMsg SmallInvitationWidget.Msg
 
 init : { auth : Pb.AuthToken , trustedUsers : List Pb.UserId , invitations : Dict String Pb.Invitation } -> ( Model , Cmd Msg )
 init flags =
+  let (widget, widgetCmd) = SmallInvitationWidget.init {auth=flags.auth} in
   ( { auth = flags.auth
     , trustedUsers = flags.trustedUsers
+    , invitationWidget = widget
     , invitations = flags.invitations
     , addTrustedUserField = Field.okIfEmpty <| Field.init "" <| \() s -> if String.isEmpty s then Err "must not be empty" else Ok s
     , working = False
     , notification = H.text ""
     }
-  , Cmd.none
+  , Cmd.map InvitationMsg widgetCmd
   )
 
 postSetTrusted : Pb.SetTrustedRequest -> Cmd Msg
@@ -52,13 +57,6 @@ postSetTrusted req =
     { url = "/api/SetTrusted"
     , body = Http.bytesBody "application/octet-stream" <| PE.encode <| Pb.toSetTrustedRequestEncoder req
     , expect = PD.expectBytes SetTrustedFinished Pb.setTrustedResponseDecoder }
-
-postCreateInvitation : Pb.CreateInvitationRequest -> Cmd Msg
-postCreateInvitation req =
-  Http.post
-    { url = "/api/CreateInvitation"
-    , body = Http.bytesBody "application/octet-stream" <| PE.encode <| Pb.toCreateInvitationRequestEncoder req
-    , expect = PD.expectBytes CreateInvitationFinished Pb.createInvitationResponseDecoder }
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
@@ -103,28 +101,14 @@ update msg model =
           ( { model | working = False , notification = Utils.redText "Invalid server response (neither Ok nor Error in protobuf)" }
           , Cmd.none
           )
-    CreateInvitation ->
-      ( { model | working = True , notification = H.text "" }
-      , postCreateInvitation {notes = ""}  -- TODO(P3): add notes field
+    InvitationMsg widgetMsg ->
+      let (widget, widgetCmd) = SmallInvitationWidget.update widgetMsg model.invitationWidget in
+      ( { model | invitationWidget = widget }
+        |> case SmallInvitationWidget.checkCreationSuccess widgetMsg of
+              Just result -> \m -> { m | invitations = m.invitations |> D.insert result.nonce (Utils.mustCreateInvitationResultInvitation result) }
+              _ -> identity
+      , Cmd.map InvitationMsg widgetCmd
       )
-    CreateInvitationFinished (Err e) ->
-      ( { model | working = False , notification = Utils.redText (Debug.toString e) }
-      , Cmd.none
-      )
-    CreateInvitationFinished (Ok resp) ->
-      case resp.createInvitationResult of
-        Just (Pb.CreateInvitationResultOk result) ->
-          ( { model | working = False , invitations = model.invitations |> D.insert result.nonce (Utils.mustCreateInvitationResultInvitation result)}
-          , Cmd.none
-          )
-        Just (Pb.CreateInvitationResultError e) ->
-          ( { model | working = False , notification = Utils.redText (Debug.toString e) }
-          , Cmd.none
-          )
-        Nothing ->
-          ( { model | working = False , notification = Utils.redText "Invalid server response (neither Ok nor Error in protobuf)" }
-          , Cmd.none
-          )
 
 view : Model -> Html Msg
 view model =
@@ -145,9 +129,12 @@ view model =
             ])
         <| model.trustedUsers
     , H.br [] []
-    , H.strong [] [H.text "Your invitations: "]
+    , H.strong [] [H.text "Invitations: "]
+    , SmallInvitationWidget.view model.invitationWidget |> H.map InvitationMsg
+    , H.br [] []
+    , H.text "Outstanding:"
     , if D.isEmpty model.invitations then
-        H.text "none yet!"
+        H.text " none yet!"
       else
         H.ul []
         <| List.map (\(nonce, invitation) ->
@@ -162,20 +149,18 @@ view model =
               Nothing ->
                 H.li []
                   [ let
+                      id : Pb.InvitationId
+                      id = { inviter = model.auth.owner , nonce = nonce }
                       username = case Utils.mustUserKind <| Utils.mustTokenOwner model.auth of
                          Pb.KindUsername u -> u
                     in
-                    H.a [HA.href <| "/invitation/" ++ username ++ "/" ++ nonce] [H.text "link"]
+                    H.a [HA.href <| Utils.invitationPath id] [H.text "link"]
                   , H.text <| " (created " ++ Utils.dateStr Time.utc (Utils.unixtimeToTime invitation.createdUnixtime) ++ ")"
                   ]
                 )
         <| List.sortBy (\(_, invitation) -> -invitation.createdUnixtime)
         <| D.toList
         <| model.invitations
-    , H.br [] []
-    , H.button [HE.onClick CreateInvitation] [H.text "New invitation"]
-    , H.br [] []
-    , H.text "Send the above links to people you trust in real life; when they click the link, that will tell Biatob that you trust them."
     ]
 
 subscriptions : Model -> Sub Msg
