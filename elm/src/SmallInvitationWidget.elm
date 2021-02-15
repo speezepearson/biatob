@@ -93,10 +93,9 @@ view model =
       H.details [HA.style "display" "inline", HA.style "outline" "1px solid #cccccc"]
         [ H.summary [] [H.text "?"]
         , H.text <|
-            "Recall that you can only bet against people you trust;"
-            ++ " an invitation link is a one-time-use code that proves you trust whoever has it."
-            ++ " The intended use is, you create a code, message it to somebody you trust"
-            ++ " (however you normally message them), and they click the link to claim your trust."
+            "An invitation link is a one-time-use code that you send to people you trust, in order to let Biatob know you trust them."
+            ++ " The intended use is: you create an invitation; you send it to somebody you trust;"
+            ++ " they click the link; and from then on, Biatob knows you trust each other."
         ]
   in
   H.span []
