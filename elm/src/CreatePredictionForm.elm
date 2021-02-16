@@ -12,7 +12,6 @@ import Field exposing (Field)
 import Biatob.Proto.Mvp as Pb
 import Iso8601
 
-howToWriteGoodBetsUrl = "http://example.com/TODO"
 maxLegalStakeCents = 500000
 epsilon = 0.000001
 
@@ -112,6 +111,17 @@ view model =
                 , HA.disabled model.disabled
                 , HA.class "prediction-field"
                 ] []
+            , H.details []
+                [ H.summary [HA.style "text-align" "right"] [H.text "Advice"]
+                , H.text "A good prediction is ", H.i [] [H.text "objective"], H.text " and ", H.i [] [H.text "verifiable,"]
+                , H.text " ideally about ", H.i [] [H.text "experiences you anticipate having."]
+                , H.br [] []
+                , H.text " \"Gun violence will increase in the U.S. in 2022\" is extremely ill-defined."
+                , H.br [] []
+                , H.text " \"There will be at least 40,000 gun deaths in the U.S. in 2022\" is better, but it's still not ", H.i [] [H.text "verifiable"], H.text " (by you)."
+                , H.br [] []
+                , H.text " \"The CDC will report at least 40,000 gun deaths for 2022, as stated on https://www.cdc.gov/nchs/fastats/injury.htm\" is very good!"
+                ]
           ]
         , H.li []
             [ H.text "I think this as at least a"
