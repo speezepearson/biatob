@@ -11,13 +11,15 @@ import Biatob.Proto.Mvp as Pb
 import Utils
 
 import API
+import SmallInvitationWidget
 
 port changed : () -> Cmd msg
 
+type AuthState = LoggedIn Pb.AuthToken SmallInvitationWidget.Model | LoggedOut
 type alias Model =
   { userId : Pb.UserId
   , userView : Pb.UserUserView
-  , auth : Maybe Pb.AuthToken
+  , authState : AuthState
   , working : Bool
   , setTrustedError : Maybe String
   }
@@ -25,12 +27,15 @@ type alias Model =
 type Msg
   = SetTrusted Bool
   | SetTrustedFinished (Result Http.Error Pb.SetTrustedResponse)
+  | InvitationMsg SmallInvitationWidget.Msg
 
 init : JD.Value -> (Model, Cmd Msg)
 init flags =
   ( { userId = Utils.mustDecodePbFromFlags Pb.userIdDecoder "userIdPbB64" flags
     , userView = Utils.mustDecodePbFromFlags Pb.userUserViewDecoder "userViewPbB64" flags
-    , auth = Utils.decodePbFromFlags Pb.authTokenDecoder "authTokenPbB64" flags
+    , authState = case Utils.decodePbFromFlags Pb.authTokenDecoder "authTokenPbB64" flags of
+        Just auth -> LoggedIn auth (SmallInvitationWidget.init {auth=auth, linkToAuthority=Utils.mustDecodeFromFlags JD.string "linkToAuthority" flags})
+        Nothing -> LoggedOut
     , working = False
     , setTrustedError = Nothing
     }
@@ -62,6 +67,15 @@ update msg model =
           ( { model | working = False , setTrustedError = Just "Invalid server response (neither Ok nor Error in protobuf)" }
           , Cmd.none
           )
+    InvitationMsg widgetMsg ->
+      case model.authState of
+        LoggedIn auth widget ->
+          let (newWidget, widgetCmd) = SmallInvitationWidget.update widgetMsg widget in
+          ( { model | authState = LoggedIn auth newWidget }
+          , Cmd.map InvitationMsg widgetCmd
+          )
+        LoggedOut -> Debug.todo "bad state"
+
 
 view : Model -> Html Msg
 view model =
@@ -74,10 +88,10 @@ view model =
           , H.a [HA.href "/settings"] [H.text "your settings"]
           , H.text "?"
           ]
-      else case model.auth of
-        Nothing ->
-          H.text "Log in to see your trust level with this user."
-        Just token ->
+      else case model.authState of
+        LoggedOut ->
+          H.text "Log in to see your relationship with this user."
+        LoggedIn _ invitationWidget ->
           H.div []
             [ if model.userView.trustsYou then
                 H.text "This user trusts you! :)"
@@ -85,9 +99,8 @@ view model =
                 H.div []
                   [ H.text "This user hasn't marked you as trusted! If you think that, in real life, they "
                   , H.i [] [H.text "do"]
-                  , H.text " trust you to pay your debts, send them a link to "
-                  , H.a [HA.href <| Utils.pathToUserPage <| Utils.mustTokenOwner token] [H.text "your user page"]
-                  , H.text " and ask them to mark you as trusted."
+                  , H.text " trust you, send them an invitation: "
+                  , SmallInvitationWidget.view invitationWidget |> H.map InvitationMsg
                   ]
             , H.br [] []
             , if model.userView.isTrusted then

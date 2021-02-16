@@ -5,6 +5,9 @@
   <title>Main</title>
   <link rel="shortcut icon"type="image/x-icon" href="data:image/x-icon;,">
   <script type="text/javascript" src="/elm/ViewUserPage.js"></script>
+  <script type="text/javascript">
+    {% include 'Utils.js' %}
+  </script>
   <link rel="stylesheet" href="/static/base.css">
 </head>
 
@@ -16,11 +19,13 @@
     var authTokenPbB64 = {{ auth_token_pb_b64 | tojson }};
     var userIdPbB64 = {{ user_id_pb_b64 | tojson }};
     var userViewPbB64 = {{ user_view_pb_b64 | tojson }};
+    var linkToAuthority = window.origin;
 
     var main = Elm.ViewUserPage.init({
       node: document.getElementById('main'),
-      flags: {authTokenPbB64, userIdPbB64, userViewPbB64},
+      flags: {authTokenPbB64, userIdPbB64, userViewPbB64, linkToAuthority},
     });
+    subscribeToCopy(main);
     main.ports.changed.subscribe((predictionId) => {
       window.location.reload();
     });
