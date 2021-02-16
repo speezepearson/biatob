@@ -4,7 +4,6 @@ from pathlib import Path
 import random
 from typing import Tuple
 
-import bcrypt  # type: ignore
 import pytest
 
 from .protobuf import mvp_pb2
