@@ -145,17 +145,17 @@ view model =
                 [ H.summary [HA.style "text-align" "right"] [H.text "Confusing?"]
                 , H.p [] [H.text "\"Why do I need to enter ", H.i [] [H.text "two"], H.text " probabilities?\" Because some of your friends might be better-informed than you!"]
                 , H.p [] [H.text <|
-                    "Consider: ", H.strong [] [H.text "Goofus"], H.text <| " publishes a 50% chance that Smith will win the election."
-                    ++ " Goofus's friend Nate thinks Smith has more like a 60% chance, and since Nate knows more than Goofus about politics,"
+                    "Consider: ", H.strong [] [H.text "Goofus"], H.text <| " publishes a 70% chance that Smith will win the election."
+                    ++ " Goofus's friend Nate thinks Smith has more like an 80% chance, and since Nate knows more than Goofus about politics,"
                     ++ " on average he is guaranteed to take money from Goofus. Also, a couple days before Goofus configured betting to close,"
                     ++ " Smith's opponent is seen kicking a puppy. Some of Goofus's friends, who were previously on the fence, see that Smith has a clear edge,"
-                    ++ " and bet against Goofus at his published 50% odds."
+                    ++ " and bet against Goofus at his published 70% odds."
                     ++ " Goofus, looking into the future and seeing that he'll consistently lose money to his smarter or using-future-information friends,"
                     ++ " decides not to put his money where his mouth is, and therefore nobody takes him seriously."
                     ]
                 , H.p [] [H.text <|
-                    "Meanwhile, ", H.strong [] [H.text "Gallant"], H.text <| " publishes a \"30-70%\" chance that Smith will win --"
-                    ++ " so he'll bet $3 against $7 that Smith will win, or $3 against $7 that Smith will lose."
+                    "Meanwhile, ", H.strong [] [H.text "Gallant"], H.text <| " publishes a \"50-90%\" chance that Smith will win --"
+                    ++ " so he'll bet $5 against $5 that Smith will win, or $1 against $9 that Smith will lose."
                     ++ " Nate can't reliably take Gallant's money by taking either of those wagers. And the puppy-kicking episode might bump Smith up a few percentage points,"
                     ++ " but that's not enough to make Gallant regret offering either of those wagers."
                     ++ " Gallant makes a modest sum off a few of his strongly-opinionated friends, earns his peers' respect,"
