@@ -74,8 +74,19 @@
   <hr />
   <h2>Cool! How do I use it?</h2>
   <ul>
-    <li> Create an account using the navbar at the top of the page. </li>
-    <li> Go to <a href="/new">the New Prediction page</a> to create a bet. </li>
+    <li> Create an account:
+      <div id="welcome-page-auth-widget"></div>
+      <script type="text/javascript" src="/elm/AuthWidget.js"></script>
+      <script type="text/javascript">
+        var authTokenPbB64 = {{ auth_token_pb_b64 | tojson }};
+        var authWidget = Elm.AuthWidget.init({
+          node: document.getElementById('welcome-page-auth-widget'),
+          flags: {authTokenPbB64},
+        })
+        authWidget.ports.authChanged.subscribe(() => window.location = "/welcome#postcreateaccount");
+      </script>
+   </li>
+    <li> <a name="postcreateaccount"></a> Go to <a href="/new">the New Prediction page</a> to create a bet. </li>
     <li> Advertise your bet &mdash; post the link on Facebook, include a cute little embeddable image in your blog, whatever. </li>
     <li> When your prediction resolves to Yes or No, settle up with your friends! </li>
   </ul>
