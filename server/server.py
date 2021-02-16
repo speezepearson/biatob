@@ -407,9 +407,9 @@ class FsBackedServicer(Servicer):
         if not request.certainty:
             logger.warn('invalid CreatePredictionRequest', request=request)
             return mvp_pb2.CreatePredictionResponse(error=mvp_pb2.CreatePredictionResponse.Error(catchall='must have a certainty'))
-        if not (request.certainty.low < request.certainty.high):
+        if not (request.certainty.low <= request.certainty.high):
             logger.warn('invalid CreatePredictionRequest', request=request)
-            return mvp_pb2.CreatePredictionResponse(error=mvp_pb2.CreatePredictionResponse.Error(catchall='certainty must have low < high'))
+            return mvp_pb2.CreatePredictionResponse(error=mvp_pb2.CreatePredictionResponse.Error(catchall='certainty must have low <= high'))
         if not (request.maximum_stake_cents <= MAX_LEGAL_STAKE_CENTS):
             logger.warn('invalid CreatePredictionRequest', request=request)
             return mvp_pb2.CreatePredictionResponse(error=mvp_pb2.CreatePredictionResponse.Error(catchall=f'stake must not exceed ${MAX_LEGAL_STAKE_CENTS//100}'))
