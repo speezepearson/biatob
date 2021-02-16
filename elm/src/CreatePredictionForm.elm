@@ -131,6 +131,27 @@ view model =
                 , HA.disabled model.disabled
                 ] []
             , H.text "% chance."
+            , H.details []
+                [ H.summary [HA.style "text-align" "right"] [H.text "Confusing?"]
+                , H.p [] [H.text "\"Why do I need to enter ", H.i [] [H.text "two"], H.text " probabilities?\" Because some of your friends might be better-informed than you!"]
+                , H.p [] [H.text <|
+                    "Consider: ", H.strong [] [H.text "Goofus"], H.text <| " publishes a 50% chance that Smith will win the election."
+                    ++ " Goofus's friend Nate thinks Smith has more like a 60% chance, and since Nate knows more than Goofus about politics,"
+                    ++ " on average he is guaranteed to take money from Goofus. Also, a couple days before Goofus configured betting to close,"
+                    ++ " Smith's opponent is seen kicking a puppy. Some of Goofus's friends, who were previously on the fence, see that Smith has a clear edge,"
+                    ++ " and bet against Goofus at his published 50% odds."
+                    ++ " Goofus, looking into the future and seeing that he'll consistently lose money to his smarter or using-future-information friends,"
+                    ++ " decides not to put his money where his mouth is, and therefore nobody takes him seriously."
+                    ]
+                , H.p [] [H.text <|
+                    "Meanwhile, ", H.strong [] [H.text "Gallant"], H.text <| " publishes a \"30-70%\" chance that Smith will win --"
+                    ++ " so he'll bet $3 against $7 that Smith will win, or $3 against $7 that Smith will lose."
+                    ++ " Nate can't reliably take Gallant's money by taking either of those wagers. And the puppy-kicking episode might bump Smith up a few percentage points,"
+                    ++ " but that's not enough to make Gallant regret offering either of those wagers."
+                    ++ " Gallant makes a modest sum off a few of his strongly-opinionated friends, earns his peers' respect,"
+                    ++ " and is glad he offered to bet on his beliefs."
+                    ]
+                ]
             ]
         , H.li []
             [ H.text "I'm willing to bet up to $"
@@ -164,7 +185,7 @@ view model =
                         (Just skep, Just bel)  -> H.div [] [H.text "(In other words, I'd happily bet ", H.strong [] [H.text skep], H.text " that this will happen, or ", H.strong [] [H.text bel], H.text " that it won't.)"]
             ]
         , H.li []
-            [ H.text "This offer is only open for "
+            [ H.text "This offer is open for "
             , Field.inputFor SetOpenForN {unit=Field.parse () model.openForUnitField |> Result.withDefault Weeks, resolvesAt=Field.parse {now=model.now} model.resolvesAtField |> Result.toMaybe} model.openForSecondsField
                 H.input
                 [ HA.type_ "number", HA.min "1"
@@ -179,6 +200,13 @@ view model =
                 , H.option [] [H.text "days"]
                 ]
             , H.text "."
+            , H.details []
+                [ H.summary [HA.style "text-align" "right"] [H.text "Confusing?"]
+                , H.text <| "If it's 2021-01-01, and you're betting on whether [some thing] will happen by 2022-01-01,"
+                    ++ " you don't want people to be able to wait until 2021-12-31 before betting against you."
+                    ++ " You might say \"This offer is only open for 2 weeks,\" to give your friends time to bet,"
+                    ++ " without letting them get ", H.i [] [H.text "too much"], H.text " extra information."
+                ]
             ]
         , H.li []
             [ H.text "Special rules (e.g. implicit assumptions, what counts as cheating):"
@@ -187,6 +215,7 @@ view model =
                 [ HA.style "width" "100%"
                 , HA.placeholder placeholders.specialRules
                 , HA.disabled model.disabled
+                , HA.class "special-rules-field"
                 ]
                 []
             ]

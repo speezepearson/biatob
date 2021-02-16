@@ -36,3 +36,8 @@ h1, h2, h3 {
   border: 1px solid lightblue;
   text-align: left;
 }
+
+.prediction-field, .special-rules-field {
+  font-family: inherit;
+  height: 6em;
+}
