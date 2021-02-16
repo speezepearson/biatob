@@ -57,6 +57,9 @@ postUpdateSettings = hit {url="/api/UpdateSettings", encoder=Pb.toUpdateSettings
 postCreateInvitation : (Result Http.Error Pb.CreateInvitationResponse -> msg) -> Pb.CreateInvitationRequest -> Cmd msg
 postCreateInvitation = hit {url="/api/CreateInvitation", encoder=Pb.toCreateInvitationRequestEncoder, decoder=Pb.createInvitationResponseDecoder }
 
+postAcceptInvitation : (Result Http.Error Pb.AcceptInvitationResponse -> msg) -> Pb.AcceptInvitationRequest -> Cmd msg
+postAcceptInvitation = hit {url="/api/AcceptInvitation", encoder=Pb.toAcceptInvitationRequestEncoder, decoder=Pb.acceptInvitationResponseDecoder }
+
 postSetTrusted : (Result Http.Error Pb.SetTrustedResponse -> msg) -> Pb.SetTrustedRequest -> Cmd msg
 postSetTrusted = hit {url="/api/SetTrusted", encoder=Pb.toSetTrustedRequestEncoder, decoder=Pb.setTrustedResponseDecoder }
 

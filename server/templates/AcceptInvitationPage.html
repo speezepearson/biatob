@@ -1,0 +1,29 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Main</title>
+  <link rel="shortcut icon"type="image/x-icon" href="data:image/x-icon;,">
+  <script type="text/javascript" src="/elm/AcceptInvitationPage.js"></script>
+  <link rel="stylesheet" href="/static/base.css">
+</head>
+
+<body>
+  {% include 'Navbar.html' %}
+  <main id="main-wrapper"><div id="main"></div></main>
+  <script type="text/javascript">
+
+    var authTokenPbB64 = {{ auth_token_pb_b64 | tojson }};
+    var invitationIdPbB64 = {{ invitation_id_pb_b64 | tojson }};
+
+    var main = Elm.AcceptInvitationPage.init({
+      node: document.getElementById('main'),
+      flags: {authTokenPbB64, invitationIdPbB64},
+    });
+    main.ports.authChanged.subscribe(() => window.location.reload());
+    main.ports.accepted.subscribe(({dest}) => {
+      window.location = dest;
+    });
+  </script>
+</body>
+</html>

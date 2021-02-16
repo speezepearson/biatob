@@ -1041,24 +1041,16 @@ class WebServer:
 
     async def get_invitation(self, req: web.Request) -> web.Response:
         auth = self._token_glue.parse_cookie(req)
-        if auth is None:
-            return web.Response(
-                content_type='text/html',
-                body=self._jinja.get_template('LoginPage.html').render(
-                    auth_token_pb_b64=None,
-                ))
         invitation_id = mvp_pb2.InvitationId(
             inviter=mvp_pb2.UserId(username=req.match_info['username']),
             nonce=req.match_info['nonce'],
         )
-        if invitation_id.inviter == auth.owner:
-            return web.Response(status=200, body="This is your own invitation!")
-        # TODO(P1): need an intermediary page with CSRF to avoid XSS
-        accept_invitation_response = self._servicer.AcceptInvitation(auth, mvp_pb2.AcceptInvitationRequest(invitation_id=invitation_id))
-        if accept_invitation_response.WhichOneof('accept_invitation_result') == 'error':
-            return web.HTTPBadRequest(text=str(accept_invitation_response.error))
-        assert accept_invitation_response.WhichOneof('accept_invitation_result') == 'ok'
-        return web.HTTPTemporaryRedirect('/settings')
+        return web.Response(
+            content_type='text/html',
+            body=self._jinja.get_template('AcceptInvitationPage.html').render(
+                auth_token_pb_b64=pb_b64(auth),
+                invitation_id_pb_b64=pb_b64(invitation_id),
+            ))
 
     def add_to_app(self, app: web.Application) -> None:
 

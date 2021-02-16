@@ -23,11 +23,8 @@ TODO
 
 ### P2: make this something other hardcore betting nerds might use
 
-
 - **Internals:**
 
-    - consider simplifying by ditching Oauth placeholders; only usernames for now
-    - consider a better model of user identity -- UserUserView is gross
     - write automated tests for the core API flows (create account, log in, log out, create market, bet in market, view settings)
     - CSRF for XSS safety (maybe? or maybe CORS protects us)
 
