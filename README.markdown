@@ -23,24 +23,13 @@ TODO
 
 ### P2: make this something other hardcore betting nerds might use
 
-- **UI:**
-
-    - write copy explaining how to operationalize a bet well (or find somebody else's explanation)
-
-- **Explanations:**
-
-    - tell authors how to invite people to their markets
-    - explain the difference between close time and resolve time
-    - explain why you need to mark people as trusted
-    - finish the tutorial, integrate it into ViewMarketPage and the home page
 
 - **Internals:**
 
     - consider simplifying by ditching Oauth placeholders; only usernames for now
     - consider a better model of user identity -- UserUserView is gross
-    - add GetMySettings / SetMySettings endpoints
     - write automated tests for the core API flows (create account, log in, log out, create market, bet in market, view settings)
-    - CSRF for XSS safety
+    - CSRF for XSS safety (maybe? or maybe CORS protects us)
 
 ### P3: make this something Less Wrongers might use
 - **Features:**
