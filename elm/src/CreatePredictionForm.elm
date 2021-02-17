@@ -124,7 +124,7 @@ view model =
                 ]
           ]
         , H.li []
-            [ H.text "I think this as at least a"
+            [ H.text "I think this is at least a"
             , Field.inputFor SetLowP () model.lowPField
                 H.input
                 [ HA.type_ "number", HA.min "0", HA.max "100", HA.step "any"
