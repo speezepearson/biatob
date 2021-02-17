@@ -85,7 +85,13 @@
           node: document.getElementById('welcome-page-auth-widget'),
           flags: {authTokenPbB64},
         })
-        authWidget.ports.authChanged.subscribe(() => window.location.reload());
+        authWidget.ports.authChanged.subscribe(() => {
+          if (window.location.pathname.startsWith('/welcome')) {
+            window.location.reload();
+          } else {
+            window.location = '/welcome#postcreateaccount';
+          }
+        });
       </script>
     </li>
     <li style="margin-bottom:1em"> <a name="postcreateaccount"></a> Go to <a href="/new">the New Prediction page</a> to create a bet. </li>
