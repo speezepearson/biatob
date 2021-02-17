@@ -206,3 +206,9 @@ pathToUserPage user =
 
 redText : String -> Html msg
 redText s = H.span [HA.style "color" "red"] [H.text s]
+
+i : String -> Html msg
+i s = H.i [] [H.text s]
+
+b : String -> Html msg
+b s = H.strong [] [H.text s]

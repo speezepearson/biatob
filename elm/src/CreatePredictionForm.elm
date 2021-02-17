@@ -4,7 +4,7 @@ import Browser
 import Html as H exposing (Html)
 import Html.Attributes as HA
 import Html.Events as HE
-import Utils
+import Utils exposing (i)
 import Time
 import Task
 
@@ -83,9 +83,7 @@ update msg model =
 view : Model -> Html Msg
 view model =
   let
-    outlineIfInvalid b = Utils.outlineIfInvalid (b && not model.disabled)
     highPCtx = {lowP = Field.parse () model.lowPField |> Result.withDefault 0}
-    openForSecondsCtx = {unit = Field.parse () model.openForUnitField |> Result.withDefault Days}
     placeholders =
       { prediction = "at least 50% of U.S. COVID-19 cases will be B117 or a derivative strain, as reported by the CDC"
       , stake = "100"
@@ -113,14 +111,13 @@ view model =
                 ] []
             , H.details []
                 [ H.summary [HA.style "text-align" "right"] [H.text "Advice"]
-                , H.text "A good prediction is ", H.i [] [H.text "objective"], H.text " and ", H.i [] [H.text "verifiable,"]
-                , H.text " ideally about ", H.i [] [H.text "experiences you anticipate having."]
-                , H.br [] []
-                , H.text " \"Gun violence will increase in the U.S. in 2022\" is extremely ill-defined."
-                , H.br [] []
-                , H.text " \"There will be at least 40,000 gun deaths in the U.S. in 2022\" is better, but it's still not ", H.i [] [H.text "verifiable"], H.text " (by you)."
-                , H.br [] []
-                , H.text " \"The CDC will report at least 40,000 gun deaths for 2022, as stated on https://www.cdc.gov/nchs/fastats/injury.htm\" is very good!"
+                , H.text "A good prediction is ", i "objective", H.text " and ", i "verifiable,"
+                , H.text " ideally about ", i "experiences you anticipate having."
+                , H.ul []
+                  [ H.li [] [H.text " \"Gun violence will increase in the U.S. in 2022\" is extremely ill-defined."]
+                  , H.li [] [H.text " \"There will be at least 40,000 gun deaths in the U.S. in 2022\" is better, but it's still not ", i "verifiable", H.text " (by you)."]
+                  , H.li [] [H.text " \"The CDC will report at least 40,000 gun deaths for 2022, as stated on https://www.cdc.gov/nchs/fastats/injury.htm\" is very good!"]
+                  ]
                 ]
           ]
         , H.li []
@@ -143,23 +140,28 @@ view model =
             , H.text "% chance."
             , H.details []
                 [ H.summary [HA.style "text-align" "right"] [H.text "Confusing?"]
-                , H.p [] [H.text "\"Why do I need to enter ", H.i [] [H.text "two"], H.text " probabilities?\" Because some of your friends might be better-informed than you!"]
-                , H.p [] [H.text <|
-                    "Consider: ", H.strong [] [H.text "Goofus"], H.text <| " publishes a 70% chance that Smith will win the election."
-                    ++ " Goofus's friend Nate thinks Smith has more like an 80% chance, and since Nate knows more than Goofus about politics,"
-                    ++ " on average he is guaranteed to take money from Goofus. Also, a couple days before Goofus configured betting to close,"
-                    ++ " Smith's opponent is seen kicking a puppy. Some of Goofus's friends, who were previously on the fence, see that Smith has a clear edge,"
-                    ++ " and bet against Goofus at his published 70% odds."
-                    ++ " Goofus, looking into the future and seeing that he'll consistently lose money to his smarter or using-future-information friends,"
-                    ++ " decides not to put his money where his mouth is, and therefore nobody takes him seriously."
+                , H.p [] [H.text "\"Why do I need to enter ", i "two", H.text <| " probabilities?\" It's a way to protect yourself from making bets you'll immediately regret!"]
+                , H.p [] [H.text <| "An example: imagine you post a prediction about an election outcome,"
+                    ++ " saying that Howell is 70% likely to win."
+                    ++ " The next day, your cleverest, best-informed friend, Nate, bets heavily that Howell will lose."
+                    ++ " You probably think: \"Aw, drat. Nate knows a lot about politics, he's probably right, I should've posted lower odds.\""
+                    ++ " But if Nate had instead bet heavily that Howell would ", i "win,", H.text <| " you would think:"
+                    ++ " \"Aw, drat. I should've posted ", i "higher", H.text <| " odds.\" You can't win! No matter what odds you offer,"
+                    ++ " as soon as Nate bets against you, you'll regret it."]
+                , H.p [] [H.text <| "But maybe you think that ", i "even Nate", H.text <| " would be crazy to assign Howell less than a 40% chance,"
+                    ++ " or more than a 90% chance. Then, you could publish \"40-90%\" odds: your $4 against $6 that Howell will win, or your $1 against $9 that Howell will lose."
+                    ++ " Then, even Nate betting against you won't shift your probability estimate so much that you regret offering the wager."
                     ]
-                , H.p [] [H.text <|
-                    "Meanwhile, ", H.strong [] [H.text "Gallant"], H.text <| " publishes a \"50-90%\" chance that Smith will win --"
-                    ++ " so he'll bet $5 against $5 that Smith will win, or $1 against $9 that Smith will lose."
-                    ++ " Nate can't reliably take Gallant's money by taking either of those wagers. And the puppy-kicking episode might bump Smith up a few percentage points,"
-                    ++ " but that's not enough to make Gallant regret offering either of those wagers."
-                    ++ " Gallant makes a modest sum off a few of his strongly-opinionated friends, earns his peers' respect,"
-                    ++ " and is glad he offered to bet on his beliefs."
+                , H.p [] [H.text <| "You can think of the spread as being a measurement of how confident you are:"
+                    ++ " a small spread, like 70-73%, means you've thought about this ", i "really carefully,", H.text <| " and"
+                    ++ " you don't expect your opinion to be budged by any of your friends' bets or any new information that comes out"
+                    ++ " before betting closes; a wide spread, like 30-95%, is sort of off-the-cuff, you just want to throw it out there that"
+                    ++ " it's ", i "pretty likely", H.text <| " but you haven't thought ", i "that", H.text <| " hard about it."
+                    ++ " Predictions don't have to be effortful, painstakingly researched things!"
+                    ++ " It's okay to throw out half-formed thoughts with wide spreads!"
+                    ]
+                , H.p [] [H.text <| "If you still confused, hey, don't worry about it! This is really remarkably counterintuitive stuff."
+                    ++ " Just leave the high probability at 100%."
                     ]
                 ]
             ]
@@ -167,7 +169,7 @@ view model =
             [ H.text "I'm willing to bet up to $"
             , Field.inputFor SetStake () model.stakeField
                 H.input
-                [ HA.type_ "number", HA.min "0", HA.max (String.fromInt maxLegalStakeCents)
+                [ HA.type_ "number", HA.min "0", HA.max (String.fromInt <| maxLegalStakeCents//100)
                 , HA.style "width" "5em"
                 , HA.placeholder placeholders.stake
                 , HA.disabled model.disabled
@@ -242,7 +244,10 @@ init () =
     , stakeField = Field.init "20" <| \() s ->
         case String.toFloat s of
           Nothing -> Err "must be a positive number"
-          Just dollars -> if dollars <= 0 then Err "must be a positive number" else Ok <| round (100*dollars)
+          Just dollars ->
+            if dollars <= 0 then Err "must be a positive number" else
+            if dollars > toFloat maxLegalStakeCents / 100 then Err "Sorry, I hate to be paternalistic, but I don't want to let people bet more than they can afford to lose, so I put in a semi-arbitrary $5000-per-prediction limit. I *do* plan to lift this restriction someday, there are just some site design issues I need to work out first, and they're not on top of my priority queue. Thanks for your patience! [dated 2021-02]" else
+            Ok <| round (100*dollars)
     , lowPField = Field.init "0" <| \() s ->
         case String.toFloat s of
           Nothing -> Err "must be a number 0-100"

@@ -11,11 +11,9 @@ import Html as H exposing (Html)
 import Html.Attributes as HA
 import Html.Events as HE
 import Time
-import Html exposing (s)
 
 import Biatob.Proto.Mvp as Pb
-import Utils
-import Html exposing (a)
+import Utils exposing (b)
 
 import Field exposing (Field)
 
@@ -56,61 +54,56 @@ view config state =
     maxSkepticStakeCents = if creatorStakeFactorVsSkeptics == 0 then 0 else toFloat config.prediction.remainingStakeCentsVsSkeptics / creatorStakeFactorVsSkeptics + 0.001 |> floor
   in
   H.div []
-    [ H.text <| "Do you believe strongly that..."
-    , H.ul []
-        [ H.li [HA.style "margin-bottom" "1em"] <|
-            let
-              ctx = {max=maxSkepticStakeCents}
-            in
-              [ H.strong [] [H.text "...this won't happen?"]
-              , H.br [] []
-              , H.text " Then stake $"
-              , Field.inputFor (\s -> config.setState {state | skepticStakeField = state.skepticStakeField |> Field.setStr s}) ctx state.skepticStakeField
-                  H.input
-                  [ HA.style "width" "5em"
-                  , HA.type_"number", HA.min "0", HA.max (toFloat maxSkepticStakeCents / 100 + epsilon |> String.fromFloat), HA.step "any"
-                  , HA.disabled disableInputs
-                  ]
-                  []
-              , H.text <| " that it won't, against " ++ creator.displayName ++ "'s "
-              , H.strong [] [Field.parse ctx state.skepticStakeField |> Result.map (toFloat >> (*) creatorStakeFactorVsSkeptics >> round >> Utils.formatCents) |> Result.withDefault "???" |> H.text]
-              , H.text ". "
-              , H.button
-                  (case Field.parse ctx state.skepticStakeField of
-                    Ok stake ->
-                      [ HE.onClick <| config.onStake {bettorIsASkeptic=True, bettorStakeCents=stake} ]
-                    Err _ ->
-                      [ HA.disabled True ]
-                  )
-                  [H.text "Commit"]
-              ]
-        , H.li [HA.style "margin-bottom" "1em"] <|
-            let
-              ctx = {max=maxSkepticStakeCents}
-            in
-              [ H.strong [] [H.text "...this ", H.i [] [H.text "will"], H.text " happen?"]
-              , H.br [] []
-              , H.text " Then stake $"
-              , Field.inputFor (\s -> config.setState {state | believerStakeField = state.believerStakeField |> Field.setStr s}) ctx state.believerStakeField
-                  H.input
-                  [ HA.style "width" "5em"
-                  , HA.type_"number", HA.min "0", HA.max (toFloat maxBelieverStakeCents / 100 + epsilon |> String.fromFloat), HA.step "any"
-                  , HA.disabled disableInputs
-                  ]
-                  []
-              , H.text <| " that it will, against " ++ creator.displayName ++ "'s "
-              , H.strong [] [Field.parse ctx state.believerStakeField |> Result.map (toFloat >> (*) creatorStakeFactorVsBelievers >> round >> Utils.formatCents) |> Result.withDefault "???" |> H.text]
-              , H.text ". "
-              , H.button
-                  (case Field.parse ctx state.believerStakeField of
-                    Ok stake ->
-                      [ HE.onClick <| config.onStake {bettorIsASkeptic=False, bettorStakeCents=stake} ]
-                    Err _ ->
-                      [ HA.disabled True ]
-                  )
-                  [H.text "Commit"]
-              ]
-        ]
+    [ if certainty.low == 0 then H.text "" else
+      let
+        ctx = {max=maxSkepticStakeCents}
+      in
+      H.p []
+      [ H.text "Do you ", b "strongly doubt", H.text " that this will happen? Then stake $"
+      , Field.inputFor (\s -> config.setState {state | skepticStakeField = state.skepticStakeField |> Field.setStr s}) ctx state.skepticStakeField
+          H.input
+          [ HA.style "width" "5em"
+          , HA.type_"number", HA.min "0", HA.max (toFloat maxSkepticStakeCents / 100 + epsilon |> String.fromFloat), HA.step "any"
+          , HA.disabled disableInputs
+          ]
+          []
+      , H.text <| " that it won't, against " ++ creator.displayName ++ "'s "
+      , H.strong [] [Field.parse ctx state.skepticStakeField |> Result.map (toFloat >> (*) creatorStakeFactorVsSkeptics >> round >> Utils.formatCents) |> Result.withDefault "???" |> H.text]
+      , H.text ". "
+      , H.button
+          (case Field.parse ctx state.skepticStakeField of
+            Ok stake ->
+              [ HE.onClick <| config.onStake {bettorIsASkeptic=True, bettorStakeCents=stake} ]
+            Err _ ->
+              [ HA.disabled True ]
+          )
+          [H.text "Commit"]
+      ]
+    , if certainty.high == 1 then H.text "" else
+      let
+        ctx = {max=maxSkepticStakeCents}
+      in
+      H.p []
+      [ H.text "Do you ", b "strongly believe", H.text " that this will happen? Then stake $"
+      , Field.inputFor (\s -> config.setState {state | believerStakeField = state.believerStakeField |> Field.setStr s}) ctx state.believerStakeField
+          H.input
+          [ HA.style "width" "5em"
+          , HA.type_"number", HA.min "0", HA.max (toFloat maxBelieverStakeCents / 100 + epsilon |> String.fromFloat), HA.step "any"
+          , HA.disabled disableInputs
+          ]
+          []
+      , H.text <| " that it will, against " ++ creator.displayName ++ "'s "
+      , H.strong [] [Field.parse ctx state.believerStakeField |> Result.map (toFloat >> (*) creatorStakeFactorVsBelievers >> round >> Utils.formatCents) |> Result.withDefault "???" |> H.text]
+      , H.text ". "
+      , H.button
+          (case Field.parse ctx state.believerStakeField of
+            Ok stake ->
+              [ HE.onClick <| config.onStake {bettorIsASkeptic=False, bettorStakeCents=stake} ]
+            Err _ ->
+              [ HA.disabled True ]
+          )
+          [H.text "Commit"]
+      ]
     ]
 
 init : State
