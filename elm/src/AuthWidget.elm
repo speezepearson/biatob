@@ -138,11 +138,13 @@ update msg model =
   (SetPasswordField s, NoToken m) ->
     ( NoToken { m | passwordField = m.passwordField |> Field.setStr s } , Cmd.none )
   (LogInUsername, NoToken m) ->
-    ( NoToken { m | working = True }
-    , case (Field.parse () m.usernameField, Field.parse () m.passwordField) of
-       (Ok username, Ok password) -> API.postLogInUsername LogInUsernameComplete {username=username, password=password}
-       _ -> Cmd.none
-    )
+    case (Field.parse () m.usernameField, Field.parse () m.passwordField) of
+      (Ok username, Ok password) ->
+         ( NoToken { m | working = True }
+         , API.postLogInUsername LogInUsernameComplete {username=username, password=password}
+         )
+      _ ->
+        ( model , Cmd.none )
   (LogInUsernameComplete (Err e), NoToken m) ->
     ( NoToken { m | working = False , error = Just (Debug.toString e) }
     , Cmd.none
@@ -162,11 +164,13 @@ update msg model =
         , Cmd.none
         )
   (RegisterUsername, NoToken m) ->
-    ( NoToken { m | working = True }
-    , case (Field.parse () m.usernameField, Field.parse () m.passwordField) of
-       (Ok username, Ok password) -> API.postRegisterUsername RegisterUsernameComplete {username=username, password=password}
-       _ -> Cmd.none
-    )
+    case (Field.parse () m.usernameField, Field.parse () m.passwordField) of
+      (Ok username, Ok password) ->
+        ( NoToken { m | working = True }
+        , API.postRegisterUsername RegisterUsernameComplete {username=username, password=password}
+        )
+      _ ->
+        ( model , Cmd.none )
   (RegisterUsernameComplete (Err e), NoToken m) ->
     ( NoToken { m | working = False , error = Just (Debug.toString e) }
     , Cmd.none )

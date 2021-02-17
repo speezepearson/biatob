@@ -95,15 +95,16 @@
       <script type="text/javascript" src="/elm/SmallInvitationWidget.js"></script>
       <script>
         var authTokenPbB64 = {{ auth_token_pb_b64 | tojson }};
+        var node = document.getElementById('welcome-page-invitation-widget');
         if (authTokenPbB64 != null) {
           var linkToAuthority = window.origin;
           var invitationWidget = Elm.SmallInvitationWidget.init({
-            node: document.getElementById('welcome-page-invitation-widget'),
+            node: node,
             flags: {authTokenPbB64, linkToAuthority},
           });
           subscribeToCopy(invitationWidget);
         } else {
-          document.write(' (first, log in)');
+          node.innerText = '(first, log in)';
         }
       </script>
     </li>
@@ -112,13 +113,14 @@
       <script type="text/javascript" src="/elm/EmailSettingsWidget.js"></script>
       <script>
         var userInfoPbB64 = {{ user_info_pb_b64 | tojson }};
+        var node = document.getElementById('welcome-page-email-settings-widget');
         if (userInfoPbB64 != null) {
           var emailSettingsWidget = Elm.EmailSettingsWidget.init({
-            node: document.getElementById('welcome-page-email-settings-widget'),
+            node: node,
             flags: {userInfoPbB64},
           });
         } else {
-          document.write(' (first, log in)');
+          node.innerText = '(first, log in)';
         }
       </script>
     </li>
