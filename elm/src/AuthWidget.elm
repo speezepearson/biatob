@@ -42,6 +42,7 @@ type Msg
   | Tick Time.Posix
   | SignOut
   | SignOutComplete (Result Http.Error Pb.SignOutResponse)
+  | Ignore
 
 getAuth : Model -> Maybe Pb.AuthToken
 getAuth model =
@@ -101,6 +102,7 @@ view model =
             , HA.style "width" "8em"
             , HA.type_ "password"
             , HA.placeholder "password"
+            , Utils.onEnter LogInUsername Ignore
             ] []
         , H.button
             [ HA.disabled <| m.working || disableButtons
@@ -214,6 +216,9 @@ update msg model =
     )
   (SignOutComplete _, HasToken _) ->
     ( initNoToken , authChanged {loggedIn=False} )
+
+  (Ignore, _) ->
+    ( model , Cmd.none )
 
 subscriptions : Model -> Sub Msg
 subscriptions _ = Time.every 1000 Tick

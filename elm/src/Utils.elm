@@ -2,6 +2,7 @@ module Utils exposing (..)
 
 import Html as H exposing (Html)
 import Html.Attributes as HA
+import Html.Events as HE
 import Json.Decode as JD
 import Time
 
@@ -212,3 +213,8 @@ i s = H.i [] [H.text s]
 
 b : String -> Html msg
 b s = H.strong [] [H.text s]
+
+onEnter : msg -> msg -> H.Attribute msg
+onEnter msg nevermind =
+  HE.on "keydown" <|
+    JD.map (\keyCode -> if keyCode == 13 then msg else nevermind) HE.keyCode

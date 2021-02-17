@@ -41,6 +41,7 @@ type Msg
   | ToggleEmailRemindersToResolve
   | ToggleEmailResolutionNotifications
   | UpdateSettingsFinished (Result Http.Error Pb.UpdateSettingsResponse)
+  | Ignore
 
 initNoEmailYet : Registration
 initNoEmailYet =
@@ -207,6 +208,8 @@ update msg model =
               )
         _ -> ( model , Cmd.none )
 
+    Ignore -> ( model , Cmd.none )
+
 view : Model -> Html Msg
 view model =
   case model.registration of
@@ -218,6 +221,7 @@ view model =
             [ HA.type_ "email"
             , HA.disabled <| model.working
             , HA.placeholder "email@ddre.ss"
+            , Utils.onEnter SetEmail Ignore
             ] []
         , H.button
             [ HE.onClick SetEmail
