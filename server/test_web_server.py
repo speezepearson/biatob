@@ -9,7 +9,7 @@ from google.protobuf.message import Message as PbMessage
 from .protobuf import mvp_pb2
 from .server import WebServer, _Req, _Resp, HttpTokenGlue
 from .test_utils import *
-from .test_api_server import api_server
+from .test_api_server import post_proto, api_server
 from .test_fs_servicer import new_user_token, some_create_prediction_request
 
 @pytest.fixture
@@ -23,11 +23,15 @@ def app(loop, web_server):
   web_server.add_to_app(app)
   return app
 
-async def test_smoke(aiohttp_client, app, fs_servicer):
-  token = new_user_token(fs_servicer, 'alice')
-  prediction_id = fs_servicer.CreatePrediction(token, some_create_prediction_request()).new_prediction_id
+async def test_smoke(aiohttp_client, app, api_server, fs_servicer):
+  api_server.add_to_app(app)
+  prediction_id = fs_servicer.CreatePrediction(new_user_token(fs_servicer, 'rando'), some_create_prediction_request()).new_prediction_id
   assert prediction_id > 0
-  cli = await aiohttp_client(app)
+  logged_in_cli = await aiohttp_client(app)
+  await post_proto(logged_in_cli, '/api/RegisterUsername', mvp_pb2.RegisterUsernameRequest(username='alice', password='alice'), mvp_pb2.RegisterUsernameResponse)
+
+  logged_out_cli = await aiohttp_client(app)
+
   paths = [
     '/static/base.css',
     '/elm/ViewMarketPage.js',
@@ -41,5 +45,7 @@ async def test_smoke(aiohttp_client, app, fs_servicer):
     '/settings',
   ]
   for path in paths:
-    resp = await cli.get(path)
+    resp = await logged_in_cli.get(path)
+    assert resp.status == 200
+    resp = await logged_out_cli.get(path)
     assert resp.status == 200
