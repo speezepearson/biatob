@@ -138,6 +138,18 @@ view model =
                 , HA.disabled model.disabled
                 ] []
             , H.text "% chance."
+            , case Field.parse () model.lowPField of
+                Ok lowP ->
+                  if lowP == 0 then
+                    H.div [HA.style "opacity" "50%"]
+                      [ H.text "A low probability of 0 means you're actually only willing to bet "
+                      , i "against"
+                      , H.text <| " your prediction, which might be confusing to your friends."
+                        ++ " Consider negating your prediction (\"I predict X\" -> \"I predict NOT X\") to make things clearer."
+                      ]
+                  else
+                    H.text ""
+                _ -> H.text ""
             , H.details []
                 [ H.summary [HA.style "text-align" "right"] [H.text "Confusing?"]
                 , H.p [] [H.text "\"Why do I need to enter ", i "two", H.text <| " probabilities?\" It's a way to protect yourself from making bets you'll immediately regret!"]
@@ -248,7 +260,7 @@ init () =
             if dollars <= 0 then Err "must be a positive number" else
             if dollars > toFloat maxLegalStakeCents / 100 then Err "Sorry, I hate to be paternalistic, but I don't want to let people bet more than they can afford to lose, so I put in a semi-arbitrary $5000-per-prediction limit. I *do* plan to lift this restriction someday, there are just some site design issues I need to work out first, and they're not on top of my priority queue. Thanks for your patience! [dated 2021-02]" else
             Ok <| round (100*dollars)
-    , lowPField = Field.init "0" <| \() s ->
+    , lowPField = Field.init "50" <| \() s ->
         case String.toFloat s of
           Nothing -> Err "must be a number 0-100"
           Just pct -> if pct < 0 || pct > 100 then Err "must be a number 0-100" else Ok (pct/100)

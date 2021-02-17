@@ -23,6 +23,10 @@ TODO
 
 ### P2: make this something other hardcore betting nerds might use
 
+- **UI:**
+
+    - deal with uint32 overflow in timestamps (e.g. in resolution date for /new)
+
 - **Internals:**
 
     - write automated tests for the core API flows (create account, log in, log out, create market, bet in market, view settings)
