@@ -45,7 +45,7 @@ type Msg
 initNoEmailYet : Registration
 initNoEmailYet =
   NoEmailYet
-    { emailField = Field.init "" <| \() s -> if String.contains "@" s then Ok s else Err "must be an email address"
+    { emailField = Field.okIfEmpty <| Field.init "" <| \() s -> if String.contains "@" s then Ok s else Err "must be an email address"
     }
 
 initNeedsVerification : Registration
