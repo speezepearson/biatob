@@ -940,10 +940,17 @@ class WebServer:
 
     async def get_welcome(self, req: web.Request) -> web.Response:
         auth = self._token_glue.parse_cookie(req)
+        get_settings_response = self._servicer.GetSettings(auth, mvp_pb2.GetSettingsRequest())
+        if get_settings_response.WhichOneof('get_settings_result') == 'ok_username':
+            user_info: Optional[mvp_pb2.GenericUserInfo] = get_settings_response.ok_username.info
+        else:
+            assert get_settings_response.WhichOneof('get_settings_result') == 'error'
+            user_info = None
         return web.Response(
             content_type='text/html',
             body=self._jinja.get_template('Welcome.html').render(
-                auth_token_pb_b64=None if auth is None else pb_b64(auth),
+                auth_token_pb_b64=pb_b64(auth),
+                user_info_pb_b64=pb_b64(user_info),
             ))
 
     async def get_create_prediction_page(self, req: web.Request) -> web.Response:

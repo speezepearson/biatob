@@ -27,6 +27,7 @@ TODO
 
     - write automated tests for the core API flows (create account, log in, log out, create market, bet in market, view settings)
     - CSRF for XSS safety (maybe? or maybe CORS protects us)
+    - get a better bot name (maybe even an email domain if easy?)
 
 ### P3: make this something Less Wrongers might use
 - **Features:**

@@ -5,6 +5,7 @@ import Html as H exposing (Html)
 import Html.Attributes as HA
 import Html.Events as HE
 import Http
+import Json.Decode as JD
 
 import Biatob.Proto.Mvp as Pb
 import Utils
@@ -79,6 +80,10 @@ initFromUserInfo info =
     }
   , Cmd.none
   )
+
+initFromFlags : JD.Value -> ( Model , Cmd Msg )
+initFromFlags flags =
+  initFromUserInfo <| Utils.mustDecodePbFromFlags Pb.genericUserInfoDecoder "userInfoPbB64" flags
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
@@ -261,3 +266,10 @@ view model =
 
 subscriptions : Model -> Sub Msg
 subscriptions _ = Sub.none
+
+main = Browser.element
+  { init = initFromFlags
+  , update = update
+  , view = view
+  , subscriptions = subscriptions
+  }

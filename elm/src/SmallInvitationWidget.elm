@@ -7,8 +7,7 @@ import Html.Attributes as HA
 import Html.Events as HE
 import Http
 import Dict as D exposing (Dict)
-import Protobuf.Encode as PE
-import Protobuf.Decode as PD
+import Json.Decode as JD
 
 import Biatob.Proto.Mvp as Pb
 import Utils
@@ -40,6 +39,14 @@ init flags =
   , working = False
   , notification = H.text ""
   }
+initFromFlags : JD.Value -> ( Model , Cmd Msg )
+initFromFlags flags =
+  ( init
+      { auth = Utils.mustDecodePbFromFlags Pb.authTokenDecoder "authTokenPbB64" flags
+      , linkToAuthority = Utils.mustDecodeFromFlags JD.string "linkToAuthority" flags
+      }
+  , Cmd.none
+  )
 
 checkCreationSuccess : Msg -> Maybe Pb.CreateInvitationResponseResult
 checkCreationSuccess msg =
@@ -111,3 +118,10 @@ view model =
 
 subscriptions : Model -> Sub Msg
 subscriptions _ = Sub.none
+
+main = Browser.element
+  { init = initFromFlags
+  , update = update
+  , view = view
+  , subscriptions = subscriptions
+  }

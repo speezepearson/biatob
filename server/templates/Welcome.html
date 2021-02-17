@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <title>Biatob</title>
   <link rel="shortcut icon"type="image/x-icon" href="data:image/x-icon;,">
+  <script type="text/javascript">
+    {% include 'Utils.js' %}
+  </script>
   <link rel="stylesheet" href="/static/base.css">
 </head>
 
@@ -74,21 +77,52 @@
   <hr />
   <h2>Cool! How do I use it?</h2>
   <ul>
-    <li> Create an account:
+    <li style="margin-bottom:1em"> Create an account:
       <div id="welcome-page-auth-widget"></div>
-      <script type="text/javascript" src="/elm/AuthWidget.js"></script>
       <script type="text/javascript">
         var authTokenPbB64 = {{ auth_token_pb_b64 | tojson }};
         var authWidget = Elm.AuthWidget.init({
           node: document.getElementById('welcome-page-auth-widget'),
           flags: {authTokenPbB64},
         })
-        authWidget.ports.authChanged.subscribe(() => window.location = "/welcome#postcreateaccount");
+        authWidget.ports.authChanged.subscribe(() => window.location.reload());
       </script>
-   </li>
-    <li> <a name="postcreateaccount"></a> Go to <a href="/new">the New Prediction page</a> to create a bet. </li>
-    <li> Advertise your bet &mdash; post the link on Facebook, include a cute little embeddable image in your blog, whatever. </li>
-    <li> When your prediction resolves to Yes or No, settle up with your friends! </li>
+    </li>
+    <li style="margin-bottom:1em"> <a name="postcreateaccount"></a> Go to <a href="/new">the New Prediction page</a> to create a bet. </li>
+    <li style="margin-bottom:1em"> Advertise your bet &mdash; post the link on Facebook, include a cute little embeddable image in your blog, whatever. </li>
+    <li style="margin-bottom:1em"> Send your friends invitation links so I know who you trust to bet against you:
+      <div style="border:1px solid gray; padding: 0.5em; margin:0.5em"><div id="welcome-page-invitation-widget"></div></div>
+      <script type="text/javascript" src="/elm/SmallInvitationWidget.js"></script>
+      <script>
+        var authTokenPbB64 = {{ auth_token_pb_b64 | tojson }};
+        if (authTokenPbB64 != null) {
+          var linkToAuthority = window.origin;
+          var invitationWidget = Elm.SmallInvitationWidget.init({
+            node: document.getElementById('welcome-page-invitation-widget'),
+            flags: {authTokenPbB64, linkToAuthority},
+          });
+          subscribeToCopy(invitationWidget);
+        } else {
+          document.write(' (first, log in)');
+        }
+      </script>
+    </li>
+    <li style="margin-bottom:1em"> Consider adding an email address, so I can remind you to resolve your prediction when the time comes:
+      <div style="border:1px solid gray; padding: 0.5em; margin:0.5em"><div id="welcome-page-email-settings-widget"></div></div>
+      <script type="text/javascript" src="/elm/EmailSettingsWidget.js"></script>
+      <script>
+        var userInfoPbB64 = {{ user_info_pb_b64 | tojson }};
+        if (userInfoPbB64 != null) {
+          var emailSettingsWidget = Elm.EmailSettingsWidget.init({
+            node: document.getElementById('welcome-page-email-settings-widget'),
+            flags: {userInfoPbB64},
+          });
+        } else {
+          document.write(' (first, log in)');
+        }
+      </script>
+    </li>
+    <li style="margin-bottom:1em"> When your prediction resolves to Yes or No, settle up with your friends! </li>
   </ul>
 
   </main>
