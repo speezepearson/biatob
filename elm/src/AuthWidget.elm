@@ -16,6 +16,7 @@ import Task
 
 import API
 import Field exposing (Field)
+import Set
 
 port authChanged : {loggedIn:Bool} -> Cmd msg
 
@@ -53,11 +54,30 @@ hasAuth : Model -> Bool
 hasAuth model =
   getAuth model /= Nothing
 
+illegalUsernameCharacters : String -> Set.Set Char
+illegalUsernameCharacters s =
+  let
+    okayChars = ("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789" |> String.toList |> Set.fromList)
+    presentChars = s |> String.toList |> Set.fromList
+  in
+    Set.diff presentChars okayChars
+
 initNoToken : Model
 initNoToken =
   NoToken
-    { usernameField = Field.okIfEmpty <| Field.init "" <| \() s -> if s=="" then Err "" else Ok s
-    , passwordField = Field.okIfEmpty <| Field.init "" <| \() s -> if s=="" then Err "" else Ok s
+    { usernameField = Field.okIfEmpty <| Field.init "" <| \() s ->
+        if s=="" then
+          Err ""
+        else let badChars = illegalUsernameCharacters s in
+        if not (Set.isEmpty badChars) then
+          Err ("bad characters: " ++ Debug.toString (Set.toList badChars))
+        else
+          Ok s
+    , passwordField = Field.okIfEmpty <| Field.init "" <| \() s ->
+        if s=="" then
+          Err ""
+        else
+          Ok s
     , working = False
     , error = Nothing
     }
