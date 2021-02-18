@@ -37,7 +37,7 @@ isValid ctx f =
 inputFor : (String -> msg) -> ctx -> Field ctx a -> (List (H.Attribute msg) -> List (Html msg) -> Html msg) -> List (H.Attribute msg) -> List (Html msg) -> H.Html msg
 inputFor onInput ctx field ctor attrs children =
   let
-    allAttrs = 
+    allAttrs =
       HA.value field.string
       :: HE.onInput onInput
       :: attrs

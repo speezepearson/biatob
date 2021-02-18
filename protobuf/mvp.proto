@@ -233,11 +233,23 @@ message ListMyStakesResponse {
   }
   message Error {
     string catchall = 1;
-    Void no_such_prediction = 2;
   }
 }
 message PredictionsById {
   map<uint32, UserPredictionView> predictions = 1;
+}
+
+message ListPredictionsRequest {
+  UserId creator = 1;
+}
+message ListPredictionsResponse {
+  oneof list_predictions_result {
+    PredictionsById ok = 1;
+    Error error = 2;
+  }
+  message Error {
+    string catchall = 1;
+  }
 }
 
 message StakeRequest {

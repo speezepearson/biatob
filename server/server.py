@@ -290,6 +290,7 @@ class Servicer(abc.ABC):
     def CreatePrediction(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.CreatePredictionRequest) -> mvp_pb2.CreatePredictionResponse: pass
     def GetPrediction(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.GetPredictionRequest) -> mvp_pb2.GetPredictionResponse: pass
     def ListMyStakes(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.ListMyStakesRequest) -> mvp_pb2.ListMyStakesResponse: pass
+    def ListPredictions(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.ListPredictionsRequest) -> mvp_pb2.ListPredictionsResponse: pass
     def Stake(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.StakeRequest) -> mvp_pb2.StakeResponse: pass
     def Resolve(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.ResolveRequest) -> mvp_pb2.ResolveResponse: pass
     def SetTrusted(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.SetTrustedRequest) -> mvp_pb2.SetTrustedResponse: pass
@@ -464,6 +465,27 @@ class FsBackedServicer(Servicer):
         }
 
         return mvp_pb2.ListMyStakesResponse(ok=mvp_pb2.PredictionsById(predictions=result))
+
+    @checks_token
+    @log_action
+    def ListPredictions(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.ListPredictionsRequest) -> mvp_pb2.ListPredictionsResponse:
+        if token is None:
+            logger.info('logged-out user trying to list predictions')
+            return mvp_pb2.ListPredictionsResponse(ok=mvp_pb2.PredictionsById(predictions={}))
+        creator = request.creator if (request.creator is not None) else token.owner
+
+        wstate = self._storage.get()
+        if not trusts(wstate, creator, token.owner):
+            logger.info('trying to get list untrusting creator\'s predictions', creator=creator)
+            return mvp_pb2.ListPredictionsResponse(error=mvp_pb2.ListPredictionsResponse.Error(catchall="creator doesn't trust you"))
+
+        result = {
+            prediction_id: view_prediction(wstate, (token.owner if token is not None else None), prediction)
+            for prediction_id, prediction in wstate.predictions.items()
+            if prediction.creator == creator
+        }
+
+        return mvp_pb2.ListPredictionsResponse(ok=mvp_pb2.PredictionsById(predictions=result))
 
     @checks_token
     @log_action
@@ -1015,17 +1037,24 @@ class WebServer:
 
     async def get_username(self, req: web.Request) -> web.Response:
         auth = self._token_glue.parse_cookie(req)
-        user_id = mvp_pb2.UserId(username=req.match_info['username'])
+        username = req.match_info['username']
+        user_id = mvp_pb2.UserId(username=username)
         get_user_resp = self._servicer.GetUser(auth, mvp_pb2.GetUserRequest(who=user_id))
         if get_user_resp.WhichOneof('get_user_result') == 'error':
             return web.Response(status=400, body=str(get_user_resp.error))
         assert get_user_resp.WhichOneof('get_user_result') == 'ok'
+        if get_user_resp.ok.trusts_you:
+            list_predictions_resp = self._servicer.ListPredictions(auth, mvp_pb2.ListPredictionsRequest(creator=mvp_pb2.UserId(username=username)))
+            predictions: Optional[mvp_pb2.PredictionsById] = list_predictions_resp.ok  # TODO: error handling
+        else:
+            predictions = None
         return web.Response(
             content_type='text/html',
             body=self._jinja.get_template('ViewUserPage.html').render(
                 auth_token_pb_b64=pb_b64(auth),
                 user_view_pb_b64=pb_b64(get_user_resp.ok),
                 user_id_pb_b64=pb_b64(user_id),
+                predictions_pb_b64=pb_b64(predictions),
             ))
 
     async def get_settings(self, req: web.Request) -> web.Response:

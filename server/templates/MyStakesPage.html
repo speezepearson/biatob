@@ -13,7 +13,10 @@
 
 <body>
   {% include 'Navbar.html' %}
-  <main id="main-wrapper"><div id="main"></div></main>
+  <main id="main-wrapper">
+    <h2>My Stakes</h2>
+    <div id="main"></div>
+  </main>
   <script type="text/javascript">
 
     var authTokenPbB64 = {{ auth_token_pb_b64 | tojson }};

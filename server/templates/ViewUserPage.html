@@ -19,16 +19,16 @@
     var authTokenPbB64 = {{ auth_token_pb_b64 | tojson }};
     var userIdPbB64 = {{ user_id_pb_b64 | tojson }};
     var userViewPbB64 = {{ user_view_pb_b64 | tojson }};
+    var predictionsPbB64 = {{ predictions_pb_b64 | tojson }};
     var linkToAuthority = window.origin;
 
     var main = Elm.ViewUserPage.init({
       node: document.getElementById('main'),
-      flags: {authTokenPbB64, userIdPbB64, userViewPbB64, linkToAuthority},
+      flags: {authTokenPbB64, userIdPbB64, userViewPbB64, predictionsPbB64, linkToAuthority},
     });
     subscribeToCopy(main);
-    main.ports.changed.subscribe((predictionId) => {
-      window.location.reload();
-    });
+    main.ports.changed.subscribe(() => window.location.reload());
+    main.ports.trustChanged.subscribe(() => window.location.reload());
   </script>
 </body>
 </html>

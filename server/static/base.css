@@ -4,7 +4,7 @@
 #navbar-wrapper > ul {
   max-width: 45em;
   margin: auto;
-  
+
   display: flex;
   flex-direction: row;
   list-style: none;

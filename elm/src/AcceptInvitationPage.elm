@@ -77,7 +77,7 @@ update msg model =
 
 isOwnInvitation : AuthState -> Pb.InvitationId -> Bool
 isOwnInvitation authState invitationId =
-  case authState of 
+  case authState of
     LoggedIn auth -> auth.owner == invitationId.inviter
     LoggedOut _ -> False
 

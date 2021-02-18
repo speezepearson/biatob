@@ -12,14 +12,16 @@ import Utils
 
 import API
 import SmallInvitationWidget
+import ViewPredictionsWidget
 
-port changed : () -> Cmd msg
+port trustChanged : () -> Cmd msg
 
 type AuthState = LoggedIn Pb.AuthToken SmallInvitationWidget.Model | LoggedOut
 type alias Model =
   { userId : Pb.UserId
   , userView : Pb.UserUserView
   , authState : AuthState
+  , predictionsWidget : Maybe ViewPredictionsWidget.Model
   , working : Bool
   , setTrustedError : Maybe String
   }
@@ -28,18 +30,35 @@ type Msg
   = SetTrusted Bool
   | SetTrustedFinished (Result Http.Error Pb.SetTrustedResponse)
   | InvitationMsg SmallInvitationWidget.Msg
+  | PredictionsMsg ViewPredictionsWidget.Msg
 
 init : JD.Value -> (Model, Cmd Msg)
 init flags =
+  let
+    linkToAuthority = Utils.mustDecodeFromFlags JD.string "linkToAuthority" flags
+    auth = Utils.decodePbFromFlags Pb.authTokenDecoder "authTokenPbB64" flags
+    (predsWidget, predsCmd) = case auth of
+      Just auth_ -> case Utils.decodePbFromFlags Pb.predictionsByIdDecoder "predictionsPbB64" flags of
+        Just preds ->
+          ViewPredictionsWidget.init
+            { auth=auth_
+            , linkToAuthority=linkToAuthority
+            , predictions=preds.predictions |> Utils.mustMapValues
+            }
+          |> Tuple.mapFirst (ViewPredictionsWidget.noFilterByOwner >> Just)
+        Nothing -> ( Nothing, Cmd.none )
+      Nothing -> ( Nothing, Cmd.none )
+  in
   ( { userId = Utils.mustDecodePbFromFlags Pb.userIdDecoder "userIdPbB64" flags
     , userView = Utils.mustDecodePbFromFlags Pb.userUserViewDecoder "userViewPbB64" flags
-    , authState = case Utils.decodePbFromFlags Pb.authTokenDecoder "authTokenPbB64" flags of
-        Just auth -> LoggedIn auth (SmallInvitationWidget.init {auth=auth, linkToAuthority=Utils.mustDecodeFromFlags JD.string "linkToAuthority" flags})
+    , authState = case auth of
+        Just auth_ -> LoggedIn auth_ (SmallInvitationWidget.init {auth=auth_, linkToAuthority=linkToAuthority})
         Nothing -> LoggedOut
+    , predictionsWidget = predsWidget
     , working = False
     , setTrustedError = Nothing
     }
-  , Cmd.none
+  , Cmd.map PredictionsMsg predsCmd
   )
 
 update : Msg -> Model -> (Model, Cmd Msg)
@@ -57,7 +76,7 @@ update msg model =
       case resp.setTrustedResult of
         Just (Pb.SetTrustedResultOk _) ->
           ( model
-          , changed ()
+          , trustChanged ()
           )
         Just (Pb.SetTrustedResultError e) ->
           ( { model | working = False , setTrustedError = Just (Debug.toString e) }
@@ -75,6 +94,14 @@ update msg model =
           , Cmd.map InvitationMsg widgetCmd
           )
         LoggedOut -> Debug.todo "bad state"
+    PredictionsMsg widgetMsg ->
+      case model.predictionsWidget of
+        Just widget ->
+          let (newWidget, widgetCmd) = ViewPredictionsWidget.update widgetMsg widget in
+          ( { model | predictionsWidget = Just newWidget }
+          , Cmd.map PredictionsMsg widgetCmd
+          )
+        Nothing -> Debug.todo "bad state"
 
 
 view : Model -> Html Msg
@@ -116,6 +143,11 @@ view model =
             , case model.setTrustedError of
                 Just e -> H.div [HA.style "color" "red"] [H.text e]
                 Nothing -> H.text ""
+            , H.br [] []
+            , H.h3 [] [H.text "Predictions"]
+            , case model.predictionsWidget of
+                Nothing -> H.text "No predictions to show."
+                Just widget -> ViewPredictionsWidget.view widget |> H.map PredictionsMsg
             ]
     ]
 
