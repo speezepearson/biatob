@@ -289,7 +289,7 @@ class Servicer(abc.ABC):
     def LogInUsername(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.LogInUsernameRequest) -> mvp_pb2.LogInUsernameResponse: pass
     def CreatePrediction(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.CreatePredictionRequest) -> mvp_pb2.CreatePredictionResponse: pass
     def GetPrediction(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.GetPredictionRequest) -> mvp_pb2.GetPredictionResponse: pass
-    def ListMyPredictions(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.ListMyPredictionsRequest) -> mvp_pb2.ListMyPredictionsResponse: pass
+    def ListMyStakes(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.ListMyStakesRequest) -> mvp_pb2.ListMyStakesResponse: pass
     def Stake(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.StakeRequest) -> mvp_pb2.StakeResponse: pass
     def Resolve(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.ResolveRequest) -> mvp_pb2.ResolveResponse: pass
     def SetTrusted(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.SetTrustedRequest) -> mvp_pb2.SetTrustedResponse: pass
@@ -451,10 +451,10 @@ class FsBackedServicer(Servicer):
 
     @checks_token
     @log_action
-    def ListMyPredictions(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.ListMyPredictionsRequest) -> mvp_pb2.ListMyPredictionsResponse:
+    def ListMyStakes(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.ListMyStakesRequest) -> mvp_pb2.ListMyStakesResponse:
         if token is None:
             logger.info('logged-out user trying to list their predictions')
-            return mvp_pb2.ListMyPredictionsResponse(ok=mvp_pb2.PredictionsById(predictions={}))
+            return mvp_pb2.ListMyStakesResponse(ok=mvp_pb2.PredictionsById(predictions={}))
 
         wstate = self._storage.get()
         result = {
@@ -463,7 +463,7 @@ class FsBackedServicer(Servicer):
             if prediction.creator == token.owner or any(trade.bettor == token.owner for trade in prediction.trades)
         }
 
-        return mvp_pb2.ListMyPredictionsResponse(ok=mvp_pb2.PredictionsById(predictions=result))
+        return mvp_pb2.ListMyStakesResponse(ok=mvp_pb2.PredictionsById(predictions=result))
 
     @checks_token
     @log_action
@@ -1002,15 +1002,15 @@ class WebServer:
                 body=self._jinja.get_template('LoginPage.html').render(
                     auth_token_pb_b64=None,
                 ))
-        list_my_predictions_resp = self._servicer.ListMyPredictions(auth, mvp_pb2.ListMyPredictionsRequest())
-        if list_my_predictions_resp.WhichOneof('list_my_predictions_result') == 'error':
-            return web.Response(status=400, body=str(list_my_predictions_resp.error))
-        assert list_my_predictions_resp.WhichOneof('list_my_predictions_result') == 'ok'
+        list_my_stakes_resp = self._servicer.ListMyStakes(auth, mvp_pb2.ListMyStakesRequest())
+        if list_my_stakes_resp.WhichOneof('list_my_stakes_result') == 'error':
+            return web.Response(status=400, body=str(list_my_stakes_resp.error))
+        assert list_my_stakes_resp.WhichOneof('list_my_stakes_result') == 'ok'
         return web.Response(
             content_type='text/html',
             body=self._jinja.get_template('MyStakesPage.html').render(
                 auth_token_pb_b64=pb_b64(auth),
-                predictions_pb_b64=pb_b64(list_my_predictions_resp.ok),
+                predictions_pb_b64=pb_b64(list_my_stakes_resp.ok),
             ))
 
     async def get_username(self, req: web.Request) -> web.Response:

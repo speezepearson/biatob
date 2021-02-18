@@ -224,10 +224,10 @@ message UserUserView {
   bool trusts_you = 4;
 }
 
-message ListMyPredictionsRequest {
+message ListMyStakesRequest {
 }
-message ListMyPredictionsResponse {
-  oneof list_my_predictions_result {
+message ListMyStakesResponse {
+  oneof list_my_stakes_result {
     PredictionsById ok = 1;
     Error error = 2;
   }

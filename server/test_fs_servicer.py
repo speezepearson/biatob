@@ -106,24 +106,24 @@ def test_GetPrediction(fs_servicer: FsBackedServicer, clock: MockClock):
   ))
 
 
-def test_ListMyPredictions(fs_servicer: FsBackedServicer):
+def test_ListMyStakes(fs_servicer: FsBackedServicer):
   alice_token, bob_token = alice_bob_tokens(fs_servicer)
   prediction_1_id = fs_servicer.CreatePrediction(token=alice_token, request=some_create_prediction_request()).new_prediction_id
   prediction_2_id = fs_servicer.CreatePrediction(token=alice_token, request=some_create_prediction_request()).new_prediction_id
   prediction_3_id = fs_servicer.CreatePrediction(token=alice_token, request=some_create_prediction_request()).new_prediction_id
 
-  resp = fs_servicer.ListMyPredictions(bob_token, mvp_pb2.ListMyPredictionsRequest())
-  assert resp.WhichOneof('list_my_predictions_result') == 'ok'
+  resp = fs_servicer.ListMyStakes(bob_token, mvp_pb2.ListMyStakesRequest())
+  assert resp.WhichOneof('list_my_stakes_result') == 'ok'
   assert set(resp.ok.predictions.keys()) == set()
 
   fs_servicer.Stake(bob_token, mvp_pb2.StakeRequest(prediction_id=prediction_1_id, bettor_is_a_skeptic=True, bettor_stake_cents=10))
-  resp = fs_servicer.ListMyPredictions(bob_token, mvp_pb2.ListMyPredictionsRequest())
-  assert resp.WhichOneof('list_my_predictions_result') == 'ok'
+  resp = fs_servicer.ListMyStakes(bob_token, mvp_pb2.ListMyStakesRequest())
+  assert resp.WhichOneof('list_my_stakes_result') == 'ok'
   assert set(resp.ok.predictions.keys()) == {prediction_1_id}
 
   fs_servicer.Stake(bob_token, mvp_pb2.StakeRequest(prediction_id=prediction_2_id, bettor_is_a_skeptic=True, bettor_stake_cents=10))
-  resp = fs_servicer.ListMyPredictions(bob_token, mvp_pb2.ListMyPredictionsRequest())
-  assert resp.WhichOneof('list_my_predictions_result') == 'ok'
+  resp = fs_servicer.ListMyStakes(bob_token, mvp_pb2.ListMyStakesRequest())
+  assert resp.WhichOneof('list_my_stakes_result') == 'ok'
   assert set(resp.ok.predictions.keys()) == {prediction_1_id, prediction_2_id}
 
 
