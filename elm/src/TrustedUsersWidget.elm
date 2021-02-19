@@ -45,7 +45,7 @@ init : { auth : Pb.AuthToken , trustedUsers : List Pb.UserId , invitations : Dic
 init flags =
   ( { auth = flags.auth
     , trustedUsers = flags.trustedUsers
-    , invitationWidget = SmallInvitationWidget.init {auth=flags.auth, linkToAuthority=flags.linkToAuthority}
+    , invitationWidget = SmallInvitationWidget.init {auth=flags.auth, linkToAuthority=flags.linkToAuthority, destination=Nothing}
     , invitations = flags.invitations
     , addTrustedUserField = Field.okIfEmpty <| Field.init "" <| \() s -> if String.isEmpty s then Err "must not be empty" else Ok s
     , linkToAuthority = flags.linkToAuthority

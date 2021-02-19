@@ -95,7 +95,7 @@
           var linkToAuthority = window.origin;
           var invitationWidget = Elm.SmallInvitationWidget.init({
             node: node,
-            flags: {authTokenPbB64, linkToAuthority},
+            flags: {authTokenPbB64, linkToAuthority, destination: null},
           });
           subscribeToCopy(invitationWidget);
         } else {

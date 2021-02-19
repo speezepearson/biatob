@@ -52,7 +52,7 @@ init flags =
   ( { userId = Utils.mustDecodePbFromFlags Pb.userIdDecoder "userIdPbB64" flags
     , userView = Utils.mustDecodePbFromFlags Pb.userUserViewDecoder "userViewPbB64" flags
     , authState = case auth of
-        Just auth_ -> LoggedIn auth_ (SmallInvitationWidget.init {auth=auth_, linkToAuthority=linkToAuthority})
+        Just auth_ -> LoggedIn auth_ (SmallInvitationWidget.init {auth=auth_, linkToAuthority=linkToAuthority, destination=Nothing})
         Nothing -> LoggedOut
     , predictionsWidget = predsWidget
     , working = False

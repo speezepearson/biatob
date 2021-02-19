@@ -22,6 +22,7 @@ type alias Model =
   { auth : Pb.AuthToken
   , invitationId : Maybe Pb.InvitationId
   , linkToAuthority : String
+  , destination : Maybe String
   , working : Bool
   , notification : Html Msg
   }
@@ -31,11 +32,12 @@ type Msg
   | CreateInvitationFinished (Result Http.Error Pb.CreateInvitationResponse)
   | Copy String
 
-init : { auth : Pb.AuthToken , linkToAuthority : String } -> Model
+init : { auth : Pb.AuthToken , linkToAuthority : String , destination : Maybe String } -> Model
 init flags =
   { auth = flags.auth
   , invitationId = Nothing
   , linkToAuthority = flags.linkToAuthority
+  , destination = flags.destination
   , working = False
   , notification = H.text ""
   }
@@ -44,6 +46,7 @@ initFromFlags flags =
   ( init
       { auth = Utils.mustDecodePbFromFlags Pb.authTokenDecoder "authTokenPbB64" flags
       , linkToAuthority = Utils.mustDecodeFromFlags JD.string "linkToAuthority" flags
+      , destination = JD.decodeValue (JD.field "destination" JD.string) flags |> Result.toMaybe
       }
   , Cmd.none
   )
@@ -103,7 +106,9 @@ view model =
     [ case model.invitationId of
         Nothing -> H.text ""
         Just id ->
-          CopyWidget.view Copy (model.linkToAuthority ++ Utils.invitationPath id)
+          CopyWidget.view Copy (model.linkToAuthority ++ Utils.invitationPath id ++ case model.destination of
+             Just d -> "?dest="++d
+             Nothing -> "" )
     , H.button
         [ HA.disabled model.working
         , HE.onClick CreateInvitation

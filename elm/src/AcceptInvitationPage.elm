@@ -19,6 +19,7 @@ type AuthState = LoggedIn Pb.AuthToken | LoggedOut AuthWidget.Model
 type alias Model =
   { authState : AuthState
   , invitationId : Pb.InvitationId
+  , destination : Maybe String
   , working : Bool
   , acceptNotification : Html Msg
   }
@@ -35,6 +36,7 @@ init flags =
         Just auth_ -> LoggedIn auth_
         Nothing -> LoggedOut AuthWidget.initNoToken
     , invitationId = Utils.mustDecodePbFromFlags Pb.invitationIdDecoder "invitationIdPbB64" flags
+    , destination = JD.decodeValue (JD.field "destination" JD.string) flags |> Result.toMaybe
     , working = False
     , acceptNotification = H.text ""
     }
@@ -56,7 +58,7 @@ update msg model =
       case resp.acceptInvitationResult of
         Just (Pb.AcceptInvitationResultOk _) ->
           ( model
-          , accepted {dest = Utils.pathToUserPage <| Utils.mustInviter model.invitationId }
+          , accepted {dest = model.destination |> Maybe.withDefault (Utils.pathToUserPage <| Utils.mustInviter model.invitationId) }
           )
         Just (Pb.AcceptInvitationResultError e) ->
           ( { model | working = False , acceptNotification = Utils.redText (Debug.toString e) }

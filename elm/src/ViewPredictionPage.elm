@@ -64,7 +64,7 @@ initBase flags =
     , now = flags.now
     , resolutionNotes = ""
     , linkToAuthority = flags.linkToAuthority
-    , invitationWidget = flags.auth |> Maybe.map (\auth_ -> SmallInvitationWidget.init {auth=auth_, linkToAuthority=flags.linkToAuthority})
+    , invitationWidget = flags.auth |> Maybe.map (\auth_ -> SmallInvitationWidget.init {auth=auth_, linkToAuthority=flags.linkToAuthority, destination=Just <| "/p/"++String.fromInt flags.predictionId})
     }
   , Task.perform Tick Time.now
   )
