@@ -1,17 +1,6 @@
-<!DOCTYPE HTML>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>Biatob</title>
-  <link rel="shortcut icon"type="image/x-icon" href="data:image/x-icon;,">
-  <script type="text/javascript">
-    {% include 'Utils.js' %}
-  </script>
-  <link rel="stylesheet" href="/static/base.css">
-</head>
-
-<body>
-  {% include 'Navbar.html' %}
+{% extends 'base.html' %}
+{% block title %} Biatob - Welcome {% endblock %}
+{% block body %}
 
   <main id="main" style="text-align: justify">
 
@@ -135,5 +124,4 @@
 
   </main>
 
-</body>
-</html>
+{% endblock %}

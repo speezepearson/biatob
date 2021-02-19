@@ -1,18 +1,7 @@
-<!DOCTYPE HTML>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>{{title}}</title>
-  <link rel="shortcut icon"type="image/x-icon" href="data:image/x-icon;,">
+{% extends 'base.html' %}
+{% block title %} {{title}} {% endblock %}
+{% block body %}
   <script type="text/javascript" src="/elm/ViewPredictionPage.js"></script>
-  <script type="text/javascript">
-    {% include 'Utils.js' %}
-  </script>
-  <link rel="stylesheet" href="/static/base.css">
-</head>
-
-<body>
-  {% include 'Navbar.html' %}
   <main id="main-wrapper"><div id="main"></div></main>
   <script type="text/javascript">
 
@@ -30,5 +19,4 @@
       window.location.reload();
     });
   </script>
-</body>
-</html>
+{% endblock %}
