@@ -6,8 +6,6 @@ import Html.Attributes as HA
 import Html.Events as HE
 import Http
 import Json.Decode as JD
-import Protobuf.Encode as PE
-import Protobuf.Decode as PD
 import Time
 import Dict as D exposing (Dict)
 
@@ -157,7 +155,7 @@ viewStakeFormOrExcuse model =
       H.div []
         [ H.text "You must be logged in to participate in this prediction!"
         ]
-    Just auth_ ->
+    Just _ ->
       if creator.isSelf then
         H.text ""
       else case (creator.trustsYou, creator.isTrusted) of
@@ -206,7 +204,7 @@ enumerateWinnings winningsByUser =
   H.ul [] <| (
     winningsByUser
     |> D.toList
-    |> List.sortBy (\(b, win) -> b)
+    |> List.sortBy (\(b, _) -> b)
     |> List.map (\(b, win) -> H.li [] [H.text <| stateWinnings b win])
     )
 

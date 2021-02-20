@@ -3,7 +3,6 @@ module Field exposing (..)
 import Html as H exposing (Html)
 import Html.Attributes as HA
 import Html.Events as HE
-import Html exposing (a)
 
 {- Consider just using https://github.com/rtfeldman/elm-validate instead of this module? -}
 

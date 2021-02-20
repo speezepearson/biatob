@@ -45,9 +45,6 @@ view config state =
 
     isClosed = Time.posixToMillis state.now > 1000*config.prediction.closesUnixtime
     disableInputs = isClosed || Utils.resolutionIsTerminal (Utils.currentResolution config.prediction)
-    disableCommit = disableInputs || config.disableCommit
-    winCentsIfYes = config.prediction.yourTrades |> List.map (\t -> if t.bettorIsASkeptic then -t.bettorStakeCents else t.creatorStakeCents) |> List.sum
-    winCentsIfNo = config.prediction.yourTrades |> List.map (\t -> if t.bettorIsASkeptic then t.creatorStakeCents else -t.bettorStakeCents) |> List.sum
     creatorStakeFactorVsBelievers = (1 - certainty.high) / certainty.high
     creatorStakeFactorVsSkeptics = certainty.low / (1 - certainty.low)
     maxBelieverStakeCents = if creatorStakeFactorVsBelievers == 0 then 0 else toFloat config.prediction.remainingStakeCentsVsBelievers / creatorStakeFactorVsBelievers + 0.001 |> floor

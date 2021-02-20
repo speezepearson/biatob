@@ -1,10 +1,8 @@
 module ViewPredictionsWidget exposing (..)
 
-import Browser
 import Html as H exposing (Html)
 import Html.Attributes as HA
 import Html.Events as HE
-import Json.Decode as JD
 import Dict exposing (Dict)
 import Time
 

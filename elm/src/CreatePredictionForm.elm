@@ -3,7 +3,6 @@ module CreatePredictionForm exposing (..)
 import Browser
 import Html as H exposing (Html)
 import Html.Attributes as HA
-import Html.Events as HE
 import Utils exposing (i)
 import Time
 import Task
@@ -296,7 +295,7 @@ enable : Model -> Model
 enable model = { model | disabled = False }
 
 subscriptions : Model -> Sub Msg
-subscriptions model =
+subscriptions _ =
   Time.every 1000 Tick
 
 main : Program () Model Msg

@@ -1,13 +1,10 @@
 port module TrustedUsersWidget exposing (..)
 
-import Browser
 import Html as H exposing (Html)
 import Html.Attributes as HA
 import Html.Events as HE
 import Http
 import Dict as D exposing (Dict)
-import Protobuf.Encode as PE
-import Protobuf.Decode as PD
 
 import Biatob.Proto.Mvp as Pb
 import Utils
@@ -124,8 +121,6 @@ viewInvitation model nonce invitation =
         [ let
             id : Pb.InvitationId
             id = { inviter = model.auth.owner , nonce = nonce }
-            username = case Utils.mustUserKind <| Utils.mustTokenOwner model.auth of
-                Pb.KindUsername u -> u
           in
             CopyWidget.view Copy (model.linkToAuthority ++ Utils.invitationPath id)
         , H.text <| " (created " ++ Utils.dateStr Time.utc (Utils.unixtimeToTime invitation.createdUnixtime) ++ ")"

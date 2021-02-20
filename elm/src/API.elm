@@ -1,20 +1,9 @@
 module API exposing (..)
 
-import Browser
-import Html as H exposing (Html)
-import Html.Attributes as HA
-import Html.Events as HE
-import Json.Decode as JD
-import Json.Encode as JE
-import Time
-import Html exposing (s)
-
 import Protobuf.Decode as PD
 import Protobuf.Encode as PE
 import Biatob.Proto.Mvp as Pb
-import Utils
 import Http
-import Task
 
 type alias Endpoint req resp =
   { encoder : (req -> PE.Encoder)
