@@ -16,21 +16,34 @@ import ViewPredictionsWidget
 
 port trustChanged : () -> Cmd msg
 
-type AuthState = LoggedIn Pb.AuthToken SmallInvitationWidget.Model | LoggedOut
 type alias Model =
   { userId : Pb.UserId
   , userView : Pb.UserUserView
-  , authState : AuthState
+  , auth : Maybe Pb.AuthToken
   , predictionsWidget : Maybe ViewPredictionsWidget.Model
   , working : Bool
   , setTrustedError : Maybe String
+  , linkToAuthority : String
+  , invitationWidget : SmallInvitationWidget.Model
   }
 
 type Msg
   = SetTrusted Bool
   | SetTrustedFinished (Result Http.Error Pb.SetTrustedResponse)
-  | InvitationMsg SmallInvitationWidget.Msg
   | PredictionsMsg ViewPredictionsWidget.Msg
+  | Copy String
+  | CreateInvitation
+  | CreateInvitationFinished (Result Http.Error Pb.CreateInvitationResponse)
+  | Ignore
+
+invitationWidgetCtx : Model -> SmallInvitationWidget.Context Msg
+invitationWidgetCtx model =
+  { destination = Nothing
+  , httpOrigin = model.linkToAuthority
+  , copy = Copy
+  , nevermind = Ignore
+  , createInvitation = CreateInvitation
+  }
 
 init : JD.Value -> (Model, Cmd Msg)
 init flags =
@@ -51,12 +64,12 @@ init flags =
   in
   ( { userId = Utils.mustDecodePbFromFlags Pb.userIdDecoder "userIdPbB64" flags
     , userView = Utils.mustDecodePbFromFlags Pb.userUserViewDecoder "userViewPbB64" flags
-    , authState = case auth of
-        Just auth_ -> LoggedIn auth_ (SmallInvitationWidget.init {auth=auth_, linkToAuthority=linkToAuthority, destination=Nothing})
-        Nothing -> LoggedOut
+    , auth = auth
     , predictionsWidget = predsWidget
     , working = False
     , setTrustedError = Nothing
+    , linkToAuthority = linkToAuthority
+    , invitationWidget = SmallInvitationWidget.init
     }
   , Cmd.map PredictionsMsg predsCmd
   )
@@ -86,14 +99,6 @@ update msg model =
           ( { model | working = False , setTrustedError = Just "Invalid server response (neither Ok nor Error in protobuf)" }
           , Cmd.none
           )
-    InvitationMsg widgetMsg ->
-      case model.authState of
-        LoggedIn auth widget ->
-          let (newWidget, widgetCmd) = SmallInvitationWidget.update widgetMsg widget in
-          ( { model | authState = LoggedIn auth newWidget }
-          , Cmd.map InvitationMsg widgetCmd
-          )
-        LoggedOut -> Debug.todo "bad state"
     PredictionsMsg widgetMsg ->
       case model.predictionsWidget of
         Just widget ->
@@ -103,6 +108,38 @@ update msg model =
           )
         Nothing -> Debug.todo "bad state"
 
+    CreateInvitation ->
+      ( { model | invitationWidget = model.invitationWidget |> SmallInvitationWidget.setWorking }
+        , API.postCreateInvitation CreateInvitationFinished {notes = ""}  -- TODO(P3): add notes field
+      )
+    CreateInvitationFinished (Err e) ->
+      ( { model | invitationWidget = model.invitationWidget |> SmallInvitationWidget.doneWorking (Utils.redText (Debug.toString e)) }
+      , Cmd.none
+      )
+    CreateInvitationFinished (Ok resp) ->
+      case resp.createInvitationResult of
+        Just (Pb.CreateInvitationResultOk result) ->
+          ( { model | invitationWidget = model.invitationWidget
+                        |> SmallInvitationWidget.doneWorking (H.text "")
+                        |> SmallInvitationWidget.setInvitation (Just {inviter=(model.auth |> Utils.must "CreateInvitation can only finish Ok if logged in").owner, nonce=result.nonce})
+            }
+          , Cmd.none
+          )
+        Just (Pb.CreateInvitationResultError e) ->
+          ( { model | invitationWidget = model.invitationWidget
+                        |> SmallInvitationWidget.doneWorking (Utils.redText (Debug.toString e))
+            }
+          , Cmd.none
+          )
+        Nothing ->
+          ( { model | invitationWidget = model.invitationWidget
+                        |> SmallInvitationWidget.doneWorking (Utils.redText "Invalid server response (neither Ok nor Error in protobuf)")
+            }
+          , Cmd.none
+          )
+
+    Copy s -> Debug.todo ""
+    Ignore -> ( model , Cmd.none )
 
 view : Model -> Html Msg
 view model =
@@ -115,10 +152,10 @@ view model =
           , H.a [HA.href "/settings"] [H.text "your settings"]
           , H.text "?"
           ]
-      else case model.authState of
-        LoggedOut ->
+      else case model.auth of
+        Nothing ->
           H.text "Log in to see your relationship with this user."
-        LoggedIn _ invitationWidget ->
+        Just _ ->
           H.div []
             [ if model.userView.trustsYou then
                 H.text "This user trusts you! :)"
@@ -127,7 +164,7 @@ view model =
                   [ H.text "This user hasn't marked you as trusted! If you think that, in real life, they "
                   , H.i [] [H.text "do"]
                   , H.text " trust you, send them an invitation: "
-                  , SmallInvitationWidget.view invitationWidget |> H.map InvitationMsg
+                  , SmallInvitationWidget.view (invitationWidgetCtx model) model.invitationWidget
                   ]
             , H.br [] []
             , if model.userView.isTrusted then

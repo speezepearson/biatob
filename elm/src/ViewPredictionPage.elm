@@ -32,7 +32,7 @@ type alias Model =
   , now : Time.Posix
   , resolutionNotes : String
   , linkToAuthority : String
-  , invitationWidget : Maybe SmallInvitationWidget.Model
+  , invitationWidget : SmallInvitationWidget.Model
   }
 
 type Msg
@@ -44,11 +44,21 @@ type Msg
   | ResolveFinished (Result Http.Error Pb.ResolveResponse)
   | Copy String
   | Tick Time.Posix
-  | InvitationMsg SmallInvitationWidget.Msg
+  | CreateInvitation
+  | CreateInvitationFinished (Result Http.Error Pb.CreateInvitationResponse)
   | Ignore
 
 setPrediction : Pb.UserPredictionView -> Model -> Model
 setPrediction prediction model = { model | prediction = prediction }
+
+invitationWidgetCtx : Model -> SmallInvitationWidget.Context Msg
+invitationWidgetCtx model =
+  { httpOrigin = model.linkToAuthority
+  , destination = Just <| "/p/" ++ String.fromInt model.predictionId
+  , copy = Copy
+  , nevermind = Ignore
+  , createInvitation = CreateInvitation
+  }
 
 initBase : { prediction : Pb.UserPredictionView , predictionId : Int , auth : Maybe Pb.AuthToken, now : Time.Posix, linkToAuthority : String } -> ( Model, Cmd Msg )
 initBase flags =
@@ -62,7 +72,7 @@ initBase flags =
     , now = flags.now
     , resolutionNotes = ""
     , linkToAuthority = flags.linkToAuthority
-    , invitationWidget = flags.auth |> Maybe.map (\auth_ -> SmallInvitationWidget.init {auth=auth_, linkToAuthority=flags.linkToAuthority, destination=Just <| "/p/"++String.fromInt flags.predictionId})
+    , invitationWidget = SmallInvitationWidget.init
     }
   , Task.perform Tick Time.now
   )
@@ -132,14 +142,37 @@ update msg model =
       ( model , CopyWidget.copy s )
     Tick t ->
       ( { model | now = t } , Cmd.none )
-    InvitationMsg widgetMsg ->
-      case model.invitationWidget of
-        Nothing -> Debug.todo "convolutedly impossible"
-        Just widget ->
-          let (newWidget, widgetCmd) = SmallInvitationWidget.update widgetMsg widget in
-          ( { model | invitationWidget = Just newWidget }
-          , Cmd.map InvitationMsg widgetCmd
+
+    CreateInvitation ->
+      ( { model | invitationWidget = model.invitationWidget |> SmallInvitationWidget.setWorking }
+        , API.postCreateInvitation CreateInvitationFinished {notes = ""}  -- TODO(P3): add notes field
+      )
+    CreateInvitationFinished (Err e) ->
+      ( { model | invitationWidget = model.invitationWidget |> SmallInvitationWidget.doneWorking (Utils.redText (Debug.toString e)) }
+      , Cmd.none
+      )
+    CreateInvitationFinished (Ok resp) ->
+      case resp.createInvitationResult of
+        Just (Pb.CreateInvitationResultOk result) ->
+          ( { model | invitationWidget = model.invitationWidget
+                        |> SmallInvitationWidget.doneWorking (H.text "")
+                        |> SmallInvitationWidget.setInvitation (Just {inviter=(model.auth |> Utils.must "CreateInvitation can only finish Ok if logged in").owner, nonce=result.nonce})
+            }
+          , Cmd.none
           )
+        Just (Pb.CreateInvitationResultError e) ->
+          ( { model | invitationWidget = model.invitationWidget
+                        |> SmallInvitationWidget.doneWorking (Utils.redText (Debug.toString e))
+            }
+          , Cmd.none
+          )
+        Nothing ->
+          ( { model | invitationWidget = model.invitationWidget
+                        |> SmallInvitationWidget.doneWorking (Utils.redText "Invalid server response (neither Ok nor Error in protobuf)")
+            }
+          , Cmd.none
+          )
+
     Ignore ->
       ( model , Cmd.none )
 
@@ -171,9 +204,7 @@ viewStakeFormOrExcuse model =
             [ H.text <| "You and " ++ creator.displayName ++ " don't trust each other! If, in real life, you "
             , H.i [] [H.text "do"]
             , H.text " trust each other to pay your debts, send them an invitation! "
-            , case model.invitationWidget of
-                Nothing -> Debug.todo "convolutedly impossible"
-                Just widget -> SmallInvitationWidget.view widget |> H.map InvitationMsg
+            , SmallInvitationWidget.view (invitationWidgetCtx model) model.invitationWidget
             ]
         (True, False) ->
           H.div []
@@ -185,9 +216,7 @@ viewStakeFormOrExcuse model =
             [ H.text <| creator.displayName ++ " hasn't marked you as trusted! If you think that, in real life, they "
             , H.i [] [H.text "do"]
             , H.text " trust you to pay your debts, send them an invitation link: "
-            , case model.invitationWidget of
-                Nothing -> Debug.todo "convolutedly impossible"
-                Just widget -> SmallInvitationWidget.view widget |> H.map InvitationMsg
+            , SmallInvitationWidget.view (invitationWidgetCtx model) model.invitationWidget
             ]
 
 creatorWinningsByBettor : Bool -> List Pb.Trade -> Dict String Int -- TODO: avoid key serialization collisions
@@ -385,7 +414,7 @@ view model =
           [ H.text "If you want to link to your prediction, here are some snippets of HTML you could copy-paste:"
           , viewEmbedInfo model
           , H.text "If there are people you want to participate, but you haven't already established trust with them in Biatob, send them invitations: "
-          , SmallInvitationWidget.view (Utils.must "convolutedly impossible" model.invitationWidget) |> H.map InvitationMsg
+          , SmallInvitationWidget.view (invitationWidgetCtx model) model.invitationWidget
           ]
       else
         H.text ""

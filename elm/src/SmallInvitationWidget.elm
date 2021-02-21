@@ -15,79 +15,35 @@ import Utils
 import CopyWidget
 import API
 
-type alias Model =
-  { auth : Pb.AuthToken
-  , invitationId : Maybe Pb.InvitationId
-  , linkToAuthority : String
+type alias Context msg =
+  { httpOrigin : String
+  , createInvitation : msg
+  , copy : String -> msg
+  , nevermind : msg
   , destination : Maybe String
+  }
+type alias Model =
+  { invitationId : Maybe Pb.InvitationId
   , working : Bool
-  , notification : Html Msg
+  , notification : Html ()
   }
 
-type Msg
-  = CreateInvitation
-  | CreateInvitationFinished (Result Http.Error Pb.CreateInvitationResponse)
-  | Copy String
+setWorking : Model -> Model
+setWorking model = { model | working = True , notification = H.text "" }
+doneWorking : Html () -> Model -> Model
+doneWorking notification model = { model | working = False , notification = notification }
+setInvitation : Maybe Pb.InvitationId -> Model -> Model
+setInvitation inv model = { model | invitationId = inv }
 
-init : { auth : Pb.AuthToken , linkToAuthority : String , destination : Maybe String } -> Model
-init flags =
-  { auth = flags.auth
-  , invitationId = Nothing
-  , linkToAuthority = flags.linkToAuthority
-  , destination = flags.destination
+init : Model
+init =
+  { invitationId = Nothing
   , working = False
   , notification = H.text ""
   }
-initFromFlags : JD.Value -> ( Model , Cmd Msg )
-initFromFlags flags =
-  ( init
-      { auth = Utils.mustDecodePbFromFlags Pb.authTokenDecoder "authTokenPbB64" flags
-      , linkToAuthority = Utils.mustDecodeFromFlags JD.string "linkToAuthority" flags
-      , destination = JD.decodeValue (JD.field "destination" JD.string) flags |> Result.toMaybe
-      }
-  , Cmd.none
-  )
 
-checkCreationSuccess : Msg -> Maybe Pb.CreateInvitationResponseResult
-checkCreationSuccess msg =
-  case msg of
-    CreateInvitationFinished (Ok {createInvitationResult}) ->
-      case createInvitationResult of
-        Just (Pb.CreateInvitationResultOk result) ->
-          Just result
-        _ -> Nothing
-    _ -> Nothing
-
-update : Msg -> Model -> (Model, Cmd Msg)
-update msg model =
-  case msg of
-    CreateInvitation ->
-      ( { model | working = True , notification = H.text "" }
-      , API.postCreateInvitation CreateInvitationFinished {notes = ""}  -- TODO(P3): add notes field
-      )
-    CreateInvitationFinished (Err e) ->
-      ( { model | working = False , notification = Utils.redText (Debug.toString e) }
-      , Cmd.none
-      )
-    CreateInvitationFinished (Ok resp) ->
-      case resp.createInvitationResult of
-        Just (Pb.CreateInvitationResultOk result) ->
-          ( { model | working = False , invitationId = Just {inviter=model.auth.owner, nonce=result.nonce} }
-          , Cmd.none
-          )
-        Just (Pb.CreateInvitationResultError e) ->
-          ( { model | working = False , notification = Utils.redText (Debug.toString e) }
-          , Cmd.none
-          )
-        Nothing ->
-          ( { model | working = False , notification = Utils.redText "Invalid server response (neither Ok nor Error in protobuf)" }
-          , Cmd.none
-          )
-
-    Copy s -> ( model , CopyWidget.copy s )
-
-view : Model -> Html Msg
-view model =
+view : Context msg -> Model -> Html msg
+view ctx model =
   let
     help : Html msg
     help =
@@ -103,27 +59,45 @@ view model =
     [ case model.invitationId of
         Nothing -> H.text ""
         Just id ->
-          CopyWidget.view Copy (model.linkToAuthority ++ Utils.invitationPath id ++ case model.destination of
+          CopyWidget.view ctx.copy (ctx.httpOrigin ++ Utils.invitationPath id ++ case ctx.destination of
              Just d -> "?dest="++d
              Nothing -> "" )
     , H.button
         [ HA.disabled model.working
-        , HE.onClick CreateInvitation
+        , HE.onClick ctx.createInvitation
         ]
         [ H.text <| if model.working then "Creating..." else if model.invitationId == Nothing then "Create invitation" else "Create another"
         ]
     , H.text " "
-    , model.notification
+    , model.notification |> H.map (\_ -> ctx.nevermind)
     , H.text " "
     , help
     ]
 
-subscriptions : Model -> Sub Msg
-subscriptions _ = Sub.none
 
-main = Browser.element
-  { init = initFromFlags
-  , update = update
-  , view = view
-  , subscriptions = subscriptions
+
+type ReactorMsg = Ignore | Copy String | CreateInvitation
+main =
+  let
+    ctx : Context ReactorMsg
+    ctx =
+      { httpOrigin = "http://example.com"
+      , createInvitation = CreateInvitation
+      , copy = Copy
+      , nevermind = Ignore
+      , destination = Just "/mydest"
+      }
+
+    reactorUpdate : ReactorMsg -> Model -> Model
+    reactorUpdate msg model =
+      case msg of
+        Ignore -> model
+        Copy _ -> model
+        CreateInvitation -> model |> setInvitation (Just {inviter=Just {kind=Just <| Pb.KindUsername "myuser"}, nonce="mynonce"})
+
+  in
+  Browser.sandbox
+  { init = init
+  , view = view ctx
+  , update = reactorUpdate
   }

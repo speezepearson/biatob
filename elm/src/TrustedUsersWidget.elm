@@ -16,6 +16,8 @@ import Utils
 import SmallInvitationWidget
 import CopyWidget
 import API
+import CreatePredictionPage exposing (Msg(..))
+import Browser
 
 port changed : () -> Cmd msg
 
@@ -35,14 +37,25 @@ type Msg
   | SetAddTrustedField String
   | AddTrusted
   | SetTrustedFinished (Result Http.Error Pb.SetTrustedResponse)
-  | InvitationMsg SmallInvitationWidget.Msg
   | Copy String
+  | CreateInvitation
+  | CreateInvitationFinished (Result Http.Error Pb.CreateInvitationResponse)
+  | Ignore
+
+invitationWidgetCtx : Model -> SmallInvitationWidget.Context Msg
+invitationWidgetCtx model =
+  { destination = Nothing
+  , httpOrigin = model.linkToAuthority
+  , copy = Copy
+  , nevermind = Ignore
+  , createInvitation = CreateInvitation
+  }
 
 init : { auth : Pb.AuthToken , trustedUsers : List Pb.UserId , invitations : Dict String Pb.Invitation , linkToAuthority : String } -> ( Model , Cmd Msg )
 init flags =
   ( { auth = flags.auth
     , trustedUsers = flags.trustedUsers
-    , invitationWidget = SmallInvitationWidget.init {auth=flags.auth, linkToAuthority=flags.linkToAuthority, destination=Nothing}
+    , invitationWidget = SmallInvitationWidget.init
     , invitations = flags.invitations
     , addTrustedUserField = Field.okIfEmpty <| Field.init "" <| \() s -> if String.isEmpty s then Err "must not be empty" else Ok s
     , linkToAuthority = flags.linkToAuthority
@@ -95,16 +108,38 @@ update msg model =
           ( { model | working = False , notification = Utils.redText "Invalid server response (neither Ok nor Error in protobuf)" }
           , Cmd.none
           )
-    InvitationMsg widgetMsg ->
-      let (widget, widgetCmd) = SmallInvitationWidget.update widgetMsg model.invitationWidget in
-      ( { model | invitationWidget = widget }
-        |> case SmallInvitationWidget.checkCreationSuccess widgetMsg of
-              Just result -> \m -> { m | invitations = m.invitations |> D.insert result.nonce (Utils.mustCreateInvitationResultInvitation result) }
-              _ -> identity
-      , Cmd.map InvitationMsg widgetCmd
+    CreateInvitation ->
+      ( { model | invitationWidget = model.invitationWidget |> SmallInvitationWidget.setWorking }
+        , API.postCreateInvitation CreateInvitationFinished {notes = ""}  -- TODO(P3): add notes field
       )
+    CreateInvitationFinished (Err e) ->
+      ( { model | invitationWidget = model.invitationWidget |> SmallInvitationWidget.doneWorking (Utils.redText (Debug.toString e)) }
+      , Cmd.none
+      )
+    CreateInvitationFinished (Ok resp) ->
+      case resp.createInvitationResult of
+        Just (Pb.CreateInvitationResultOk result) ->
+          ( { model | invitationWidget = model.invitationWidget
+                        |> SmallInvitationWidget.doneWorking (H.text "")
+                        |> SmallInvitationWidget.setInvitation (Just {inviter=model.auth.owner, nonce=result.nonce})
+            }
+          , Cmd.none
+          )
+        Just (Pb.CreateInvitationResultError e) ->
+          ( { model | invitationWidget = model.invitationWidget
+                        |> SmallInvitationWidget.doneWorking (Utils.redText (Debug.toString e))
+            }
+          , Cmd.none
+          )
+        Nothing ->
+          ( { model | invitationWidget = model.invitationWidget
+                        |> SmallInvitationWidget.doneWorking (Utils.redText "Invalid server response (neither Ok nor Error in protobuf)")
+            }
+          , Cmd.none
+          )
 
     Copy s -> ( model , CopyWidget.copy s )
+    Ignore -> ( model , Cmd.none )
 
 viewInvitation : Model -> String -> Pb.Invitation -> Html Msg
 viewInvitation model nonce invitation =
@@ -162,7 +197,7 @@ view model =
         <| model.trustedUsers
     , H.br [] []
     , H.strong [] [H.text "Invitations: "]
-    , SmallInvitationWidget.view model.invitationWidget |> H.map InvitationMsg
+    , SmallInvitationWidget.view (invitationWidgetCtx model) model.invitationWidget
     , H.div [] [H.text "Outstanding:", viewInvitations model (\inv -> inv.acceptedBy == Nothing) ]
     , H.div [] [H.text "Past:",        viewInvitations model (\inv -> inv.acceptedBy /= Nothing) ]
     ]
