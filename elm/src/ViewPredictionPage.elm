@@ -36,8 +36,7 @@ type alias Model =
   }
 
 type Msg
-  = SetStakeFormState StakeForm.State
-  | Stake {bettorIsASkeptic:Bool, bettorStakeCents:Int}
+  = StakeEvent StakeForm.Event StakeForm.State
   | StakeFinished (Result Http.Error Pb.StakeResponse)
   | SetResolutionNotes String
   | Resolve Pb.Resolution
@@ -88,12 +87,14 @@ init flags =
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
-    SetStakeFormState newState ->
-      ({ model | stakeForm = newState }, Cmd.none)
-    Stake {bettorIsASkeptic, bettorStakeCents} ->
-      ( { model | working = True , stakeError = Nothing }
-      , API.postStake StakeFinished {predictionId=model.predictionId, bettorIsASkeptic=bettorIsASkeptic, bettorStakeCents=bettorStakeCents}
-      )
+    StakeEvent event newState ->
+      (case event of
+        StakeForm.Nevermind -> ( model , Cmd.none )
+        StakeForm.Staked {bettorIsASkeptic, bettorStakeCents} ->
+          ( model
+          , API.postStake StakeFinished {predictionId=model.predictionId, bettorIsASkeptic=bettorIsASkeptic, bettorStakeCents=bettorStakeCents}
+          )
+      ) |> Tuple.mapFirst (\m -> { m | stakeForm = newState })
     StakeFinished (Err e) ->
       ( { model | working = False , stakeError = Just (Debug.toString e) }
       , Cmd.none
@@ -442,9 +443,7 @@ viewEmbedInfo model =
 
 stakeFormConfig : Model -> StakeForm.Config Msg
 stakeFormConfig model =
-  { setState = SetStakeFormState
-  , onStake = Stake
-  , nevermind = Ignore
+  { handle = StakeEvent
   , disableCommit = (model.auth == Nothing || (Utils.mustPredictionCreator model.prediction).isSelf)
   , prediction = model.prediction
   }
