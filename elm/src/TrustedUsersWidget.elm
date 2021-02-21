@@ -18,111 +18,62 @@ import CopyWidget
 import API
 
 port changed : () -> Cmd msg
-
-type alias Model =
+type Event = Copy String | CreateInvitation | Nevermind | RemoveTrust Pb.UserId
+type alias Context msg =
   { auth : Pb.AuthToken
   , trustedUsers : List Pb.UserId
-  , invitationWidget : SmallInvitationWidget.Model
-  , invitations : Dict String Pb.Invitation
-  , addTrustedUserField : Field () String
   , linkToAuthority : String
+  , invitations : Dict String Pb.Invitation
+  , handle : Event -> Model -> msg
+  }
+type alias Model =
+  { invitationWidget : SmallInvitationWidget.Model
+  , addTrustedUserField : Field () String
   , working : Bool
-  , notification : Html Msg
+  , notification : Html ()
   }
 
-type Msg
-  = RemoveTrust Pb.UserId
-  | SetAddTrustedField String
-  | AddTrusted
-  | SetTrustedFinished (Result Http.Error Pb.SetTrustedResponse)
-  | Copy String
-  | InvitationEvent SmallInvitationWidget.Event SmallInvitationWidget.Model
-  | CreateInvitationFinished (Result Http.Error Pb.CreateInvitationResponse)
-  | Ignore
-
-invitationWidgetCtx : Model -> SmallInvitationWidget.Context Msg
-invitationWidgetCtx model =
+invitationWidgetCtx : Context msg -> Model -> SmallInvitationWidget.Context msg
+invitationWidgetCtx ctx model =
   { destination = Nothing
-  , httpOrigin = model.linkToAuthority
-  , handle = InvitationEvent
+  , httpOrigin = ctx.linkToAuthority
+  , handle = \e m ->
+      let
+        event = case e of
+          SmallInvitationWidget.Nevermind -> Nevermind
+          SmallInvitationWidget.Copy s -> Copy s
+          SmallInvitationWidget.CreateInvitation -> CreateInvitation
+      in
+      ctx.handle event { model | invitationWidget = m}
   }
 
-init : { auth : Pb.AuthToken , trustedUsers : List Pb.UserId , invitations : Dict String Pb.Invitation , linkToAuthority : String } -> ( Model , Cmd Msg )
-init flags =
-  ( { auth = flags.auth
-    , trustedUsers = flags.trustedUsers
-    , invitationWidget = SmallInvitationWidget.init
-    , invitations = flags.invitations
-    , addTrustedUserField = Field.okIfEmpty <| Field.init "" <| \() s -> if String.isEmpty s then Err "must not be empty" else Ok s
-    , linkToAuthority = flags.linkToAuthority
-    , working = False
-    , notification = H.text ""
-    }
-  , Cmd.none
-  )
+init : Model
+init =
+  { invitationWidget = SmallInvitationWidget.init
+  , addTrustedUserField = Field.okIfEmpty <| Field.init "" <| \() s -> if String.isEmpty s then Err "must not be empty" else Ok s
+  , working = False
+  , notification = H.text ""
+  }
 
-update : Msg -> Model -> (Model, Cmd Msg)
-update msg model =
-  case msg of
-    SetAddTrustedField s ->
-      ( { model | addTrustedUserField = model.addTrustedUserField |> Field.setStr s }
-      , Cmd.none
-      )
-    AddTrusted ->
-      case Field.parse () model.addTrustedUserField of
-        Ok username ->
-          ( { model | addTrustedUserField = model.addTrustedUserField |> Field.setStr ""
-                    , working = True
-                    , notification = H.text ""
-            }
-          , API.postSetTrusted SetTrustedFinished {who=Just {kind=Just (Pb.KindUsername username)}, trusted=True}
-          )
-        Err _ ->
-          ( model , Cmd.none )
-    RemoveTrust victim ->
-      if List.member victim model.trustedUsers then
-        ( { model | working = True
-                  , notification = H.text ""
-          }
-        , API.postSetTrusted SetTrustedFinished {who=Just victim, trusted=False}
-        )
-      else
-        ( model , Cmd.none )
-    SetTrustedFinished (Err e) ->
-      ( { model | working = False , notification = Utils.redText (Debug.toString e) }
-      , Cmd.none
-      )
-    SetTrustedFinished (Ok resp) ->
+handleSetTrustedResponse : Result Http.Error Pb.SetTrustedResponse -> Model -> Model
+handleSetTrustedResponse res model =
+  case res of
+    Err e ->
+      { model | working = False , notification = Utils.redText (Debug.toString e) }
+    Ok resp ->
       case resp.setTrustedResult of
         Just (Pb.SetTrustedResultOk _) ->
-          ( { model | working = False } , changed () )
+          { model | working = False }
         Just (Pb.SetTrustedResultError e) ->
-          ( { model | working = False , notification = Utils.redText (Debug.toString e) }
-          , Cmd.none
-          )
+          { model | working = False , notification = Utils.redText (Debug.toString e) }
         Nothing ->
-          ( { model | working = False , notification = Utils.redText "Invalid server response (neither Ok nor Error in protobuf)" }
-          , Cmd.none
-          )
-    InvitationEvent event newWidget ->
-      (case event of
-        SmallInvitationWidget.CreateInvitation ->
-          (model, API.postCreateInvitation CreateInvitationFinished {notes = ""})  -- TODO(P3): add notes field
-        SmallInvitationWidget.Copy s ->
-          (model, CopyWidget.copy s)
-        SmallInvitationWidget.Nevermind ->
-          (model, Cmd.none)
-      ) |> Tuple.mapFirst (\m -> { m | invitationWidget = newWidget })
-    CreateInvitationFinished res ->
-      ( { model | invitationWidget = model.invitationWidget |> SmallInvitationWidget.handleCreateInvitationResponse model.auth res }
-      , Cmd.none
-      )
+          { model | working = False , notification = Utils.redText "Invalid server response (neither Ok nor Error in protobuf)" }
 
-    Copy s -> ( model , CopyWidget.copy s )
-    Ignore -> ( model , Cmd.none )
+handleCreateInvitationResponse : Pb.AuthToken -> Result Http.Error Pb.CreateInvitationResponse -> Model -> Model
+handleCreateInvitationResponse auth res model = { model | invitationWidget = model.invitationWidget |> SmallInvitationWidget.handleCreateInvitationResponse auth res}
 
-viewInvitation : Model -> String -> Pb.Invitation -> Html Msg
-viewInvitation model nonce invitation =
+viewInvitation : Context msg -> Model -> String -> Pb.Invitation -> Html msg
+viewInvitation ctx model nonce invitation =
   case invitation.acceptedBy of
     Just accepter ->
       H.li []
@@ -135,17 +86,17 @@ viewInvitation model nonce invitation =
       H.li []
         [ let
             id : Pb.InvitationId
-            id = { inviter = model.auth.owner , nonce = nonce }
+            id = { inviter = ctx.auth.owner , nonce = nonce }
           in
-            CopyWidget.view Copy (model.linkToAuthority ++ Utils.invitationPath id)
+            CopyWidget.view (\s -> ctx.handle (Copy s) model) (ctx.linkToAuthority ++ Utils.invitationPath id)
         , H.text <| " (created " ++ Utils.dateStr Time.utc (Utils.unixtimeToTime invitation.createdUnixtime) ++ ")"
         ]
 
-viewInvitations : Model -> (Pb.Invitation -> Bool) -> Html Msg
-viewInvitations model filter =
+viewInvitations : Context msg -> Model -> (Pb.Invitation -> Bool) -> Html msg
+viewInvitations ctx model filter =
   let
     matches =
-      model.invitations
+      ctx.invitations
       |> D.filter (always filter)
       |> D.toList
       |> List.sortBy (\(_, invitation) -> -invitation.createdUnixtime)
@@ -154,15 +105,15 @@ viewInvitations model filter =
     H.text " none yet!"
   else
     matches
-    |> List.map (\(nonce, invitation) -> H.li [] [viewInvitation model nonce invitation])
+    |> List.map (\(nonce, invitation) -> H.li [] [viewInvitation ctx model nonce invitation])
     |> H.ul []
 
-view : Model -> Html Msg
-view model =
+view : Context msg -> Model -> Html msg
+view ctx model =
   H.div []
-    [ model.notification
+    [ model.notification |> H.map (\_ -> ctx.handle Nevermind model)
     , H.strong [] [H.text "You trust: "]
-    , if List.isEmpty model.trustedUsers then
+    , if List.isEmpty ctx.trustedUsers then
         H.text "nobody yet!"
       else
         H.ul []
@@ -170,17 +121,14 @@ view model =
             [ Utils.renderUser u
             , H.text " "
             , H.button
-                [ HE.onClick (RemoveTrust u)
+                [ HE.onClick (ctx.handle (RemoveTrust u) { model | working = True , notification = H.text ""})
                 , HA.disabled model.working
                 ] [H.text "Remove trust"]
             ])
-        <| model.trustedUsers
+        <| ctx.trustedUsers
     , H.br [] []
     , H.strong [] [H.text "Invitations: "]
-    , SmallInvitationWidget.view (invitationWidgetCtx model) model.invitationWidget
-    , H.div [] [H.text "Outstanding:", viewInvitations model (\inv -> inv.acceptedBy == Nothing) ]
-    , H.div [] [H.text "Past:",        viewInvitations model (\inv -> inv.acceptedBy /= Nothing) ]
+    , SmallInvitationWidget.view (invitationWidgetCtx ctx model) model.invitationWidget
+    , H.div [] [H.text "Outstanding:", viewInvitations ctx model (\inv -> inv.acceptedBy == Nothing) ]
+    , H.div [] [H.text "Past:",        viewInvitations ctx model (\inv -> inv.acceptedBy /= Nothing) ]
     ]
-
-subscriptions : Model -> Sub Msg
-subscriptions _ = Sub.none

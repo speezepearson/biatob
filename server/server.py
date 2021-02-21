@@ -600,7 +600,7 @@ class FsBackedServicer(Servicer):
                 requester_info.trusted_users.append(request.who)
             elif not request.trusted and request.who in requester_info.trusted_users:
                 requester_info.trusted_users.remove(request.who)
-            return mvp_pb2.SetTrustedResponse(ok=mvp_pb2.VOID)
+            return mvp_pb2.SetTrustedResponse(ok=mvp_pb2.UserIds(values=requester_info.trusted_users))
 
     @checks_token
     @log_action

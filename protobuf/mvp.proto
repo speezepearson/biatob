@@ -288,12 +288,15 @@ message SetTrustedRequest {
 }
 message SetTrustedResponse {
   oneof set_trusted_result {
-    Void ok = 1;
+    UserIds ok = 1;
     Error error = 2;
   }
   message Error {
     string catchall = 1;
   }
+}
+message UserIds {
+  repeated UserId values = 1;
 }
 
 message GetUserRequest {
