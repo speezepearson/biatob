@@ -26,13 +26,15 @@ def task_proto():
   has_protoc_gen_for = lambda lang: has_executable(f'protoc-gen-{lang}')
 
   if has_protoc_gen_for('elm'):
+    elm_protodir = Path('elm/protobuf')
     yield {
       'name': 'elm',
       'file_dep': protos,
-      'targets': [Path('elm/protobuf/Biatob/Proto')/snake_to_camel(p.with_suffix('.elm').name) for p in protos],
+      'targets': [(elm_protodir/'Biatob/Proto')/snake_to_camel(p.with_suffix('.elm').name) for p in protos],
       'actions': [
-        'mkdir -p elm/protobuf',
-        f'protoc --elm_out=elm/protobuf {" ".join(str(p) for p in protos)}',
+        f'if test -d {elm_protodir}; then rm -r {elm_protodir}; fi',
+        f'mkdir -p {elm_protodir}',
+        f'protoc --elm_out={elm_protodir} {" ".join(str(p) for p in protos)}',
       ],
     }
   else:
@@ -62,9 +64,11 @@ def task_elm():
     'targets': [
       *[dist/f'{mod}.js' for mod in modules],
     ],
-    'actions': [f'mkdir -p {dist}']
-               + [f'cd elm && elm make {elements_src.relative_to("elm")}/{mod}.elm --output=dist/{mod}.js' for mod in modules]
-               ,
+    'actions': [
+      f'if test -d {dist}; then rm -r {dist}; fi',
+      f'mkdir -p {dist}',
+      *[f'cd elm && elm make {elements_src.relative_to("elm")}/{mod}.elm --output=dist/{mod}.js' for mod in modules]
+    ],
   }
 
 def task_test():
