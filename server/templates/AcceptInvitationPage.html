@@ -13,6 +13,7 @@
       node: document.getElementById('main'),
       flags: {authTokenPbB64, invitationIdPbB64, destination},
     });
+    main.ports.authChanged.subscribe(() => window.location.reload());
     main.ports.accepted.subscribe(({dest}) => {
       window.location = dest;
     });
