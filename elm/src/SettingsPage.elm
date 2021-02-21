@@ -14,6 +14,7 @@ import EmailSettingsWidget
 import TrustedUsersWidget
 import CopyWidget
 import API
+import SmallInvitationWidget
 
 type UserTypeSpecificSettings
   = UsernameSettings ChangePasswordWidget.Model
@@ -93,7 +94,8 @@ update msg model =
     TrustedUsersEvent event newWidget ->
       (case event of
         Just (TrustedUsersWidget.Copy s) -> ( model , CopyWidget.copy s )
-        Just (TrustedUsersWidget.CreateInvitation) -> ( model , API.postCreateInvitation CreateInvitationFinished {notes=""} )
+        Just (TrustedUsersWidget.InvitationEvent (SmallInvitationWidget.Copy s)) -> ( model , CopyWidget.copy s )
+        Just (TrustedUsersWidget.InvitationEvent SmallInvitationWidget.CreateInvitation) -> ( model , API.postCreateInvitation CreateInvitationFinished {notes=""} )
         Just (TrustedUsersWidget.RemoveTrust who) -> ( model , API.postSetTrusted SetTrustedFinished {who=Just who, trusted=False} )
         Nothing -> ( model , Cmd.none )
       ) |> Tuple.mapFirst (\m -> { m | trustedUsersWidget = newWidget })

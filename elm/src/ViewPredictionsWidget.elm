@@ -11,6 +11,8 @@ import Biatob.Proto.Mvp as Pb
 import Utils
 
 import PredictionWidget
+import SmallInvitationWidget
+import StakeForm
 import CopyWidget
 import Task
 import API
@@ -184,8 +186,9 @@ update msg model =
           , case event of
             Nothing -> Cmd.none
             Just (PredictionWidget.Copy s) -> CopyWidget.copy s
-            Just PredictionWidget.CreateInvitation -> API.postCreateInvitation (CreateInvitationFinished id) {notes=""}
-            Just (PredictionWidget.Staked {bettorIsASkeptic, bettorStakeCents}) -> API.postStake (StakeFinished id) {predictionId=id, bettorIsASkeptic=bettorIsASkeptic, bettorStakeCents=bettorStakeCents}
+            Just (PredictionWidget.InvitationEvent (SmallInvitationWidget.Copy s)) -> CopyWidget.copy s
+            Just (PredictionWidget.InvitationEvent SmallInvitationWidget.CreateInvitation) -> API.postCreateInvitation (CreateInvitationFinished id) {notes=""}
+            Just (PredictionWidget.StakeEvent (StakeForm.Staked {bettorIsASkeptic, bettorStakeCents})) -> API.postStake (StakeFinished id) {predictionId=id, bettorIsASkeptic=bettorIsASkeptic, bettorStakeCents=bettorStakeCents}
             Just (PredictionWidget.Resolve resolution) -> API.postResolve (ResolveFinished id) {predictionId=id, resolution=resolution, notes = ""}
           )
     Tick t ->

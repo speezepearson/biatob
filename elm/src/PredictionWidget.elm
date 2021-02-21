@@ -18,9 +18,9 @@ import CopyWidget
 import SmallInvitationWidget
 
 type Event
-  = CreateInvitation
+  = InvitationEvent SmallInvitationWidget.Event
+  | StakeEvent StakeForm.Event
   | Copy String
-  | Staked {bettorIsASkeptic:Bool, bettorStakeCents:Int}
   | Resolve Pb.Resolution
 type alias Context msg =
   { auth : Maybe Pb.AuthToken
@@ -41,14 +41,7 @@ invitationWidgetCtx : Context msg -> State -> SmallInvitationWidget.Context msg
 invitationWidgetCtx ctx state =
   { httpOrigin = ctx.httpOrigin
   , destination = Just <| "/p/" ++ String.fromInt ctx.predictionId
-  , handle = \e m ->
-      let
-        event = case e of
-          Nothing -> Nothing
-          Just (SmallInvitationWidget.Copy s) -> Just (Copy s)
-          Just SmallInvitationWidget.CreateInvitation -> Just (CreateInvitation)
-      in
-      ctx.handle event { state | invitationWidget = m }
+  , handle = \e m -> ctx.handle (Maybe.map InvitationEvent e) { state | invitationWidget = m }
   }
 
 init : State
@@ -360,11 +353,5 @@ stakeFormConfig : Context msg -> State -> StakeForm.Config msg
 stakeFormConfig ctx state =
   { disableCommit = (ctx.auth == Nothing || (Utils.mustPredictionCreator ctx.prediction).isSelf)
   , prediction = ctx.prediction
-  , handle = \e newForm ->
-      let
-        event = case e of
-          Just (StakeForm.Staked x) -> Just <| Staked x
-          Nothing -> Nothing
-      in
-      ctx.handle event { state | stakeForm = newForm }
+  , handle = \e m -> ctx.handle (Maybe.map StakeEvent e) { state | stakeForm = m }
   }

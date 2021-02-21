@@ -12,6 +12,8 @@ import Task
 import CopyWidget
 import API
 import PredictionWidget as Widget
+import StakeForm
+import SmallInvitationWidget
 
 type alias Model = ( Widget.Context Msg , Widget.State )
 type Msg
@@ -43,8 +45,9 @@ update msg (ctx, model) =
         cmd = case event of
           Nothing -> Cmd.none
           Just (Widget.Copy s) -> CopyWidget.copy s
-          Just Widget.CreateInvitation -> API.postCreateInvitation CreateInvitationFinished {notes=""}
-          Just (Widget.Staked {bettorIsASkeptic, bettorStakeCents}) -> API.postStake StakeFinished {predictionId=ctx.predictionId, bettorIsASkeptic=bettorIsASkeptic, bettorStakeCents=bettorStakeCents}
+          Just (Widget.InvitationEvent (SmallInvitationWidget.Copy s)) -> CopyWidget.copy s
+          Just (Widget.InvitationEvent SmallInvitationWidget.CreateInvitation) -> API.postCreateInvitation CreateInvitationFinished {notes=""}
+          Just (Widget.StakeEvent (StakeForm.Staked {bettorIsASkeptic, bettorStakeCents})) -> API.postStake StakeFinished {predictionId=ctx.predictionId, bettorIsASkeptic=bettorIsASkeptic, bettorStakeCents=bettorStakeCents}
           Just (Widget.Resolve resolution) -> API.postResolve ResolveFinished {predictionId=ctx.predictionId, resolution=resolution, notes = ""}
       in
         ((ctx, newState), cmd)

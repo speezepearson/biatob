@@ -16,7 +16,7 @@ import Utils
 import SmallInvitationWidget
 import CopyWidget
 
-type Event = Copy String | CreateInvitation | RemoveTrust Pb.UserId
+type Event = Copy String | InvitationEvent SmallInvitationWidget.Event | RemoveTrust Pb.UserId
 type alias Context msg =
   { auth : Pb.AuthToken
   , trustedUsers : List Pb.UserId
@@ -35,14 +35,7 @@ invitationWidgetCtx : Context msg -> State -> SmallInvitationWidget.Context msg
 invitationWidgetCtx ctx state =
   { destination = Nothing
   , httpOrigin = ctx.httpOrigin
-  , handle = \e m ->
-      let
-        event = case e of
-          Nothing -> Nothing
-          Just (SmallInvitationWidget.Copy s) -> Just <| Copy s
-          Just SmallInvitationWidget.CreateInvitation -> Just CreateInvitation
-      in
-      ctx.handle event { state | invitationWidget = m}
+  , handle = \e m -> ctx.handle (Maybe.map InvitationEvent e) { state | invitationWidget = m }
   }
 
 init : State
