@@ -197,9 +197,6 @@ predictionCreatedTime prediction = unixtimeToTime prediction.createdUnixtime
 predictionClosesTime : Pb.UserPredictionView -> Time.Posix
 predictionClosesTime prediction = unixtimeToTime prediction.closesUnixtime
 
-secondsToClose : Time.Posix -> Pb.UserPredictionView -> Int
-secondsToClose now prediction = prediction.closesUnixtime - timeToUnixtime now |> round
-
 pathToUserPage : Pb.UserId -> String
 pathToUserPage user =
   case mustUserKind user of

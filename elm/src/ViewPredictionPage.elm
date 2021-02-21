@@ -148,7 +148,7 @@ viewStakeFormOrExcuse model =
   let creator = Utils.mustPredictionCreator model.prediction in
   if Utils.resolutionIsTerminal (Utils.currentResolution model.prediction) then
     H.text "This prediction has resolved, so cannot be bet in."
-  else if Utils.secondsToClose model.now model.prediction <= 0 then
+  else if model.prediction.closesUnixtime < Utils.timeToUnixtime model.now then
     H.text <| "This prediction closed on " ++ Utils.dateStr Time.utc (Utils.predictionClosesTime model.prediction) ++ " (UTC)."
   else case model.auth of
     Nothing ->
