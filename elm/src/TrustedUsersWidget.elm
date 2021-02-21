@@ -1,4 +1,4 @@
-port module TrustedUsersWidget exposing (..)
+module TrustedUsersWidget exposing (..)
 
 import Html as H exposing (Html)
 import Html.Attributes as HA
@@ -15,9 +15,7 @@ import Utils
 
 import SmallInvitationWidget
 import CopyWidget
-import API
 
-port changed : () -> Cmd msg
 type Event = Copy String | CreateInvitation | Nevermind | RemoveTrust Pb.UserId
 type alias Context msg =
   { auth : Pb.AuthToken

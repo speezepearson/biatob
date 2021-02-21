@@ -10,7 +10,7 @@ import Http
 import Biatob.Proto.Mvp as Pb
 import Utils
 
-import ViewPredictionPage
+import PredictionWidget
 import CopyWidget
 import Task
 import API
@@ -123,7 +123,7 @@ sortPredictions toPrediction order predictions =
       List.sortBy (toPrediction >> \p -> p.createdUnixtime * sortKeySign dir) predictions
 
 type alias Model =
-  { predictions : Dict Int (Pb.UserPredictionView, ViewPredictionPage.Model)
+  { predictions : Dict Int (Pb.UserPredictionView, PredictionWidget.Model)
   , filter : Filter
   , order : SortOrder
   , auth : Maybe Pb.AuthToken
@@ -133,7 +133,7 @@ type alias Model =
   }
 
 type Msg
-  = PredictionEvent Int ViewPredictionPage.Event ViewPredictionPage.Model
+  = PredictionEvent Int PredictionWidget.Event PredictionWidget.Model
   | Tick Time.Posix
   | SetSortOrder SortOrder
   | SetFilter Filter
@@ -147,7 +147,7 @@ viewPrediction predictionId model =
   case Dict.get predictionId model.predictions of
     Nothing -> Nothing
     Just (prediction, widget) -> Just <|
-      ViewPredictionPage.view
+      PredictionWidget.view
         { auth = model.auth
         , prediction = prediction
         , predictionId = predictionId
@@ -159,7 +159,7 @@ viewPrediction predictionId model =
 
 init : {auth: Maybe Pb.AuthToken, predictions:Dict Int Pb.UserPredictionView, linkToAuthority:String} -> (Model, Cmd Msg)
 init flags =
-  ( { predictions = flags.predictions |> Dict.map (\_ p -> (p, ViewPredictionPage.init))
+  ( { predictions = flags.predictions |> Dict.map (\_ p -> (p, PredictionWidget.init))
     , linkToAuthority = flags.linkToAuthority
     , filter = { own = Nothing , phase = Nothing }
     , order = CreatedDate Desc
@@ -182,11 +182,11 @@ update msg model =
         Just (prediction, _) ->
           ( { model | predictions = model.predictions |> Dict.insert id (prediction, newWidget) }
           , case event of
-            ViewPredictionPage.Nevermind -> Cmd.none
-            ViewPredictionPage.Copy s -> CopyWidget.copy s
-            ViewPredictionPage.CreateInvitation -> API.postCreateInvitation (CreateInvitationFinished id) {notes=""}
-            ViewPredictionPage.Staked {bettorIsASkeptic, bettorStakeCents} -> API.postStake (StakeFinished id) {predictionId=id, bettorIsASkeptic=bettorIsASkeptic, bettorStakeCents=bettorStakeCents}
-            ViewPredictionPage.Resolve resolution -> API.postResolve (ResolveFinished id) {predictionId=id, resolution=resolution, notes = ""}
+            PredictionWidget.Nevermind -> Cmd.none
+            PredictionWidget.Copy s -> CopyWidget.copy s
+            PredictionWidget.CreateInvitation -> API.postCreateInvitation (CreateInvitationFinished id) {notes=""}
+            PredictionWidget.Staked {bettorIsASkeptic, bettorStakeCents} -> API.postStake (StakeFinished id) {predictionId=id, bettorIsASkeptic=bettorIsASkeptic, bettorStakeCents=bettorStakeCents}
+            PredictionWidget.Resolve resolution -> API.postResolve (ResolveFinished id) {predictionId=id, resolution=resolution, notes = ""}
           )
     Tick t ->
       ( { model | now = t }
@@ -203,7 +203,7 @@ update msg model =
       , Cmd.none
       )
     CreateInvitationFinished id res ->
-      ( { model | predictions = model.predictions |> Dict.update id (Maybe.map <| Tuple.mapSecond <| ViewPredictionPage.handleCreateInvitationResponse (model.auth |> Utils.must "shouldn't send CreateInvitationRequests without auth") res) }
+      ( { model | predictions = model.predictions |> Dict.update id (Maybe.map <| Tuple.mapSecond <| PredictionWidget.handleCreateInvitationResponse (model.auth |> Utils.must "shouldn't send CreateInvitationRequests without auth") res) }
       , Cmd.none
       )
     StakeFinished id res ->
@@ -211,7 +211,7 @@ update msg model =
                     ( case res |> Result.toMaybe |> Maybe.andThen .stakeResult of
                         Just (Pb.StakeResultOk newPred) -> newPred
                         _ -> pred
-                    , widget |> ViewPredictionPage.handleStakeResponse res)
+                    , widget |> PredictionWidget.handleStakeResponse res)
                     )
         }
       , Cmd.none
@@ -221,7 +221,7 @@ update msg model =
                     ( case res |> Result.toMaybe |> Maybe.andThen .resolveResult of
                         Just (Pb.ResolveResultOk newPred) -> newPred
                         _ -> pred
-                    , widget |> ViewPredictionPage.handleResolveResponse res)
+                    , widget |> PredictionWidget.handleResolveResponse res)
                     )
         }
       , Cmd.none

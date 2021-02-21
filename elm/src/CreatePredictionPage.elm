@@ -15,7 +15,7 @@ import Biatob.Proto.Mvp as Pb
 import CreatePredictionForm as Form
 import Utils
 
-import ViewPredictionPage
+import PredictionWidget
 import API
 
 port createdPrediction : Int -> Cmd msg
@@ -134,9 +134,9 @@ view model =
         [ case Form.toCreateRequest model.form of
             Just req ->
               previewPrediction {request=req, creatorName=authName model.auth, createdAt=model.now}
-              |> (\prediction -> ViewPredictionPage.view
+              |> (\prediction -> PredictionWidget.view
                     {prediction=prediction, predictionId=12345, auth=model.auth, now=model.now, linkToAuthority="http://dummy", handle = \_ _ -> Ignore}
-                    ViewPredictionPage.init)
+                    PredictionWidget.init)
             Nothing ->
               H.span [HA.style "color" "red"] [H.text "(invalid prediction)"]
         ]

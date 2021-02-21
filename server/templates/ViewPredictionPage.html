@@ -15,8 +15,5 @@
       flags: {authTokenPbB64, predictionPbB64, predictionId, linkToAuthority},
     });
     subscribeToCopy(main);
-    main.ports.changed.subscribe((predictionId) => {
-      window.location.reload();
-    });
   </script>
 {% endblock %}

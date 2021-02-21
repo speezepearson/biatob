@@ -16,7 +16,6 @@
       flags: {authTokenPbB64, userIdPbB64, userViewPbB64, predictionsPbB64, linkToAuthority},
     });
     subscribeToCopy(main);
-    main.ports.changed.subscribe(() => window.location.reload());
     main.ports.trustChanged.subscribe(() => window.location.reload());
   </script>
 {% endblock %}
