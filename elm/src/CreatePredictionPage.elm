@@ -134,10 +134,9 @@ view model =
         [ case Form.toCreateRequest model.form of
             Just req ->
               previewPrediction {request=req, creatorName=authName model.auth, createdAt=model.now}
-              |> (\prediction -> ViewPredictionPage.initBase {prediction=prediction, predictionId=12345, auth=model.auth, now=model.now, linkToAuthority="http://dummy"})
-              |> Tuple.first
-              |> ViewPredictionPage.view
-              |> H.map (always Ignore)
+              |> (\prediction -> ViewPredictionPage.view
+                    {prediction=prediction, predictionId=12345, auth=model.auth, now=model.now, linkToAuthority="http://dummy", handle = \_ _ -> Ignore}
+                    ViewPredictionPage.init)
             Nothing ->
               H.span [HA.style "color" "red"] [H.text "(invalid prediction)"]
         ]

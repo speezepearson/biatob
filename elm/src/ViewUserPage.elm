@@ -48,10 +48,10 @@ init flags =
     linkToAuthority = Utils.mustDecodeFromFlags JD.string "linkToAuthority" flags
     auth = Utils.decodePbFromFlags Pb.authTokenDecoder "authTokenPbB64" flags
     (predsWidget, predsCmd) = case auth of
-      Just auth_ -> case Utils.decodePbFromFlags Pb.predictionsByIdDecoder "predictionsPbB64" flags of
+      Just _ -> case Utils.decodePbFromFlags Pb.predictionsByIdDecoder "predictionsPbB64" flags of
         Just preds ->
           ViewPredictionsWidget.init
-            { auth=auth_
+            { auth=auth
             , linkToAuthority=linkToAuthority
             , predictions=preds.predictions |> Utils.mustMapValues
             }

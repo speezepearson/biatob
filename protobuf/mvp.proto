@@ -259,7 +259,7 @@ message StakeRequest {
 }
 message StakeResponse {
   oneof stake_result {
-    Void ok = 1;
+    UserPredictionView ok = 1;
     Error error = 2;
   }
   message Error {
@@ -274,7 +274,7 @@ message ResolveRequest {
 }
 message ResolveResponse {
   oneof resolve_result {
-    Void ok = 1;
+    UserPredictionView ok = 1;
     Error error = 2;
   }
   message Error {

@@ -18,155 +18,83 @@ import Task
 import CopyWidget
 import SmallInvitationWidget
 import API
+import SmallInvitationWidget exposing (Event(..))
 
 port changed : () -> Cmd msg
 
-type alias Model =
-  { stakeForm : StakeForm.State
+type Event
+  = Nevermind
+  | CreateInvitation
+  | Copy String
+  | Staked {bettorIsASkeptic:Bool, bettorStakeCents:Int}
+  | Resolve Pb.Resolution
+type alias Context msg =
+  { auth : Maybe Pb.AuthToken
   , prediction : Pb.UserPredictionView
   , predictionId : Int
-  , auth : Maybe Pb.AuthToken
-  , working : Bool
-  , stakeError : Maybe String
-  , resolveError : Maybe String
   , now : Time.Posix
-  , resolutionNotes : String
   , linkToAuthority : String
+  , handle : Event -> Model -> msg
+  }
+type alias Model =
+  { stakeForm : StakeForm.State
+  , working : Bool
+  , notification : Html ()
   , invitationWidget : SmallInvitationWidget.Model
   }
 
-type Msg
-  = StakeEvent StakeForm.Event StakeForm.State
-  | StakeFinished (Result Http.Error Pb.StakeResponse)
-  | SetResolutionNotes String
-  | Resolve Pb.Resolution
-  | ResolveFinished (Result Http.Error Pb.ResolveResponse)
-  | Copy String
-  | Tick Time.Posix
-  | InvitationEvent SmallInvitationWidget.Event SmallInvitationWidget.Model
-  | CreateInvitationFinished (Result Http.Error Pb.CreateInvitationResponse)
-  | Ignore
-
-setPrediction : Pb.UserPredictionView -> Model -> Model
-setPrediction prediction model = { model | prediction = prediction }
-
-invitationWidgetCtx : Model -> SmallInvitationWidget.Context Msg
-invitationWidgetCtx model =
-  { httpOrigin = model.linkToAuthority
-  , destination = Just <| "/p/" ++ String.fromInt model.predictionId
-  , handle = InvitationEvent
+invitationWidgetCtx : Context msg -> Model -> SmallInvitationWidget.Context msg
+invitationWidgetCtx ctx model =
+  { httpOrigin = ctx.linkToAuthority
+  , destination = Just <| "/p/" ++ String.fromInt ctx.predictionId
+  , handle = \e m ->
+      let
+        event = case e of
+          SmallInvitationWidget.Nevermind -> Nevermind
+          SmallInvitationWidget.Copy s -> Copy s
+          SmallInvitationWidget.CreateInvitation -> CreateInvitation
+      in
+      ctx.handle event { model | invitationWidget = m }
   }
 
-initBase : { prediction : Pb.UserPredictionView , predictionId : Int , auth : Maybe Pb.AuthToken, now : Time.Posix, linkToAuthority : String } -> ( Model, Cmd Msg )
-initBase flags =
-  ( { stakeForm = StakeForm.init
-    , prediction = flags.prediction
-    , predictionId = flags.predictionId
-    , auth = flags.auth
-    , working = False
-    , stakeError = Nothing
-    , resolveError = Nothing
-    , now = flags.now
-    , resolutionNotes = ""
-    , linkToAuthority = flags.linkToAuthority
-    , invitationWidget = SmallInvitationWidget.init
-    }
-  , Task.perform Tick Time.now
-  )
+init : Model
+init =
+  { stakeForm = StakeForm.init
+  , working = False
+  , notification = H.text ""
+  , invitationWidget = SmallInvitationWidget.init
+  }
 
-init : JD.Value -> (Model, Cmd Msg)
-init flags =
-  initBase
-    { prediction = Utils.mustDecodePbFromFlags Pb.userPredictionViewDecoder "predictionPbB64" flags
-    , predictionId = Utils.mustDecodeFromFlags JD.int "predictionId" flags
-    , auth = Utils.decodePbFromFlags Pb.authTokenDecoder "authTokenPbB64" flags
-    , now = Time.millisToPosix 0
-    , linkToAuthority = Utils.mustDecodeFromFlags JD.string "linkToAuthority" flags
-    }
-
-update : Msg -> Model -> (Model, Cmd Msg)
-update msg model =
-  case msg of
-    StakeEvent event newState ->
-      (case event of
-        StakeForm.Nevermind -> ( model , Cmd.none )
-        StakeForm.Staked {bettorIsASkeptic, bettorStakeCents} ->
-          ( model
-          , API.postStake StakeFinished {predictionId=model.predictionId, bettorIsASkeptic=bettorIsASkeptic, bettorStakeCents=bettorStakeCents}
-          )
-      ) |> Tuple.mapFirst (\m -> { m | stakeForm = newState })
-    StakeFinished (Err e) ->
-      ( { model | working = False , stakeError = Just (Debug.toString e) }
-      , Cmd.none
-      )
-    StakeFinished (Ok resp) ->
-      case resp.stakeResult of
-        Just (Pb.StakeResultOk _) ->
-          ( model
-          , changed ()
-          )
-        Just (Pb.StakeResultError e) ->
-          ( { model | working = False , stakeError = Just (Debug.toString e) }
-          , Cmd.none
-          )
-        Nothing ->
-          ( { model | working = False , stakeError = Just "Invalid server response (neither Ok nor Error in protobuf)" }
-          , Cmd.none
-          )
-    SetResolutionNotes s ->
-      ( { model | resolutionNotes = s } , Cmd.none )
-    Resolve resolution ->
-      ( { model | working = True , resolveError = Nothing }
-      , API.postResolve ResolveFinished {predictionId=model.predictionId, resolution=resolution, notes = ""}
-      )
-    ResolveFinished (Err e) ->
-      ( { model | working = False , resolveError = Just (Debug.toString e) }
-      , Cmd.none
-      )
-    ResolveFinished (Ok resp) ->
+handleStakeResponse : Result Http.Error Pb.StakeResponse -> Model -> Model
+handleStakeResponse  res model =
+  { model | stakeForm = model.stakeForm |> StakeForm.handleStakeResponse res }
+handleCreateInvitationResponse : Pb.AuthToken -> Result Http.Error Pb.CreateInvitationResponse -> Model -> Model
+handleCreateInvitationResponse auth res model =
+  { model | invitationWidget = model.invitationWidget |> SmallInvitationWidget.handleCreateInvitationResponse auth res }
+handleResolveResponse : Result Http.Error Pb.ResolveResponse -> Model -> Model
+handleResolveResponse res model =
+  case res of
+    Err e ->
+      { model | working = False , notification = Utils.redText (Debug.toString e) }
+    Ok resp ->
       case resp.resolveResult of
         Just (Pb.ResolveResultOk _) ->
-          ( model
-          , changed ()
-          )
+          { model | working = False
+                  , notification = H.text ""
+          }
         Just (Pb.ResolveResultError e) ->
-          ( { model | working = False , resolveError = Just (Debug.toString e) }
-          , Cmd.none
-          )
+          { model | working = False , notification = Utils.redText (Debug.toString e) }
         Nothing ->
-          ( { model | working = False , resolveError = Just "Invalid server response (neither Ok nor Error in protobuf)" }
-          , Cmd.none
-          )
-    Copy s ->
-      ( model , CopyWidget.copy s )
-    Tick t ->
-      ( { model | now = t } , Cmd.none )
+          { model | working = False , notification = Utils.redText "Invalid server response (neither Ok nor Error in protobuf)" }
 
-    InvitationEvent event newWidget ->
-      (case event of
-        SmallInvitationWidget.CreateInvitation ->
-          (model, API.postCreateInvitation CreateInvitationFinished {notes = ""})  -- TODO(P3): add notes field
-        SmallInvitationWidget.Copy s ->
-          (model, CopyWidget.copy s)
-        SmallInvitationWidget.Nevermind ->
-          (model, Cmd.none)
-      ) |> Tuple.mapFirst (\m -> { m | invitationWidget = newWidget })
-    CreateInvitationFinished res ->
-      ( { model | invitationWidget = model.invitationWidget |> SmallInvitationWidget.handleCreateInvitationResponse (model.auth |> Utils.must "should only be able to send CreateInvitationRequests when logged in") res }
-      , Cmd.none
-      )
-
-    Ignore ->
-      ( model , Cmd.none )
-
-viewStakeFormOrExcuse : Model -> Html Msg
-viewStakeFormOrExcuse model =
-  let creator = Utils.mustPredictionCreator model.prediction in
-  if Utils.resolutionIsTerminal (Utils.currentResolution model.prediction) then
+viewStakeFormOrExcuse : Context msg -> Model -> Html msg
+viewStakeFormOrExcuse ctx model =
+  let creator = Utils.mustPredictionCreator ctx.prediction in
+  if Utils.resolutionIsTerminal (Utils.currentResolution ctx.prediction) then
     H.text "This prediction has resolved, so cannot be bet in."
-  else if Utils.secondsToClose model.now model.prediction <= 0 then
-    H.text <| "This prediction closed on " ++ Utils.dateStr Time.utc (Utils.predictionClosesTime model.prediction) ++ " (UTC)."
-  else case model.auth of
+  else if Utils.secondsToClose ctx.now ctx.prediction <= 0 then
+    H.text <| "This prediction closed on " ++ Utils.dateStr Time.utc (Utils.predictionClosesTime ctx.prediction) ++ " (UTC)."
+  else case ctx.auth of
     Nothing ->
       H.div []
         [ H.text "You must be logged in to participate in this prediction!"
@@ -176,18 +104,13 @@ viewStakeFormOrExcuse model =
         H.text ""
       else case (creator.trustsYou, creator.isTrusted) of
         (True, True) ->
-          H.div []
-            [ StakeForm.view (stakeFormConfig model) model.stakeForm
-            , case model.stakeError of
-                Just e -> H.div [HA.style "color" "red"] [H.text e]
-                Nothing -> H.text ""
-            ]
+          StakeForm.view (stakeFormConfig ctx model) model.stakeForm
         (False, False) ->
           H.div []
             [ H.text <| "You and " ++ creator.displayName ++ " don't trust each other! If, in real life, you "
             , H.i [] [H.text "do"]
             , H.text " trust each other to pay your debts, send them an invitation! "
-            , SmallInvitationWidget.view (invitationWidgetCtx model) model.invitationWidget
+            , SmallInvitationWidget.view (invitationWidgetCtx ctx model) model.invitationWidget
             ]
         (True, False) ->
           H.div []
@@ -199,7 +122,7 @@ viewStakeFormOrExcuse model =
             [ H.text <| creator.displayName ++ " hasn't marked you as trusted! If you think that, in real life, they "
             , H.i [] [H.text "do"]
             , H.text " trust you to pay your debts, send them an invitation link: "
-            , SmallInvitationWidget.view (invitationWidgetCtx model) model.invitationWidget
+            , SmallInvitationWidget.view (invitationWidgetCtx ctx model) model.invitationWidget
             ]
 
 creatorWinningsByBettor : Bool -> List Pb.Trade -> Dict String Int -- TODO: avoid key serialization collisions
@@ -211,7 +134,7 @@ stateWinnings : String -> Int -> String
 stateWinnings counterparty win =
   (if win > 0 then counterparty ++ " owes you" else "You owe " ++ counterparty) ++ " " ++ Utils.formatCents (abs win) ++ "."
 
-enumerateWinnings : Dict String Int -> Html Msg
+enumerateWinnings : Dict String Int -> Html msg
 enumerateWinnings winningsByUser =
   H.ul [] <| (
     winningsByUser
@@ -220,15 +143,15 @@ enumerateWinnings winningsByUser =
     |> List.map (\(b, win) -> H.li [] [H.text <| stateWinnings b win])
     )
 
-viewPredictionState : Model -> Html Msg
-viewPredictionState model =
+viewPredictionState : Context msg -> Model -> Html msg
+viewPredictionState ctx model =
   let
-    auditLog : Html Msg
+    auditLog : Html msg
     auditLog =
-      if List.isEmpty model.prediction.resolutions then H.text "" else
+      if List.isEmpty ctx.prediction.resolutions then H.text "" else
       H.details [HA.style "opacity" "50%"]
         [ H.summary [] [H.text "Details"]
-        , model.prediction.resolutions
+        , ctx.prediction.resolutions
           |> List.map (\event -> H.li []
               [ H.text <| "[" ++ Utils.isoStr Time.utc (Utils.unixtimeToTime event.unixtime) ++ " UTC] "
               , H.text <| case event.resolution of
@@ -242,7 +165,7 @@ viewPredictionState model =
         ]
   in
   H.div []
-    [ case Utils.currentResolution model.prediction of
+    [ case Utils.currentResolution ctx.prediction of
       Pb.ResolutionYes ->
         H.text "This prediction has resolved YES. "
       Pb.ResolutionNo ->
@@ -251,9 +174,9 @@ viewPredictionState model =
         H.text "This prediction has resolved INVALID. "
       Pb.ResolutionNoneYet ->
         let
-          nowUnixtime = Time.posixToMillis model.now // 1000
-          secondsToClose = model.prediction.closesUnixtime - nowUnixtime
-          secondsToResolve = model.prediction.resolvesAtUnixtime - nowUnixtime
+          nowUnixtime = Time.posixToMillis ctx.now // 1000
+          secondsToClose = ctx.prediction.closesUnixtime - nowUnixtime
+          secondsToResolve = ctx.prediction.resolvesAtUnixtime - nowUnixtime
         in
           H.text <|
             ( if secondsToClose > 0 then
@@ -272,32 +195,32 @@ viewPredictionState model =
     , auditLog
     ]
 
-viewWinnings : Model -> Html Msg
-viewWinnings model =
+viewWinnings : Context msg -> Model -> Html msg
+viewWinnings ctx model =
   let
-    auditLog : Html Msg
+    auditLog : Html msg
     auditLog =
-      if List.isEmpty model.prediction.yourTrades then H.text "" else
+      if List.isEmpty ctx.prediction.yourTrades then H.text "" else
       H.details [HA.style "opacity" "50%"]
         [ H.summary [] [H.text "Details"]
-        , model.prediction.yourTrades
+        , ctx.prediction.yourTrades
           |> List.map (\t -> H.li [] [ H.text <| "[" ++ Utils.isoStr Time.utc (Utils.unixtimeToTime t.transactedUnixtime) ++ " UTC] "
                                      , Utils.renderUser (Utils.mustTradeBettor t)
                                      , H.text <| " bet " ++ (if t.bettorIsASkeptic then "NO" else "YES") ++ " staking " ++ Utils.formatCents t.bettorStakeCents ++ " against " ++ Utils.formatCents t.creatorStakeCents])
           |> H.ul []
         ]
-    ifRes : Bool -> Html Msg
+    ifRes : Bool -> Html msg
     ifRes res =
-      creatorWinningsByBettor res model.prediction.yourTrades
-        |> let creator = Utils.mustPredictionCreator model.prediction in
+      creatorWinningsByBettor res ctx.prediction.yourTrades
+        |> let creator = Utils.mustPredictionCreator ctx.prediction in
             if creator.isSelf then
               enumerateWinnings
             else
               (D.values >> List.sum >> (\n -> -n) >> stateWinnings creator.displayName >> H.text)
   in
-  if List.isEmpty model.prediction.yourTrades then H.text "" else
+  if List.isEmpty ctx.prediction.yourTrades then H.text "" else
   H.div []
-    [ case Utils.currentResolution model.prediction of
+    [ case Utils.currentResolution ctx.prediction of
       Pb.ResolutionYes ->
         ifRes True
       Pb.ResolutionNo ->
@@ -313,12 +236,12 @@ viewWinnings model =
     , auditLog
     ]
 
-viewCreationParams : Model -> Html Msg
-viewCreationParams model =
+viewCreationParams : Context msg -> Model -> Html msg
+viewCreationParams ctx model =
   let
-    creator = Utils.mustPredictionCreator model.prediction
-    openTime = model.prediction.createdUnixtime |> (*) 1000 |> Time.millisToPosix
-    certainty = Utils.mustPredictionCertainty model.prediction
+    creator = Utils.mustPredictionCreator ctx.prediction
+    openTime = ctx.prediction.createdUnixtime |> (*) 1000 |> Time.millisToPosix
+    certainty = Utils.mustPredictionCertainty ctx.prediction
   in
   H.p []
     [ H.text <| "On " ++ Utils.dateStr Time.utc openTime ++ " UTC, "
@@ -328,8 +251,8 @@ viewCreationParams model =
     , H.text "-"
     , certainty.high |> (*) 100 |> round |> String.fromInt |> H.text
     , H.text "% chance, and staked "
-    , model.prediction.maximumStakeCents |> Utils.formatCents |> H.text
-    , case (model.prediction.maximumStakeCents - model.prediction.remainingStakeCentsVsSkeptics, model.prediction.maximumStakeCents - model.prediction.remainingStakeCentsVsBelievers) of
+    , ctx.prediction.maximumStakeCents |> Utils.formatCents |> H.text
+    , case (ctx.prediction.maximumStakeCents - ctx.prediction.remainingStakeCentsVsSkeptics, ctx.prediction.maximumStakeCents - ctx.prediction.remainingStakeCentsVsBelievers) of
         (0, 0) -> H.text ""
         (promisedToSkeptics, 0) -> H.span [HA.style "opacity" "50%"] [H.text <| " (though they've already promised away " ++ Utils.formatCents promisedToSkeptics ++ " if this doesn't happen)"]
         (0, promisedToBelievers) -> H.span [HA.style "opacity" "50%"] [H.text <| " (though they've already promised away " ++ Utils.formatCents promisedToBelievers ++ " if this happens)"]
@@ -337,19 +260,19 @@ viewCreationParams model =
     , H.text "."
     ]
 
-viewResolveButtons : Model -> Html Msg
-viewResolveButtons model =
-  if (Utils.mustPredictionCreator model.prediction).isSelf then
+viewResolveButtons : Context msg -> Model -> Html msg
+viewResolveButtons ctx model =
+  if (Utils.mustPredictionCreator ctx.prediction).isSelf then
     H.div []
       [ let
           mistakeDetails =
             H.details [HA.style "color" "gray"]
               [ H.summary [] [H.text "Mistake?"]
               , H.text "If you resolved this prediction incorrectly, you can "
-              , H.button [HE.onClick (Resolve Pb.ResolutionNoneYet)] [H.text "un-resolve it."]
+              , H.button [HE.onClick <| ctx.handle (Resolve Pb.ResolutionNoneYet) { model | working = True , notification = H.text "" }] [H.text "un-resolve it."]
               ]
         in
-        case Utils.currentResolution model.prediction of
+        case Utils.currentResolution ctx.prediction of
           Pb.ResolutionYes ->
             mistakeDetails
           Pb.ResolutionNo ->
@@ -358,31 +281,29 @@ viewResolveButtons model =
             mistakeDetails
           Pb.ResolutionNoneYet ->
             H.div []
-              [ H.button [HE.onClick (Resolve Pb.ResolutionYes)] [H.text "Resolve YES"]
-              , H.button [HE.onClick (Resolve Pb.ResolutionNo)] [H.text "Resolve NO"]
-              , H.button [HE.onClick (Resolve Pb.ResolutionInvalid)] [H.text "Resolve INVALID"]
+              [ H.button [HE.onClick <| ctx.handle (Resolve Pb.ResolutionYes    ) { model | working = True , notification = H.text "" }] [H.text "Resolve YES"]
+              , H.button [HE.onClick <| ctx.handle (Resolve Pb.ResolutionNo     ) { model | working = True , notification = H.text "" }] [H.text "Resolve NO"]
+              , H.button [HE.onClick <| ctx.handle (Resolve Pb.ResolutionInvalid) { model | working = True , notification = H.text "" }] [H.text "Resolve INVALID"]
               ]
           Pb.ResolutionUnrecognized_ _ -> Debug.todo "unrecognized resolution"
-      , case model.resolveError of
-          Just e -> H.span [] [H.text e]
-          Nothing -> H.text ""
+      , model.notification |> H.map (\_ -> ctx.handle Nevermind model)
       ]
   else
     H.text ""
 
-view : Model -> Html Msg
-view model =
+view : Context msg -> Model -> Html msg
+view ctx model =
   let
-    creator = Utils.mustPredictionCreator model.prediction
+    creator = Utils.mustPredictionCreator ctx.prediction
   in
   H.div []
-    [ H.h2 [] [H.text <| "Prediction: by " ++ (String.left 10 <| Iso8601.fromTime <| Time.millisToPosix <| model.prediction.resolvesAtUnixtime * 1000) ++ ", " ++ model.prediction.prediction]
-    , viewPredictionState model
-    , viewResolveButtons model
-    , viewWinnings model
+    [ H.h2 [] [H.text <| "Prediction: by " ++ (String.left 10 <| Iso8601.fromTime <| Time.millisToPosix <| ctx.prediction.resolvesAtUnixtime * 1000) ++ ", " ++ ctx.prediction.prediction]
+    , viewPredictionState ctx model
+    , viewResolveButtons ctx model
+    , viewWinnings ctx model
     , H.hr [] []
-    , viewCreationParams model
-    , case model.prediction.specialRules of
+    , viewCreationParams ctx model
+    , case ctx.prediction.specialRules of
         "" ->
           H.text ""
         rules ->
@@ -391,34 +312,34 @@ view model =
             , H.text <| " " ++ rules
             ]
     , H.hr [] []
-    , viewStakeFormOrExcuse model
+    , viewStakeFormOrExcuse ctx model
     , if creator.isSelf then
         H.div []
           [ H.text "If you want to link to your prediction, here are some snippets of HTML you could copy-paste:"
-          , viewEmbedInfo model
+          , viewEmbedInfo ctx model
           , H.text "If there are people you want to participate, but you haven't already established trust with them in Biatob, send them invitations: "
-          , SmallInvitationWidget.view (invitationWidgetCtx model) model.invitationWidget
+          , SmallInvitationWidget.view (invitationWidgetCtx ctx model) model.invitationWidget
           ]
       else
         H.text ""
     ]
 
-viewEmbedInfo : Model -> Html Msg
-viewEmbedInfo model =
+viewEmbedInfo : Context msg -> Model -> Html msg
+viewEmbedInfo ctx model =
   let
-    linkUrl = model.linkToAuthority ++ "/p/" ++ String.fromInt model.predictionId  -- TODO(P0): needs origin to get stuck in text field
-    imgUrl = model.linkToAuthority ++ "/p/" ++ String.fromInt model.predictionId ++ "/embed.png"
+    linkUrl = ctx.linkToAuthority ++ "/p/" ++ String.fromInt ctx.predictionId  -- TODO(P0): needs origin to get stuck in text field
+    imgUrl = ctx.linkToAuthority ++ "/p/" ++ String.fromInt ctx.predictionId ++ "/embed.png"
     imgStyles = [("max-height","1.5ex"), ("border-bottom","1px solid #008800")]
     imgCode =
       "<a href=\"" ++ linkUrl ++ "\">"
       ++ "<img style=\"" ++ (imgStyles |> List.map (\(k,v) -> k++":"++v) |> String.join ";") ++ "\" src=\"" ++ imgUrl ++ "\" /></a>"
     linkText =
       "["
-      ++ Utils.formatCents (model.prediction.maximumStakeCents // 100 * 100)
+      ++ Utils.formatCents (ctx.prediction.maximumStakeCents // 100 * 100)
       ++ " @ "
-      ++ String.fromInt (round <| (Utils.mustPredictionCertainty model.prediction).low * 100)
+      ++ String.fromInt (round <| (Utils.mustPredictionCertainty ctx.prediction).low * 100)
       ++ "-"
-      ++ String.fromInt (round <| (Utils.mustPredictionCertainty model.prediction).high * 100)
+      ++ String.fromInt (round <| (Utils.mustPredictionCertainty ctx.prediction).high * 100)
       ++ "%]"
     linkCode =
       "<a href=\"" ++ linkUrl ++ "\">" ++ linkText ++ "</a>"
@@ -426,7 +347,7 @@ viewEmbedInfo model =
     H.ul []
       [ H.li [] <|
         [ H.text "A linked inline image: "
-        , CopyWidget.view Copy imgCode
+        , CopyWidget.view (\s -> ctx.handle (Copy s) model) imgCode
         , H.br [] []
         , H.text "This would render as: "
         , H.a [HA.href linkUrl]
@@ -434,28 +355,94 @@ viewEmbedInfo model =
         ]
       , H.li [] <|
         [ H.text "A boring old link: "
-        , CopyWidget.view Copy linkCode
+        , CopyWidget.view (\s -> ctx.handle (Copy s) model) linkCode
         , H.br [] []
         , H.text "This would render as: "
         , H.a [HA.href linkUrl] [H.text linkText]
         ]
       ]
 
-stakeFormConfig : Model -> StakeForm.Config Msg
-stakeFormConfig model =
-  { handle = StakeEvent
-  , disableCommit = (model.auth == Nothing || (Utils.mustPredictionCreator model.prediction).isSelf)
-  , prediction = model.prediction
+stakeFormConfig : Context msg -> Model -> StakeForm.Config msg
+stakeFormConfig ctx model =
+  { disableCommit = (ctx.auth == Nothing || (Utils.mustPredictionCreator ctx.prediction).isSelf)
+  , prediction = ctx.prediction
+  , handle = \e newForm ->
+      let
+        event = case e of
+          StakeForm.Staked x -> Staked x
+          StakeForm.Nevermind -> Nevermind
+      in
+      ctx.handle event { model | stakeForm = newForm }
   }
 
-subscriptions : Model -> Sub Msg
-subscriptions _ = Time.every 1000 Tick
+type alias PageModel = (Context PageMsg, Model)
+type PageMsg
+  = PageEvent Event Model
+  | Tick Time.Posix
+  | StakeFinished (Result Http.Error Pb.StakeResponse)
+  | ResolveFinished (Result Http.Error Pb.ResolveResponse)
+  | CreateInvitationFinished (Result Http.Error Pb.CreateInvitationResponse)
 
-main : Program JD.Value Model Msg
+main : Program JD.Value PageModel PageMsg
 main =
+  let
+    init_ : JD.Value -> (PageModel, Cmd PageMsg)
+    init_ flags =
+      ( ( { prediction = Utils.mustDecodePbFromFlags Pb.userPredictionViewDecoder "predictionPbB64" flags
+          , predictionId = Utils.mustDecodeFromFlags JD.int "predictionId" flags
+          , auth = Utils.decodePbFromFlags Pb.authTokenDecoder "authTokenPbB64" flags
+          , now = Time.millisToPosix 0
+          , linkToAuthority = Utils.mustDecodeFromFlags JD.string "linkToAuthority" flags
+          , handle = PageEvent
+          }
+        , init
+        )
+      , Task.perform Tick Time.now
+      )
+
+    update_ : PageMsg -> PageModel -> (PageModel, Cmd PageMsg)
+    update_ msg (ctx, model) =
+      case msg of
+        PageEvent event newState ->
+          let
+            cmd = case event of
+              Nevermind -> Cmd.none
+              Copy s -> CopyWidget.copy s
+              CreateInvitation -> API.postCreateInvitation CreateInvitationFinished {notes=""}
+              Staked {bettorIsASkeptic, bettorStakeCents} -> API.postStake StakeFinished {predictionId=ctx.predictionId, bettorIsASkeptic=bettorIsASkeptic, bettorStakeCents=bettorStakeCents}
+              Resolve resolution -> API.postResolve ResolveFinished {predictionId=ctx.predictionId, resolution=resolution, notes = ""}
+          in
+            ((ctx, newState), cmd)
+        Tick now -> (({ctx | now = now}, model), Cmd.none)
+        CreateInvitationFinished res ->
+          ( ( ctx
+            , model |> handleCreateInvitationResponse (ctx.auth |> Utils.must "TODO") res
+            )
+          , Cmd.none
+          )
+        StakeFinished res ->
+          ( ( { ctx | prediction = case res |> Result.toMaybe |> Maybe.andThen .stakeResult of
+                        Just (Pb.StakeResultOk pred) -> pred
+                        _ -> ctx.prediction
+              }
+            , model |> handleStakeResponse res
+            )
+          , Cmd.none
+          )
+        ResolveFinished res ->
+          ( ( { ctx | prediction = case res |> Result.toMaybe |> Maybe.andThen .resolveResult of
+                        Just (Pb.ResolveResultOk pred) -> pred
+                        _ -> ctx.prediction
+              }
+            , model |> handleResolveResponse res
+            )
+          , Cmd.none
+          )
+
+  in
   Browser.element
-    { init = init
-    , subscriptions = subscriptions
-    , view = view
-    , update = update
+    { init = init_
+    , subscriptions = \_ -> Time.every 1000 Tick
+    , view = \(ctx, model) -> view ctx model
+    , update = update_
     }

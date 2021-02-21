@@ -472,7 +472,7 @@ type alias StakeRequest =
 {-| StakeResult
 -}
 type StakeResult
-    = StakeResultOk Void
+    = StakeResultOk UserPredictionView
     | StakeResultError StakeResponseError
 
 
@@ -502,7 +502,7 @@ type alias ResolveRequest =
 {-| ResolveResult
 -}
 type ResolveResult
-    = ResolveResultOk Void
+    = ResolveResultOk UserPredictionView
     | ResolveResultError ResolveResponseError
 
 
@@ -1293,7 +1293,7 @@ stakeResponseDecoder : Decode.Decoder StakeResponse
 stakeResponseDecoder =
     Decode.message (StakeResponse Nothing)
         [ Decode.oneOf
-            [ ( 1, Decode.map StakeResultOk voidDecoder )
+            [ ( 1, Decode.map StakeResultOk userPredictionViewDecoder )
             , ( 2, Decode.map StakeResultError stakeResponseErrorDecoder )
             ]
             setStakeResult
@@ -1324,7 +1324,7 @@ resolveResponseDecoder : Decode.Decoder ResolveResponse
 resolveResponseDecoder =
     Decode.message (ResolveResponse Nothing)
         [ Decode.oneOf
-            [ ( 1, Decode.map ResolveResultOk voidDecoder )
+            [ ( 1, Decode.map ResolveResultOk userPredictionViewDecoder )
             , ( 2, Decode.map ResolveResultError resolveResponseErrorDecoder )
             ]
             setResolveResult
@@ -2164,7 +2164,7 @@ toStakeResultEncoder : StakeResult -> ( Int, Encode.Encoder )
 toStakeResultEncoder model =
     case model of
         StakeResultOk value ->
-            ( 1, toVoidEncoder value )
+            ( 1, toUserPredictionViewEncoder value )
 
         StakeResultError value ->
             ( 2, toStakeResponseErrorEncoder value )
@@ -2201,7 +2201,7 @@ toResolveResultEncoder : ResolveResult -> ( Int, Encode.Encoder )
 toResolveResultEncoder model =
     case model of
         ResolveResultOk value ->
-            ( 1, toVoidEncoder value )
+            ( 1, toUserPredictionViewEncoder value )
 
         ResolveResultError value ->
             ( 2, toResolveResponseErrorEncoder value )

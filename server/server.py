@@ -533,7 +533,7 @@ class FsBackedServicer(Servicer):
                 transacted_unixtime=int(self._clock()),
             ))
             logger.info('trade executed', prediction_id=request.prediction_id, trade=str(prediction.trades[-1]))
-            return mvp_pb2.StakeResponse(ok=mvp_pb2.VOID)
+            return mvp_pb2.StakeResponse(ok=view_prediction(wstate, token.owner, prediction))
 
     @checks_token
     @log_action
@@ -579,7 +579,7 @@ class FsBackedServicer(Servicer):
                     body=email_body,
                 ))
             logger.debug('finished sending resolution emails', prediction_id=request.prediction_id)
-            return mvp_pb2.ResolveResponse(ok=mvp_pb2.VOID)
+            return mvp_pb2.ResolveResponse(ok=view_prediction(wstate, token.owner, prediction))
 
     @checks_token
     @log_action

@@ -1220,14 +1220,16 @@ class StakeResponse(google___protobuf___message___Message):
         def ClearField(self, field_name: typing_extensions___Literal[u"catchall",b"catchall"]) -> None: ...
     global___Error = Error
 
-    ok = ... # type: global___Void
+
+    @property
+    def ok(self) -> global___UserPredictionView: ...
 
     @property
     def error(self) -> global___StakeResponse.Error: ...
 
     def __init__(self,
         *,
-        ok : typing___Optional[global___Void] = None,
+        ok : typing___Optional[global___UserPredictionView] = None,
         error : typing___Optional[global___StakeResponse.Error] = None,
         ) -> None: ...
     if sys.version_info >= (3,):
@@ -1287,14 +1289,16 @@ class ResolveResponse(google___protobuf___message___Message):
         def ClearField(self, field_name: typing_extensions___Literal[u"catchall",b"catchall"]) -> None: ...
     global___Error = Error
 
-    ok = ... # type: global___Void
+
+    @property
+    def ok(self) -> global___UserPredictionView: ...
 
     @property
     def error(self) -> global___ResolveResponse.Error: ...
 
     def __init__(self,
         *,
-        ok : typing___Optional[global___Void] = None,
+        ok : typing___Optional[global___UserPredictionView] = None,
         error : typing___Optional[global___ResolveResponse.Error] = None,
         ) -> None: ...
     if sys.version_info >= (3,):

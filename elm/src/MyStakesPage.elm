@@ -15,7 +15,7 @@ type alias Msg = ViewPredictionsWidget.Msg
 initFromFlags : JD.Value -> (Model, Cmd Msg)
 initFromFlags flags =
   ViewPredictionsWidget.init
-    { auth =  Utils.mustDecodePbFromFlags Pb.authTokenDecoder "authTokenPbB64" flags
+    { auth =  Utils.decodePbFromFlags Pb.authTokenDecoder "authTokenPbB64" flags
     , predictions = Utils.mustDecodePbFromFlags Pb.predictionsByIdDecoder "predictionsPbB64" flags |> Utils.mustPredictionsById
     , linkToAuthority = Utils.mustDecodeFromFlags JD.string "linkToAuthority" flags
     }
