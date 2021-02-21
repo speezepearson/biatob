@@ -1,4 +1,4 @@
-port module AuthWidgetStandalone exposing (..)
+port module Elements.AuthWidgetStandalone exposing (..)
 
 import Browser
 import Http
@@ -9,10 +9,10 @@ import Biatob.Proto.Mvp as Pb
 import Utils
 
 import Task
-import CopyWidget
+import Widgets.CopyWidget as CopyWidget
 import API
 
-import AuthWidget as Widget
+import Widgets.AuthWidget as Widget
 
 port authChanged : () -> Cmd msg
 

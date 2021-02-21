@@ -13,7 +13,7 @@
       window.location = "/"; // TODO(P2): should be /login
     }
 
-    var main = Elm.SettingsPage.init({
+    var main = Elm.Elements.SettingsPage.init({
       node: document.getElementById('main'),
       flags: {authTokenPbB64, settingsRespPbB64, httpOrigin},
     });

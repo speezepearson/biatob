@@ -1,4 +1,4 @@
-module MyStakesPage exposing (..)
+module Elements.MyStakesPage exposing (..)
 
 import Browser
 import Json.Decode as JD
@@ -7,7 +7,7 @@ import Biatob.Proto.Mvp as Pb
 import Utils
 
 import Biatob.Proto.Mvp exposing (StakeResult(..))
-import ViewPredictionsWidget
+import Widgets.ViewPredictionsWidget as ViewPredictionsWidget
 
 type alias Model = ViewPredictionsWidget.Model
 type alias Msg = ViewPredictionsWidget.Msg

@@ -1,4 +1,4 @@
-module AuthWidget exposing (..)
+module Widgets.AuthWidget exposing (..)
 
 import Browser
 import Html as H exposing (Html)

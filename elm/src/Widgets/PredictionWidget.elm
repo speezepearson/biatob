@@ -1,4 +1,4 @@
-module PredictionWidget exposing (..)
+module Widgets.PredictionWidget exposing (..)
 
 import Browser
 import Html as H exposing (Html)
@@ -13,9 +13,9 @@ import Iso8601
 import Biatob.Proto.Mvp as Pb
 import Utils
 
-import StakeForm
-import CopyWidget
-import SmallInvitationWidget
+import Widgets.StakeForm as StakeForm
+import Widgets.CopyWidget as CopyWidget
+import Widgets.SmallInvitationWidget as SmallInvitationWidget
 
 type Event
   = InvitationEvent SmallInvitationWidget.Event

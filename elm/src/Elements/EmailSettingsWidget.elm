@@ -1,4 +1,4 @@
-module EmailSettingsWidget exposing (..)
+module Elements.EmailSettingsWidget exposing (..)
 
 import Browser
 import Html as H exposing (Html)

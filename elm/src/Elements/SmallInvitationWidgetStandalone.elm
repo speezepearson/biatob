@@ -1,4 +1,4 @@
-module SmallInvitationWidgetStandalone exposing (..)
+module Elements.SmallInvitationWidgetStandalone exposing (..)
 
 import Browser
 import Http
@@ -9,11 +9,11 @@ import Biatob.Proto.Mvp as Pb
 import Utils
 
 import Task
-import CopyWidget
+import Widgets.CopyWidget as CopyWidget
 import API
 
-import CopyWidget
-import SmallInvitationWidget as Widget
+import Widgets.CopyWidget as CopyWidget
+import Widgets.SmallInvitationWidget as Widget
 
 type alias Model = ( Widget.Context Msg , Widget.State )
 type Msg

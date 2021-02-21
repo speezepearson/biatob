@@ -1,8 +1,8 @@
-module CreatePredictionPageReactor exposing (main)
+module Elements.CreatePredictionPageReactor exposing (main)
 
 import Browser
 
-import CreatePredictionPage as Page
+import Elements.CreatePredictionPage as Page
 import Json.Encode as JE
 
 import Bytes.Encode

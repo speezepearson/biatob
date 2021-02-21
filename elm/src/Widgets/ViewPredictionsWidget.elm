@@ -1,4 +1,4 @@
-module ViewPredictionsWidget exposing (..)
+module Widgets.ViewPredictionsWidget exposing (..)
 
 import Html as H exposing (Html)
 import Html.Attributes as HA
@@ -10,10 +10,10 @@ import Http
 import Biatob.Proto.Mvp as Pb
 import Utils
 
-import PredictionWidget
-import SmallInvitationWidget
-import StakeForm
-import CopyWidget
+import Widgets.PredictionWidget as PredictionWidget
+import Widgets.SmallInvitationWidget as SmallInvitationWidget
+import Widgets.StakeForm as StakeForm
+import Widgets.CopyWidget as CopyWidget
 import Task
 import API
 

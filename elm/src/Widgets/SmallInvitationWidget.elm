@@ -1,4 +1,4 @@
-module SmallInvitationWidget exposing (..)
+module Widgets.SmallInvitationWidget exposing (..)
 
 import Browser
 
@@ -11,7 +11,7 @@ import Biatob.Proto.Mvp as Pb
 import Utils
 
 import Utils
-import CopyWidget
+import Widgets.CopyWidget as CopyWidget
 
 type Event = Copy String | CreateInvitation
 type alias Context msg =

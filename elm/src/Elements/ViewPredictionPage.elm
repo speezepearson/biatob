@@ -1,4 +1,4 @@
-module ViewPredictionPage exposing (..)
+module Elements.ViewPredictionPage exposing (..)
 
 import Browser
 import Http
@@ -9,11 +9,11 @@ import Biatob.Proto.Mvp as Pb
 import Utils
 
 import Task
-import CopyWidget
+import Widgets.CopyWidget as CopyWidget
 import API
-import PredictionWidget as Widget
-import StakeForm
-import SmallInvitationWidget
+import Widgets.PredictionWidget as Widget
+import Widgets.StakeForm as StakeForm
+import Widgets.SmallInvitationWidget as SmallInvitationWidget
 
 type alias Model = ( Widget.Context Msg , Widget.State )
 type Msg

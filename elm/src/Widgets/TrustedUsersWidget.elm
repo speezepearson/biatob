@@ -1,4 +1,4 @@
-module TrustedUsersWidget exposing (..)
+module Widgets.TrustedUsersWidget exposing (..)
 
 import Html as H exposing (Html)
 import Html.Attributes as HA
@@ -13,8 +13,8 @@ import Field exposing (Field)
 import Time
 import Utils
 
-import SmallInvitationWidget
-import CopyWidget
+import Widgets.SmallInvitationWidget as SmallInvitationWidget
+import Widgets.CopyWidget as CopyWidget
 
 type Event = Copy String | InvitationEvent SmallInvitationWidget.Event | RemoveTrust Pb.UserId
 type alias Context msg =

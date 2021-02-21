@@ -70,7 +70,7 @@
       <div id="welcome-page-auth-widget"></div>
       <script type="text/javascript">
         var authTokenPbB64 = {{ auth_token_pb_b64 | tojson }};
-        var authWidget = Elm.AuthWidgetStandalone.init({
+        var authWidget = Elm.Elements.AuthWidgetStandalone.init({
           node: document.getElementById('welcome-page-auth-widget'),
           flags: {authTokenPbB64},
         })
@@ -93,7 +93,7 @@
         var node = document.getElementById('welcome-page-invitation-widget');
         if (authTokenPbB64 != null) {
           var httpOrigin = window.origin;
-          var invitationWidget = Elm.SmallInvitationWidgetStandalone.init({
+          var invitationWidget = Elm.Elements.SmallInvitationWidgetStandalone.init({
             node: node,
             flags: {authTokenPbB64, httpOrigin, destination: null},
           });
@@ -110,7 +110,7 @@
         var userInfoPbB64 = {{ user_info_pb_b64 | tojson }};
         var node = document.getElementById('welcome-page-email-settings-widget');
         if (userInfoPbB64 != null) {
-          var emailSettingsWidget = Elm.EmailSettingsWidget.init({
+          var emailSettingsWidget = Elm.Elements.EmailSettingsWidget.init({
             node: node,
             flags: {userInfoPbB64},
           });

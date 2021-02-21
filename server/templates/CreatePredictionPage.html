@@ -7,7 +7,7 @@
 
     var authTokenPbB64 = {{ auth_token_pb_b64 | tojson }};
 
-    var main = Elm.CreatePredictionPage.init({
+    var main = Elm.Elements.CreatePredictionPage.init({
       node: document.getElementById('main'),
       flags: {authTokenPbB64},
     });

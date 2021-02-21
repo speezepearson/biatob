@@ -11,7 +11,7 @@
     var predictionsPbB64 = {{ predictions_pb_b64 | tojson }};
     var httpOrigin = window.origin;
 
-    var main = Elm.ViewUserPage.init({
+    var main = Elm.Elements.ViewUserPage.init({
       node: document.getElementById('main'),
       flags: {authTokenPbB64, userIdPbB64, userViewPbB64, predictionsPbB64, httpOrigin},
     });

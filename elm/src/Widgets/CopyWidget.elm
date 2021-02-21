@@ -1,4 +1,4 @@
-port module CopyWidget exposing (..)
+port module Widgets.CopyWidget exposing (..)
 
 import Html as H exposing (Html)
 import Html.Attributes as HA

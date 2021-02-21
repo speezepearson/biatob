@@ -1,4 +1,4 @@
-module ChangePasswordWidget exposing (..)
+module Widgets.ChangePasswordWidget exposing (..)
 
 import Browser
 import Html as H exposing (Html)

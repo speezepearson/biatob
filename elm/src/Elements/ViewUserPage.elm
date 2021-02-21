@@ -1,4 +1,4 @@
-port module ViewUserPage exposing (..)
+port module Elements.ViewUserPage exposing (..)
 
 import Browser
 import Html as H exposing (Html)
@@ -11,9 +11,9 @@ import Biatob.Proto.Mvp as Pb
 import Utils
 
 import API
-import SmallInvitationWidget
-import ViewPredictionsWidget
-import CopyWidget
+import Widgets.SmallInvitationWidget as SmallInvitationWidget
+import Widgets.ViewPredictionsWidget as ViewPredictionsWidget
+import Widgets.CopyWidget as CopyWidget
 
 port trustChanged : () -> Cmd msg
 

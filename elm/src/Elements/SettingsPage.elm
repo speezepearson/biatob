@@ -1,4 +1,4 @@
-module SettingsPage exposing (..)
+module Elements.SettingsPage exposing (..)
 
 import Browser
 import Html as H exposing (Html)
@@ -9,12 +9,12 @@ import Dict exposing (Dict)
 import Biatob.Proto.Mvp as Pb
 import Utils
 
-import ChangePasswordWidget
-import EmailSettingsWidget
-import TrustedUsersWidget
-import CopyWidget
+import Widgets.ChangePasswordWidget as ChangePasswordWidget
+import Elements.EmailSettingsWidget as EmailSettingsWidget
+import Widgets.TrustedUsersWidget as TrustedUsersWidget
+import Widgets.CopyWidget as CopyWidget
 import API
-import SmallInvitationWidget
+import Widgets.SmallInvitationWidget as SmallInvitationWidget
 
 type UserTypeSpecificSettings
   = UsernameSettings ChangePasswordWidget.Model

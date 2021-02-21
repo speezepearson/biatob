@@ -1,11 +1,9 @@
-module ViewPredictionPageReactor exposing
-  (
-    -- main
-  )
+module Elements.ViewPredictionPageReactor exposing (main)
 
 import Browser
 
-import ViewPredictionPage as Page
+import Html
+import Elements.ViewPredictionPage as Page
 import Json.Encode as JE
 
 import Bytes.Encode
@@ -46,13 +44,13 @@ mockPrediction =
   }
 
 
--- main =
---   Browser.element
---     { init = \() -> Page.init (JE.object [ ("authTokenPbB64", JE.string <| Utils.encodePbB64 <| Pb.toAuthTokenEncoder mockAuthToken)
---                                          , ("predictionPbB64", JE.string <| Utils.encodePbB64 <| Pb.toUserPredictionViewEncoder mockPrediction)
---                                          , ("predictionId", JE.int 12345)
---                                          ])
---     , subscriptions = Page.subscriptions
---     , view = Page.view
---     , update = Page.update
---     }
+main = Html.text "TODO"
+  -- Browser.element
+  --   { init = \() -> Page.init (JE.object [ ("authTokenPbB64", JE.string <| Utils.encodePbB64 <| Pb.toAuthTokenEncoder mockAuthToken)
+  --                                        , ("predictionPbB64", JE.string <| Utils.encodePbB64 <| Pb.toUserPredictionViewEncoder mockPrediction)
+  --                                        , ("predictionId", JE.int 12345)
+  --                                        ])
+  --   , subscriptions = Page.subscriptions
+  --   , view = Page.view
+  --   , update = Page.update
+  --   }

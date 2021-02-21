@@ -1,4 +1,4 @@
-port module AcceptInvitationPage exposing (..)
+port module Elements.AcceptInvitationPage exposing (..)
 
 import Browser
 import Html as H exposing (Html)
@@ -11,10 +11,11 @@ import Biatob.Proto.Mvp as Pb
 import Utils
 
 import API
-import AuthWidget
+import Widgets.AuthWidget as AuthWidget
 import Time
 import Task
 
+port authChanged : () -> Cmd msg
 port accepted : {dest : String} -> Cmd msg
 
 type AuthState = LoggedIn Pb.AuthToken | LoggedOut AuthWidget.State

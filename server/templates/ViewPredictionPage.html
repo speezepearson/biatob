@@ -10,7 +10,7 @@
     var predictionId = {{ prediction_id | tojson }};
     var httpOrigin = window.location.origin;
 
-    var main = Elm.ViewPredictionPage.init({
+    var main = Elm.Elements.ViewPredictionPage.init({
       node: document.getElementById('main'),
       flags: {authTokenPbB64, predictionPbB64, predictionId, httpOrigin},
     });

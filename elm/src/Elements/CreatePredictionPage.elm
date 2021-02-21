@@ -1,4 +1,4 @@
-port module CreatePredictionPage exposing (..)
+port module Elements.CreatePredictionPage exposing (..)
 
 import Browser
 import Html as H exposing (Html)
@@ -15,7 +15,7 @@ import Biatob.Proto.Mvp as Pb
 import CreatePredictionForm as Form
 import Utils
 
-import PredictionWidget
+import Widgets.PredictionWidget as PredictionWidget
 import API
 import Utils
 
