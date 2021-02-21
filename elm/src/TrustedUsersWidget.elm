@@ -16,8 +16,6 @@ import Utils
 import SmallInvitationWidget
 import CopyWidget
 import API
-import CreatePredictionPage exposing (Msg(..))
-import Browser
 
 port changed : () -> Cmd msg
 
@@ -38,7 +36,7 @@ type Msg
   | AddTrusted
   | SetTrustedFinished (Result Http.Error Pb.SetTrustedResponse)
   | Copy String
-  | CreateInvitation
+  | InvitationEvent SmallInvitationWidget.Event SmallInvitationWidget.Model
   | CreateInvitationFinished (Result Http.Error Pb.CreateInvitationResponse)
   | Ignore
 
@@ -46,9 +44,7 @@ invitationWidgetCtx : Model -> SmallInvitationWidget.Context Msg
 invitationWidgetCtx model =
   { destination = Nothing
   , httpOrigin = model.linkToAuthority
-  , copy = Copy
-  , nevermind = Ignore
-  , createInvitation = CreateInvitation
+  , handle = InvitationEvent
   }
 
 init : { auth : Pb.AuthToken , trustedUsers : List Pb.UserId , invitations : Dict String Pb.Invitation , linkToAuthority : String } -> ( Model , Cmd Msg )
@@ -108,35 +104,19 @@ update msg model =
           ( { model | working = False , notification = Utils.redText "Invalid server response (neither Ok nor Error in protobuf)" }
           , Cmd.none
           )
-    CreateInvitation ->
-      ( { model | invitationWidget = model.invitationWidget |> SmallInvitationWidget.setWorking }
-        , API.postCreateInvitation CreateInvitationFinished {notes = ""}  -- TODO(P3): add notes field
-      )
-    CreateInvitationFinished (Err e) ->
-      ( { model | invitationWidget = model.invitationWidget |> SmallInvitationWidget.doneWorking (Utils.redText (Debug.toString e)) }
+    InvitationEvent event newWidget ->
+      (case event of
+        SmallInvitationWidget.CreateInvitation ->
+          (model, API.postCreateInvitation CreateInvitationFinished {notes = ""})  -- TODO(P3): add notes field
+        SmallInvitationWidget.Copy s ->
+          (model, CopyWidget.copy s)
+        SmallInvitationWidget.Nevermind ->
+          (model, Cmd.none)
+      ) |> Tuple.mapFirst (\m -> { m | invitationWidget = newWidget })
+    CreateInvitationFinished res ->
+      ( { model | invitationWidget = model.invitationWidget |> SmallInvitationWidget.handleCreateInvitationResponse model.auth res }
       , Cmd.none
       )
-    CreateInvitationFinished (Ok resp) ->
-      case resp.createInvitationResult of
-        Just (Pb.CreateInvitationResultOk result) ->
-          ( { model | invitationWidget = model.invitationWidget
-                        |> SmallInvitationWidget.doneWorking (H.text "")
-                        |> SmallInvitationWidget.setInvitation (Just {inviter=model.auth.owner, nonce=result.nonce})
-            }
-          , Cmd.none
-          )
-        Just (Pb.CreateInvitationResultError e) ->
-          ( { model | invitationWidget = model.invitationWidget
-                        |> SmallInvitationWidget.doneWorking (Utils.redText (Debug.toString e))
-            }
-          , Cmd.none
-          )
-        Nothing ->
-          ( { model | invitationWidget = model.invitationWidget
-                        |> SmallInvitationWidget.doneWorking (Utils.redText "Invalid server response (neither Ok nor Error in protobuf)")
-            }
-          , Cmd.none
-          )
 
     Copy s -> ( model , CopyWidget.copy s )
     Ignore -> ( model , Cmd.none )
