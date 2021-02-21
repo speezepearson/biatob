@@ -79,7 +79,7 @@ viewStakeFormOrExcuse ctx state =
   let creator = Utils.mustPredictionCreator ctx.prediction in
   if Utils.resolutionIsTerminal (Utils.currentResolution ctx.prediction) then
     H.text "This prediction has resolved, so cannot be bet in."
-  else if Utils.secondsToClose ctx.now ctx.prediction <= 0 then
+  else if ctx.prediction.closesUnixtime < Utils.timeToUnixtime ctx.now then
     H.text <| "This prediction closed on " ++ Utils.dateStr Time.utc (Utils.predictionClosesTime ctx.prediction) ++ " (UTC)."
   else case ctx.auth of
     Nothing ->
@@ -161,9 +161,8 @@ viewPredictionState ctx state =
         H.text "This prediction has resolved INVALID. "
       Pb.ResolutionNoneYet ->
         let
-          nowUnixtime = Time.posixToMillis ctx.now // 1000
-          secondsToClose = ctx.prediction.closesUnixtime - nowUnixtime
-          secondsToResolve = ctx.prediction.resolvesAtUnixtime - nowUnixtime
+          secondsToClose = ctx.prediction.closesUnixtime - Utils.timeToUnixtime ctx.now
+          secondsToResolve = ctx.prediction.resolvesAtUnixtime - Utils.timeToUnixtime ctx.now
         in
           H.text <|
             ( if secondsToClose > 0 then
@@ -227,7 +226,7 @@ viewCreationParams : Context msg -> State -> Html msg
 viewCreationParams ctx state =
   let
     creator = Utils.mustPredictionCreator ctx.prediction
-    openTime = ctx.prediction.createdUnixtime |> (*) 1000 |> Time.millisToPosix
+    openTime = Utils.unixtimeToTime ctx.prediction.createdUnixtime
     certainty = Utils.mustPredictionCertainty ctx.prediction
   in
   H.p []
@@ -284,7 +283,7 @@ view ctx state =
     creator = Utils.mustPredictionCreator ctx.prediction
   in
   H.div []
-    [ H.h2 [] [H.text <| "Prediction: by " ++ (String.left 10 <| Iso8601.fromTime <| Time.millisToPosix <| ctx.prediction.resolvesAtUnixtime * 1000) ++ ", " ++ ctx.prediction.prediction]
+    [ H.h2 [] [H.text <| "Prediction: by " ++ (String.left 10 <| Iso8601.fromTime <| Utils.unixtimeToTime ctx.prediction.resolvesAtUnixtime) ++ ", " ++ ctx.prediction.prediction]
     , viewPredictionState ctx state
     , viewResolveButtons ctx state
     , viewWinnings ctx state

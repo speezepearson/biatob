@@ -18,7 +18,7 @@ mockAuthToken =
   { hmacOfRest = Bytes.Encode.encode <| Bytes.Encode.string ""
   , owner = Just mockUser
   , mintedUnixtime = 0
-  , expiresUnixtime = 2^64
+  , expiresUnixtime = 2^50
   }
 
 main =

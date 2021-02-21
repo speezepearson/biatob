@@ -102,8 +102,8 @@ global___UserId = UserId
 class AuthToken(google___protobuf___message___Message):
     DESCRIPTOR: google___protobuf___descriptor___Descriptor = ...
     hmac_of_rest = ... # type: builtin___bytes
-    minted_unixtime = ... # type: builtin___int
-    expires_unixtime = ... # type: builtin___int
+    minted_unixtime = ... # type: builtin___float
+    expires_unixtime = ... # type: builtin___float
 
     @property
     def owner(self) -> global___UserId: ...
@@ -112,8 +112,8 @@ class AuthToken(google___protobuf___message___Message):
         *,
         hmac_of_rest : typing___Optional[builtin___bytes] = None,
         owner : typing___Optional[global___UserId] = None,
-        minted_unixtime : typing___Optional[builtin___int] = None,
-        expires_unixtime : typing___Optional[builtin___int] = None,
+        minted_unixtime : typing___Optional[builtin___float] = None,
+        expires_unixtime : typing___Optional[builtin___float] = None,
         ) -> None: ...
     if sys.version_info >= (3,):
         @classmethod
@@ -204,19 +204,19 @@ global___InvitationId = InvitationId
 
 class Invitation(google___protobuf___message___Message):
     DESCRIPTOR: google___protobuf___descriptor___Descriptor = ...
-    created_unixtime = ... # type: builtin___int
+    created_unixtime = ... # type: builtin___float
     notes = ... # type: typing___Text
-    accepted_unixtime = ... # type: builtin___int
+    accepted_unixtime = ... # type: builtin___float
 
     @property
     def accepted_by(self) -> global___UserId: ...
 
     def __init__(self,
         *,
-        created_unixtime : typing___Optional[builtin___int] = None,
+        created_unixtime : typing___Optional[builtin___float] = None,
         notes : typing___Optional[typing___Text] = None,
         accepted_by : typing___Optional[global___UserId] = None,
-        accepted_unixtime : typing___Optional[builtin___int] = None,
+        accepted_unixtime : typing___Optional[builtin___float] = None,
         ) -> None: ...
     if sys.version_info >= (3,):
         @classmethod
@@ -440,9 +440,9 @@ class WorldState(google___protobuf___message___Message):
         DESCRIPTOR: google___protobuf___descriptor___Descriptor = ...
         prediction = ... # type: typing___Text
         maximum_stake_cents = ... # type: builtin___int
-        created_unixtime = ... # type: builtin___int
-        closes_unixtime = ... # type: builtin___int
-        resolves_at_unixtime = ... # type: builtin___int
+        created_unixtime = ... # type: builtin___float
+        closes_unixtime = ... # type: builtin___float
+        resolves_at_unixtime = ... # type: builtin___float
         special_rules = ... # type: typing___Text
 
         @property
@@ -462,9 +462,9 @@ class WorldState(google___protobuf___message___Message):
             prediction : typing___Optional[typing___Text] = None,
             certainty : typing___Optional[global___CertaintyRange] = None,
             maximum_stake_cents : typing___Optional[builtin___int] = None,
-            created_unixtime : typing___Optional[builtin___int] = None,
-            closes_unixtime : typing___Optional[builtin___int] = None,
-            resolves_at_unixtime : typing___Optional[builtin___int] = None,
+            created_unixtime : typing___Optional[builtin___float] = None,
+            closes_unixtime : typing___Optional[builtin___float] = None,
+            resolves_at_unixtime : typing___Optional[builtin___float] = None,
             special_rules : typing___Optional[typing___Text] = None,
             creator : typing___Optional[global___UserId] = None,
             trades : typing___Optional[typing___Iterable[global___Trade]] = None,
@@ -482,7 +482,7 @@ class WorldState(google___protobuf___message___Message):
         def ClearField(self, field_name: typing_extensions___Literal[u"certainty",b"certainty",u"closes_unixtime",b"closes_unixtime",u"created_unixtime",b"created_unixtime",u"creator",b"creator",u"maximum_stake_cents",b"maximum_stake_cents",u"prediction",b"prediction",u"resolutions",b"resolutions",u"resolves_at_unixtime",b"resolves_at_unixtime",u"special_rules",b"special_rules",u"trades",b"trades"]) -> None: ...
     global___Prediction = Prediction
 
-    email_reminders_sent_up_to_unixtime = ... # type: builtin___int
+    email_reminders_sent_up_to_unixtime = ... # type: builtin___float
 
     @property
     def username_users(self) -> typing___MutableMapping[typing___Text, global___UsernameInfo]: ...
@@ -494,7 +494,7 @@ class WorldState(google___protobuf___message___Message):
         *,
         username_users : typing___Optional[typing___Mapping[typing___Text, global___UsernameInfo]] = None,
         predictions : typing___Optional[typing___Mapping[builtin___int, global___WorldState.Prediction]] = None,
-        email_reminders_sent_up_to_unixtime : typing___Optional[builtin___int] = None,
+        email_reminders_sent_up_to_unixtime : typing___Optional[builtin___float] = None,
         ) -> None: ...
     if sys.version_info >= (3,):
         @classmethod
@@ -509,13 +509,13 @@ global___WorldState = WorldState
 
 class ResolutionEvent(google___protobuf___message___Message):
     DESCRIPTOR: google___protobuf___descriptor___Descriptor = ...
-    unixtime = ... # type: builtin___int
+    unixtime = ... # type: builtin___float
     resolution = ... # type: global___Resolution
     notes = ... # type: typing___Text
 
     def __init__(self,
         *,
-        unixtime : typing___Optional[builtin___int] = None,
+        unixtime : typing___Optional[builtin___float] = None,
         resolution : typing___Optional[global___Resolution] = None,
         notes : typing___Optional[typing___Text] = None,
         ) -> None: ...
@@ -535,7 +535,7 @@ class Trade(google___protobuf___message___Message):
     bettor_is_a_skeptic = ... # type: builtin___bool
     bettor_stake_cents = ... # type: builtin___int
     creator_stake_cents = ... # type: builtin___int
-    transacted_unixtime = ... # type: builtin___int
+    transacted_unixtime = ... # type: builtin___float
 
     @property
     def bettor(self) -> global___UserId: ...
@@ -546,7 +546,7 @@ class Trade(google___protobuf___message___Message):
         bettor_is_a_skeptic : typing___Optional[builtin___bool] = None,
         bettor_stake_cents : typing___Optional[builtin___int] = None,
         creator_stake_cents : typing___Optional[builtin___int] = None,
-        transacted_unixtime : typing___Optional[builtin___int] = None,
+        transacted_unixtime : typing___Optional[builtin___float] = None,
         ) -> None: ...
     if sys.version_info >= (3,):
         @classmethod
@@ -790,7 +790,7 @@ class CreatePredictionRequest(google___protobuf___message___Message):
     maximum_stake_cents = ... # type: builtin___int
     open_seconds = ... # type: builtin___int
     special_rules = ... # type: typing___Text
-    resolves_at_unixtime = ... # type: builtin___int
+    resolves_at_unixtime = ... # type: builtin___float
 
     @property
     def certainty(self) -> global___CertaintyRange: ...
@@ -802,7 +802,7 @@ class CreatePredictionRequest(google___protobuf___message___Message):
         maximum_stake_cents : typing___Optional[builtin___int] = None,
         open_seconds : typing___Optional[builtin___int] = None,
         special_rules : typing___Optional[typing___Text] = None,
-        resolves_at_unixtime : typing___Optional[builtin___int] = None,
+        resolves_at_unixtime : typing___Optional[builtin___float] = None,
         ) -> None: ...
     if sys.version_info >= (3,):
         @classmethod
@@ -933,10 +933,10 @@ class UserPredictionView(google___protobuf___message___Message):
     maximum_stake_cents = ... # type: builtin___int
     remaining_stake_cents_vs_believers = ... # type: builtin___int
     remaining_stake_cents_vs_skeptics = ... # type: builtin___int
-    created_unixtime = ... # type: builtin___int
-    closes_unixtime = ... # type: builtin___int
+    created_unixtime = ... # type: builtin___float
+    closes_unixtime = ... # type: builtin___float
     special_rules = ... # type: typing___Text
-    resolves_at_unixtime = ... # type: builtin___int
+    resolves_at_unixtime = ... # type: builtin___float
 
     @property
     def certainty(self) -> global___CertaintyRange: ...
@@ -957,13 +957,13 @@ class UserPredictionView(google___protobuf___message___Message):
         maximum_stake_cents : typing___Optional[builtin___int] = None,
         remaining_stake_cents_vs_believers : typing___Optional[builtin___int] = None,
         remaining_stake_cents_vs_skeptics : typing___Optional[builtin___int] = None,
-        created_unixtime : typing___Optional[builtin___int] = None,
-        closes_unixtime : typing___Optional[builtin___int] = None,
+        created_unixtime : typing___Optional[builtin___float] = None,
+        closes_unixtime : typing___Optional[builtin___float] = None,
         special_rules : typing___Optional[typing___Text] = None,
         creator : typing___Optional[global___UserUserView] = None,
         resolutions : typing___Optional[typing___Iterable[global___ResolutionEvent]] = None,
         your_trades : typing___Optional[typing___Iterable[global___Trade]] = None,
-        resolves_at_unixtime : typing___Optional[builtin___int] = None,
+        resolves_at_unixtime : typing___Optional[builtin___float] = None,
         ) -> None: ...
     if sys.version_info >= (3,):
         @classmethod

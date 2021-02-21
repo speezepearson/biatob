@@ -10,6 +10,7 @@ import Task
 import Field exposing (Field)
 import Biatob.Proto.Mvp as Pb
 import Iso8601
+import Utils
 
 maxLegalStakeCents = 500000
 epsilon = 0.000001
@@ -61,7 +62,7 @@ toCreateRequest model =
       , maximumStakeCents = stake
       , openSeconds = openForSeconds
       , specialRules = specialRules
-      , resolvesAtUnixtime = Time.posixToMillis resolvesAt // 1000
+      , resolvesAtUnixtime = Utils.timeToUnixtime resolvesAt
       }
   ))))))))
   |> Result.toMaybe
@@ -251,7 +252,7 @@ init () =
     , resolvesAtField = Field.init "" <| \{now} s ->
         case Iso8601.toTime s of
           Err _ -> Err ""
-          Ok t -> if Time.posixToMillis t < Time.posixToMillis now then Err "must be in the future" else Ok t
+          Ok t -> if Utils.timeToUnixtime t < Utils.timeToUnixtime now then Err "must be in the future" else Ok t
     , stakeField = Field.init "20" <| \() s ->
         case String.toFloat s of
           Nothing -> Err "must be a positive number"
@@ -284,7 +285,7 @@ init () =
           Just n -> if n <= 0 then Err "must be a positive integer" else Ok (n * unitToSeconds unit)
     , specialRulesField = Field.init "" <| \() s -> Ok s
     , disabled = False
-    , now = Time.millisToPosix 0
+    , now = Utils.unixtimeToTime 0
     }
   , Task.perform Tick Time.now
   )

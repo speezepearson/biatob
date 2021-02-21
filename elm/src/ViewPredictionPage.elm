@@ -28,7 +28,7 @@ init flags =
   ( ( { prediction = Utils.mustDecodePbFromFlags Pb.userPredictionViewDecoder "predictionPbB64" flags
       , predictionId = Utils.mustDecodeFromFlags JD.int "predictionId" flags
       , auth = Utils.decodePbFromFlags Pb.authTokenDecoder "authTokenPbB64" flags
-      , now = Time.millisToPosix 0
+      , now = Utils.unixtimeToTime 0
       , httpOrigin = Utils.mustDecodeFromFlags JD.string "httpOrigin" flags
       , handle = WidgetEvent
       }
@@ -76,6 +76,7 @@ update msg (ctx, model) =
         )
       , Cmd.none
       )
+
 main : Program JD.Value Model Msg
 main =
   Browser.element

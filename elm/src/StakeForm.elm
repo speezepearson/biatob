@@ -50,7 +50,7 @@ view config state =
     creator = Utils.mustPredictionCreator config.prediction
     certainty = Utils.mustPredictionCertainty config.prediction
 
-    isClosed = Time.posixToMillis state.now > 1000*config.prediction.closesUnixtime
+    isClosed = Utils.timeToUnixtime state.now > config.prediction.closesUnixtime
     disableInputs = isClosed || Utils.resolutionIsTerminal (Utils.currentResolution config.prediction)
     creatorStakeFactorVsBelievers = (1 - certainty.high) / certainty.high
     creatorStakeFactorVsSkeptics = certainty.low / (1 - certainty.low)
@@ -123,7 +123,7 @@ init =
   in
   { believerStakeField = Field.init "0" parseCents
   , skepticStakeField = Field.init "0" parseCents
-  , now = Time.millisToPosix 0
+  , now = Utils.unixtimeToTime 0
   , working = False
   , notification = H.text ""
   }
@@ -138,13 +138,13 @@ main =
       , maximumStakeCents = 10000
       , remainingStakeCentsVsBelievers = 10000
       , remainingStakeCentsVsSkeptics = 5000
-      , createdUnixtime = 0 -- TODO
-      , closesUnixtime = 86400
+      , createdUnixtime = 0.0
+      , closesUnixtime = 86400.0
       , specialRules = "If the CDC doesn't publish statistics on this, I'll fall back to some other official organization, like the WHO; failing that, I'll look for journal papers on U.S. cases, and go with a consensus if I find one; failing that, the prediction is unresolvable."
       , creator = Just {displayName = "Spencer", isSelf=False, trustsYou=True, isTrusted=True}
       , resolutions = []
       , yourTrades = []
-      , resolvesAtUnixtime = 0
+      , resolvesAtUnixtime = 0.0
       }
 
   in

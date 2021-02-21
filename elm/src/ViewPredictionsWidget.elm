@@ -166,7 +166,7 @@ init flags =
     , filter = { own = Nothing , phase = Nothing }
     , order = CreatedDate Desc
     , auth = flags.auth
-    , now = Time.millisToPosix 0
+    , now = Utils.unixtimeToTime 0
     , allowFilterByOwner = True
     }
   , Task.perform Tick Time.now
