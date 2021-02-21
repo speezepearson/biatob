@@ -228,7 +228,7 @@ update msg model =
   (RegisterUsernameComplete _, HasToken _) ->
     ( model , Cmd.none )
   (Tick now, HasToken {token}) ->
-    if Time.posixToMillis now > 1000*token.expiresUnixtime then
+    if Utils.timeToUnixtime now > token.expiresUnixtime then
       ( init JE.null |> Tuple.first
       , authChanged {loggedIn=False}
       )

@@ -29,7 +29,7 @@ def change_uint32_times_to_doubles(obj: object) -> None:
       setattr(obj, new_fieldname, value)
 
 MIGRATIONS: Sequence[Callable[[object], None]] = [
-  # change_uint32_times_to_doubles
+  change_uint32_times_to_doubles
 ]
 
 parser = argparse.ArgumentParser()

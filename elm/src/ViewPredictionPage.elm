@@ -73,7 +73,7 @@ init flags =
     { prediction = Utils.mustDecodePbFromFlags Pb.userPredictionViewDecoder "predictionPbB64" flags
     , predictionId = Utils.mustDecodeFromFlags JD.int "predictionId" flags
     , auth = Utils.decodePbFromFlags Pb.authTokenDecoder "authTokenPbB64" flags
-    , now = Time.millisToPosix 0
+    , now = Utils.unixtimeToTime 0
     , linkToAuthority = Utils.mustDecodeFromFlags JD.string "linkToAuthority" flags
     }
 
@@ -239,7 +239,7 @@ viewPredictionState model =
         H.text "This prediction has resolved INVALID. "
       Pb.ResolutionNoneYet ->
         let
-          nowUnixtime = Time.posixToMillis model.now // 1000
+          nowUnixtime = Utils.timeToUnixtime model.now
           secondsToClose = model.prediction.closesUnixtime - nowUnixtime
           secondsToResolve = model.prediction.resolvesAtUnixtime - nowUnixtime
         in
@@ -305,7 +305,7 @@ viewCreationParams : Model -> Html Msg
 viewCreationParams model =
   let
     creator = Utils.mustPredictionCreator model.prediction
-    openTime = model.prediction.createdUnixtime |> (*) 1000 |> Time.millisToPosix
+    openTime = Utils.unixtimeToTime model.prediction.createdUnixtime
     certainty = Utils.mustPredictionCertainty model.prediction
   in
   H.p []
@@ -364,7 +364,7 @@ view model =
     creator = Utils.mustPredictionCreator model.prediction
   in
   H.div []
-    [ H.h2 [] [H.text <| "Prediction: by " ++ (String.left 10 <| Iso8601.fromTime <| Time.millisToPosix <| model.prediction.resolvesAtUnixtime * 1000) ++ ", " ++ model.prediction.prediction]
+    [ H.h2 [] [H.text <| "Prediction: by " ++ (String.left 10 <| Iso8601.fromTime <| Utils.unixtimeToTime model.prediction.resolvesAtUnixtime) ++ ", " ++ model.prediction.prediction]
     , viewPredictionState model
     , viewResolveButtons model
     , viewWinnings model

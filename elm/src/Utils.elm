@@ -131,10 +131,10 @@ invitationPath id =
   ++ "/"
   ++ id.nonce
 
-unixtimeToTime : Int -> Time.Posix
-unixtimeToTime n = Time.millisToPosix (n*1000)
-timeToUnixtime : Time.Posix -> Int
-timeToUnixtime t = Time.posixToMillis t // 1000
+unixtimeToTime : Float -> Time.Posix
+unixtimeToTime n = Time.millisToPosix <| round <| n*1000
+timeToUnixtime : Time.Posix -> Float
+timeToUnixtime t = toFloat (Time.posixToMillis t) / 1000
 
 monthNum_ : Time.Month -> Int
 monthNum_ month =
@@ -174,12 +174,12 @@ addMillis : Int -> Time.Posix -> Time.Posix
 addMillis n t =
   t |> Time.posixToMillis |> (+) n |> Time.millisToPosix
 
-renderIntervalSeconds : Int -> String
+renderIntervalSeconds : Float -> String
 renderIntervalSeconds seconds =
   let
     divmod : Int -> Int -> (Int, Int)
     divmod n div = (n // div , n |> modBy div)
-    (minutes,s) = divmod seconds 60
+    (minutes,s) = divmod (round seconds) 60
     (hours,m) = divmod minutes 60
     (days,h) = divmod hours 24
     (years,d) = divmod days 365
@@ -192,13 +192,13 @@ renderIntervalSeconds seconds =
     String.fromInt s ++ "s"
 
 predictionCreatedTime : Pb.UserPredictionView -> Time.Posix
-predictionCreatedTime prediction = prediction.createdUnixtime * 1000 |> Time.millisToPosix
+predictionCreatedTime prediction = unixtimeToTime prediction.createdUnixtime
 
 predictionClosesTime : Pb.UserPredictionView -> Time.Posix
-predictionClosesTime prediction = prediction.closesUnixtime * 1000 |> Time.millisToPosix
+predictionClosesTime prediction = unixtimeToTime prediction.closesUnixtime
 
 secondsToClose : Time.Posix -> Pb.UserPredictionView -> Int
-secondsToClose now prediction = prediction.closesUnixtime - Time.posixToMillis now // 1000
+secondsToClose now prediction = prediction.closesUnixtime - timeToUnixtime now |> round
 
 pathToUserPage : Pb.UserId -> String
 pathToUserPage user =

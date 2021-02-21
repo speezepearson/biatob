@@ -141,7 +141,7 @@ init flags =
     subinits =
       Dict.map
         (\id m ->
-          let (submodel, subcmd) = ViewPredictionPage.initBase {predictionId=id, prediction=m, auth=Just flags.auth, now=Time.millisToPosix 0, linkToAuthority=flags.linkToAuthority} in
+          let (submodel, subcmd) = ViewPredictionPage.initBase {predictionId=id, prediction=m, auth=Just flags.auth, now=Utils.unixtimeToTime 0, linkToAuthority=flags.linkToAuthority} in
           (submodel, subcmd)
         )
         flags.predictions
@@ -150,7 +150,7 @@ init flags =
     , filter = { own = Nothing , phase = Nothing }
     , order = CreatedDate Desc
     , auth = flags.auth
-    , now = Time.millisToPosix 0
+    , now = Utils.unixtimeToTime 0
     , allowFilterByOwner = True
     }
   , Cmd.batch

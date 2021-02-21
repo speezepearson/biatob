@@ -18,7 +18,9 @@ mockAuthToken =
   { hmacOfRest = Bytes.Encode.encode <| Bytes.Encode.string ""
   , owner = Just mockUser
   , mintedUnixtime = 0
-  , expiresUnixtime = 2^64
+  , mintedUnixtimeDepr = 0
+  , expiresUnixtime = 2^50
+  , expiresUnixtimeDepr = 2^50
   }
 
     -- , linkToAuthority = Utils.mustDecodeFromFlags JD.string "linkToAuthority" flags
@@ -34,12 +36,15 @@ mockPrediction =
   , remainingStakeCentsVsBelievers = 10000
   , remainingStakeCentsVsSkeptics = 5000
   , createdUnixtime = 0
+  , createdUnixtimeDepr = 0
   , closesUnixtime = 60*60*24*365*100
+  , closesUnixtimeDepr = 60*60*24*365*100
   , specialRules = "If the CDC doesn't publish statistics on this, I'll fall back to some other official organization, like the WHO; failing that, I'll look for journal papers on U.S. cases, and go with a consensus if I find one; failing that, the prediction is unresolvable."
   , creator = Just {displayName = "Spencer", isSelf=False, trustsYou=True, isTrusted=True}
   , resolutions = []
   , yourTrades = []
   , resolvesAtUnixtime = 60*60*24*365*101
+  , resolvesAtUnixtimeDepr = 60*60*24*365*101
   }
 
 

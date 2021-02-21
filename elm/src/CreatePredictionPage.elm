@@ -17,6 +17,7 @@ import Utils
 
 import ViewPredictionPage
 import API
+import Utils
 
 port createdPrediction : Int -> Cmd msg
 
@@ -42,14 +43,6 @@ authName auth =
   |> Maybe.map Utils.renderUserPlain
   |> Maybe.withDefault "[Creator]"
 
-dummyAuthToken : Pb.AuthToken
-dummyAuthToken =
-  { owner = Just {kind = Just (Pb.KindUsername "testuser")}
-  , mintedUnixtime=0
-  , expiresUnixtime=99999999999
-  , hmacOfRest=Bytes.Encode.encode <| Bytes.Encode.string ""
-  }
-
 init : JD.Value -> (Model, Cmd Msg)
 init flags =
   let
@@ -61,7 +54,7 @@ init flags =
     , auth = auth
     , working = False
     , createError = Nothing
-    , now = Time.millisToPosix 0
+    , now = Utils.unixtimeToTime 0
     }
   , Cmd.batch [Task.perform Tick Time.now, Cmd.map FormMsg formCmd]
   )
@@ -150,13 +143,16 @@ previewPrediction {request, creatorName, createdAt} =
   , maximumStakeCents = request.maximumStakeCents
   , remainingStakeCentsVsBelievers = request.maximumStakeCents
   , remainingStakeCentsVsSkeptics = request.maximumStakeCents
-  , createdUnixtime = Time.posixToMillis createdAt // 1000
-  , closesUnixtime = Time.posixToMillis createdAt // 1000 + request.openSeconds
+  , createdUnixtime = Utils.timeToUnixtime createdAt
+  , createdUnixtimeDepr = round <| Utils.timeToUnixtime createdAt
+  , closesUnixtime = Utils.timeToUnixtime createdAt + toFloat request.openSeconds
+  , closesUnixtimeDepr = round <| Utils.timeToUnixtime createdAt + toFloat request.openSeconds
   , specialRules = request.specialRules
   , creator = Just {displayName = creatorName, isSelf=False, trustsYou=True, isTrusted=True}
   , resolutions = []
   , yourTrades = []
   , resolvesAtUnixtime = request.resolvesAtUnixtime
+  , resolvesAtUnixtimeDepr = round <| request.resolvesAtUnixtime
   }
 
 subscriptions : Model -> Sub Msg
