@@ -13,8 +13,6 @@ message UserId {
 message AuthToken {
   bytes hmac_of_rest = 1;
   UserId owner = 2;
-  uint32 minted_unixtime_depr = 3;
-  uint32 expires_unixtime_depr = 4;
   double minted_unixtime = 5;
   double expires_unixtime = 6;
 
@@ -37,11 +35,9 @@ message InvitationId {
   string nonce = 2;
 }
 message Invitation {
-  uint32 created_unixtime_depr = 2;
   double created_unixtime = 6;
   string notes = 3;
   UserId accepted_by = 4;
-  uint32 accepted_unixtime_depr = 5;
   double accepted_unixtime = 7;
 }
 
@@ -84,7 +80,6 @@ message WorldState {
 
   map<uint32, Prediction> predictions = 2;
 
-  uint32 email_reminders_sent_up_to_unixtime_depr = 3;
   double email_reminders_sent_up_to_unixtime = 4;
 
   // message GoogleOauthInfo {
@@ -98,11 +93,8 @@ message WorldState {
     string prediction = 1;
     CertaintyRange certainty = 2;
     uint32 maximum_stake_cents = 3;
-    uint32 created_unixtime_depr = 4;
     double created_unixtime = 12;
-    uint32 closes_unixtime_depr = 5;
     double closes_unixtime = 13;
-    uint32 resolves_at_unixtime_depr = 11;
     double resolves_at_unixtime = 14;
     string special_rules = 6;
     UserId creator = 7;
@@ -114,7 +106,6 @@ message WorldState {
 }
 
 message ResolutionEvent {
-  uint32 unixtime_depr = 1;
   double unixtime = 4;
   Resolution resolution = 2;
   string notes = 3;
@@ -125,7 +116,6 @@ message Trade {
   bool bettor_is_a_skeptic = 2;
   uint32 bettor_stake_cents = 3;
   uint32 creator_stake_cents = 4;
-  uint32 transacted_unixtime_depr = 5;
   double transacted_unixtime = 6;
 }
 
@@ -189,7 +179,6 @@ message CreatePredictionRequest {
   uint32 maximum_stake_cents = 5;
   uint32 open_seconds = 6;
   string special_rules = 7;
-  uint32 resolves_at_unixtime_depr = 8;
   double resolves_at_unixtime = 9;
 }
 message CreatePredictionResponse {
@@ -221,15 +210,12 @@ message UserPredictionView {
   uint32 maximum_stake_cents = 3;
   uint32 remaining_stake_cents_vs_believers = 4;
   uint32 remaining_stake_cents_vs_skeptics = 5;
-  uint32 created_unixtime_depr = 6;
   double created_unixtime = 13;
-  uint32 closes_unixtime_depr = 7;
   double closes_unixtime = 14;
   string special_rules = 8;
   UserUserView creator = 9;
   repeated ResolutionEvent resolutions = 10;
   repeated Trade your_trades = 11;
-  uint32 resolves_at_unixtime_depr = 12;
   double resolves_at_unixtime = 15;
 }
 message UserUserView {

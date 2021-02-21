@@ -131,15 +131,12 @@ main =
       , remainingStakeCentsVsBelievers = 10000
       , remainingStakeCentsVsSkeptics = 5000
       , createdUnixtime = 0.0
-      , createdUnixtimeDepr = 0
       , closesUnixtime = 86400.0
-      , closesUnixtimeDepr = 86400
       , specialRules = "If the CDC doesn't publish statistics on this, I'll fall back to some other official organization, like the WHO; failing that, I'll look for journal papers on U.S. cases, and go with a consensus if I find one; failing that, the prediction is unresolvable."
       , creator = Just {displayName = "Spencer", isSelf=False, trustsYou=True, isTrusted=True}
       , resolutions = []
       , yourTrades = []
       , resolvesAtUnixtime = 0.0
-      , resolvesAtUnixtimeDepr = 0
       }
   in
   Browser.sandbox

@@ -79,8 +79,6 @@ type alias UserId =
 type alias AuthToken =
     { hmacOfRest : Bytes.Bytes
     , owner : Maybe UserId
-    , mintedUnixtimeDepr : Int
-    , expiresUnixtimeDepr : Int
     , mintedUnixtime : Float
     , expiresUnixtime : Float
     }
@@ -116,11 +114,9 @@ type alias InvitationId =
 {-| `Invitation` message
 -}
 type alias Invitation =
-    { createdUnixtimeDepr : Int
-    , createdUnixtime : Float
+    { createdUnixtime : Float
     , notes : String
     , acceptedBy : Maybe UserId
-    , acceptedUnixtimeDepr : Int
     , acceptedUnixtime : Float
     }
 
@@ -180,7 +176,6 @@ type alias UsernameInfo =
 type alias WorldState =
     { usernameUsers : Dict.Dict String (Maybe UsernameInfo)
     , predictions : Dict.Dict Int (Maybe WorldStatePrediction)
-    , emailRemindersSentUpToUnixtimeDepr : Int
     , emailRemindersSentUpToUnixtime : Float
     }
 
@@ -191,11 +186,8 @@ type alias WorldStatePrediction =
     { prediction : String
     , certainty : Maybe CertaintyRange
     , maximumStakeCents : Int
-    , createdUnixtimeDepr : Int
     , createdUnixtime : Float
-    , closesUnixtimeDepr : Int
     , closesUnixtime : Float
-    , resolvesAtUnixtimeDepr : Int
     , resolvesAtUnixtime : Float
     , specialRules : String
     , creator : Maybe UserId
@@ -207,8 +199,7 @@ type alias WorldStatePrediction =
 {-| `ResolutionEvent` message
 -}
 type alias ResolutionEvent =
-    { unixtimeDepr : Int
-    , unixtime : Float
+    { unixtime : Float
     , resolution : Resolution
     , notes : String
     }
@@ -221,7 +212,6 @@ type alias Trade =
     , bettorIsASkeptic : Bool
     , bettorStakeCents : Int
     , creatorStakeCents : Int
-    , transactedUnixtimeDepr : Int
     , transactedUnixtime : Float
     }
 
@@ -326,7 +316,6 @@ type alias CreatePredictionRequest =
     , maximumStakeCents : Int
     , openSeconds : Int
     , specialRules : String
-    , resolvesAtUnixtimeDepr : Int
     , resolvesAtUnixtime : Float
     }
 
@@ -389,15 +378,12 @@ type alias UserPredictionView =
     , maximumStakeCents : Int
     , remainingStakeCentsVsBelievers : Int
     , remainingStakeCentsVsSkeptics : Int
-    , createdUnixtimeDepr : Int
     , createdUnixtime : Float
-    , closesUnixtimeDepr : Int
     , closesUnixtime : Float
     , specialRules : String
     , creator : Maybe UserUserView
     , resolutions : List ResolutionEvent
     , yourTrades : List Trade
-    , resolvesAtUnixtimeDepr : Int
     , resolvesAtUnixtime : Float
     }
 
@@ -860,11 +846,9 @@ userIdDecoder =
 -}
 authTokenDecoder : Decode.Decoder AuthToken
 authTokenDecoder =
-    Decode.message (AuthToken (Encode.encode <| Encode.string "") Nothing 0 0 0 0)
+    Decode.message (AuthToken (Encode.encode <| Encode.string "") Nothing 0 0)
         [ Decode.optional 1 Decode.bytes setHmacOfRest
         , Decode.optional 2 (Decode.map Just userIdDecoder) setOwner
-        , Decode.optional 3 Decode.uint32 setMintedUnixtimeDepr
-        , Decode.optional 4 Decode.uint32 setExpiresUnixtimeDepr
         , Decode.optional 5 Decode.double setMintedUnixtime
         , Decode.optional 6 Decode.double setExpiresUnixtime
         ]
@@ -905,12 +889,10 @@ invitationIdDecoder =
 -}
 invitationDecoder : Decode.Decoder Invitation
 invitationDecoder =
-    Decode.message (Invitation 0 0 "" Nothing 0 0)
-        [ Decode.optional 2 Decode.uint32 setCreatedUnixtimeDepr
-        , Decode.optional 6 Decode.double setCreatedUnixtime
+    Decode.message (Invitation 0 "" Nothing 0)
+        [ Decode.optional 6 Decode.double setCreatedUnixtime
         , Decode.optional 3 Decode.string setNotes
         , Decode.optional 4 (Decode.map Just userIdDecoder) setAcceptedBy
-        , Decode.optional 5 Decode.uint32 setAcceptedUnixtimeDepr
         , Decode.optional 7 Decode.double setAcceptedUnixtime
         ]
 
@@ -974,25 +956,21 @@ usernameInfoDecoder =
 -}
 worldStateDecoder : Decode.Decoder WorldState
 worldStateDecoder =
-    Decode.message (WorldState Dict.empty Dict.empty 0 0)
+    Decode.message (WorldState Dict.empty Dict.empty 0)
         [ Decode.mapped 1 ( "", Nothing ) Decode.string (Decode.map Just usernameInfoDecoder) .usernameUsers setUsernameUsers
         , Decode.mapped 2 ( 0, Nothing ) Decode.uint32 (Decode.map Just worldStatePredictionDecoder) .predictions setPredictions
-        , Decode.optional 3 Decode.uint32 setEmailRemindersSentUpToUnixtimeDepr
         , Decode.optional 4 Decode.double setEmailRemindersSentUpToUnixtime
         ]
 
 
 worldStatePredictionDecoder : Decode.Decoder WorldStatePrediction
 worldStatePredictionDecoder =
-    Decode.message (WorldStatePrediction "" Nothing 0 0 0 0 0 0 0 "" Nothing [] [])
+    Decode.message (WorldStatePrediction "" Nothing 0 0 0 0 "" Nothing [] [])
         [ Decode.optional 1 Decode.string setPrediction
         , Decode.optional 2 (Decode.map Just certaintyRangeDecoder) setCertainty
         , Decode.optional 3 Decode.uint32 setMaximumStakeCents
-        , Decode.optional 4 Decode.uint32 setCreatedUnixtimeDepr
         , Decode.optional 12 Decode.double setCreatedUnixtime
-        , Decode.optional 5 Decode.uint32 setClosesUnixtimeDepr
         , Decode.optional 13 Decode.double setClosesUnixtime
-        , Decode.optional 11 Decode.uint32 setResolvesAtUnixtimeDepr
         , Decode.optional 14 Decode.double setResolvesAtUnixtime
         , Decode.optional 6 Decode.string setSpecialRules
         , Decode.optional 7 (Decode.map Just userIdDecoder) setCreator
@@ -1005,9 +983,8 @@ worldStatePredictionDecoder =
 -}
 resolutionEventDecoder : Decode.Decoder ResolutionEvent
 resolutionEventDecoder =
-    Decode.message (ResolutionEvent 0 0 ResolutionNoneYet "")
-        [ Decode.optional 1 Decode.uint32 setUnixtimeDepr
-        , Decode.optional 4 Decode.double setUnixtime
+    Decode.message (ResolutionEvent 0 ResolutionNoneYet "")
+        [ Decode.optional 4 Decode.double setUnixtime
         , Decode.optional 2 resolutionDecoder setResolution
         , Decode.optional 3 Decode.string setNotes
         ]
@@ -1017,12 +994,11 @@ resolutionEventDecoder =
 -}
 tradeDecoder : Decode.Decoder Trade
 tradeDecoder =
-    Decode.message (Trade Nothing False 0 0 0 0)
+    Decode.message (Trade Nothing False 0 0 0)
         [ Decode.optional 1 (Decode.map Just userIdDecoder) setBettor
         , Decode.optional 2 Decode.bool setBettorIsASkeptic
         , Decode.optional 3 Decode.uint32 setBettorStakeCents
         , Decode.optional 4 Decode.uint32 setCreatorStakeCents
-        , Decode.optional 5 Decode.uint32 setTransactedUnixtimeDepr
         , Decode.optional 6 Decode.double setTransactedUnixtime
         ]
 
@@ -1135,13 +1111,12 @@ certaintyRangeDecoder =
 -}
 createPredictionRequestDecoder : Decode.Decoder CreatePredictionRequest
 createPredictionRequestDecoder =
-    Decode.message (CreatePredictionRequest "" Nothing 0 0 "" 0 0)
+    Decode.message (CreatePredictionRequest "" Nothing 0 0 "" 0)
         [ Decode.optional 2 Decode.string setPrediction
         , Decode.optional 4 (Decode.map Just certaintyRangeDecoder) setCertainty
         , Decode.optional 5 Decode.uint32 setMaximumStakeCents
         , Decode.optional 6 Decode.uint32 setOpenSeconds
         , Decode.optional 7 Decode.string setSpecialRules
-        , Decode.optional 8 Decode.uint32 setResolvesAtUnixtimeDepr
         , Decode.optional 9 Decode.double setResolvesAtUnixtime
         ]
 
@@ -1200,21 +1175,18 @@ getPredictionResponseErrorDecoder =
 -}
 userPredictionViewDecoder : Decode.Decoder UserPredictionView
 userPredictionViewDecoder =
-    Decode.message (UserPredictionView "" Nothing 0 0 0 0 0 0 0 "" Nothing [] [] 0 0)
+    Decode.message (UserPredictionView "" Nothing 0 0 0 0 0 "" Nothing [] [] 0)
         [ Decode.optional 1 Decode.string setPrediction
         , Decode.optional 2 (Decode.map Just certaintyRangeDecoder) setCertainty
         , Decode.optional 3 Decode.uint32 setMaximumStakeCents
         , Decode.optional 4 Decode.uint32 setRemainingStakeCentsVsBelievers
         , Decode.optional 5 Decode.uint32 setRemainingStakeCentsVsSkeptics
-        , Decode.optional 6 Decode.uint32 setCreatedUnixtimeDepr
         , Decode.optional 13 Decode.double setCreatedUnixtime
-        , Decode.optional 7 Decode.uint32 setClosesUnixtimeDepr
         , Decode.optional 14 Decode.double setClosesUnixtime
         , Decode.optional 8 Decode.string setSpecialRules
         , Decode.optional 9 (Decode.map Just userUserViewDecoder) setCreator
         , Decode.repeated 10 resolutionEventDecoder .resolutions setResolutions
         , Decode.repeated 11 tradeDecoder .yourTrades setYourTrades
-        , Decode.optional 12 Decode.uint32 setResolvesAtUnixtimeDepr
         , Decode.optional 15 Decode.double setResolvesAtUnixtime
         ]
 
@@ -1697,8 +1669,6 @@ toAuthTokenEncoder model =
     Encode.message
         [ ( 1, Encode.bytes model.hmacOfRest )
         , ( 2, (Maybe.withDefault Encode.none << Maybe.map toUserIdEncoder) model.owner )
-        , ( 3, Encode.uint32 model.mintedUnixtimeDepr )
-        , ( 4, Encode.uint32 model.expiresUnixtimeDepr )
         , ( 5, Encode.double model.mintedUnixtime )
         , ( 6, Encode.double model.expiresUnixtime )
         ]
@@ -1740,11 +1710,9 @@ toInvitationIdEncoder model =
 toInvitationEncoder : Invitation -> Encode.Encoder
 toInvitationEncoder model =
     Encode.message
-        [ ( 2, Encode.uint32 model.createdUnixtimeDepr )
-        , ( 6, Encode.double model.createdUnixtime )
+        [ ( 6, Encode.double model.createdUnixtime )
         , ( 3, Encode.string model.notes )
         , ( 4, (Maybe.withDefault Encode.none << Maybe.map toUserIdEncoder) model.acceptedBy )
-        , ( 5, Encode.uint32 model.acceptedUnixtimeDepr )
         , ( 7, Encode.double model.acceptedUnixtime )
         ]
 
@@ -1819,7 +1787,6 @@ toWorldStateEncoder model =
     Encode.message
         [ ( 1, Encode.dict Encode.string (Maybe.withDefault Encode.none << Maybe.map toUsernameInfoEncoder) model.usernameUsers )
         , ( 2, Encode.dict Encode.uint32 (Maybe.withDefault Encode.none << Maybe.map toWorldStatePredictionEncoder) model.predictions )
-        , ( 3, Encode.uint32 model.emailRemindersSentUpToUnixtimeDepr )
         , ( 4, Encode.double model.emailRemindersSentUpToUnixtime )
         ]
 
@@ -1830,11 +1797,8 @@ toWorldStatePredictionEncoder model =
         [ ( 1, Encode.string model.prediction )
         , ( 2, (Maybe.withDefault Encode.none << Maybe.map toCertaintyRangeEncoder) model.certainty )
         , ( 3, Encode.uint32 model.maximumStakeCents )
-        , ( 4, Encode.uint32 model.createdUnixtimeDepr )
         , ( 12, Encode.double model.createdUnixtime )
-        , ( 5, Encode.uint32 model.closesUnixtimeDepr )
         , ( 13, Encode.double model.closesUnixtime )
-        , ( 11, Encode.uint32 model.resolvesAtUnixtimeDepr )
         , ( 14, Encode.double model.resolvesAtUnixtime )
         , ( 6, Encode.string model.specialRules )
         , ( 7, (Maybe.withDefault Encode.none << Maybe.map toUserIdEncoder) model.creator )
@@ -1848,8 +1812,7 @@ toWorldStatePredictionEncoder model =
 toResolutionEventEncoder : ResolutionEvent -> Encode.Encoder
 toResolutionEventEncoder model =
     Encode.message
-        [ ( 1, Encode.uint32 model.unixtimeDepr )
-        , ( 4, Encode.double model.unixtime )
+        [ ( 4, Encode.double model.unixtime )
         , ( 2, toResolutionEncoder model.resolution )
         , ( 3, Encode.string model.notes )
         ]
@@ -1864,7 +1827,6 @@ toTradeEncoder model =
         , ( 2, Encode.bool model.bettorIsASkeptic )
         , ( 3, Encode.uint32 model.bettorStakeCents )
         , ( 4, Encode.uint32 model.creatorStakeCents )
-        , ( 5, Encode.uint32 model.transactedUnixtimeDepr )
         , ( 6, Encode.double model.transactedUnixtime )
         ]
 
@@ -1995,7 +1957,6 @@ toCreatePredictionRequestEncoder model =
         , ( 5, Encode.uint32 model.maximumStakeCents )
         , ( 6, Encode.uint32 model.openSeconds )
         , ( 7, Encode.string model.specialRules )
-        , ( 8, Encode.uint32 model.resolvesAtUnixtimeDepr )
         , ( 9, Encode.double model.resolvesAtUnixtime )
         ]
 
@@ -2072,15 +2033,12 @@ toUserPredictionViewEncoder model =
         , ( 3, Encode.uint32 model.maximumStakeCents )
         , ( 4, Encode.uint32 model.remainingStakeCentsVsBelievers )
         , ( 5, Encode.uint32 model.remainingStakeCentsVsSkeptics )
-        , ( 6, Encode.uint32 model.createdUnixtimeDepr )
         , ( 13, Encode.double model.createdUnixtime )
-        , ( 7, Encode.uint32 model.closesUnixtimeDepr )
         , ( 14, Encode.double model.closesUnixtime )
         , ( 8, Encode.string model.specialRules )
         , ( 9, (Maybe.withDefault Encode.none << Maybe.map toUserUserViewEncoder) model.creator )
         , ( 10, Encode.list toResolutionEventEncoder model.resolutions )
         , ( 11, Encode.list toTradeEncoder model.yourTrades )
-        , ( 12, Encode.uint32 model.resolvesAtUnixtimeDepr )
         , ( 15, Encode.double model.resolvesAtUnixtime )
         ]
 
@@ -2602,16 +2560,6 @@ setOwner value model =
     { model | owner = value }
 
 
-setMintedUnixtimeDepr : a -> { b | mintedUnixtimeDepr : a } -> { b | mintedUnixtimeDepr : a }
-setMintedUnixtimeDepr value model =
-    { model | mintedUnixtimeDepr = value }
-
-
-setExpiresUnixtimeDepr : a -> { b | expiresUnixtimeDepr : a } -> { b | expiresUnixtimeDepr : a }
-setExpiresUnixtimeDepr value model =
-    { model | expiresUnixtimeDepr = value }
-
-
 setMintedUnixtime : a -> { b | mintedUnixtime : a } -> { b | mintedUnixtime : a }
 setMintedUnixtime value model =
     { model | mintedUnixtime = value }
@@ -2667,11 +2615,6 @@ setNonce value model =
     { model | nonce = value }
 
 
-setCreatedUnixtimeDepr : a -> { b | createdUnixtimeDepr : a } -> { b | createdUnixtimeDepr : a }
-setCreatedUnixtimeDepr value model =
-    { model | createdUnixtimeDepr = value }
-
-
 setCreatedUnixtime : a -> { b | createdUnixtime : a } -> { b | createdUnixtime : a }
 setCreatedUnixtime value model =
     { model | createdUnixtime = value }
@@ -2685,11 +2628,6 @@ setNotes value model =
 setAcceptedBy : a -> { b | acceptedBy : a } -> { b | acceptedBy : a }
 setAcceptedBy value model =
     { model | acceptedBy = value }
-
-
-setAcceptedUnixtimeDepr : a -> { b | acceptedUnixtimeDepr : a } -> { b | acceptedUnixtimeDepr : a }
-setAcceptedUnixtimeDepr value model =
-    { model | acceptedUnixtimeDepr = value }
 
 
 setAcceptedUnixtime : a -> { b | acceptedUnixtime : a } -> { b | acceptedUnixtime : a }
@@ -2757,11 +2695,6 @@ setPredictions value model =
     { model | predictions = value }
 
 
-setEmailRemindersSentUpToUnixtimeDepr : a -> { b | emailRemindersSentUpToUnixtimeDepr : a } -> { b | emailRemindersSentUpToUnixtimeDepr : a }
-setEmailRemindersSentUpToUnixtimeDepr value model =
-    { model | emailRemindersSentUpToUnixtimeDepr = value }
-
-
 setEmailRemindersSentUpToUnixtime : a -> { b | emailRemindersSentUpToUnixtime : a } -> { b | emailRemindersSentUpToUnixtime : a }
 setEmailRemindersSentUpToUnixtime value model =
     { model | emailRemindersSentUpToUnixtime = value }
@@ -2782,19 +2715,9 @@ setMaximumStakeCents value model =
     { model | maximumStakeCents = value }
 
 
-setClosesUnixtimeDepr : a -> { b | closesUnixtimeDepr : a } -> { b | closesUnixtimeDepr : a }
-setClosesUnixtimeDepr value model =
-    { model | closesUnixtimeDepr = value }
-
-
 setClosesUnixtime : a -> { b | closesUnixtime : a } -> { b | closesUnixtime : a }
 setClosesUnixtime value model =
     { model | closesUnixtime = value }
-
-
-setResolvesAtUnixtimeDepr : a -> { b | resolvesAtUnixtimeDepr : a } -> { b | resolvesAtUnixtimeDepr : a }
-setResolvesAtUnixtimeDepr value model =
-    { model | resolvesAtUnixtimeDepr = value }
 
 
 setResolvesAtUnixtime : a -> { b | resolvesAtUnixtime : a } -> { b | resolvesAtUnixtime : a }
@@ -2820,11 +2743,6 @@ setTrades value model =
 setResolutions : a -> { b | resolutions : a } -> { b | resolutions : a }
 setResolutions value model =
     { model | resolutions = value }
-
-
-setUnixtimeDepr : a -> { b | unixtimeDepr : a } -> { b | unixtimeDepr : a }
-setUnixtimeDepr value model =
-    { model | unixtimeDepr = value }
 
 
 setUnixtime : a -> { b | unixtime : a } -> { b | unixtime : a }
@@ -2855,11 +2773,6 @@ setBettorStakeCents value model =
 setCreatorStakeCents : a -> { b | creatorStakeCents : a } -> { b | creatorStakeCents : a }
 setCreatorStakeCents value model =
     { model | creatorStakeCents = value }
-
-
-setTransactedUnixtimeDepr : a -> { b | transactedUnixtimeDepr : a } -> { b | transactedUnixtimeDepr : a }
-setTransactedUnixtimeDepr value model =
-    { model | transactedUnixtimeDepr = value }
 
 
 setTransactedUnixtime : a -> { b | transactedUnixtime : a } -> { b | transactedUnixtime : a }

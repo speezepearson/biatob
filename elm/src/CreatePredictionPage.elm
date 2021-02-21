@@ -144,15 +144,12 @@ previewPrediction {request, creatorName, createdAt} =
   , remainingStakeCentsVsBelievers = request.maximumStakeCents
   , remainingStakeCentsVsSkeptics = request.maximumStakeCents
   , createdUnixtime = Utils.timeToUnixtime createdAt
-  , createdUnixtimeDepr = round <| Utils.timeToUnixtime createdAt
   , closesUnixtime = Utils.timeToUnixtime createdAt + toFloat request.openSeconds
-  , closesUnixtimeDepr = round <| Utils.timeToUnixtime createdAt + toFloat request.openSeconds
   , specialRules = request.specialRules
   , creator = Just {displayName = creatorName, isSelf=False, trustsYou=True, isTrusted=True}
   , resolutions = []
   , yourTrades = []
   , resolvesAtUnixtime = request.resolvesAtUnixtime
-  , resolvesAtUnixtimeDepr = round <| request.resolvesAtUnixtime
   }
 
 subscriptions : Model -> Sub Msg

@@ -102,8 +102,6 @@ global___UserId = UserId
 class AuthToken(google___protobuf___message___Message):
     DESCRIPTOR: google___protobuf___descriptor___Descriptor = ...
     hmac_of_rest = ... # type: builtin___bytes
-    minted_unixtime_depr = ... # type: builtin___int
-    expires_unixtime_depr = ... # type: builtin___int
     minted_unixtime = ... # type: builtin___float
     expires_unixtime = ... # type: builtin___float
 
@@ -114,8 +112,6 @@ class AuthToken(google___protobuf___message___Message):
         *,
         hmac_of_rest : typing___Optional[builtin___bytes] = None,
         owner : typing___Optional[global___UserId] = None,
-        minted_unixtime_depr : typing___Optional[builtin___int] = None,
-        expires_unixtime_depr : typing___Optional[builtin___int] = None,
         minted_unixtime : typing___Optional[builtin___float] = None,
         expires_unixtime : typing___Optional[builtin___float] = None,
         ) -> None: ...
@@ -128,7 +124,7 @@ class AuthToken(google___protobuf___message___Message):
     def MergeFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
     def CopyFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
     def HasField(self, field_name: typing_extensions___Literal[u"owner",b"owner"]) -> builtin___bool: ...
-    def ClearField(self, field_name: typing_extensions___Literal[u"expires_unixtime",b"expires_unixtime",u"expires_unixtime_depr",b"expires_unixtime_depr",u"hmac_of_rest",b"hmac_of_rest",u"minted_unixtime",b"minted_unixtime",u"minted_unixtime_depr",b"minted_unixtime_depr",u"owner",b"owner"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions___Literal[u"expires_unixtime",b"expires_unixtime",u"hmac_of_rest",b"hmac_of_rest",u"minted_unixtime",b"minted_unixtime",u"owner",b"owner"]) -> None: ...
 global___AuthToken = AuthToken
 
 class CredentialsConfig(google___protobuf___message___Message):
@@ -208,10 +204,8 @@ global___InvitationId = InvitationId
 
 class Invitation(google___protobuf___message___Message):
     DESCRIPTOR: google___protobuf___descriptor___Descriptor = ...
-    created_unixtime_depr = ... # type: builtin___int
     created_unixtime = ... # type: builtin___float
     notes = ... # type: typing___Text
-    accepted_unixtime_depr = ... # type: builtin___int
     accepted_unixtime = ... # type: builtin___float
 
     @property
@@ -219,11 +213,9 @@ class Invitation(google___protobuf___message___Message):
 
     def __init__(self,
         *,
-        created_unixtime_depr : typing___Optional[builtin___int] = None,
         created_unixtime : typing___Optional[builtin___float] = None,
         notes : typing___Optional[typing___Text] = None,
         accepted_by : typing___Optional[global___UserId] = None,
-        accepted_unixtime_depr : typing___Optional[builtin___int] = None,
         accepted_unixtime : typing___Optional[builtin___float] = None,
         ) -> None: ...
     if sys.version_info >= (3,):
@@ -235,7 +227,7 @@ class Invitation(google___protobuf___message___Message):
     def MergeFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
     def CopyFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
     def HasField(self, field_name: typing_extensions___Literal[u"accepted_by",b"accepted_by"]) -> builtin___bool: ...
-    def ClearField(self, field_name: typing_extensions___Literal[u"accepted_by",b"accepted_by",u"accepted_unixtime",b"accepted_unixtime",u"accepted_unixtime_depr",b"accepted_unixtime_depr",u"created_unixtime",b"created_unixtime",u"created_unixtime_depr",b"created_unixtime_depr",u"notes",b"notes"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions___Literal[u"accepted_by",b"accepted_by",u"accepted_unixtime",b"accepted_unixtime",u"created_unixtime",b"created_unixtime",u"notes",b"notes"]) -> None: ...
 global___Invitation = Invitation
 
 class EmailFlowState(google___protobuf___message___Message):
@@ -448,11 +440,8 @@ class WorldState(google___protobuf___message___Message):
         DESCRIPTOR: google___protobuf___descriptor___Descriptor = ...
         prediction = ... # type: typing___Text
         maximum_stake_cents = ... # type: builtin___int
-        created_unixtime_depr = ... # type: builtin___int
         created_unixtime = ... # type: builtin___float
-        closes_unixtime_depr = ... # type: builtin___int
         closes_unixtime = ... # type: builtin___float
-        resolves_at_unixtime_depr = ... # type: builtin___int
         resolves_at_unixtime = ... # type: builtin___float
         special_rules = ... # type: typing___Text
 
@@ -473,11 +462,8 @@ class WorldState(google___protobuf___message___Message):
             prediction : typing___Optional[typing___Text] = None,
             certainty : typing___Optional[global___CertaintyRange] = None,
             maximum_stake_cents : typing___Optional[builtin___int] = None,
-            created_unixtime_depr : typing___Optional[builtin___int] = None,
             created_unixtime : typing___Optional[builtin___float] = None,
-            closes_unixtime_depr : typing___Optional[builtin___int] = None,
             closes_unixtime : typing___Optional[builtin___float] = None,
-            resolves_at_unixtime_depr : typing___Optional[builtin___int] = None,
             resolves_at_unixtime : typing___Optional[builtin___float] = None,
             special_rules : typing___Optional[typing___Text] = None,
             creator : typing___Optional[global___UserId] = None,
@@ -493,10 +479,9 @@ class WorldState(google___protobuf___message___Message):
         def MergeFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
         def CopyFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
         def HasField(self, field_name: typing_extensions___Literal[u"certainty",b"certainty",u"creator",b"creator"]) -> builtin___bool: ...
-        def ClearField(self, field_name: typing_extensions___Literal[u"certainty",b"certainty",u"closes_unixtime",b"closes_unixtime",u"closes_unixtime_depr",b"closes_unixtime_depr",u"created_unixtime",b"created_unixtime",u"created_unixtime_depr",b"created_unixtime_depr",u"creator",b"creator",u"maximum_stake_cents",b"maximum_stake_cents",u"prediction",b"prediction",u"resolutions",b"resolutions",u"resolves_at_unixtime",b"resolves_at_unixtime",u"resolves_at_unixtime_depr",b"resolves_at_unixtime_depr",u"special_rules",b"special_rules",u"trades",b"trades"]) -> None: ...
+        def ClearField(self, field_name: typing_extensions___Literal[u"certainty",b"certainty",u"closes_unixtime",b"closes_unixtime",u"created_unixtime",b"created_unixtime",u"creator",b"creator",u"maximum_stake_cents",b"maximum_stake_cents",u"prediction",b"prediction",u"resolutions",b"resolutions",u"resolves_at_unixtime",b"resolves_at_unixtime",u"special_rules",b"special_rules",u"trades",b"trades"]) -> None: ...
     global___Prediction = Prediction
 
-    email_reminders_sent_up_to_unixtime_depr = ... # type: builtin___int
     email_reminders_sent_up_to_unixtime = ... # type: builtin___float
 
     @property
@@ -509,7 +494,6 @@ class WorldState(google___protobuf___message___Message):
         *,
         username_users : typing___Optional[typing___Mapping[typing___Text, global___UsernameInfo]] = None,
         predictions : typing___Optional[typing___Mapping[builtin___int, global___WorldState.Prediction]] = None,
-        email_reminders_sent_up_to_unixtime_depr : typing___Optional[builtin___int] = None,
         email_reminders_sent_up_to_unixtime : typing___Optional[builtin___float] = None,
         ) -> None: ...
     if sys.version_info >= (3,):
@@ -520,19 +504,17 @@ class WorldState(google___protobuf___message___Message):
         def FromString(cls, s: typing___Union[builtin___bytes, builtin___buffer, builtin___unicode]) -> WorldState: ...
     def MergeFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
     def CopyFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
-    def ClearField(self, field_name: typing_extensions___Literal[u"email_reminders_sent_up_to_unixtime",b"email_reminders_sent_up_to_unixtime",u"email_reminders_sent_up_to_unixtime_depr",b"email_reminders_sent_up_to_unixtime_depr",u"predictions",b"predictions",u"username_users",b"username_users"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions___Literal[u"email_reminders_sent_up_to_unixtime",b"email_reminders_sent_up_to_unixtime",u"predictions",b"predictions",u"username_users",b"username_users"]) -> None: ...
 global___WorldState = WorldState
 
 class ResolutionEvent(google___protobuf___message___Message):
     DESCRIPTOR: google___protobuf___descriptor___Descriptor = ...
-    unixtime_depr = ... # type: builtin___int
     unixtime = ... # type: builtin___float
     resolution = ... # type: global___Resolution
     notes = ... # type: typing___Text
 
     def __init__(self,
         *,
-        unixtime_depr : typing___Optional[builtin___int] = None,
         unixtime : typing___Optional[builtin___float] = None,
         resolution : typing___Optional[global___Resolution] = None,
         notes : typing___Optional[typing___Text] = None,
@@ -545,7 +527,7 @@ class ResolutionEvent(google___protobuf___message___Message):
         def FromString(cls, s: typing___Union[builtin___bytes, builtin___buffer, builtin___unicode]) -> ResolutionEvent: ...
     def MergeFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
     def CopyFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
-    def ClearField(self, field_name: typing_extensions___Literal[u"notes",b"notes",u"resolution",b"resolution",u"unixtime",b"unixtime",u"unixtime_depr",b"unixtime_depr"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions___Literal[u"notes",b"notes",u"resolution",b"resolution",u"unixtime",b"unixtime"]) -> None: ...
 global___ResolutionEvent = ResolutionEvent
 
 class Trade(google___protobuf___message___Message):
@@ -553,7 +535,6 @@ class Trade(google___protobuf___message___Message):
     bettor_is_a_skeptic = ... # type: builtin___bool
     bettor_stake_cents = ... # type: builtin___int
     creator_stake_cents = ... # type: builtin___int
-    transacted_unixtime_depr = ... # type: builtin___int
     transacted_unixtime = ... # type: builtin___float
 
     @property
@@ -565,7 +546,6 @@ class Trade(google___protobuf___message___Message):
         bettor_is_a_skeptic : typing___Optional[builtin___bool] = None,
         bettor_stake_cents : typing___Optional[builtin___int] = None,
         creator_stake_cents : typing___Optional[builtin___int] = None,
-        transacted_unixtime_depr : typing___Optional[builtin___int] = None,
         transacted_unixtime : typing___Optional[builtin___float] = None,
         ) -> None: ...
     if sys.version_info >= (3,):
@@ -577,7 +557,7 @@ class Trade(google___protobuf___message___Message):
     def MergeFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
     def CopyFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
     def HasField(self, field_name: typing_extensions___Literal[u"bettor",b"bettor"]) -> builtin___bool: ...
-    def ClearField(self, field_name: typing_extensions___Literal[u"bettor",b"bettor",u"bettor_is_a_skeptic",b"bettor_is_a_skeptic",u"bettor_stake_cents",b"bettor_stake_cents",u"creator_stake_cents",b"creator_stake_cents",u"transacted_unixtime",b"transacted_unixtime",u"transacted_unixtime_depr",b"transacted_unixtime_depr"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions___Literal[u"bettor",b"bettor",u"bettor_is_a_skeptic",b"bettor_is_a_skeptic",u"bettor_stake_cents",b"bettor_stake_cents",u"creator_stake_cents",b"creator_stake_cents",u"transacted_unixtime",b"transacted_unixtime"]) -> None: ...
 global___Trade = Trade
 
 class WhoamiRequest(google___protobuf___message___Message):
@@ -810,7 +790,6 @@ class CreatePredictionRequest(google___protobuf___message___Message):
     maximum_stake_cents = ... # type: builtin___int
     open_seconds = ... # type: builtin___int
     special_rules = ... # type: typing___Text
-    resolves_at_unixtime_depr = ... # type: builtin___int
     resolves_at_unixtime = ... # type: builtin___float
 
     @property
@@ -823,7 +802,6 @@ class CreatePredictionRequest(google___protobuf___message___Message):
         maximum_stake_cents : typing___Optional[builtin___int] = None,
         open_seconds : typing___Optional[builtin___int] = None,
         special_rules : typing___Optional[typing___Text] = None,
-        resolves_at_unixtime_depr : typing___Optional[builtin___int] = None,
         resolves_at_unixtime : typing___Optional[builtin___float] = None,
         ) -> None: ...
     if sys.version_info >= (3,):
@@ -835,7 +813,7 @@ class CreatePredictionRequest(google___protobuf___message___Message):
     def MergeFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
     def CopyFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
     def HasField(self, field_name: typing_extensions___Literal[u"certainty",b"certainty"]) -> builtin___bool: ...
-    def ClearField(self, field_name: typing_extensions___Literal[u"certainty",b"certainty",u"maximum_stake_cents",b"maximum_stake_cents",u"open_seconds",b"open_seconds",u"prediction",b"prediction",u"resolves_at_unixtime",b"resolves_at_unixtime",u"resolves_at_unixtime_depr",b"resolves_at_unixtime_depr",u"special_rules",b"special_rules"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions___Literal[u"certainty",b"certainty",u"maximum_stake_cents",b"maximum_stake_cents",u"open_seconds",b"open_seconds",u"prediction",b"prediction",u"resolves_at_unixtime",b"resolves_at_unixtime",u"special_rules",b"special_rules"]) -> None: ...
 global___CreatePredictionRequest = CreatePredictionRequest
 
 class CreatePredictionResponse(google___protobuf___message___Message):
@@ -955,12 +933,9 @@ class UserPredictionView(google___protobuf___message___Message):
     maximum_stake_cents = ... # type: builtin___int
     remaining_stake_cents_vs_believers = ... # type: builtin___int
     remaining_stake_cents_vs_skeptics = ... # type: builtin___int
-    created_unixtime_depr = ... # type: builtin___int
     created_unixtime = ... # type: builtin___float
-    closes_unixtime_depr = ... # type: builtin___int
     closes_unixtime = ... # type: builtin___float
     special_rules = ... # type: typing___Text
-    resolves_at_unixtime_depr = ... # type: builtin___int
     resolves_at_unixtime = ... # type: builtin___float
 
     @property
@@ -982,15 +957,12 @@ class UserPredictionView(google___protobuf___message___Message):
         maximum_stake_cents : typing___Optional[builtin___int] = None,
         remaining_stake_cents_vs_believers : typing___Optional[builtin___int] = None,
         remaining_stake_cents_vs_skeptics : typing___Optional[builtin___int] = None,
-        created_unixtime_depr : typing___Optional[builtin___int] = None,
         created_unixtime : typing___Optional[builtin___float] = None,
-        closes_unixtime_depr : typing___Optional[builtin___int] = None,
         closes_unixtime : typing___Optional[builtin___float] = None,
         special_rules : typing___Optional[typing___Text] = None,
         creator : typing___Optional[global___UserUserView] = None,
         resolutions : typing___Optional[typing___Iterable[global___ResolutionEvent]] = None,
         your_trades : typing___Optional[typing___Iterable[global___Trade]] = None,
-        resolves_at_unixtime_depr : typing___Optional[builtin___int] = None,
         resolves_at_unixtime : typing___Optional[builtin___float] = None,
         ) -> None: ...
     if sys.version_info >= (3,):
@@ -1002,7 +974,7 @@ class UserPredictionView(google___protobuf___message___Message):
     def MergeFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
     def CopyFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
     def HasField(self, field_name: typing_extensions___Literal[u"certainty",b"certainty",u"creator",b"creator"]) -> builtin___bool: ...
-    def ClearField(self, field_name: typing_extensions___Literal[u"certainty",b"certainty",u"closes_unixtime",b"closes_unixtime",u"closes_unixtime_depr",b"closes_unixtime_depr",u"created_unixtime",b"created_unixtime",u"created_unixtime_depr",b"created_unixtime_depr",u"creator",b"creator",u"maximum_stake_cents",b"maximum_stake_cents",u"prediction",b"prediction",u"remaining_stake_cents_vs_believers",b"remaining_stake_cents_vs_believers",u"remaining_stake_cents_vs_skeptics",b"remaining_stake_cents_vs_skeptics",u"resolutions",b"resolutions",u"resolves_at_unixtime",b"resolves_at_unixtime",u"resolves_at_unixtime_depr",b"resolves_at_unixtime_depr",u"special_rules",b"special_rules",u"your_trades",b"your_trades"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions___Literal[u"certainty",b"certainty",u"closes_unixtime",b"closes_unixtime",u"created_unixtime",b"created_unixtime",u"creator",b"creator",u"maximum_stake_cents",b"maximum_stake_cents",u"prediction",b"prediction",u"remaining_stake_cents_vs_believers",b"remaining_stake_cents_vs_believers",u"remaining_stake_cents_vs_skeptics",b"remaining_stake_cents_vs_skeptics",u"resolutions",b"resolutions",u"resolves_at_unixtime",b"resolves_at_unixtime",u"special_rules",b"special_rules",u"your_trades",b"your_trades"]) -> None: ...
 global___UserPredictionView = UserPredictionView
 
 class UserUserView(google___protobuf___message___Message):

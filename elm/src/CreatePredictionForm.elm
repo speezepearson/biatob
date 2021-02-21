@@ -63,7 +63,6 @@ toCreateRequest model =
       , openSeconds = openForSeconds
       , specialRules = specialRules
       , resolvesAtUnixtime = Utils.timeToUnixtime resolvesAt
-      , resolvesAtUnixtimeDepr = round <| Utils.timeToUnixtime resolvesAt / 1000
       }
   ))))))))
   |> Result.toMaybe
