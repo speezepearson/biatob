@@ -115,7 +115,7 @@ update msg model =
           (model, Cmd.none)
       ) |> Tuple.mapFirst (\m -> { m | invitationWidget = newWidget })
     CreateInvitationFinished res ->
-      ( { model | invitationWidget = model.invitationWidget |> SmallInvitationWidget.handleCreateInvitationResponse (model.auth |> Utils.must "should only be able to send CreateInvitationRequests when logged in") res }
+      ( { model | invitationWidget = model.invitationWidget |> SmallInvitationWidget.handleCreateInvitationResponse res }
       , Cmd.none
       )
 

@@ -92,9 +92,6 @@ mustUserInfoEmail {email} = must "all GenericUserInfos must have emails" email
 mustEmailFlowStateKind : Pb.EmailFlowState -> Pb.EmailFlowStateKind
 mustEmailFlowStateKind {emailFlowStateKind} = must "all EmailFlowStates must have kinds" emailFlowStateKind
 
-mustCreateInvitationResultInvitation : Pb.CreateInvitationResponseResult -> Pb.Invitation
-mustCreateInvitationResultInvitation {invitation} = must "all CreateInvitationResponseResults must have invitations" invitation
-
 mustGetSettingsResult : Pb.GetSettingsResponse -> Pb.GetSettingsResult
 mustGetSettingsResult {getSettingsResult} = must "all GetSettingsResponses must have results" getSettingsResult
 

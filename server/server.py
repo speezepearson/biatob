@@ -748,7 +748,7 @@ class FsBackedServicer(Servicer):
                 accepted_by=None,
             )
             info.invitations[nonce].CopyFrom(invitation)
-            return mvp_pb2.CreateInvitationResponse(ok=mvp_pb2.CreateInvitationResponse.Result(nonce=nonce, invitation=invitation))
+            return mvp_pb2.CreateInvitationResponse(ok=mvp_pb2.InvitationId(inviter=token.owner, nonce=nonce))
 
     @checks_token
     @log_action

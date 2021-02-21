@@ -54,7 +54,7 @@ update msg (ctx, model) =
     Tick now -> (({ctx | now = now}, model), Cmd.none)
     CreateInvitationFinished res ->
       ( ( ctx
-        , model |> Widget.handleCreateInvitationResponse (ctx.auth |> Utils.must "TODO") res
+        , model |> Widget.handleCreateInvitationResponse res
         )
       , Cmd.none
       )

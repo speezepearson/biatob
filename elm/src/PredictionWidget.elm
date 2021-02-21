@@ -55,9 +55,9 @@ init =
 handleStakeResponse : Result Http.Error Pb.StakeResponse -> State -> State
 handleStakeResponse  res state =
   { state | stakeForm = state.stakeForm |> StakeForm.handleStakeResponse res }
-handleCreateInvitationResponse : Pb.AuthToken -> Result Http.Error Pb.CreateInvitationResponse -> State -> State
-handleCreateInvitationResponse auth res state =
-  { state | invitationWidget = state.invitationWidget |> SmallInvitationWidget.handleCreateInvitationResponse auth res }
+handleCreateInvitationResponse : Result Http.Error Pb.CreateInvitationResponse -> State -> State
+handleCreateInvitationResponse res state =
+  { state | invitationWidget = state.invitationWidget |> SmallInvitationWidget.handleCreateInvitationResponse res }
 handleResolveResponse : Result Http.Error Pb.ResolveResponse -> State -> State
 handleResolveResponse res state =
   case res of

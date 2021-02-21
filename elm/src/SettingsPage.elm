@@ -101,7 +101,7 @@ update msg model =
       ) |> Tuple.mapFirst (\m -> { m | trustedUsersWidget = newWidget })
 
     CreateInvitationFinished res ->
-      ( { model | trustedUsersWidget = model.trustedUsersWidget |> TrustedUsersWidget.handleCreateInvitationResponse model.auth res}
+      ( { model | trustedUsersWidget = model.trustedUsersWidget |> TrustedUsersWidget.handleCreateInvitationResponse res}
       , Cmd.none
       )
 

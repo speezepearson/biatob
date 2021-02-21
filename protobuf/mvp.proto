@@ -384,12 +384,8 @@ message CreateInvitationRequest {
 }
 message CreateInvitationResponse {
   oneof create_invitation_result {
-    Result ok = 1;
+    InvitationId ok = 1;
     Error error = 2;
-  }
-  message Result {
-    string nonce = 1;
-    Invitation invitation = 2;
   }
   message Error {
     string catchall = 1;

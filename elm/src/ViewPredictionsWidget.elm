@@ -206,7 +206,7 @@ update msg model =
       , Cmd.none
       )
     CreateInvitationFinished id res ->
-      ( { model | predictions = model.predictions |> Dict.update id (Maybe.map <| Tuple.mapSecond <| PredictionWidget.handleCreateInvitationResponse (model.auth |> Utils.must "shouldn't send CreateInvitationRequests without auth") res) }
+      ( { model | predictions = model.predictions |> Dict.update id (Maybe.map <| Tuple.mapSecond <| PredictionWidget.handleCreateInvitationResponse res) }
       , Cmd.none
       )
     StakeFinished id res ->

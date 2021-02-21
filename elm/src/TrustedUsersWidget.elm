@@ -60,8 +60,8 @@ handleSetTrustedResponse res state =
         Nothing ->
           { state | working = False , notification = Utils.redText "Invalid server response (neither Ok nor Error in protobuf)" }
 
-handleCreateInvitationResponse : Pb.AuthToken -> Result Http.Error Pb.CreateInvitationResponse -> State -> State
-handleCreateInvitationResponse auth res state = { state | invitationWidget = state.invitationWidget |> SmallInvitationWidget.handleCreateInvitationResponse auth res}
+handleCreateInvitationResponse : Result Http.Error Pb.CreateInvitationResponse -> State -> State
+handleCreateInvitationResponse res state = { state | invitationWidget = state.invitationWidget |> SmallInvitationWidget.handleCreateInvitationResponse res}
 
 viewInvitation : Context msg -> State -> String -> Pb.Invitation -> Html msg
 viewInvitation ctx state nonce invitation =
