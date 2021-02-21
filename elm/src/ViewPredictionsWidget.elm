@@ -123,7 +123,7 @@ sortPredictions toPrediction order predictions =
       List.sortBy (toPrediction >> \p -> p.createdUnixtime * sortKeySign dir) predictions
 
 type alias Model =
-  { predictions : Dict Int (Pb.UserPredictionView, PredictionWidget.Model)
+  { predictions : Dict Int (Pb.UserPredictionView, PredictionWidget.State)
   , filter : Filter
   , order : SortOrder
   , auth : Maybe Pb.AuthToken
@@ -133,7 +133,7 @@ type alias Model =
   }
 
 type Msg
-  = PredictionEvent Int PredictionWidget.Event PredictionWidget.Model
+  = PredictionEvent Int PredictionWidget.Event PredictionWidget.State
   | Tick Time.Posix
   | SetSortOrder SortOrder
   | SetFilter Filter

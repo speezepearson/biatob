@@ -23,7 +23,7 @@ type alias Model =
   , trustedUsers : List Pb.UserId
   , invitations : Dict String Pb.Invitation
   , emailSettingsWidget : EmailSettingsWidget.Model
-  , trustedUsersWidget : TrustedUsersWidget.Model
+  , trustedUsersWidget : TrustedUsersWidget.State
   , userTypeSettings : UserTypeSpecificSettings
   , linkToAuthority : String
   }
@@ -39,7 +39,7 @@ trustedUsersCtx model =
 
 type Msg
   = EmailSettingsMsg EmailSettingsWidget.Msg
-  | TrustedUsersEvent TrustedUsersWidget.Event TrustedUsersWidget.Model
+  | TrustedUsersEvent TrustedUsersWidget.Event TrustedUsersWidget.State
   | ChangePasswordMsg ChangePasswordWidget.Msg
   | CreateInvitationFinished (Result Http.Error Pb.CreateInvitationResponse)
   | SetTrustedFinished (Result Http.Error Pb.SetTrustedResponse)

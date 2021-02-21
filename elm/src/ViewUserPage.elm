@@ -25,14 +25,14 @@ type alias Model =
   , working : Bool
   , setTrustedError : Maybe String
   , linkToAuthority : String
-  , invitationWidget : SmallInvitationWidget.Model
+  , invitationWidget : SmallInvitationWidget.State
   }
 
 type Msg
   = SetTrusted Bool
   | SetTrustedFinished (Result Http.Error Pb.SetTrustedResponse)
   | PredictionsMsg ViewPredictionsWidget.Msg
-  | InvitationEvent SmallInvitationWidget.Event SmallInvitationWidget.Model
+  | InvitationEvent SmallInvitationWidget.Event SmallInvitationWidget.State
   | CreateInvitationFinished (Result Http.Error Pb.CreateInvitationResponse)
 
 invitationWidgetCtx : Model -> SmallInvitationWidget.Context Msg

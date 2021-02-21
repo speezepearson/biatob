@@ -13,9 +13,9 @@ import CopyWidget
 import API
 import PredictionWidget as Widget
 
-type alias Model = ( Widget.Context Msg , Widget.Model )
+type alias Model = ( Widget.Context Msg , Widget.State )
 type Msg
-  = WidgetEvent Widget.Event Widget.Model
+  = WidgetEvent Widget.Event Widget.State
   | Tick Time.Posix
   | StakeFinished (Result Http.Error Pb.StakeResponse)
   | ResolveFinished (Result Http.Error Pb.ResolveResponse)

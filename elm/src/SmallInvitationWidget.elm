@@ -17,43 +17,43 @@ type Event = Copy String | CreateInvitation | Nevermind
 type alias Context msg =
   { httpOrigin : String
   , destination : Maybe String
-  , handle : Event -> Model -> msg
+  , handle : Event -> State -> msg
   }
-type alias Model =
+type alias State =
   { invitationId : Maybe Pb.InvitationId
   , working : Bool
   , notification : Html ()
   }
 
-handleCreateInvitationResponse : Pb.AuthToken -> Result Http.Error Pb.CreateInvitationResponse -> Model -> Model
-handleCreateInvitationResponse auth res model =
+handleCreateInvitationResponse : Pb.AuthToken -> Result Http.Error Pb.CreateInvitationResponse -> State -> State
+handleCreateInvitationResponse auth res state =
   case res of
     Err e ->
-      { model | working = False , notification = Utils.redText (Debug.toString e) }
+      { state | working = False , notification = Utils.redText (Debug.toString e) }
     Ok resp ->
       case resp.createInvitationResult of
         Just (Pb.CreateInvitationResultOk result) ->
-          { model | working = False
+          { state | working = False
                   , notification = H.text ""
                   , invitationId = Just {inviter=auth.owner, nonce=result.nonce}
           }
         Just (Pb.CreateInvitationResultError e) ->
-          { model | working = False , notification = Utils.redText (Debug.toString e) }
+          { state | working = False , notification = Utils.redText (Debug.toString e) }
         Nothing ->
-          { model | working = False , notification = Utils.redText "Invalid server response (neither Ok nor Error in protobuf)" }
+          { state | working = False , notification = Utils.redText "Invalid server response (neither Ok nor Error in protobuf)" }
 
-setInvitation : Maybe Pb.InvitationId -> Model -> Model
-setInvitation inv model = { model | invitationId = inv }
+setInvitation : Maybe Pb.InvitationId -> State -> State
+setInvitation inv state = { state | invitationId = inv }
 
-init : Model
+init : State
 init =
   { invitationId = Nothing
   , working = False
   , notification = H.text ""
   }
 
-view : Context msg -> Model -> Html msg
-view ctx model =
+view : Context msg -> State -> Html msg
+view ctx state =
   let
     help : Html msg
     help =
@@ -66,27 +66,27 @@ view ctx model =
         ]
   in
   H.span []
-    [ case model.invitationId of
+    [ case state.invitationId of
         Nothing -> H.text ""
         Just id ->
-          CopyWidget.view (\s -> ctx.handle (Copy s) model) (ctx.httpOrigin ++ Utils.invitationPath id ++ case ctx.destination of
+          CopyWidget.view (\s -> ctx.handle (Copy s) state) (ctx.httpOrigin ++ Utils.invitationPath id ++ case ctx.destination of
              Just d -> "?dest="++d
              Nothing -> "" )
     , H.button
-        [ HA.disabled model.working
-        , HE.onClick (ctx.handle CreateInvitation { model | working = True , notification = H.text "" })
+        [ HA.disabled state.working
+        , HE.onClick (ctx.handle CreateInvitation { state | working = True , notification = H.text "" })
         ]
-        [ H.text <| if model.working then "Creating..." else if model.invitationId == Nothing then "Create invitation" else "Create another"
+        [ H.text <| if state.working then "Creating..." else if state.invitationId == Nothing then "Create invitation" else "Create another"
         ]
     , H.text " "
-    , model.notification |> H.map (\_ -> ctx.handle Nevermind model)
+    , state.notification |> H.map (\_ -> ctx.handle Nevermind state)
     , H.text " "
     , help
     ]
 
 -- This block doesn't feel quite right to me, though it reduces duplication in consumer code.
--- type alias Lens a = { get : a -> Model , set : Model -> a -> a }
--- update : Lens a -> (Model -> Model) -> a -> a
+-- type alias Lens a = { get : a -> State , set : State -> a -> a }
+-- update : Lens a -> (State -> State) -> a -> a
 -- update lens f a = a |> lens.set (f (lens.get a))
 -- handleCreateInvitation : Lens a -> (Result Http.Error Pb.CreateInvitationResponse -> msg) -> a -> ( a , Cmd msg )
 -- handleCreateInvitation lens respToMsg a =
@@ -109,7 +109,7 @@ view ctx model =
 
 
 
-type ReactorMsg = ReactorMsg Event Model
+type ReactorMsg = ReactorMsg Event State
 main =
   let
     ctx : Context ReactorMsg
@@ -119,7 +119,7 @@ main =
       , handle = ReactorMsg
       }
 
-    reactorUpdate : ReactorMsg -> Model -> Model
+    reactorUpdate : ReactorMsg -> State -> State
     reactorUpdate (ReactorMsg msg newModel) _ =
       case msg of
         Nevermind -> newModel
