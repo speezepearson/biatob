@@ -17,7 +17,7 @@ initFromFlags flags =
   ViewPredictionsWidget.init
     { auth =  Utils.decodePbFromFlags Pb.authTokenDecoder "authTokenPbB64" flags
     , predictions = Utils.mustDecodePbFromFlags Pb.predictionsByIdDecoder "predictionsPbB64" flags |> Utils.mustPredictionsById
-    , linkToAuthority = Utils.mustDecodeFromFlags JD.string "linkToAuthority" flags
+    , httpOrigin = Utils.mustDecodeFromFlags JD.string "httpOrigin" flags
     }
 
 main : Program JD.Value Model Msg

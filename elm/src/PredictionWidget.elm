@@ -28,7 +28,7 @@ type alias Context msg =
   , prediction : Pb.UserPredictionView
   , predictionId : Int
   , now : Time.Posix
-  , linkToAuthority : String
+  , httpOrigin : String
   , handle : Event -> State -> msg
   }
 type alias State =
@@ -40,7 +40,7 @@ type alias State =
 
 invitationWidgetCtx : Context msg -> State -> SmallInvitationWidget.Context msg
 invitationWidgetCtx ctx state =
-  { httpOrigin = ctx.linkToAuthority
+  { httpOrigin = ctx.httpOrigin
   , destination = Just <| "/p/" ++ String.fromInt ctx.predictionId
   , handle = \e m ->
       let
@@ -322,8 +322,8 @@ view ctx state =
 viewEmbedInfo : Context msg -> State -> Html msg
 viewEmbedInfo ctx state =
   let
-    linkUrl = ctx.linkToAuthority ++ "/p/" ++ String.fromInt ctx.predictionId  -- TODO(P0): needs origin to get stuck in text field
-    imgUrl = ctx.linkToAuthority ++ "/p/" ++ String.fromInt ctx.predictionId ++ "/embed.png"
+    linkUrl = ctx.httpOrigin ++ "/p/" ++ String.fromInt ctx.predictionId  -- TODO(P0): needs origin to get stuck in text field
+    imgUrl = ctx.httpOrigin ++ "/p/" ++ String.fromInt ctx.predictionId ++ "/embed.png"
     imgStyles = [("max-height","1.5ex"), ("border-bottom","1px solid #008800")]
     imgCode =
       "<a href=\"" ++ linkUrl ++ "\">"

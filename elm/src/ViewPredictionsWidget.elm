@@ -129,7 +129,7 @@ type alias Model =
   , auth : Maybe Pb.AuthToken
   , now : Time.Posix
   , allowFilterByOwner : Bool
-  , linkToAuthority : String
+  , httpOrigin : String
   }
 
 type Msg
@@ -152,15 +152,15 @@ viewPrediction predictionId model =
         , prediction = prediction
         , predictionId = predictionId
         , now = model.now
-        , linkToAuthority = model.linkToAuthority
+        , httpOrigin = model.httpOrigin
         , handle = PredictionEvent predictionId
         }
         widget
 
-init : {auth: Maybe Pb.AuthToken, predictions:Dict Int Pb.UserPredictionView, linkToAuthority:String} -> (Model, Cmd Msg)
+init : {auth: Maybe Pb.AuthToken, predictions:Dict Int Pb.UserPredictionView, httpOrigin:String} -> (Model, Cmd Msg)
 init flags =
   ( { predictions = flags.predictions |> Dict.map (\_ p -> (p, PredictionWidget.init))
-    , linkToAuthority = flags.linkToAuthority
+    , httpOrigin = flags.httpOrigin
     , filter = { own = Nothing , phase = Nothing }
     , order = CreatedDate Desc
     , auth = flags.auth

@@ -92,10 +92,10 @@
         var authTokenPbB64 = {{ auth_token_pb_b64 | tojson }};
         var node = document.getElementById('welcome-page-invitation-widget');
         if (authTokenPbB64 != null) {
-          var linkToAuthority = window.origin;
+          var httpOrigin = window.origin;
           var invitationWidget = Elm.SmallInvitationWidget.init({
             node: node,
-            flags: {authTokenPbB64, linkToAuthority, destination: null},
+            flags: {authTokenPbB64, httpOrigin, destination: null},
           });
           subscribeToCopy(invitationWidget);
         } else {

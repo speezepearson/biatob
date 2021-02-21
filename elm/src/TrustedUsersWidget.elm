@@ -20,7 +20,7 @@ type Event = Copy String | CreateInvitation | Nevermind | RemoveTrust Pb.UserId
 type alias Context msg =
   { auth : Pb.AuthToken
   , trustedUsers : List Pb.UserId
-  , linkToAuthority : String
+  , httpOrigin : String
   , invitations : Dict String Pb.Invitation
   , handle : Event -> State -> msg
   }
@@ -34,7 +34,7 @@ type alias State =
 invitationWidgetCtx : Context msg -> State -> SmallInvitationWidget.Context msg
 invitationWidgetCtx ctx state =
   { destination = Nothing
-  , httpOrigin = ctx.linkToAuthority
+  , httpOrigin = ctx.httpOrigin
   , handle = \e m ->
       let
         event = case e of
@@ -86,7 +86,7 @@ viewInvitation ctx state nonce invitation =
             id : Pb.InvitationId
             id = { inviter = ctx.auth.owner , nonce = nonce }
           in
-            CopyWidget.view (\s -> ctx.handle (Copy s) state) (ctx.linkToAuthority ++ Utils.invitationPath id)
+            CopyWidget.view (\s -> ctx.handle (Copy s) state) (ctx.httpOrigin ++ Utils.invitationPath id)
         , H.text <| " (created " ++ Utils.dateStr Time.utc (Utils.unixtimeToTime invitation.createdUnixtime) ++ ")"
         ]
 

@@ -8,11 +8,11 @@
     var authTokenPbB64 = {{ auth_token_pb_b64 | tojson }};
     var predictionPbB64 = {{ prediction_pb_b64 | tojson }};
     var predictionId = {{ prediction_id | tojson }};
-    var linkToAuthority = window.location.origin;
+    var httpOrigin = window.location.origin;
 
     var main = Elm.ViewPredictionPage.init({
       node: document.getElementById('main'),
-      flags: {authTokenPbB64, predictionPbB64, predictionId, linkToAuthority},
+      flags: {authTokenPbB64, predictionPbB64, predictionId, httpOrigin},
     });
     subscribeToCopy(main);
   </script>

@@ -25,13 +25,13 @@ type alias Model =
   , emailSettingsWidget : EmailSettingsWidget.Model
   , trustedUsersWidget : TrustedUsersWidget.State
   , userTypeSettings : UserTypeSpecificSettings
-  , linkToAuthority : String
+  , httpOrigin : String
   }
 
 trustedUsersCtx : Model -> TrustedUsersWidget.Context Msg
 trustedUsersCtx model =
   { auth = model.auth
-  , linkToAuthority = model.linkToAuthority
+  , httpOrigin = model.httpOrigin
   , invitations = model.invitations
   , trustedUsers = model.trustedUsers
   , handle = TrustedUsersEvent
@@ -48,7 +48,7 @@ init : JD.Value -> (Model, Cmd Msg)
 init flags =
   let
     auth = Utils.mustDecodePbFromFlags Pb.authTokenDecoder "authTokenPbB64" flags
-    linkToAuthority = Utils.mustDecodeFromFlags JD.string "linkToAuthority" flags
+    httpOrigin = Utils.mustDecodeFromFlags JD.string "httpOrigin" flags
     pbResp = Utils.mustDecodePbFromFlags Pb.getSettingsResponseDecoder "settingsRespPbB64" flags
     genericInfo = case Utils.mustGetSettingsResult pbResp of
       Pb.GetSettingsResultError e -> Debug.todo (Debug.toString e)
@@ -67,7 +67,7 @@ init flags =
         , emailSettingsWidget = emailSettingsWidget
         , trustedUsersWidget = TrustedUsersWidget.init
         , userTypeSettings = UsernameSettings changePasswordWidget
-        , linkToAuthority = linkToAuthority
+        , httpOrigin = httpOrigin
         }
       , Cmd.batch
           [ Cmd.map ChangePasswordMsg changePasswordCmd

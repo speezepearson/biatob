@@ -135,7 +135,7 @@ view model =
             Just req ->
               previewPrediction {request=req, creatorName=authName model.auth, createdAt=model.now}
               |> (\prediction -> PredictionWidget.view
-                    {prediction=prediction, predictionId=12345, auth=model.auth, now=model.now, linkToAuthority="http://dummy", handle = \_ _ -> Ignore}
+                    {prediction=prediction, predictionId=12345, auth=model.auth, now=model.now, httpOrigin="http://dummy", handle = \_ _ -> Ignore}
                     PredictionWidget.init)
             Nothing ->
               H.span [HA.style "color" "red"] [H.text "(invalid prediction)"]

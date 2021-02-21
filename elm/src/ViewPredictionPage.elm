@@ -27,7 +27,7 @@ init flags =
       , predictionId = Utils.mustDecodeFromFlags JD.int "predictionId" flags
       , auth = Utils.decodePbFromFlags Pb.authTokenDecoder "authTokenPbB64" flags
       , now = Time.millisToPosix 0
-      , linkToAuthority = Utils.mustDecodeFromFlags JD.string "linkToAuthority" flags
+      , httpOrigin = Utils.mustDecodeFromFlags JD.string "httpOrigin" flags
       , handle = WidgetEvent
       }
     , Widget.init

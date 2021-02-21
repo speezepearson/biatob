@@ -10,7 +10,7 @@
 
     var authTokenPbB64 = {{ auth_token_pb_b64 | tojson }};
     var predictionsPbB64 = {{ predictions_pb_b64 | tojson }};
-    var linkToAuthority = window.location.origin;
+    var httpOrigin = window.location.origin;
 
     if (!authTokenPbB64) {
       window.location = "/"; // TODO(P2): should be /login
@@ -18,7 +18,7 @@
 
     var main = Elm.MyStakesPage.init({
       node: document.getElementById('main'),
-      flags: {authTokenPbB64, predictionsPbB64, linkToAuthority},
+      flags: {authTokenPbB64, predictionsPbB64, httpOrigin},
     });
     subscribeToCopy(main);
 

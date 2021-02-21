@@ -24,7 +24,7 @@ type alias Model =
   , predictionsWidget : Maybe ViewPredictionsWidget.Model
   , working : Bool
   , setTrustedError : Maybe String
-  , linkToAuthority : String
+  , httpOrigin : String
   , invitationWidget : SmallInvitationWidget.State
   }
 
@@ -38,21 +38,21 @@ type Msg
 invitationWidgetCtx : Model -> SmallInvitationWidget.Context Msg
 invitationWidgetCtx model =
   { destination = Nothing
-  , httpOrigin = model.linkToAuthority
+  , httpOrigin = model.httpOrigin
   , handle = InvitationEvent
   }
 
 init : JD.Value -> (Model, Cmd Msg)
 init flags =
   let
-    linkToAuthority = Utils.mustDecodeFromFlags JD.string "linkToAuthority" flags
+    httpOrigin = Utils.mustDecodeFromFlags JD.string "httpOrigin" flags
     auth = Utils.decodePbFromFlags Pb.authTokenDecoder "authTokenPbB64" flags
     (predsWidget, predsCmd) = case auth of
       Just _ -> case Utils.decodePbFromFlags Pb.predictionsByIdDecoder "predictionsPbB64" flags of
         Just preds ->
           ViewPredictionsWidget.init
             { auth=auth
-            , linkToAuthority=linkToAuthority
+            , httpOrigin=httpOrigin
             , predictions=preds.predictions |> Utils.mustMapValues
             }
           |> Tuple.mapFirst (ViewPredictionsWidget.noFilterByOwner >> Just)
@@ -65,7 +65,7 @@ init flags =
     , predictionsWidget = predsWidget
     , working = False
     , setTrustedError = Nothing
-    , linkToAuthority = linkToAuthority
+    , httpOrigin = httpOrigin
     , invitationWidget = SmallInvitationWidget.init
     }
   , Cmd.map PredictionsMsg predsCmd
