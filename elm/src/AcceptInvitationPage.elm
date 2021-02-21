@@ -30,7 +30,7 @@ type alias Model =
 type Msg
   = AcceptInvitation
   | AcceptInvitationFinished (Result Http.Error Pb.AcceptInvitationResponse)
-  | AuthWidgetEvent AuthWidget.Event AuthWidget.State
+  | AuthWidgetEvent (Maybe AuthWidget.Event) AuthWidget.State
   | LogInUsernameFinished (Result Http.Error Pb.LogInUsernameResponse)
   | RegisterUsernameFinished (Result Http.Error Pb.RegisterUsernameResponse)
   | SignOutFinished (Result Http.Error Pb.SignOutResponse)
@@ -88,13 +88,13 @@ update msg model =
     AuthWidgetEvent event widget ->
       let
         cmd = case event of
-          AuthWidget.LogInUsername req ->
+          Just (AuthWidget.LogInUsername req) ->
             API.postLogInUsername LogInUsernameFinished req
-          AuthWidget.RegisterUsername req ->
+          Just (AuthWidget.RegisterUsername req) ->
             API.postRegisterUsername RegisterUsernameFinished req
-          AuthWidget.SignOut req ->
+          Just (AuthWidget.SignOut req) ->
             API.postSignOut SignOutFinished req
-          AuthWidget.Nevermind ->
+          Nothing ->
             Cmd.none
       in
         ( { model | authState = LoggedOut widget }

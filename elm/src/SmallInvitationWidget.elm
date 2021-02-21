@@ -13,11 +13,11 @@ import Utils
 import Utils
 import CopyWidget
 
-type Event = Copy String | CreateInvitation | Nevermind
+type Event = Copy String | CreateInvitation
 type alias Context msg =
   { httpOrigin : String
   , destination : Maybe String
-  , handle : Event -> State -> msg
+  , handle : Maybe Event -> State -> msg
   }
 type alias State =
   { invitationId : Maybe Pb.InvitationId
@@ -69,17 +69,17 @@ view ctx state =
     [ case state.invitationId of
         Nothing -> H.text ""
         Just id ->
-          CopyWidget.view (\s -> ctx.handle (Copy s) state) (ctx.httpOrigin ++ Utils.invitationPath id ++ case ctx.destination of
+          CopyWidget.view (\s -> ctx.handle (Just <| Copy s) state) (ctx.httpOrigin ++ Utils.invitationPath id ++ case ctx.destination of
              Just d -> "?dest="++d
              Nothing -> "" )
     , H.button
         [ HA.disabled state.working
-        , HE.onClick (ctx.handle CreateInvitation { state | working = True , notification = H.text "" })
+        , HE.onClick (ctx.handle (Just CreateInvitation) { state | working = True , notification = H.text "" })
         ]
         [ H.text <| if state.working then "Creating..." else if state.invitationId == Nothing then "Create invitation" else "Create another"
         ]
     , H.text " "
-    , state.notification |> H.map (\_ -> ctx.handle Nevermind state)
+    , state.notification |> H.map (\_ -> ctx.handle Nothing state)
     , H.text " "
     , help
     ]
@@ -109,7 +109,7 @@ view ctx state =
 
 
 
-type ReactorMsg = ReactorMsg Event State
+type ReactorMsg = ReactorMsg (Maybe Event) State
 main =
   let
     ctx : Context ReactorMsg
@@ -122,9 +122,9 @@ main =
     reactorUpdate : ReactorMsg -> State -> State
     reactorUpdate (ReactorMsg msg newModel) _ =
       case msg of
-        Nevermind -> newModel
-        Copy _ -> newModel
-        CreateInvitation -> newModel |> setInvitation (Just {inviter=Just {kind=Just <| Pb.KindUsername "myuser"}, nonce="mynonce"})
+        Nothing -> newModel
+        Just (Copy _) -> newModel
+        Just CreateInvitation -> newModel |> setInvitation (Just {inviter=Just {kind=Just <| Pb.KindUsername "myuser"}, nonce="mynonce"})
 
   in
   Browser.sandbox

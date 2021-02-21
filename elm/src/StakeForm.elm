@@ -14,9 +14,9 @@ import Field exposing (Field)
 
 epsilon = 0.0000001 -- 🎵 I hate floating-point arithmetic 🎶
 
-type Event = Nevermind | Staked {bettorIsASkeptic:Bool, bettorStakeCents:Int}
+type Event = Staked {bettorIsASkeptic:Bool, bettorStakeCents:Int}
 type alias Config msg =
-  { handle : Event -> State -> msg
+  { handle : Maybe Event -> State -> msg
   , disableCommit : Bool
   , prediction : Pb.UserPredictionView
   }
@@ -64,7 +64,7 @@ view config state =
       in
       H.p []
       [ H.text "Do you ", b "strongly doubt", H.text " that this will happen? Then stake $"
-      , Field.inputFor (\s -> config.handle Nevermind {state | skepticStakeField = state.skepticStakeField |> Field.setStr s}) ctx state.skepticStakeField
+      , Field.inputFor (\s -> config.handle Nothing {state | skepticStakeField = state.skepticStakeField |> Field.setStr s}) ctx state.skepticStakeField
           H.input
           [ HA.style "width" "5em"
           , HA.type_"number", HA.min "0", HA.max (toFloat maxSkepticStakeCents / 100 + epsilon |> String.fromFloat), HA.step "any"
@@ -77,7 +77,7 @@ view config state =
       , H.button
           (case Field.parse ctx state.skepticStakeField of
             Ok stake ->
-              [ HE.onClick <| config.handle (Staked {bettorIsASkeptic=True, bettorStakeCents=stake}) { state | working = True , notification = H.text ""} ]
+              [ HE.onClick <| config.handle (Just <| Staked {bettorIsASkeptic=True, bettorStakeCents=stake}) { state | working = True , notification = H.text ""} ]
             Err _ ->
               [ HA.disabled True ]
           )
@@ -89,7 +89,7 @@ view config state =
       in
       H.p []
       [ H.text "Do you ", b "strongly believe", H.text " that this will happen? Then stake $"
-      , Field.inputFor (\s -> config.handle Nevermind {state | believerStakeField = state.believerStakeField |> Field.setStr s}) ctx state.believerStakeField
+      , Field.inputFor (\s -> config.handle Nothing {state | believerStakeField = state.believerStakeField |> Field.setStr s}) ctx state.believerStakeField
           H.input
           [ HA.style "width" "5em"
           , HA.type_"number", HA.min "0", HA.max (toFloat maxBelieverStakeCents / 100 + epsilon |> String.fromFloat), HA.step "any"
@@ -102,7 +102,7 @@ view config state =
       , H.button
           (case Field.parse ctx state.believerStakeField of
             Ok stake ->
-              [ HE.onClick <| config.handle (Staked {bettorIsASkeptic=False, bettorStakeCents=stake}) { state | working = True , notification = H.text ""} ]
+              [ HE.onClick <| config.handle (Just <| Staked {bettorIsASkeptic=False, bettorStakeCents=stake}) { state | working = True , notification = H.text ""} ]
             Err _ ->
               [ HA.disabled True ]
           )
@@ -128,7 +128,7 @@ init =
   , notification = H.text ""
   }
 
-type ReactorMsg = ReactorMsg Event State
+type ReactorMsg = ReactorMsg (Maybe Event) State
 main =
   let
     prediction : Pb.UserPredictionView

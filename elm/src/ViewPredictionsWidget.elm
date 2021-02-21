@@ -133,7 +133,7 @@ type alias Model =
   }
 
 type Msg
-  = PredictionEvent Int PredictionWidget.Event PredictionWidget.State
+  = PredictionEvent Int (Maybe PredictionWidget.Event) PredictionWidget.State
   | Tick Time.Posix
   | SetSortOrder SortOrder
   | SetFilter Filter
@@ -182,11 +182,11 @@ update msg model =
         Just (prediction, _) ->
           ( { model | predictions = model.predictions |> Dict.insert id (prediction, newWidget) }
           , case event of
-            PredictionWidget.Nevermind -> Cmd.none
-            PredictionWidget.Copy s -> CopyWidget.copy s
-            PredictionWidget.CreateInvitation -> API.postCreateInvitation (CreateInvitationFinished id) {notes=""}
-            PredictionWidget.Staked {bettorIsASkeptic, bettorStakeCents} -> API.postStake (StakeFinished id) {predictionId=id, bettorIsASkeptic=bettorIsASkeptic, bettorStakeCents=bettorStakeCents}
-            PredictionWidget.Resolve resolution -> API.postResolve (ResolveFinished id) {predictionId=id, resolution=resolution, notes = ""}
+            Nothing -> Cmd.none
+            Just (PredictionWidget.Copy s) -> CopyWidget.copy s
+            Just PredictionWidget.CreateInvitation -> API.postCreateInvitation (CreateInvitationFinished id) {notes=""}
+            Just (PredictionWidget.Staked {bettorIsASkeptic, bettorStakeCents}) -> API.postStake (StakeFinished id) {predictionId=id, bettorIsASkeptic=bettorIsASkeptic, bettorStakeCents=bettorStakeCents}
+            Just (PredictionWidget.Resolve resolution) -> API.postResolve (ResolveFinished id) {predictionId=id, resolution=resolution, notes = ""}
           )
     Tick t ->
       ( { model | now = t }

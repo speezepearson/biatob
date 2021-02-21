@@ -18,7 +18,7 @@ port authChanged : () -> Cmd msg
 
 type alias Model = ( Widget.Context Msg , Widget.State )
 type Msg
-  = WidgetEvent Widget.Event Widget.State
+  = WidgetEvent (Maybe Widget.Event) Widget.State
   | LogInUsernameFinished (Result Http.Error Pb.LogInUsernameResponse)
   | RegisterUsernameFinished (Result Http.Error Pb.RegisterUsernameResponse)
   | SignOutFinished (Result Http.Error Pb.SignOutResponse)
@@ -42,10 +42,10 @@ update msg (ctx, model) =
     WidgetEvent event newState ->
       let
         cmd = case event of
-          Widget.LogInUsername req -> API.postLogInUsername LogInUsernameFinished req
-          Widget.RegisterUsername req -> API.postRegisterUsername RegisterUsernameFinished req
-          Widget.SignOut req -> API.postSignOut SignOutFinished req
-          Widget.Nevermind -> Cmd.none
+          Just (Widget.LogInUsername req) -> API.postLogInUsername LogInUsernameFinished req
+          Just (Widget.RegisterUsername req) -> API.postRegisterUsername RegisterUsernameFinished req
+          Just (Widget.SignOut req) -> API.postSignOut SignOutFinished req
+          Nothing -> Cmd.none
       in
         ((ctx, newState), cmd)
     Tick now -> (({ctx | now = now}, model), Cmd.none)

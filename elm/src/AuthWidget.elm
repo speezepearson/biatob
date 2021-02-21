@@ -24,11 +24,10 @@ type Event
   = LogInUsername Pb.LogInUsernameRequest
   | RegisterUsername Pb.RegisterUsernameRequest
   | SignOut Pb.SignOutRequest
-  | Nevermind
 type alias Context msg =
   { auth : Maybe Pb.AuthToken
   , now : Time.Posix
-  , handle : Event -> State -> msg
+  , handle : Maybe Event -> State -> msg
   }
 type alias State =
   { usernameField : Field () String
@@ -109,16 +108,16 @@ view ctx state =
 
         (loginMsg, registerMsg) = case (Field.parse () state.usernameField, Field.parse () state.passwordField) of
           (Ok username, Ok password) ->
-            ( ctx.handle (LogInUsername    {username=username, password=password}) { state | working = True , notification = H.text "" }
-            , ctx.handle (RegisterUsername {username=username, password=password}) { state | working = True , notification = H.text "" }
+            ( ctx.handle (Just <| LogInUsername    {username=username, password=password}) { state | working = True , notification = H.text "" }
+            , ctx.handle (Just <| RegisterUsername {username=username, password=password}) { state | working = True , notification = H.text "" }
             )
           _ ->
-            ( ctx.handle Nevermind state
-            , ctx.handle Nevermind state
+            ( ctx.handle Nothing state
+            , ctx.handle Nothing state
             )
       in
       H.div []
-        [ Field.inputFor (\s -> ctx.handle Nevermind {state | usernameField = state.usernameField |> Field.setStr s}) () state.usernameField
+        [ Field.inputFor (\s -> ctx.handle Nothing {state | usernameField = state.usernameField |> Field.setStr s}) () state.usernameField
             H.input
             [ HA.disabled state.working
             , HA.style "width" "8em"
@@ -126,13 +125,13 @@ view ctx state =
             , HA.placeholder "username"
             , HA.class "username-field"
             ] []
-        , Field.inputFor (\s -> ctx.handle Nevermind {state | passwordField = state.passwordField |> Field.setStr s}) () state.passwordField
+        , Field.inputFor (\s -> ctx.handle Nothing {state | passwordField = state.passwordField |> Field.setStr s}) () state.passwordField
             H.input
             [ HA.disabled state.working
             , HA.style "width" "8em"
             , HA.type_ "password"
             , HA.placeholder "password"
-            , Utils.onEnter loginMsg (ctx.handle Nevermind state)
+            , Utils.onEnter loginMsg (ctx.handle Nothing state)
             ] []
         , H.button
             [ HA.disabled <| state.working || disableButtons
@@ -145,13 +144,13 @@ view ctx state =
             , HE.onClick registerMsg
             ]
             [H.text "Sign up"]
-        , state.notification |> H.map (\_ -> ctx.handle Nevermind state)
+        , state.notification |> H.map (\_ -> ctx.handle Nothing state)
         ]
     Just auth ->
       H.div []
         [ H.text <| "Signed in as "
         , Utils.renderUser <| Utils.mustTokenOwner auth
         , H.text " "
-        , H.button [HA.disabled state.working, HE.onClick (ctx.handle (SignOut {}) { state | working = True , notification = H.text ""})] [H.text "Sign out"]
-        , state.notification |> H.map (\_ -> ctx.handle Nevermind state)
+        , H.button [HA.disabled state.working, HE.onClick (ctx.handle (Just <| SignOut {}) { state | working = True , notification = H.text ""})] [H.text "Sign out"]
+        , state.notification |> H.map (\_ -> ctx.handle Nothing state)
         ]

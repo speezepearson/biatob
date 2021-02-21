@@ -39,7 +39,7 @@ trustedUsersCtx model =
 
 type Msg
   = EmailSettingsMsg EmailSettingsWidget.Msg
-  | TrustedUsersEvent TrustedUsersWidget.Event TrustedUsersWidget.State
+  | TrustedUsersEvent (Maybe TrustedUsersWidget.Event) TrustedUsersWidget.State
   | ChangePasswordMsg ChangePasswordWidget.Msg
   | CreateInvitationFinished (Result Http.Error Pb.CreateInvitationResponse)
   | SetTrustedFinished (Result Http.Error Pb.SetTrustedResponse)
@@ -92,11 +92,10 @@ update msg model =
 
     TrustedUsersEvent event newWidget ->
       (case event of
-        TrustedUsersWidget.Copy s -> ( model , CopyWidget.copy s )
-        TrustedUsersWidget.CreateInvitation -> ( model , API.postCreateInvitation CreateInvitationFinished {notes=""} )
-        TrustedUsersWidget.Nevermind -> Debug.todo ""
-        TrustedUsersWidget.RemoveTrust who ->
-          ( model , API.postSetTrusted SetTrustedFinished {who=Just who, trusted=False} )
+        Just (TrustedUsersWidget.Copy s) -> ( model , CopyWidget.copy s )
+        Just (TrustedUsersWidget.CreateInvitation) -> ( model , API.postCreateInvitation CreateInvitationFinished {notes=""} )
+        Just (TrustedUsersWidget.RemoveTrust who) -> ( model , API.postSetTrusted SetTrustedFinished {who=Just who, trusted=False} )
+        Nothing -> ( model , Cmd.none )
       ) |> Tuple.mapFirst (\m -> { m | trustedUsersWidget = newWidget })
 
     CreateInvitationFinished res ->

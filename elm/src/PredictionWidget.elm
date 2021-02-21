@@ -18,8 +18,7 @@ import CopyWidget
 import SmallInvitationWidget
 
 type Event
-  = Nevermind
-  | CreateInvitation
+  = CreateInvitation
   | Copy String
   | Staked {bettorIsASkeptic:Bool, bettorStakeCents:Int}
   | Resolve Pb.Resolution
@@ -29,7 +28,7 @@ type alias Context msg =
   , predictionId : Int
   , now : Time.Posix
   , httpOrigin : String
-  , handle : Event -> State -> msg
+  , handle : Maybe Event -> State -> msg
   }
 type alias State =
   { stakeForm : StakeForm.State
@@ -45,9 +44,9 @@ invitationWidgetCtx ctx state =
   , handle = \e m ->
       let
         event = case e of
-          SmallInvitationWidget.Nevermind -> Nevermind
-          SmallInvitationWidget.Copy s -> Copy s
-          SmallInvitationWidget.CreateInvitation -> CreateInvitation
+          Nothing -> Nothing
+          Just (SmallInvitationWidget.Copy s) -> Just (Copy s)
+          Just SmallInvitationWidget.CreateInvitation -> Just (CreateInvitation)
       in
       ctx.handle event { state | invitationWidget = m }
   }
@@ -264,7 +263,7 @@ viewResolveButtons ctx state =
             H.details [HA.style "color" "gray"]
               [ H.summary [] [H.text "Mistake?"]
               , H.text "If you resolved this prediction incorrectly, you can "
-              , H.button [HE.onClick <| ctx.handle (Resolve Pb.ResolutionNoneYet) { state | working = True , notification = H.text "" }] [H.text "un-resolve it."]
+              , H.button [HE.onClick <| ctx.handle (Just <| Resolve Pb.ResolutionNoneYet) { state | working = True , notification = H.text "" }] [H.text "un-resolve it."]
               ]
         in
         case Utils.currentResolution ctx.prediction of
@@ -276,12 +275,12 @@ viewResolveButtons ctx state =
             mistakeDetails
           Pb.ResolutionNoneYet ->
             H.div []
-              [ H.button [HE.onClick <| ctx.handle (Resolve Pb.ResolutionYes    ) { state | working = True , notification = H.text "" }] [H.text "Resolve YES"]
-              , H.button [HE.onClick <| ctx.handle (Resolve Pb.ResolutionNo     ) { state | working = True , notification = H.text "" }] [H.text "Resolve NO"]
-              , H.button [HE.onClick <| ctx.handle (Resolve Pb.ResolutionInvalid) { state | working = True , notification = H.text "" }] [H.text "Resolve INVALID"]
+              [ H.button [HE.onClick <| ctx.handle (Just <| Resolve Pb.ResolutionYes    ) { state | working = True , notification = H.text "" }] [H.text "Resolve YES"]
+              , H.button [HE.onClick <| ctx.handle (Just <| Resolve Pb.ResolutionNo     ) { state | working = True , notification = H.text "" }] [H.text "Resolve NO"]
+              , H.button [HE.onClick <| ctx.handle (Just <| Resolve Pb.ResolutionInvalid) { state | working = True , notification = H.text "" }] [H.text "Resolve INVALID"]
               ]
           Pb.ResolutionUnrecognized_ _ -> Debug.todo "unrecognized resolution"
-      , state.notification |> H.map (\_ -> ctx.handle Nevermind state)
+      , state.notification |> H.map (\_ -> ctx.handle Nothing state)
       ]
   else
     H.text ""
@@ -342,7 +341,7 @@ viewEmbedInfo ctx state =
     H.ul []
       [ H.li [] <|
         [ H.text "A linked inline image: "
-        , CopyWidget.view (\s -> ctx.handle (Copy s) state) imgCode
+        , CopyWidget.view (\s -> ctx.handle (Just <| Copy s) state) imgCode
         , H.br [] []
         , H.text "This would render as: "
         , H.a [HA.href linkUrl]
@@ -350,7 +349,7 @@ viewEmbedInfo ctx state =
         ]
       , H.li [] <|
         [ H.text "A boring old link: "
-        , CopyWidget.view (\s -> ctx.handle (Copy s) state) linkCode
+        , CopyWidget.view (\s -> ctx.handle (Just <| Copy s) state) linkCode
         , H.br [] []
         , H.text "This would render as: "
         , H.a [HA.href linkUrl] [H.text linkText]
@@ -364,8 +363,8 @@ stakeFormConfig ctx state =
   , handle = \e newForm ->
       let
         event = case e of
-          StakeForm.Staked x -> Staked x
-          StakeForm.Nevermind -> Nevermind
+          Just (StakeForm.Staked x) -> Just <| Staked x
+          Nothing -> Nothing
       in
       ctx.handle event { state | stakeForm = newForm }
   }

@@ -16,13 +16,13 @@ import Utils
 import SmallInvitationWidget
 import CopyWidget
 
-type Event = Copy String | CreateInvitation | Nevermind | RemoveTrust Pb.UserId
+type Event = Copy String | CreateInvitation | RemoveTrust Pb.UserId
 type alias Context msg =
   { auth : Pb.AuthToken
   , trustedUsers : List Pb.UserId
   , httpOrigin : String
   , invitations : Dict String Pb.Invitation
-  , handle : Event -> State -> msg
+  , handle : (Maybe Event) -> State -> msg
   }
 type alias State =
   { invitationWidget : SmallInvitationWidget.State
@@ -38,9 +38,9 @@ invitationWidgetCtx ctx state =
   , handle = \e m ->
       let
         event = case e of
-          SmallInvitationWidget.Nevermind -> Nevermind
-          SmallInvitationWidget.Copy s -> Copy s
-          SmallInvitationWidget.CreateInvitation -> CreateInvitation
+          Nothing -> Nothing
+          Just (SmallInvitationWidget.Copy s) -> Just <| Copy s
+          Just SmallInvitationWidget.CreateInvitation -> Just CreateInvitation
       in
       ctx.handle event { state | invitationWidget = m}
   }
@@ -86,7 +86,7 @@ viewInvitation ctx state nonce invitation =
             id : Pb.InvitationId
             id = { inviter = ctx.auth.owner , nonce = nonce }
           in
-            CopyWidget.view (\s -> ctx.handle (Copy s) state) (ctx.httpOrigin ++ Utils.invitationPath id)
+            CopyWidget.view (\s -> ctx.handle (Just <| Copy s) state) (ctx.httpOrigin ++ Utils.invitationPath id)
         , H.text <| " (created " ++ Utils.dateStr Time.utc (Utils.unixtimeToTime invitation.createdUnixtime) ++ ")"
         ]
 
@@ -109,7 +109,7 @@ viewInvitations ctx state filter =
 view : Context msg -> State -> Html msg
 view ctx state =
   H.div []
-    [ state.notification |> H.map (\_ -> ctx.handle Nevermind state)
+    [ state.notification |> H.map (\_ -> ctx.handle Nothing state)
     , H.strong [] [H.text "You trust: "]
     , if List.isEmpty ctx.trustedUsers then
         H.text "nobody yet!"
@@ -119,7 +119,7 @@ view ctx state =
             [ Utils.renderUser u
             , H.text " "
             , H.button
-                [ HE.onClick (ctx.handle (RemoveTrust u) { state | working = True , notification = H.text ""})
+                [ HE.onClick (ctx.handle (Just <| RemoveTrust u) { state | working = True , notification = H.text ""})
                 , HA.disabled state.working
                 ] [H.text "Remove trust"]
             ])

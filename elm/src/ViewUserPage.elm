@@ -32,7 +32,7 @@ type Msg
   = SetTrusted Bool
   | SetTrustedFinished (Result Http.Error Pb.SetTrustedResponse)
   | PredictionsMsg ViewPredictionsWidget.Msg
-  | InvitationEvent SmallInvitationWidget.Event SmallInvitationWidget.State
+  | InvitationEvent (Maybe SmallInvitationWidget.Event) SmallInvitationWidget.State
   | CreateInvitationFinished (Result Http.Error Pb.CreateInvitationResponse)
 
 invitationWidgetCtx : Model -> SmallInvitationWidget.Context Msg
@@ -107,11 +107,11 @@ update msg model =
 
     InvitationEvent event newWidget ->
       (case event of
-        SmallInvitationWidget.CreateInvitation ->
+        Just SmallInvitationWidget.CreateInvitation ->
           (model, API.postCreateInvitation CreateInvitationFinished {notes = ""})  -- TODO(P3): add notes field
-        SmallInvitationWidget.Copy s ->
+        Just (SmallInvitationWidget.Copy s) ->
           (model, CopyWidget.copy s)
-        SmallInvitationWidget.Nevermind ->
+        Nothing ->
           (model, Cmd.none)
       ) |> Tuple.mapFirst (\m -> { m | invitationWidget = newWidget })
     CreateInvitationFinished res ->

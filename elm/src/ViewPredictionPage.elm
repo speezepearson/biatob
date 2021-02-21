@@ -15,7 +15,7 @@ import PredictionWidget as Widget
 
 type alias Model = ( Widget.Context Msg , Widget.State )
 type Msg
-  = WidgetEvent Widget.Event Widget.State
+  = WidgetEvent (Maybe Widget.Event) Widget.State
   | Tick Time.Posix
   | StakeFinished (Result Http.Error Pb.StakeResponse)
   | ResolveFinished (Result Http.Error Pb.ResolveResponse)
@@ -41,11 +41,11 @@ update msg (ctx, model) =
     WidgetEvent event newState ->
       let
         cmd = case event of
-          Widget.Nevermind -> Cmd.none
-          Widget.Copy s -> CopyWidget.copy s
-          Widget.CreateInvitation -> API.postCreateInvitation CreateInvitationFinished {notes=""}
-          Widget.Staked {bettorIsASkeptic, bettorStakeCents} -> API.postStake StakeFinished {predictionId=ctx.predictionId, bettorIsASkeptic=bettorIsASkeptic, bettorStakeCents=bettorStakeCents}
-          Widget.Resolve resolution -> API.postResolve ResolveFinished {predictionId=ctx.predictionId, resolution=resolution, notes = ""}
+          Nothing -> Cmd.none
+          Just (Widget.Copy s) -> CopyWidget.copy s
+          Just Widget.CreateInvitation -> API.postCreateInvitation CreateInvitationFinished {notes=""}
+          Just (Widget.Staked {bettorIsASkeptic, bettorStakeCents}) -> API.postStake StakeFinished {predictionId=ctx.predictionId, bettorIsASkeptic=bettorIsASkeptic, bettorStakeCents=bettorStakeCents}
+          Just (Widget.Resolve resolution) -> API.postResolve ResolveFinished {predictionId=ctx.predictionId, resolution=resolution, notes = ""}
       in
         ((ctx, newState), cmd)
     Tick now -> (({ctx | now = now}, model), Cmd.none)
