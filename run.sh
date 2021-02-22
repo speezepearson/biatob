@@ -20,6 +20,6 @@ python -m server.server \
   --host=0.0.0.0 \
   --port=8080 \
   --state-path=/home/protected/server.WorldState.pb \
-  --credentials-path=/home/protected/server.CredentialsConfig.textproto
+  --credentials-path=/home/protected/server.CredentialsConfig.textproto \
   "$@"
 # e.g. --email-daily-backups-to=somebody@example.com
