@@ -1,4 +1,4 @@
-module CreatePredictionForm exposing (..)
+module Widgets.CreatePredictionWidget exposing (..)
 
 import Browser
 import Html as H exposing (Html)

@@ -56,18 +56,21 @@ def task_proto():
 
 
 def task_elm():
-  elements_src = Path('elm/src/Elements')
+  src = Path('elm/src')
   dist = Path('elm/dist')
-  modules = [p.with_suffix('').name for p in elements_src.glob('*.elm')]
+  modules = [p.with_suffix('').name for p in (src/'Elements').glob('**/*.elm')]
   return {
-    'file_dep': ['elm/elm.json', *elements_src.glob('Elements/*.elm'), *[t for d in task_proto() for t in d['targets'] if d['name']=='elm']],
+    'file_dep': [
+      'elm/elm.json',
+      *src.glob('**/*.elm'),
+      *[t for d in task_proto() for t in d['targets'] if d['name']=='elm']],
     'targets': [
       *[dist/f'{mod}.js' for mod in modules],
     ],
     'actions': [
       f'if test -d {dist}; then rm -r {dist}; fi',
       f'mkdir -p {dist}',
-      *[f'cd elm && elm make {elements_src.relative_to("elm")}/{mod}.elm --output=dist/{mod}.js' for mod in modules]
+      *[f'cd elm && elm make {src.relative_to("elm")}/Elements/{mod}.elm --output=dist/{mod}.js' for mod in modules]
     ],
   }
 
