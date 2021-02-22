@@ -36,39 +36,77 @@ type alias State =
   , notification : Html ()
   }
 
-handleLogInUsernameResponse : Result Http.Error Pb.LogInUsernameResponse -> State -> State
-handleLogInUsernameResponse res state =
+
+
+type alias Handler a =
+  { updateWidget : (State -> State) -> a -> a
+  , setAuth : Maybe Pb.AuthToken -> a -> a
+  }
+
+getSuccessfulAuthFromLogInUsername : Result Http.Error Pb.LogInUsernameResponse -> Maybe Pb.AuthToken
+getSuccessfulAuthFromLogInUsername res =
+  case res |> Result.toMaybe |> Maybe.andThen .logInUsernameResult of
+    Just (Pb.LogInUsernameResultOk auth) -> Just auth
+    _ -> Nothing
+isSuccessfulLogInUsername res = getSuccessfulAuthFromLogInUsername res /= Nothing
+handleLogInUsernameResponse : Handler a -> Result Http.Error Pb.LogInUsernameResponse -> a -> a
+handleLogInUsernameResponse thing res a =
+  a
+  |> thing.updateWidget (\state ->
+      case res of
+        Err e -> { state | working = False , notification = Utils.redText (Debug.toString e)}
+        Ok resp ->
+          case resp.logInUsernameResult of
+            Just (Pb.LogInUsernameResultOk _) ->
+              { state | working = False , notification = H.text "" }
+            Just (Pb.LogInUsernameResultError e) ->
+              { state | working = False , notification = Utils.redText (Debug.toString e) }
+            Nothing ->
+              { state | working = False , notification = Utils.redText "Invalid server response (neither Ok nor Error in protobuf)" }
+    )
+  |> case getSuccessfulAuthFromLogInUsername res of
+      Just auth -> thing.setAuth (Just auth)
+      _ -> identity
+
+getSuccessfulAuthFromRegisterUsername : Result Http.Error Pb.RegisterUsernameResponse -> Maybe Pb.AuthToken
+getSuccessfulAuthFromRegisterUsername res =
+  case res |> Result.toMaybe |> Maybe.andThen .registerUsernameResult of
+    Just (Pb.RegisterUsernameResultOk auth) -> Just auth
+    _ -> Nothing
+isSuccessfulRegisterUsername res = getSuccessfulAuthFromRegisterUsername res /= Nothing
+handleRegisterUsernameResponse : Handler a -> Result Http.Error Pb.RegisterUsernameResponse -> a -> a
+handleRegisterUsernameResponse thing res a =
+  a
+  |> thing.updateWidget (\state ->
+      case res of
+        Err e -> { state | working = False , notification = Utils.redText (Debug.toString e)}
+        Ok resp ->
+          case resp.registerUsernameResult of
+            Just (Pb.RegisterUsernameResultOk _) ->
+              { state | working = False , notification = H.text "" }
+            Just (Pb.RegisterUsernameResultError e) ->
+              { state | working = False , notification = Utils.redText (Debug.toString e) }
+            Nothing ->
+              { state | working = False , notification = Utils.redText "Invalid server response (neither Ok nor Error in protobuf)" }
+    )
+  |> case getSuccessfulAuthFromRegisterUsername res of
+      Just auth -> thing.setAuth (Just auth)
+      _ -> identity
+
+isSuccessfulSignOut : Result Http.Error Pb.SignOutResponse -> Bool
+isSuccessfulSignOut res =
   case res of
-    Err e ->
-      { state | working = False , notification = Utils.redText (Debug.toString e) }
-    Ok resp ->
-      case resp.logInUsernameResult of
-        Just (Pb.LogInUsernameResultOk _) ->
-          { state | working = False , notification = H.text "" }
-        Just (Pb.LogInUsernameResultError e) ->
-          { state | working = False , notification = Utils.redText (Debug.toString e) }
-        Nothing ->
-          { state | working = False , notification = Utils.redText "Invalid server response (neither Ok nor Error in protobuf)" }
-handleRegisterUsernameResponse : Result Http.Error Pb.RegisterUsernameResponse -> State -> State
-handleRegisterUsernameResponse res state =
-  case res of
-    Err e ->
-      { state | working = False , notification = Utils.redText (Debug.toString e) }
-    Ok resp ->
-      case resp.registerUsernameResult of
-        Just (Pb.RegisterUsernameResultOk _) ->
-          { state | working = False , notification = H.text "" }
-        Just (Pb.RegisterUsernameResultError e) ->
-          { state | working = False , notification = Utils.redText (Debug.toString e) }
-        Nothing ->
-          { state | working = False , notification = Utils.redText "Invalid server response (neither Ok nor Error in protobuf)" }
-handleSignOutResponse : Result Http.Error Pb.SignOutResponse -> State -> State
-handleSignOutResponse res state =
-  case res of
-    Err e ->
-      { state | working = False , notification = Utils.redText (Debug.toString e) }
-    Ok resp ->
-      { state | working = False , notification = H.text "" }
+    Ok _ -> True
+    Err _ -> False
+handleSignOutResponse : Handler a -> Result Http.Error Pb.SignOutResponse -> a -> a
+handleSignOutResponse thing res a =
+  a
+  |> thing.updateWidget (\state ->
+      case res of
+        Err e -> { state | working = False , notification = Utils.redText (Debug.toString e)}
+        Ok _ -> { state | working = False , notification = H.text "" }
+    )
+  |> if isSuccessfulSignOut res then thing.setAuth Nothing else identity
 
 illegalUsernameCharacters : String -> Set.Set Char
 illegalUsernameCharacters s =

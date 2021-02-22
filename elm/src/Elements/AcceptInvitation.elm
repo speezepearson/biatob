@@ -37,6 +37,17 @@ type Msg
   | SignOutFinished (Result Http.Error Pb.SignOutResponse)
   | Tick Time.Posix
 
+authThing : AuthWidget.Handler Model
+authThing =
+  { updateWidget = \f m -> case m.authState of
+      LoggedOut state -> { m | authState = LoggedOut (state |> f) }
+      LoggedIn _ -> m
+  , setAuth = \a m -> { m | authState = case a of
+                              Just auth -> LoggedIn auth
+                              Nothing -> LoggedOut AuthWidget.init
+                              }
+  }
+
 init : JD.Value -> (Model, Cmd Msg)
 init flags =
   let auth = Utils.decodePbFromFlags Pb.authTokenDecoder "authTokenPbB64" flags in
@@ -102,37 +113,16 @@ update msg model =
         , cmd
         )
     LogInUsernameFinished res ->
-      case model.authState of
-        LoggedOut widget ->
-          ( { model | authState = LoggedOut (widget |> AuthWidget.handleLogInUsernameResponse res)}
-          , Cmd.none
-          )
-        LoggedIn _ ->
-          ( { model | authState = case res |> Result.toMaybe |> Maybe.andThen .logInUsernameResult of
-                        Just (Pb.LogInUsernameResultOk auth) -> LoggedIn auth
-                        _ -> model.authState
-            }
-          , Cmd.none
-          )
+      ( AuthWidget.handleLogInUsernameResponse authThing res model
+      , if AuthWidget.isSuccessfulLogInUsername res then authChanged () else Cmd.none
+      )
     RegisterUsernameFinished res ->
-      case model.authState of
-        LoggedOut widget ->
-          ( { model | authState = LoggedOut (widget |> AuthWidget.handleRegisterUsernameResponse res)}
-          , Cmd.none
-          )
-        LoggedIn _ ->
-          ( { model | authState = case res |> Result.toMaybe |> Maybe.andThen .registerUsernameResult of
-                        Just (Pb.RegisterUsernameResultOk auth) -> LoggedIn auth
-                        _ -> model.authState
-            }
-          , Cmd.none
-          )
+      ( AuthWidget.handleRegisterUsernameResponse authThing res model
+      , if AuthWidget.isSuccessfulRegisterUsername res then authChanged () else Cmd.none
+      )
     SignOutFinished res ->
-      ( { model | authState = case res of
-                    Ok _ -> LoggedOut AuthWidget.init
-                    Err _ -> model.authState
-        }
-      , Cmd.none
+      ( AuthWidget.handleSignOutResponse authThing res model
+      , if AuthWidget.isSuccessfulSignOut res then authChanged () else Cmd.none
       )
     Tick now -> ({model | now=now}, Cmd.none)
 

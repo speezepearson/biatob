@@ -39,6 +39,52 @@ init =
   , notification = H.text ""
   }
 
+
+type alias Handler a =
+  { updateWidget : (State -> State) -> a -> a
+  , setEmailFlowState : Pb.EmailFlowState -> a -> a
+  }
+
+handleSetEmailResponse : Handler a -> Result Http.Error Pb.SetEmailResponse -> a -> a
+handleSetEmailResponse thing res a =
+  a
+  |> thing.updateWidget (\state ->
+      case res of
+        Err e ->
+          { state | working = False , notification = Utils.redText (Debug.toString e) }
+        Ok resp ->
+          case resp.setEmailResult of
+            Just (Pb.SetEmailResultOk _) ->
+              { state | working = False , notification = H.text "" }
+            Just (Pb.SetEmailResultError e) ->
+              { state | working = False , notification = Utils.redText (Debug.toString e) }
+            Nothing ->
+              { state | working = False , notification = Utils.redText "Invalid server response (neither Ok nor Error in protobuf)" }
+      )
+  |> case res |> Result.toMaybe |> Maybe.andThen .setEmailResult of
+      Just (Pb.SetEmailResultOk newState) -> thing.setEmailFlowState newState
+      _ -> identity
+
+handleVerifyEmailResponse : Handler a -> Result Http.Error Pb.VerifyEmailResponse -> a -> a
+handleVerifyEmailResponse thing res a =
+  a
+  |> thing.updateWidget (\state ->
+      case res of
+        Err e ->
+          { state | working = False , notification = Utils.redText (Debug.toString e) }
+        Ok resp ->
+          case resp.verifyEmailResult of
+            Just (Pb.VerifyEmailResultOk _) ->
+              { state | working = False , notification = H.text "" }
+            Just (Pb.VerifyEmailResultError e) ->
+              { state | working = False , notification = Utils.redText (Debug.toString e) }
+            Nothing ->
+              { state | working = False , notification = Utils.redText "Invalid server response (neither Ok nor Error in protobuf)" }
+      )
+  |> case res |> Result.toMaybe |> Maybe.andThen .verifyEmailResult of
+      Just (Pb.VerifyEmailResultOk newState) -> thing.setEmailFlowState newState
+      _ -> identity
+
 handleUpdateSettingsResponse : Result Http.Error Pb.UpdateSettingsResponse -> State -> State
 handleUpdateSettingsResponse res state =
   case res of
@@ -49,34 +95,6 @@ handleUpdateSettingsResponse res state =
         Just (Pb.UpdateSettingsResultOk _) ->
           { state | working = False , notification = H.text "" }
         Just (Pb.UpdateSettingsResultError e) ->
-          { state | working = False , notification = Utils.redText (Debug.toString e) }
-        Nothing ->
-          { state | working = False , notification = Utils.redText "Invalid server response (neither Ok nor Error in protobuf)" }
-
-handleSetEmailResponse : Result Http.Error Pb.SetEmailResponse -> State -> State
-handleSetEmailResponse res state =
-  case res of
-    Err e ->
-      { state | working = False , notification = Utils.redText (Debug.toString e) }
-    Ok resp ->
-      case resp.setEmailResult of
-        Just (Pb.SetEmailResultOk _) ->
-          { state | working = False , notification = H.text "" }
-        Just (Pb.SetEmailResultError e) ->
-          { state | working = False , notification = Utils.redText (Debug.toString e) }
-        Nothing ->
-          { state | working = False , notification = Utils.redText "Invalid server response (neither Ok nor Error in protobuf)" }
-
-handleVerifyEmailResponse : Result Http.Error Pb.VerifyEmailResponse -> State -> State
-handleVerifyEmailResponse res state =
-  case res of
-    Err e ->
-      { state | working = False , notification = Utils.redText (Debug.toString e) }
-    Ok resp ->
-      case resp.verifyEmailResult of
-        Just (Pb.VerifyEmailResultOk _) ->
-          { state | working = False , notification = H.text "" }
-        Just (Pb.VerifyEmailResultError e) ->
           { state | working = False , notification = Utils.redText (Debug.toString e) }
         Nothing ->
           { state | working = False , notification = Utils.redText "Invalid server response (neither Ok nor Error in protobuf)" }
@@ -153,5 +171,3 @@ view ctx state =
         ]
     
     Nothing -> Utils.redText "Sorry, you've hit a bug! This should show your email settings."
-
-main = H.text ""

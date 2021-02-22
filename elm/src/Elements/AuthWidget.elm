@@ -9,7 +9,6 @@ import Biatob.Proto.Mvp as Pb
 import Utils
 
 import Task
-import Widgets.CopyWidget as CopyWidget
 import API
 
 import Widgets.AuthWidget as Widget
@@ -23,7 +22,6 @@ type Msg
   | RegisterUsernameFinished (Result Http.Error Pb.RegisterUsernameResponse)
   | SignOutFinished (Result Http.Error Pb.SignOutResponse)
   | Tick Time.Posix
-  | Ignore
 
 init : JD.Value -> (Model, Cmd Msg)
 init flags =
@@ -36,8 +34,14 @@ init flags =
   , Task.perform Tick Time.now
   )
 
+authHandler : Widget.Handler Model
+authHandler =
+  { updateWidget = \f (ctx, m) -> (ctx, m |> f)
+  , setAuth = \a (ctx, m) -> ({ctx | auth = a}, m)
+  }
+
 update : Msg -> Model -> ( Model, Cmd Msg )
-update msg (ctx, model) =
+update msg (ctx, state) =
   case msg of
     WidgetEvent event newState ->
       let
@@ -48,35 +52,20 @@ update msg (ctx, model) =
           Nothing -> Cmd.none
       in
         ((ctx, newState), cmd)
-    Tick now -> (({ctx | now = now}, model), Cmd.none)
+    Tick now -> (({ctx | now = now}, state), Cmd.none)
+
     LogInUsernameFinished res ->
-      ( ( { ctx | auth = case res |> Result.toMaybe |> Maybe.andThen .logInUsernameResult of
-                    Just (Pb.LogInUsernameResultOk auth) -> Just auth
-                    _ -> ctx.auth
-          }
-        , model |> Widget.handleLogInUsernameResponse res
-        )
-      , authChanged ()
+      ( Widget.handleLogInUsernameResponse authHandler res (ctx, state)
+      , if Widget.isSuccessfulLogInUsername res then authChanged () else Cmd.none
       )
     RegisterUsernameFinished res ->
-      ( ( { ctx | auth = case res |> Result.toMaybe |> Maybe.andThen .registerUsernameResult of
-                    Just (Pb.RegisterUsernameResultOk auth) -> Just auth
-                    _ -> ctx.auth
-          }
-        , model |> Widget.handleRegisterUsernameResponse res
-        )
-      , authChanged ()
+      ( Widget.handleRegisterUsernameResponse authHandler res (ctx, state)
+      , if Widget.isSuccessfulRegisterUsername res then authChanged () else Cmd.none
       )
     SignOutFinished res ->
-      ( ( { ctx | auth = case res of
-                    Ok _ -> Nothing
-                    Err _ -> ctx.auth
-          }
-        , model |> Widget.handleSignOutResponse res
-        )
-      , authChanged ()
+      ( Widget.handleSignOutResponse authHandler res (ctx, state)
+      , if Widget.isSuccessfulSignOut res then authChanged () else Cmd.none
       )
-    Ignore -> ((ctx, model), Cmd.none)
 
 main : Program JD.Value Model Msg
 main =

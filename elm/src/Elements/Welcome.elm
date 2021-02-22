@@ -74,6 +74,18 @@ init flags =
   , Task.perform Tick Time.now
   )
 
+authHandler : AuthWidget.Handler Model
+authHandler =
+  { updateWidget = \f m -> { m | authWidget = m.authWidget |> f }
+  , setAuth = \a m -> m -- TODO: I don't like this implicit reliance on reloading the page when this happens
+  }
+
+emailSettingsHandler : EmailSettingsWidget.Handler Model
+emailSettingsHandler =
+  { updateWidget = \f m -> { m | emailSettingsWidget = m.emailSettingsWidget |> f }
+  , setEmailFlowState = \e m -> m |> updateUserInfo (\u -> { u | email = Just e })
+  }
+
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
@@ -100,37 +112,26 @@ update msg model =
       ) |> Tuple.mapFirst (\m -> { m | emailSettingsWidget = newState })
 
     LogInUsernameFinished res ->
-      (case res |> Result.toMaybe |> Maybe.andThen .logInUsernameResult of
-        Just (Pb.LogInUsernameResultOk _) -> ( model , authChanged () )
-        _ -> ( model , Cmd.none )
-      ) |> Tuple.mapFirst (\m -> { m | authWidget = m.authWidget |> AuthWidget.handleLogInUsernameResponse res })
+      ( AuthWidget.handleLogInUsernameResponse authHandler res model
+      , if AuthWidget.isSuccessfulLogInUsername res then authChanged () else Cmd.none
+      )
     RegisterUsernameFinished res ->
-      (case res |> Result.toMaybe |> Maybe.andThen .registerUsernameResult of
-        Just (Pb.RegisterUsernameResultOk _) -> ( model , authChanged () )
-        _ -> ( model , Cmd.none )
-      ) |> Tuple.mapFirst (\m -> { m | authWidget = m.authWidget |> AuthWidget.handleRegisterUsernameResponse res })
+      ( AuthWidget.handleRegisterUsernameResponse authHandler res model
+      , if AuthWidget.isSuccessfulRegisterUsername res then authChanged () else Cmd.none
+      )
     SignOutFinished res ->
-      (case res of
-        Ok _ -> ( model , authChanged () )
-        Err _ -> ( model , Cmd.none )
-      ) |> Tuple.mapFirst (\m -> { m | authWidget = m.authWidget |> AuthWidget.handleSignOutResponse res })
+      ( AuthWidget.handleSignOutResponse authHandler res model
+      , if AuthWidget.isSuccessfulSignOut res then authChanged () else Cmd.none
+      )
+
 
     SetEmailFinished res ->
-      ( { model | emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleSetEmailResponse res }
-        |> updateUserInfo (\userInfo ->
-            case res |> Result.toMaybe |> Maybe.andThen .setEmailResult of
-              Just (Pb.SetEmailResultOk emailFlowState) -> userInfo |> \u -> { u | email = Just emailFlowState }
-              _ -> userInfo
-              )
+      ( EmailSettingsWidget.handleSetEmailResponse emailSettingsHandler res model
       , Cmd.none
       )
+
     VerifyEmailFinished res ->
-      ( { model | emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleVerifyEmailResponse res }
-        |> updateUserInfo (\userInfo ->
-            case res |> Result.toMaybe |> Maybe.andThen .verifyEmailResult of
-              Just (Pb.VerifyEmailResultOk emailFlowState) -> userInfo |> \u -> { u | email = Just emailFlowState }
-              _ -> userInfo
-              )
+      ( EmailSettingsWidget.handleVerifyEmailResponse emailSettingsHandler res model
       , Cmd.none
       )
     UpdateSettingsFinished res ->

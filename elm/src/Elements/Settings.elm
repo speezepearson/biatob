@@ -45,6 +45,12 @@ emailSettingsCtx model =
   , handle = EmailSettingsEvent
   }
 
+emailSettingsHandler : EmailSettingsWidget.Handler Model
+emailSettingsHandler =
+  { updateWidget = \f m -> { m | emailSettingsWidget = m.emailSettingsWidget |> f }
+  , setEmailFlowState = \e m -> { m | userInfo = m.userInfo |> \u -> { u | email = Just e } }
+  }
+
 type Msg
   = EmailSettingsEvent (Maybe EmailSettingsWidget.Event) EmailSettingsWidget.State
   | TrustedUsersEvent (Maybe TrustedUsersWidget.Event) TrustedUsersWidget.State
@@ -129,20 +135,12 @@ update msg model =
       )
 
     SetEmailFinished res ->
-      ( { model | emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleSetEmailResponse res
-                , userInfo = case res |> Result.toMaybe |> Maybe.andThen .setEmailResult of
-                    Just (Pb.SetEmailResultOk emailFlowState) -> model.userInfo |> (\u -> { u | email = Just emailFlowState })
-                    _ -> model.userInfo
-        }
+      ( EmailSettingsWidget.handleSetEmailResponse emailSettingsHandler res model
       , Cmd.none
       )
 
     VerifyEmailFinished res ->
-      ( { model | emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleVerifyEmailResponse res
-                , userInfo = case res |> Result.toMaybe |> Maybe.andThen .verifyEmailResult of
-                    Just (Pb.VerifyEmailResultOk emailFlowState) -> model.userInfo |> (\u -> { u | email = Just emailFlowState })
-                    _ -> model.userInfo
-        }
+      ( EmailSettingsWidget.handleVerifyEmailResponse emailSettingsHandler res model
       , Cmd.none
       )
 

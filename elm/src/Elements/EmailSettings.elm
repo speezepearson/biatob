@@ -43,6 +43,12 @@ updateCtx userInfo ctx =
         , emailResolutionNotifications = userInfo.emailResolutionNotifications
   }
 
+emailSettingsHandler : Widget.Handler Model
+emailSettingsHandler =
+  { updateWidget = \f (ctx, m) -> (ctx, m |> f)
+  , setEmailFlowState = \e (ctx, m) -> ({ ctx | emailFlowState = e }, m)
+  }
+
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg (ctx, model) =
   case msg of
@@ -58,22 +64,12 @@ update msg (ctx, model) =
         ((ctx, newState), cmd)
 
     SetEmailFinished res ->
-      ( ( { ctx | emailFlowState = case res |> Result.toMaybe |> Maybe.andThen .setEmailResult of
-                    Just (Pb.SetEmailResultOk emailFlowState) -> emailFlowState
-                    _ -> ctx.emailFlowState
-          }
-        , model |> Widget.handleSetEmailResponse res
-        )
+      ( Widget.handleSetEmailResponse emailSettingsHandler res (ctx, model)
       , Cmd.none
       )
 
     VerifyEmailFinished res ->
-      ( ( { ctx | emailFlowState = case res |> Result.toMaybe |> Maybe.andThen .verifyEmailResult of
-                    Just (Pb.VerifyEmailResultOk emailFlowState) -> emailFlowState
-                    _ -> ctx.emailFlowState
-          }
-        , model |> Widget.handleVerifyEmailResponse res
-        )
+      ( Widget.handleVerifyEmailResponse emailSettingsHandler res (ctx, model)
       , Cmd.none
       )
 

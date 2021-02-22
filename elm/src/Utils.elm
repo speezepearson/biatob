@@ -87,7 +87,7 @@ mustUsernameGenericInfo : Pb.UsernameInfo -> Pb.GenericUserInfo
 mustUsernameGenericInfo {info} = must "all UserInfos must have GenericUserInfos" info
 
 mustUserInfoEmail : Pb.GenericUserInfo -> Pb.EmailFlowState
-mustUserInfoEmail {email} = must "all GenericUserInfos must have emails" email
+mustUserInfoEmail {email} = email |> Maybe.withDefault {emailFlowStateKind=Just (Pb.EmailFlowStateKindUnstarted Pb.Void)}
 
 mustEmailFlowStateKind : Pb.EmailFlowState -> Pb.EmailFlowStateKind
 mustEmailFlowStateKind {emailFlowStateKind} = must "all EmailFlowStates must have kinds" emailFlowStateKind
