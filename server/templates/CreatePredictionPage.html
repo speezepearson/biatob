@@ -2,12 +2,12 @@
 {% block title %} Biatob - New Prediction {% endblock %}
 {% block body %}
   <main id="main-wrapper"><div id="main"></div></main>
-  <script type="text/javascript" src="/elm/CreatePredictionPage.js"></script>
+  <script type="text/javascript" src="/elm/CreatePrediction.js"></script>
   <script type="text/javascript">
 
     var authTokenPbB64 = {{ auth_token_pb_b64 | tojson }};
 
-    var main = Elm.CreatePredictionPage.init({
+    var main = Elm.Elements.CreatePrediction.init({
       node: document.getElementById('main'),
       flags: {authTokenPbB64},
     });

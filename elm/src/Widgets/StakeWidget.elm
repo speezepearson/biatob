@@ -1,16 +1,11 @@
-module StakeForm exposing
-  ( Config
-  , State
-  , view
-  , init
-  , main
-  )
+module Widgets.StakeWidget exposing (..)
 
 import Browser
 import Html as H exposing (Html)
 import Html.Attributes as HA
 import Html.Events as HE
 import Time
+import Http
 
 import Biatob.Proto.Mvp as Pb
 import Utils exposing (b)
@@ -19,10 +14,9 @@ import Field exposing (Field)
 
 epsilon = 0.0000001 -- 🎵 I hate floating-point arithmetic 🎶
 
+type Event = Staked {bettorIsASkeptic:Bool, bettorStakeCents:Int}
 type alias Config msg =
-  { setState : State -> msg
-  , onStake : {bettorIsASkeptic:Bool, bettorStakeCents:Int} -> msg
-  , nevermind : msg
+  { handle : Maybe Event -> State -> msg
   , disableCommit : Bool
   , prediction : Pb.UserPredictionView
   }
@@ -31,11 +25,24 @@ type alias State =
   { believerStakeField : Field {max : Int} Int
   , skepticStakeField : Field {max : Int} Int
   , now : Time.Posix
+  , working : Bool
+  , notification : Html ()
   }
--- believerStakeCents : State -> Maybe Int
--- believerStakeCents {believerStakeField} = String.toFloat believerStakeField |> Maybe.map ((*) 100 >> round)
--- skepticStakeCents : State -> Maybe Int
--- skepticStakeCents {skepticStakeField} = String.toFloat skepticStakeField |> Maybe.map ((*) 100 >> round)
+
+handleStakeResponse : Result Http.Error Pb.StakeResponse -> State -> State
+handleStakeResponse res state =
+  case res of
+    Err e ->
+      { state | working = False , notification = Utils.redText (Debug.toString e) }
+    Ok resp ->
+      case resp.stakeResult of
+        Just (Pb.StakeResultOk _) ->
+          { state | working = False , notification = H.text "" }
+        Just (Pb.StakeResultError e) ->
+          { state | working = False , notification = Utils.redText (Debug.toString e) }
+        Nothing ->
+          { state | working = False , notification = Utils.redText "Invalid server response (neither Ok nor Error in protobuf)" }
+
 
 view : Config msg -> State -> Html msg
 view config state =
@@ -57,7 +64,7 @@ view config state =
       in
       H.p []
       [ H.text "Do you ", b "strongly doubt", H.text " that this will happen? Then stake $"
-      , Field.inputFor (\s -> config.setState {state | skepticStakeField = state.skepticStakeField |> Field.setStr s}) ctx state.skepticStakeField
+      , Field.inputFor (\s -> config.handle Nothing {state | skepticStakeField = state.skepticStakeField |> Field.setStr s}) ctx state.skepticStakeField
           H.input
           [ HA.style "width" "5em"
           , HA.type_"number", HA.min "0", HA.max (toFloat maxSkepticStakeCents / 100 + epsilon |> String.fromFloat), HA.step "any"
@@ -70,7 +77,7 @@ view config state =
       , H.button
           (case Field.parse ctx state.skepticStakeField of
             Ok stake ->
-              [ HE.onClick <| config.onStake {bettorIsASkeptic=True, bettorStakeCents=stake} ]
+              [ HE.onClick <| config.handle (Just <| Staked {bettorIsASkeptic=True, bettorStakeCents=stake}) { state | working = True , notification = H.text ""} ]
             Err _ ->
               [ HA.disabled True ]
           )
@@ -82,7 +89,7 @@ view config state =
       in
       H.p []
       [ H.text "Do you ", b "strongly believe", H.text " that this will happen? Then stake $"
-      , Field.inputFor (\s -> config.setState {state | believerStakeField = state.believerStakeField |> Field.setStr s}) ctx state.believerStakeField
+      , Field.inputFor (\s -> config.handle Nothing {state | believerStakeField = state.believerStakeField |> Field.setStr s}) ctx state.believerStakeField
           H.input
           [ HA.style "width" "5em"
           , HA.type_"number", HA.min "0", HA.max (toFloat maxBelieverStakeCents / 100 + epsilon |> String.fromFloat), HA.step "any"
@@ -95,7 +102,7 @@ view config state =
       , H.button
           (case Field.parse ctx state.believerStakeField of
             Ok stake ->
-              [ HE.onClick <| config.onStake {bettorIsASkeptic=False, bettorStakeCents=stake} ]
+              [ HE.onClick <| config.handle (Just <| Staked {bettorIsASkeptic=False, bettorStakeCents=stake}) { state | working = True , notification = H.text ""} ]
             Err _ ->
               [ HA.disabled True ]
           )
@@ -117,10 +124,11 @@ init =
   { believerStakeField = Field.init "0" parseCents
   , skepticStakeField = Field.init "0" parseCents
   , now = Utils.unixtimeToTime 0
+  , working = False
+  , notification = H.text ""
   }
 
-type MsgForDemo = SetState State | Ignore
-main : Program () State MsgForDemo
+type ReactorMsg = ReactorMsg (Maybe Event) State
 main =
   let
     prediction : Pb.UserPredictionView
@@ -138,11 +146,10 @@ main =
       , yourTrades = []
       , resolvesAtUnixtime = 0.0
       }
+
   in
   Browser.sandbox
     { init = init
-    , view = view {prediction=prediction, onStake = (\_ -> Ignore), nevermind=Ignore, setState=SetState, disableCommit=True}
-    , update = \msg model -> case msg of
-        Ignore -> model
-        SetState newState -> newState
+    , view = view {prediction=prediction, handle=ReactorMsg, disableCommit=True}
+    , update = \(ReactorMsg event newState) _ -> Debug.log (Debug.toString event) newState
     }

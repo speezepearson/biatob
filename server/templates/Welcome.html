@@ -70,7 +70,7 @@
       <div id="welcome-page-auth-widget"></div>
       <script type="text/javascript">
         var authTokenPbB64 = {{ auth_token_pb_b64 | tojson }};
-        var authWidget = Elm.AuthWidget.init({
+        var authWidget = Elm.Elements.AuthWidget.init({
           node: document.getElementById('welcome-page-auth-widget'),
           flags: {authTokenPbB64},
         })
@@ -92,10 +92,10 @@
         var authTokenPbB64 = {{ auth_token_pb_b64 | tojson }};
         var node = document.getElementById('welcome-page-invitation-widget');
         if (authTokenPbB64 != null) {
-          var linkToAuthority = window.origin;
-          var invitationWidget = Elm.SmallInvitationWidget.init({
+          var httpOrigin = window.origin;
+          var invitationWidget = Elm.Elements.SmallInvitationWidget.init({
             node: node,
-            flags: {authTokenPbB64, linkToAuthority, destination: null},
+            flags: {authTokenPbB64, httpOrigin, destination: null},
           });
           subscribeToCopy(invitationWidget);
         } else {
@@ -105,12 +105,12 @@
     </li>
     <li style="margin-bottom:1em"> Consider adding an email address, so I can remind you to resolve your prediction when the time comes:
       <div style="border:1px solid gray; padding: 0.5em; margin:0.5em"><div id="welcome-page-email-settings-widget"></div></div>
-      <script type="text/javascript" src="/elm/EmailSettingsWidget.js"></script>
+      <script type="text/javascript" src="/elm/EmailSettings.js"></script>
       <script>
         var userInfoPbB64 = {{ user_info_pb_b64 | tojson }};
         var node = document.getElementById('welcome-page-email-settings-widget');
         if (userInfoPbB64 != null) {
-          var emailSettingsWidget = Elm.EmailSettingsWidget.init({
+          var emailSettings = Elm.Elements.EmailSettings.init({
             node: node,
             flags: {userInfoPbB64},
           });

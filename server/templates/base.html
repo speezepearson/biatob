@@ -41,7 +41,7 @@
   <script type="text/javascript" src="/elm/AuthWidget.js"></script>
   <script type="text/javascript">
     var authTokenPbB64 = {{ auth_token_pb_b64 | tojson }};
-    var authWidget = Elm.AuthWidget.init({
+    var authWidget = Elm.Elements.AuthWidget.init({
       node: document.getElementById('auth-widget'),
       flags: {authTokenPbB64},
     })

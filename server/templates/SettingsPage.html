@@ -2,22 +2,21 @@
 {% block title %} Biatob - Settings {% endblock %}
 {% block body %}
   <main id="main-wrapper"><div id="main"></div></main>
-  <script type="text/javascript" src="/elm/SettingsPage.js"></script>
+  <script type="text/javascript" src="/elm/Settings.js"></script>
   <script type="text/javascript">
 
     var authTokenPbB64 = {{ auth_token_pb_b64 | tojson }};
     var settingsRespPbB64 = {{ settings_response_pb_b64 | tojson }};
-    var linkToAuthority = window.location.origin;
+    var httpOrigin = window.location.origin;
 
     if (!authTokenPbB64) {
       window.location = "/"; // TODO(P2): should be /login
     }
 
-    var main = Elm.SettingsPage.init({
+    var main = Elm.Elements.Settings.init({
       node: document.getElementById('main'),
-      flags: {authTokenPbB64, settingsRespPbB64, linkToAuthority},
+      flags: {authTokenPbB64, settingsRespPbB64, httpOrigin},
     });
     subscribeToCopy(main);
-    main.ports.changed.subscribe(() => window.location.reload());
   </script>
 {% endblock %}

@@ -1,4 +1,4 @@
-port module ViewUserPage exposing (..)
+port module Elements.ViewUser exposing (main)
 
 import Browser
 import Html as H exposing (Html)
@@ -11,38 +11,48 @@ import Biatob.Proto.Mvp as Pb
 import Utils
 
 import API
-import SmallInvitationWidget
-import ViewPredictionsWidget
+import Widgets.SmallInvitationWidget as SmallInvitationWidget
+import Widgets.ViewPredictionsWidget as ViewPredictionsWidget
+import Widgets.CopyWidget as CopyWidget
 
 port trustChanged : () -> Cmd msg
 
-type AuthState = LoggedIn Pb.AuthToken SmallInvitationWidget.Model | LoggedOut
 type alias Model =
   { userId : Pb.UserId
   , userView : Pb.UserUserView
-  , authState : AuthState
+  , auth : Maybe Pb.AuthToken
   , predictionsWidget : Maybe ViewPredictionsWidget.Model
   , working : Bool
   , setTrustedError : Maybe String
+  , httpOrigin : String
+  , invitationWidget : SmallInvitationWidget.State
   }
 
 type Msg
   = SetTrusted Bool
   | SetTrustedFinished (Result Http.Error Pb.SetTrustedResponse)
-  | InvitationMsg SmallInvitationWidget.Msg
   | PredictionsMsg ViewPredictionsWidget.Msg
+  | InvitationEvent (Maybe SmallInvitationWidget.Event) SmallInvitationWidget.State
+  | CreateInvitationFinished (Result Http.Error Pb.CreateInvitationResponse)
+
+invitationWidgetCtx : Model -> SmallInvitationWidget.Context Msg
+invitationWidgetCtx model =
+  { destination = Nothing
+  , httpOrigin = model.httpOrigin
+  , handle = InvitationEvent
+  }
 
 init : JD.Value -> (Model, Cmd Msg)
 init flags =
   let
-    linkToAuthority = Utils.mustDecodeFromFlags JD.string "linkToAuthority" flags
+    httpOrigin = Utils.mustDecodeFromFlags JD.string "httpOrigin" flags
     auth = Utils.decodePbFromFlags Pb.authTokenDecoder "authTokenPbB64" flags
     (predsWidget, predsCmd) = case auth of
-      Just auth_ -> case Utils.decodePbFromFlags Pb.predictionsByIdDecoder "predictionsPbB64" flags of
+      Just _ -> case Utils.decodePbFromFlags Pb.predictionsByIdDecoder "predictionsPbB64" flags of
         Just preds ->
           ViewPredictionsWidget.init
-            { auth=auth_
-            , linkToAuthority=linkToAuthority
+            { auth=auth
+            , httpOrigin=httpOrigin
             , predictions=preds.predictions |> Utils.mustMapValues
             }
           |> Tuple.mapFirst (ViewPredictionsWidget.noFilterByOwner >> Just)
@@ -51,12 +61,12 @@ init flags =
   in
   ( { userId = Utils.mustDecodePbFromFlags Pb.userIdDecoder "userIdPbB64" flags
     , userView = Utils.mustDecodePbFromFlags Pb.userUserViewDecoder "userViewPbB64" flags
-    , authState = case auth of
-        Just auth_ -> LoggedIn auth_ (SmallInvitationWidget.init {auth=auth_, linkToAuthority=linkToAuthority, destination=Nothing})
-        Nothing -> LoggedOut
+    , auth = auth
     , predictionsWidget = predsWidget
     , working = False
     , setTrustedError = Nothing
+    , httpOrigin = httpOrigin
+    , invitationWidget = SmallInvitationWidget.init
     }
   , Cmd.map PredictionsMsg predsCmd
   )
@@ -86,14 +96,6 @@ update msg model =
           ( { model | working = False , setTrustedError = Just "Invalid server response (neither Ok nor Error in protobuf)" }
           , Cmd.none
           )
-    InvitationMsg widgetMsg ->
-      case model.authState of
-        LoggedIn auth widget ->
-          let (newWidget, widgetCmd) = SmallInvitationWidget.update widgetMsg widget in
-          ( { model | authState = LoggedIn auth newWidget }
-          , Cmd.map InvitationMsg widgetCmd
-          )
-        LoggedOut -> Debug.todo "bad state"
     PredictionsMsg widgetMsg ->
       case model.predictionsWidget of
         Just widget ->
@@ -103,6 +105,19 @@ update msg model =
           )
         Nothing -> Debug.todo "bad state"
 
+    InvitationEvent event newWidget ->
+      (case event of
+        Just SmallInvitationWidget.CreateInvitation ->
+          (model, API.postCreateInvitation CreateInvitationFinished {notes = ""})  -- TODO(P3): add notes field
+        Just (SmallInvitationWidget.Copy s) ->
+          (model, CopyWidget.copy s)
+        Nothing ->
+          (model, Cmd.none)
+      ) |> Tuple.mapFirst (\m -> { m | invitationWidget = newWidget })
+    CreateInvitationFinished res ->
+      ( { model | invitationWidget = model.invitationWidget |> SmallInvitationWidget.handleCreateInvitationResponse res }
+      , Cmd.none
+      )
 
 view : Model -> Html Msg
 view model =
@@ -115,10 +130,10 @@ view model =
           , H.a [HA.href "/settings"] [H.text "your settings"]
           , H.text "?"
           ]
-      else case model.authState of
-        LoggedOut ->
+      else case model.auth of
+        Nothing ->
           H.text "Log in to see your relationship with this user."
-        LoggedIn _ invitationWidget ->
+        Just _ ->
           H.div []
             [ if model.userView.trustsYou then
                 H.text "This user trusts you! :)"
@@ -127,7 +142,7 @@ view model =
                   [ H.text "This user hasn't marked you as trusted! If you think that, in real life, they "
                   , H.i [] [H.text "do"]
                   , H.text " trust you, send them an invitation: "
-                  , SmallInvitationWidget.view invitationWidget |> H.map InvitationMsg
+                  , SmallInvitationWidget.view (invitationWidgetCtx model) model.invitationWidget
                   ]
             , H.br [] []
             , if model.userView.isTrusted then

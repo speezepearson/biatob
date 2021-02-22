@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block title %} Biatob - User {% endblock %} <!-- might want to add username -->
 {% block body %}
-  <script type="text/javascript" src="/elm/ViewUserPage.js"></script>
+  <script type="text/javascript" src="/elm/ViewUser.js"></script>
   <main id="main-wrapper"><div id="main"></div></main>
   <script type="text/javascript">
 
@@ -9,14 +9,13 @@
     var userIdPbB64 = {{ user_id_pb_b64 | tojson }};
     var userViewPbB64 = {{ user_view_pb_b64 | tojson }};
     var predictionsPbB64 = {{ predictions_pb_b64 | tojson }};
-    var linkToAuthority = window.origin;
+    var httpOrigin = window.origin;
 
-    var main = Elm.ViewUserPage.init({
+    var main = Elm.Elements.ViewUser.init({
       node: document.getElementById('main'),
-      flags: {authTokenPbB64, userIdPbB64, userViewPbB64, predictionsPbB64, linkToAuthority},
+      flags: {authTokenPbB64, userIdPbB64, userViewPbB64, predictionsPbB64, httpOrigin},
     });
     subscribeToCopy(main);
-    main.ports.changed.subscribe(() => window.location.reload());
     main.ports.trustChanged.subscribe(() => window.location.reload());
   </script>
 {% endblock %}

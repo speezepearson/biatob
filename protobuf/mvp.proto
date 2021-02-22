@@ -260,7 +260,7 @@ message StakeRequest {
 }
 message StakeResponse {
   oneof stake_result {
-    Void ok = 1;
+    UserPredictionView ok = 1;
     Error error = 2;
   }
   message Error {
@@ -275,7 +275,7 @@ message ResolveRequest {
 }
 message ResolveResponse {
   oneof resolve_result {
-    Void ok = 1;
+    UserPredictionView ok = 1;
     Error error = 2;
   }
   message Error {
@@ -289,12 +289,15 @@ message SetTrustedRequest {
 }
 message SetTrustedResponse {
   oneof set_trusted_result {
-    Void ok = 1;
+    UserIds ok = 1;
     Error error = 2;
   }
   message Error {
     string catchall = 1;
   }
+}
+message UserIds {
+  repeated UserId values = 1;
 }
 
 message GetUserRequest {
@@ -329,7 +332,7 @@ message SetEmailRequest {
 }
 message SetEmailResponse {
   oneof set_email_result {
-    Void ok = 1;
+    EmailFlowState ok = 1;
     Error error = 2;
   }
   message Error {
@@ -342,7 +345,7 @@ message VerifyEmailRequest {
 }
 message VerifyEmailResponse {
   oneof verify_email_result {
-    string verified_email = 1;
+    EmailFlowState ok = 1;
     Error error = 2;
   }
   message Error {
@@ -386,7 +389,7 @@ message CreateInvitationResponse {
     Error error = 2;
   }
   message Result {
-    string nonce = 1;
+    InvitationId id = 1;
     Invitation invitation = 2;
   }
   message Error {

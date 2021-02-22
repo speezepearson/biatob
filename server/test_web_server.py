@@ -34,7 +34,7 @@ async def test_smoke(aiohttp_client, app, api_server, fs_servicer):
 
   paths = [
     '/static/base.css',
-    '/elm/ViewMarketPage.js',
+    '/elm/Prediction.js',
     '/',
     '/welcome',
     '/new',

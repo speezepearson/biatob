@@ -1,16 +1,21 @@
-module ViewPredictionsWidget exposing (..)
+module Widgets.ViewPredictionsWidget exposing (..)
 
 import Html as H exposing (Html)
 import Html.Attributes as HA
 import Html.Events as HE
 import Dict exposing (Dict)
 import Time
+import Http
 
 import Biatob.Proto.Mvp as Pb
 import Utils
 
-import ViewPredictionPage
+import Widgets.PredictionWidget as PredictionWidget
+import Widgets.SmallInvitationWidget as SmallInvitationWidget
+import Widgets.StakeWidget as StakeWidget
+import Widgets.CopyWidget as CopyWidget
 import Task
+import API
 
 type LifecyclePhase
   = Open
@@ -120,42 +125,51 @@ sortPredictions toPrediction order predictions =
       List.sortBy (toPrediction >> \p -> p.createdUnixtime * sortKeySign dir) predictions
 
 type alias Model =
-  { predictions : Dict Int ViewPredictionPage.Model
+  { predictions : Dict Int (Pb.UserPredictionView, PredictionWidget.State)
   , filter : Filter
   , order : SortOrder
-  , auth : Pb.AuthToken
+  , auth : Maybe Pb.AuthToken
   , now : Time.Posix
   , allowFilterByOwner : Bool
+  , httpOrigin : String
   }
 
 type Msg
-  = PredictionPageMsg Int ViewPredictionPage.Msg
+  = PredictionEvent Int (Maybe PredictionWidget.Event) PredictionWidget.State
   | Tick Time.Posix
   | SetSortOrder SortOrder
   | SetFilter Filter
+  | StakeFinished Int (Result Http.Error Pb.StakeResponse)
+  | ResolveFinished Int (Result Http.Error Pb.ResolveResponse)
+  | CreateInvitationFinished Int (Result Http.Error Pb.CreateInvitationResponse)
+  | Ignore
 
-init : {auth:Pb.AuthToken, predictions:Dict Int Pb.UserPredictionView, linkToAuthority:String} -> (Model, Cmd Msg)
+viewPrediction : Int -> Model -> Maybe (Html Msg)
+viewPrediction predictionId model =
+  case Dict.get predictionId model.predictions of
+    Nothing -> Nothing
+    Just (prediction, widget) -> Just <|
+      PredictionWidget.view
+        { auth = model.auth
+        , prediction = prediction
+        , predictionId = predictionId
+        , now = model.now
+        , httpOrigin = model.httpOrigin
+        , handle = PredictionEvent predictionId
+        }
+        widget
+
+init : {auth: Maybe Pb.AuthToken, predictions:Dict Int Pb.UserPredictionView, httpOrigin:String} -> (Model, Cmd Msg)
 init flags =
-  let
-    subinits : Dict Int (ViewPredictionPage.Model, Cmd ViewPredictionPage.Msg)
-    subinits =
-      Dict.map
-        (\id m ->
-          let (submodel, subcmd) = ViewPredictionPage.initBase {predictionId=id, prediction=m, auth=Just flags.auth, now=Utils.unixtimeToTime 0, linkToAuthority=flags.linkToAuthority} in
-          (submodel, subcmd)
-        )
-        flags.predictions
-  in
-  ( { predictions = Dict.map (\_ (submodel, _) -> submodel) subinits
+  ( { predictions = flags.predictions |> Dict.map (\_ p -> (p, PredictionWidget.init))
+    , httpOrigin = flags.httpOrigin
     , filter = { own = Nothing , phase = Nothing }
     , order = CreatedDate Desc
     , auth = flags.auth
     , now = Utils.unixtimeToTime 0
     , allowFilterByOwner = True
     }
-  , Cmd.batch
-    <| (::) (Task.perform Tick Time.now)
-    <| List.map (\(id, (_, subcmd)) -> Cmd.map (PredictionPageMsg id) subcmd) <| Dict.toList subinits
+  , Task.perform Tick Time.now
   )
 
 noFilterByOwner : Model -> Model
@@ -164,13 +178,18 @@ noFilterByOwner model = { model | allowFilterByOwner = False }
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
-    PredictionPageMsg predictionId predictionPageMsg ->
-      case Dict.get predictionId model.predictions of
+    PredictionEvent id event newWidget ->
+      case Dict.get id model.predictions of
         Nothing -> Debug.todo "got message for unknown prediction"
-        Just predictionPage ->
-          let (newPredictionPage, predictionPageCmd) = ViewPredictionPage.update predictionPageMsg predictionPage in
-          ( { model | predictions = model.predictions |> Dict.insert predictionId newPredictionPage }
-          , Cmd.map (PredictionPageMsg predictionId) predictionPageCmd
+        Just (prediction, _) ->
+          ( { model | predictions = model.predictions |> Dict.insert id (prediction, newWidget) }
+          , case event of
+            Nothing -> Cmd.none
+            Just (PredictionWidget.Copy s) -> CopyWidget.copy s
+            Just (PredictionWidget.InvitationEvent (SmallInvitationWidget.Copy s)) -> CopyWidget.copy s
+            Just (PredictionWidget.InvitationEvent SmallInvitationWidget.CreateInvitation) -> API.postCreateInvitation (CreateInvitationFinished id) {notes=""}
+            Just (PredictionWidget.StakeEvent (StakeWidget.Staked {bettorIsASkeptic, bettorStakeCents})) -> API.postStake (StakeFinished id) {predictionId=id, bettorIsASkeptic=bettorIsASkeptic, bettorStakeCents=bettorStakeCents}
+            Just (PredictionWidget.Resolve resolution) -> API.postResolve (ResolveFinished id) {predictionId=id, resolution=resolution, notes = ""}
           )
     Tick t ->
       ( { model | now = t }
@@ -186,7 +205,32 @@ update msg model =
       ( { model | filter = filter }
       , Cmd.none
       )
+    CreateInvitationFinished id res ->
+      ( { model | predictions = model.predictions |> Dict.update id (Maybe.map <| Tuple.mapSecond <| PredictionWidget.handleCreateInvitationResponse res) }
+      , Cmd.none
+      )
+    StakeFinished id res ->
+      ( { model | predictions = model.predictions |> Dict.update id (Maybe.map <| \(pred, widget) ->
+                    ( case res |> Result.toMaybe |> Maybe.andThen .stakeResult of
+                        Just (Pb.StakeResultOk newPred) -> newPred
+                        _ -> pred
+                    , widget |> PredictionWidget.handleStakeResponse res)
+                    )
+        }
+      , Cmd.none
+      )
+    ResolveFinished id res ->
+      ( { model | predictions = model.predictions |> Dict.update id (Maybe.map <| \(pred, widget) ->
+                    ( case res |> Result.toMaybe |> Maybe.andThen .resolveResult of
+                        Just (Pb.ResolveResultOk newPred) -> newPred
+                        _ -> pred
+                    , widget |> PredictionWidget.handleResolveResponse res)
+                    )
+        }
+      , Cmd.none
+      )
 
+    Ignore -> ( model , Cmd.none )
 
 view : Model -> Html Msg
 view model =
@@ -203,15 +247,12 @@ view model =
       else
         model.predictions
         |> Dict.toList
-        |> sortPredictions (\(_, m) -> m.prediction) model.order
-        |> List.filter (\(_, m) -> filterMatches model.now model.filter m.prediction)
-        |> List.map (\(id, m) -> H.div [HA.style "margin" "1em", HA.style "padding" "1em", HA.style "border" "1px solid black"] [ViewPredictionPage.view m |> H.map (PredictionPageMsg id)])
+        |> sortPredictions (\(_, (pred, _)) -> pred) model.order
+        |> List.filter (\(_, (pred, _)) -> filterMatches model.now model.filter pred)
+        |> List.map (\(id, _) -> H.div [HA.style "margin" "1em", HA.style "padding" "1em", HA.style "border" "1px solid black"] [viewPrediction id model |> Utils.must "id just came out of dict"])
         |> List.intersperse (H.hr [] [])
         |> H.div []
     ]
 
 subscriptions : Model -> Sub Msg
-subscriptions model =
-  Sub.batch
-  <| List.map (\(id, m) -> ViewPredictionPage.subscriptions m |> Sub.map (PredictionPageMsg id))
-  <| Dict.toList model.predictions
+subscriptions _ = Time.every 1000 Tick

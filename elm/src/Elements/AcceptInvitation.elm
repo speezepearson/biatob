@@ -1,4 +1,4 @@
-port module AcceptInvitationPage exposing (..)
+port module Elements.AcceptInvitation exposing (main)
 
 import Browser
 import Html as H exposing (Html)
@@ -11,37 +11,55 @@ import Biatob.Proto.Mvp as Pb
 import Utils
 
 import API
-import AuthWidget
+import Widgets.AuthWidget as AuthWidget
+import Time
+import Task
 
+port authChanged : () -> Cmd msg
 port accepted : {dest : String} -> Cmd msg
 
-type AuthState = LoggedIn Pb.AuthToken | LoggedOut AuthWidget.Model
+type AuthState = LoggedIn Pb.AuthToken | LoggedOut AuthWidget.State
 type alias Model =
   { authState : AuthState
   , invitationId : Pb.InvitationId
   , destination : Maybe String
   , working : Bool
   , acceptNotification : Html Msg
+  , now : Time.Posix
   }
 
 type Msg
   = AcceptInvitation
   | AcceptInvitationFinished (Result Http.Error Pb.AcceptInvitationResponse)
-  | AuthWidgetMsg AuthWidget.Msg
+  | AuthWidgetEvent (Maybe AuthWidget.Event) AuthWidget.State
+  | LogInUsernameFinished (Result Http.Error Pb.LogInUsernameResponse)
+  | RegisterUsernameFinished (Result Http.Error Pb.RegisterUsernameResponse)
+  | SignOutFinished (Result Http.Error Pb.SignOutResponse)
+  | Tick Time.Posix
 
 init : JD.Value -> (Model, Cmd Msg)
 init flags =
   let auth = Utils.decodePbFromFlags Pb.authTokenDecoder "authTokenPbB64" flags in
   ( { authState = case auth of
         Just auth_ -> LoggedIn auth_
-        Nothing -> LoggedOut AuthWidget.initNoToken
+        Nothing -> LoggedOut AuthWidget.init
     , invitationId = Utils.mustDecodePbFromFlags Pb.invitationIdDecoder "invitationIdPbB64" flags
     , destination = JD.decodeValue (JD.field "destination" JD.string) flags |> Result.toMaybe
     , working = False
     , acceptNotification = H.text ""
+    , now = Time.millisToPosix 0
     }
-  , Cmd.none
+  , Task.perform Tick Time.now
   )
+
+authWidgetCtx : Model -> AuthWidget.Context Msg
+authWidgetCtx model =
+  { auth = case model.authState of
+     LoggedIn auth -> Just auth
+     LoggedOut _ -> Nothing
+  , now = model.now
+  , handle = AuthWidgetEvent
+  }
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
@@ -68,14 +86,55 @@ update msg model =
           ( { model | working = False , acceptNotification = Utils.redText "Invalid server response (neither Ok nor Error in protobuf)" }
           , Cmd.none
           )
-    AuthWidgetMsg widgetMsg ->
+    AuthWidgetEvent event widget ->
+      let
+        cmd = case event of
+          Just (AuthWidget.LogInUsername req) ->
+            API.postLogInUsername LogInUsernameFinished req
+          Just (AuthWidget.RegisterUsername req) ->
+            API.postRegisterUsername RegisterUsernameFinished req
+          Just (AuthWidget.SignOut req) ->
+            API.postSignOut SignOutFinished req
+          Nothing ->
+            Cmd.none
+      in
+        ( { model | authState = LoggedOut widget }
+        , cmd
+        )
+    LogInUsernameFinished res ->
       case model.authState of
         LoggedOut widget ->
-          let (newWidget, widgetCmd) = AuthWidget.update widgetMsg widget in
-          ( { model | authState = LoggedOut newWidget }
-          , Cmd.map AuthWidgetMsg widgetCmd
+          ( { model | authState = LoggedOut (widget |> AuthWidget.handleLogInUsernameResponse res)}
+          , Cmd.none
           )
-        _ -> Debug.todo "wrong state"
+        LoggedIn _ ->
+          ( { model | authState = case res |> Result.toMaybe |> Maybe.andThen .logInUsernameResult of
+                        Just (Pb.LogInUsernameResultOk auth) -> LoggedIn auth
+                        _ -> model.authState
+            }
+          , Cmd.none
+          )
+    RegisterUsernameFinished res ->
+      case model.authState of
+        LoggedOut widget ->
+          ( { model | authState = LoggedOut (widget |> AuthWidget.handleRegisterUsernameResponse res)}
+          , Cmd.none
+          )
+        LoggedIn _ ->
+          ( { model | authState = case res |> Result.toMaybe |> Maybe.andThen .registerUsernameResult of
+                        Just (Pb.RegisterUsernameResultOk auth) -> LoggedIn auth
+                        _ -> model.authState
+            }
+          , Cmd.none
+          )
+    SignOutFinished res ->
+      ( { model | authState = case res of
+                    Ok _ -> LoggedOut AuthWidget.init
+                    Err _ -> model.authState
+        }
+      , Cmd.none
+      )
+    Tick now -> ({model | now=now}, Cmd.none)
 
 isOwnInvitation : AuthState -> Pb.InvitationId -> Bool
 isOwnInvitation authState invitationId =
@@ -104,7 +163,7 @@ view model =
         LoggedOut authWidget ->
           [ H.text "If you trust them back, and you're interested in betting against them:"
           , H.ul []
-            [ H.li [] [H.text "Authenticate yourself: ", AuthWidget.view authWidget |> H.map AuthWidgetMsg]
+            [ H.li [] [H.text "Authenticate yourself: ", AuthWidget.view (authWidgetCtx model) authWidget]
             , H.li []
               [ H.text "...then click "
               , H.button

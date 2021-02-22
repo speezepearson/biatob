@@ -1,22 +1,19 @@
 {% extends 'base.html' %}
 {% block title %} {{title}} {% endblock %}
 {% block body %}
-  <script type="text/javascript" src="/elm/ViewPredictionPage.js"></script>
+  <script type="text/javascript" src="/elm/Prediction.js"></script>
   <main id="main-wrapper"><div id="main"></div></main>
   <script type="text/javascript">
 
     var authTokenPbB64 = {{ auth_token_pb_b64 | tojson }};
     var predictionPbB64 = {{ prediction_pb_b64 | tojson }};
     var predictionId = {{ prediction_id | tojson }};
-    var linkToAuthority = window.location.origin;
+    var httpOrigin = window.location.origin;
 
-    var main = Elm.ViewPredictionPage.init({
+    var main = Elm.Elements.Prediction.init({
       node: document.getElementById('main'),
-      flags: {authTokenPbB64, predictionPbB64, predictionId, linkToAuthority},
+      flags: {authTokenPbB64, predictionPbB64, predictionId, httpOrigin},
     });
     subscribeToCopy(main);
-    main.ports.changed.subscribe((predictionId) => {
-      window.location.reload();
-    });
   </script>
 {% endblock %}
