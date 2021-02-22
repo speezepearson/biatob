@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block title %} {{title}} {% endblock %}
 {% block body %}
-  <script type="text/javascript" src="/elm/ViewPredictionPage.js"></script>
+  <script type="text/javascript" src="/elm/Prediction.js"></script>
   <main id="main-wrapper"><div id="main"></div></main>
   <script type="text/javascript">
 
@@ -10,7 +10,7 @@
     var predictionId = {{ prediction_id | tojson }};
     var httpOrigin = window.location.origin;
 
-    var main = Elm.Elements.ViewPredictionPage.init({
+    var main = Elm.Elements.Prediction.init({
       node: document.getElementById('main'),
       flags: {authTokenPbB64, predictionPbB64, predictionId, httpOrigin},
     });

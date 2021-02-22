@@ -12,7 +12,7 @@ import Utils
 
 import Widgets.PredictionWidget as PredictionWidget
 import Widgets.SmallInvitationWidget as SmallInvitationWidget
-import Widgets.StakeForm as StakeForm
+import Widgets.StakeWidget as StakeWidget
 import Widgets.CopyWidget as CopyWidget
 import Task
 import API
@@ -188,7 +188,7 @@ update msg model =
             Just (PredictionWidget.Copy s) -> CopyWidget.copy s
             Just (PredictionWidget.InvitationEvent (SmallInvitationWidget.Copy s)) -> CopyWidget.copy s
             Just (PredictionWidget.InvitationEvent SmallInvitationWidget.CreateInvitation) -> API.postCreateInvitation (CreateInvitationFinished id) {notes=""}
-            Just (PredictionWidget.StakeEvent (StakeForm.Staked {bettorIsASkeptic, bettorStakeCents})) -> API.postStake (StakeFinished id) {predictionId=id, bettorIsASkeptic=bettorIsASkeptic, bettorStakeCents=bettorStakeCents}
+            Just (PredictionWidget.StakeEvent (StakeWidget.Staked {bettorIsASkeptic, bettorStakeCents})) -> API.postStake (StakeFinished id) {predictionId=id, bettorIsASkeptic=bettorIsASkeptic, bettorStakeCents=bettorStakeCents}
             Just (PredictionWidget.Resolve resolution) -> API.postResolve (ResolveFinished id) {predictionId=id, resolution=resolution, notes = ""}
           )
     Tick t ->

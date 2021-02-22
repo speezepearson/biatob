@@ -1,4 +1,4 @@
-module Elements.ViewPredictionPage exposing (..)
+module Elements.Prediction exposing (main)
 
 import Browser
 import Http
@@ -12,7 +12,7 @@ import Task
 import Widgets.CopyWidget as CopyWidget
 import API
 import Widgets.PredictionWidget as Widget
-import Widgets.StakeForm as StakeForm
+import Widgets.StakeWidget as StakeWidget
 import Widgets.SmallInvitationWidget as SmallInvitationWidget
 
 type alias Model = ( Widget.Context Msg , Widget.State )
@@ -47,7 +47,7 @@ update msg (ctx, model) =
           Just (Widget.Copy s) -> CopyWidget.copy s
           Just (Widget.InvitationEvent (SmallInvitationWidget.Copy s)) -> CopyWidget.copy s
           Just (Widget.InvitationEvent SmallInvitationWidget.CreateInvitation) -> API.postCreateInvitation CreateInvitationFinished {notes=""}
-          Just (Widget.StakeEvent (StakeForm.Staked {bettorIsASkeptic, bettorStakeCents})) -> API.postStake StakeFinished {predictionId=ctx.predictionId, bettorIsASkeptic=bettorIsASkeptic, bettorStakeCents=bettorStakeCents}
+          Just (Widget.StakeEvent (StakeWidget.Staked {bettorIsASkeptic, bettorStakeCents})) -> API.postStake StakeFinished {predictionId=ctx.predictionId, bettorIsASkeptic=bettorIsASkeptic, bettorStakeCents=bettorStakeCents}
           Just (Widget.Resolve resolution) -> API.postResolve ResolveFinished {predictionId=ctx.predictionId, resolution=resolution, notes = ""}
       in
         ((ctx, newState), cmd)

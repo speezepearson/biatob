@@ -1,4 +1,4 @@
-port module Elements.CreatePredictionPage exposing (..)
+port module Elements.CreatePrediction exposing (main)
 
 import Browser
 import Html as H exposing (Html)

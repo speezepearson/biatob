@@ -1,4 +1,4 @@
-module Elements.MyStakesPage exposing (..)
+module Elements.MyStakes exposing (main)
 
 import Browser
 import Json.Decode as JD

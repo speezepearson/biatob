@@ -1,4 +1,4 @@
-module Widgets.StakeForm exposing (..)
+module Widgets.StakeWidget exposing (..)
 
 import Browser
 import Html as H exposing (Html)

@@ -13,13 +13,13 @@ import Iso8601
 import Biatob.Proto.Mvp as Pb
 import Utils
 
-import Widgets.StakeForm as StakeForm
+import Widgets.StakeWidget as StakeWidget
 import Widgets.CopyWidget as CopyWidget
 import Widgets.SmallInvitationWidget as SmallInvitationWidget
 
 type Event
   = InvitationEvent SmallInvitationWidget.Event
-  | StakeEvent StakeForm.Event
+  | StakeEvent StakeWidget.Event
   | Copy String
   | Resolve Pb.Resolution
 type alias Context msg =
@@ -31,7 +31,7 @@ type alias Context msg =
   , handle : Maybe Event -> State -> msg
   }
 type alias State =
-  { stakeForm : StakeForm.State
+  { stakeForm : StakeWidget.State
   , working : Bool
   , notification : Html ()
   , invitationWidget : SmallInvitationWidget.State
@@ -46,7 +46,7 @@ invitationWidgetCtx ctx state =
 
 init : State
 init =
-  { stakeForm = StakeForm.init
+  { stakeForm = StakeWidget.init
   , working = False
   , notification = H.text ""
   , invitationWidget = SmallInvitationWidget.init
@@ -54,7 +54,7 @@ init =
 
 handleStakeResponse : Result Http.Error Pb.StakeResponse -> State -> State
 handleStakeResponse  res state =
-  { state | stakeForm = state.stakeForm |> StakeForm.handleStakeResponse res }
+  { state | stakeForm = state.stakeForm |> StakeWidget.handleStakeResponse res }
 handleCreateInvitationResponse : Result Http.Error Pb.CreateInvitationResponse -> State -> State
 handleCreateInvitationResponse res state =
   { state | invitationWidget = state.invitationWidget |> SmallInvitationWidget.handleCreateInvitationResponse res }
@@ -74,8 +74,8 @@ handleResolveResponse res state =
         Nothing ->
           { state | working = False , notification = Utils.redText "Invalid server response (neither Ok nor Error in protobuf)" }
 
-viewStakeFormOrExcuse : Context msg -> State -> Html msg
-viewStakeFormOrExcuse ctx state =
+viewStakeWidgetOrExcuse : Context msg -> State -> Html msg
+viewStakeWidgetOrExcuse ctx state =
   let creator = Utils.mustPredictionCreator ctx.prediction in
   if Utils.resolutionIsTerminal (Utils.currentResolution ctx.prediction) then
     H.text "This prediction has resolved, so cannot be bet in."
@@ -91,7 +91,7 @@ viewStakeFormOrExcuse ctx state =
         H.text ""
       else case (creator.trustsYou, creator.isTrusted) of
         (True, True) ->
-          StakeForm.view (stakeFormConfig ctx state) state.stakeForm
+          StakeWidget.view (stakeFormConfig ctx state) state.stakeForm
         (False, False) ->
           H.div []
             [ H.text <| "You and " ++ creator.displayName ++ " don't trust each other! If, in real life, you "
@@ -298,7 +298,7 @@ view ctx state =
             , H.text <| " " ++ rules
             ]
     , H.hr [] []
-    , viewStakeFormOrExcuse ctx state
+    , viewStakeWidgetOrExcuse ctx state
     , if creator.isSelf then
         H.div []
           [ H.text "If you want to link to your prediction, here are some snippets of HTML you could copy-paste:"
@@ -348,7 +348,7 @@ viewEmbedInfo ctx state =
         ]
       ]
 
-stakeFormConfig : Context msg -> State -> StakeForm.Config msg
+stakeFormConfig : Context msg -> State -> StakeWidget.Config msg
 stakeFormConfig ctx state =
   { disableCommit = (ctx.auth == Nothing || (Utils.mustPredictionCreator ctx.prediction).isSelf)
   , prediction = ctx.prediction

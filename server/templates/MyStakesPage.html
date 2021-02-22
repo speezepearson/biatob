@@ -5,7 +5,7 @@
     <h2>My Stakes</h2>
     <div id="main"></div>
   </main>
-  <script type="text/javascript" src="/elm/MyStakesPage.js"></script>
+  <script type="text/javascript" src="/elm/MyStakes.js"></script>
   <script type="text/javascript">
 
     var authTokenPbB64 = {{ auth_token_pb_b64 | tojson }};
@@ -16,7 +16,7 @@
       window.location = "/"; // TODO(P2): should be /login
     }
 
-    var main = Elm.Elements.MyStakesPage.init({
+    var main = Elm.Elements.MyStakes.init({
       node: document.getElementById('main'),
       flags: {authTokenPbB64, predictionsPbB64, httpOrigin},
     });

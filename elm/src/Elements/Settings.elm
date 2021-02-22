@@ -1,4 +1,4 @@
-module Elements.SettingsPage exposing (..)
+module Elements.Settings exposing (main)
 
 import Browser
 import Html as H exposing (Html)

@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block title %} Biatob - User {% endblock %} <!-- might want to add username -->
 {% block body %}
-  <script type="text/javascript" src="/elm/ViewUserPage.js"></script>
+  <script type="text/javascript" src="/elm/ViewUser.js"></script>
   <main id="main-wrapper"><div id="main"></div></main>
   <script type="text/javascript">
 
@@ -11,7 +11,7 @@
     var predictionsPbB64 = {{ predictions_pb_b64 | tojson }};
     var httpOrigin = window.origin;
 
-    var main = Elm.Elements.ViewUserPage.init({
+    var main = Elm.Elements.ViewUser.init({
       node: document.getElementById('main'),
       flags: {authTokenPbB64, userIdPbB64, userViewPbB64, predictionsPbB64, httpOrigin},
     });

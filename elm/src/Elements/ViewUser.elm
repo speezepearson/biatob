@@ -1,4 +1,4 @@
-port module Elements.ViewUserPage exposing (..)
+port module Elements.ViewUser exposing (main)
 
 import Browser
 import Html as H exposing (Html)

@@ -1,4 +1,4 @@
-port module Elements.AcceptInvitationPage exposing (..)
+port module Elements.AcceptInvitation exposing (main)
 
 import Browser
 import Html as H exposing (Html)

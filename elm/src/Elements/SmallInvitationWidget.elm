@@ -1,4 +1,4 @@
-module Elements.SmallInvitationWidgetStandalone exposing (..)
+module Elements.SmallInvitationWidget exposing (main)
 
 import Browser
 import Http

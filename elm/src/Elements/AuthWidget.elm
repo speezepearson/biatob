@@ -1,4 +1,4 @@
-port module Elements.AuthWidgetStandalone exposing (..)
+port module Elements.AuthWidget exposing (main)
 
 import Browser
 import Http
