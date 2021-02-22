@@ -22,18 +22,13 @@ unitToSeconds u =
     Days -> 60 * 60 * 24
     Weeks -> unitToSeconds Days * 7
 
-type Msg
-  = SetPrediction String
-  | SetResolvesTime String
-  | SetStake String
-  | SetLowP String
-  | SetHighP String
-  | SetOpenForUnit String
-  | SetOpenForN String
-  | SetSpecialRules String
-  | Tick Time.Posix
-
-type alias Model =
+type Event = Ignore
+type alias Context msg =
+  { handle : Maybe Event -> State -> msg
+  , disabled : Bool
+  , now : Time.Posix
+  }
+type alias State =
   { predictionField : Field () String
   , resolvesAtField : Field {now:Time.Posix} Time.Posix
   , stakeField : Field () Int
@@ -42,20 +37,18 @@ type alias Model =
   , openForUnitField : Field () OpenForUnit
   , openForSecondsField : Field {unit:OpenForUnit, resolvesAt:Maybe Time.Posix} Int
   , specialRulesField : Field () String
-  , disabled : Bool
-  , now : Time.Posix
   }
 
-toCreateRequest : Model -> Maybe Pb.CreatePredictionRequest
-toCreateRequest model =
-  Field.parse () model.predictionField |> Result.andThen (\prediction ->
-  Field.parse {now=model.now} model.resolvesAtField |> Result.andThen (\resolvesAt ->
-  Field.parse () model.stakeField |> Result.andThen (\stake ->
-  Field.parse () model.lowPField |> Result.andThen (\lowP ->
-  Field.parse {lowP=lowP} model.highPField |> Result.andThen (\highP ->
-  Field.parse () model.openForUnitField |> Result.andThen (\unit ->
-  Field.parse {unit=unit,resolvesAt=Just resolvesAt} model.openForSecondsField |> Result.andThen (\openForSeconds ->
-  Field.parse () model.specialRulesField |> Result.andThen (\specialRules ->
+toCreateRequest : Context msg -> State -> Maybe Pb.CreatePredictionRequest
+toCreateRequest ctx state =
+  Field.parse () state.predictionField |> Result.andThen (\prediction ->
+  Field.parse {now=ctx.now} state.resolvesAtField |> Result.andThen (\resolvesAt ->
+  Field.parse () state.stakeField |> Result.andThen (\stake ->
+  Field.parse () state.lowPField |> Result.andThen (\lowP ->
+  Field.parse {lowP=lowP} state.highPField |> Result.andThen (\highP ->
+  Field.parse () state.openForUnitField |> Result.andThen (\unit ->
+  Field.parse {unit=unit,resolvesAt=Just resolvesAt} state.openForSecondsField |> Result.andThen (\openForSeconds ->
+  Field.parse () state.specialRulesField |> Result.andThen (\specialRules ->
     Ok
       { prediction = prediction
       , certainty = Just { low=lowP, high=highP }
@@ -67,23 +60,10 @@ toCreateRequest model =
   ))))))))
   |> Result.toMaybe
 
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
-  case msg of
-    SetPrediction s -> ({ model | predictionField = model.predictionField |> Field.setStr s}, Cmd.none)
-    SetResolvesTime s -> ({ model | resolvesAtField = model.resolvesAtField |> Field.setStr s}, Cmd.none)
-    SetStake s -> ({ model | stakeField = model.stakeField |> Field.setStr s}, Cmd.none)
-    SetLowP s -> ({ model | lowPField = model.lowPField |> Field.setStr s}, Cmd.none)
-    SetHighP s -> ({ model | highPField = model.highPField |> Field.setStr s}, Cmd.none)
-    SetOpenForUnit s -> ({ model | openForUnitField = model.openForUnitField |> Field.setStr s}, Cmd.none)
-    SetOpenForN s -> ({ model | openForSecondsField = model.openForSecondsField |> Field.setStr s}, Cmd.none)
-    SetSpecialRules s -> ({ model | specialRulesField = model.specialRulesField |> Field.setStr s}, Cmd.none)
-    Tick t -> ( { model | now = t }, Cmd.none)
-
-view : Model -> Html Msg
-view model =
+view : Context msg -> State -> Html msg
+view ctx state =
   let
-    highPCtx = {lowP = Field.parse () model.lowPField |> Result.withDefault 0}
+    highPCtx = {lowP = Field.parse () state.lowPField |> Result.withDefault 0}
     placeholders =
       { prediction = "at least 50% of U.S. COVID-19 cases will be B117 or a derivative strain, as reported by the CDC"
       , stake = "100"
@@ -94,19 +74,19 @@ view model =
     [ H.ul [HA.class "new-prediction-form"]
         [ H.li []
             [ H.text "I predict that, by "
-            , Field.inputFor SetResolvesTime {now=model.now} model.resolvesAtField
+            , Field.inputFor (\s -> ctx.handle Nothing { state | resolvesAtField = state.resolvesAtField |> Field.setStr s}) {now=ctx.now} state.resolvesAtField
                 H.input
                 [ HA.type_ "date"
                 , HA.class "resolves-at-field"
-                , HA.disabled model.disabled
+                , HA.disabled ctx.disabled
                 ] []
             , H.text ", "
             , H.br [] []
-            , Field.inputFor SetPrediction () model.predictionField
+            , Field.inputFor (\s -> ctx.handle Nothing { state | predictionField = state.predictionField |> Field.setStr s}) () state.predictionField
                 H.textarea
                 [ HA.style "width" "100%"
                 , HA.placeholder placeholders.prediction
-                , HA.disabled model.disabled
+                , HA.disabled ctx.disabled
                 , HA.class "prediction-field"
                 ] []
             , H.details []
@@ -121,24 +101,24 @@ view model =
                 ]
           ]
         , H.li []
-            [ H.text "I think this is at least a"
-            , Field.inputFor SetLowP () model.lowPField
+            [ H.text "I think this has at least a"
+            , Field.inputFor (\s -> ctx.handle Nothing { state | lowPField = state.lowPField |> Field.setStr s}) () state.lowPField
                 H.input
                 [ HA.type_ "number", HA.min "0", HA.max "100", HA.step "any"
                 , HA.style "width" "5em"
-                , HA.disabled model.disabled
+                , HA.disabled ctx.disabled
                 ] []
             , H.text "% chance of happening,"
             , H.br [] []
             , H.text "but not more than a "
-            , Field.inputFor SetHighP highPCtx model.highPField
+            , Field.inputFor (\s -> ctx.handle Nothing { state | highPField = state.highPField |> Field.setStr s}) highPCtx state.highPField
                 H.input
-                [ HA.type_ "number", HA.min (String.fromFloat <| Result.withDefault 100 <| Field.parse () model.lowPField), HA.max "100", HA.step "any"
+                [ HA.type_ "number", HA.min (String.fromFloat <| Result.withDefault 100 <| Field.parse () state.lowPField), HA.max "100", HA.step "any"
                 , HA.style "width" "5em"
-                , HA.disabled model.disabled
+                , HA.disabled ctx.disabled
                 ] []
             , H.text "% chance."
-            , case Field.parse () model.lowPField of
+            , case Field.parse () state.lowPField of
                 Ok lowP ->
                   if lowP == 0 then
                     H.div [HA.style "opacity" "50%"]
@@ -179,26 +159,26 @@ view model =
             ]
         , H.li []
             [ H.text "I'm willing to bet up to $"
-            , Field.inputFor SetStake () model.stakeField
+            , Field.inputFor (\s -> ctx.handle Nothing { state | stakeField = state.stakeField |> Field.setStr s}) () state.stakeField
                 H.input
                 [ HA.type_ "number", HA.min "0", HA.max (String.fromInt <| maxLegalStakeCents//100)
                 , HA.style "width" "5em"
                 , HA.placeholder placeholders.stake
-                , HA.disabled model.disabled
+                , HA.disabled ctx.disabled
                 ] []
             , H.text " at these odds."
-            , case Field.parse () model.stakeField of
+            , case Field.parse () state.stakeField of
                   Err _ -> H.text ""
                   Ok stakeCents ->
                     let
                       betVsSkeptics : Maybe String
                       betVsSkeptics =
-                        Field.parse () model.lowPField
+                        Field.parse () state.lowPField
                         |> Result.toMaybe
                         |> Maybe.andThen (\lowP -> if lowP == 0 then Nothing else Just <| Utils.formatCents stakeCents ++ " against " ++ Utils.formatCents (round <| toFloat stakeCents * (1-lowP)/lowP))
                       betVsBelievers : Maybe String
                       betVsBelievers =
-                        Field.parse highPCtx model.highPField
+                        Field.parse highPCtx state.highPField
                         |> Result.toMaybe
                         |> Maybe.andThen (\highP -> if highP == 1 then Nothing else Just <| Utils.formatCents stakeCents ++ " against " ++ Utils.formatCents (round <| toFloat stakeCents * highP/(1-highP)))
                     in
@@ -210,15 +190,15 @@ view model =
             ]
         , H.li []
             [ H.text "This offer is open for "
-            , Field.inputFor SetOpenForN {unit=Field.parse () model.openForUnitField |> Result.withDefault Weeks, resolvesAt=Field.parse {now=model.now} model.resolvesAtField |> Result.toMaybe} model.openForSecondsField
+            , Field.inputFor (\s -> ctx.handle Nothing { state | openForSecondsField = state.openForSecondsField |> Field.setStr s}) {unit=Field.parse () state.openForUnitField |> Result.withDefault Weeks, resolvesAt=Field.parse {now=ctx.now} state.resolvesAtField |> Result.toMaybe} state.openForSecondsField
                 H.input
                 [ HA.type_ "number", HA.min "1"
                 , HA.style "width" "5em"
-                , HA.disabled model.disabled
+                , HA.disabled ctx.disabled
                 ] []
-            , Field.inputFor SetOpenForUnit () model.openForUnitField
+            , Field.inputFor (\s -> ctx.handle Nothing { state | openForUnitField = state.openForUnitField |> Field.setStr s}) () state.openForUnitField
                 H.select
-                [ HA.disabled model.disabled
+                [ HA.disabled ctx.disabled
                 ]
                 [ H.option [] [H.text "weeks"]
                 , H.option [] [H.text "days"]
@@ -234,11 +214,11 @@ view model =
             ]
         , H.li []
             [ H.text "Special rules (e.g. implicit assumptions, what counts as cheating):"
-            , Field.inputFor SetSpecialRules () model.specialRulesField
+            , Field.inputFor (\s -> ctx.handle Nothing { state | specialRulesField = state.specialRulesField |> Field.setStr s}) () state.specialRulesField
                 H.textarea
                 [ HA.style "width" "100%"
                 , HA.placeholder placeholders.specialRules
-                , HA.disabled model.disabled
+                , HA.disabled ctx.disabled
                 , HA.class "special-rules-field"
                 ]
                 []
@@ -246,64 +226,42 @@ view model =
         ]
     ]
 
-init : () -> ( Model , Cmd Msg )
-init () =
-  ( { predictionField = Field.init "" <| \() s -> if String.isEmpty s then Err "must not be empty" else Ok s
-    , resolvesAtField = Field.init "" <| \{now} s ->
-        case Iso8601.toTime s of
-          Err _ -> Err ""
-          Ok t -> if Utils.timeToUnixtime t < Utils.timeToUnixtime now then Err "must be in the future" else Ok t
-    , stakeField = Field.init "20" <| \() s ->
-        case String.toFloat s of
-          Nothing -> Err "must be a positive number"
-          Just dollars ->
-            if dollars <= 0 then Err "must be a positive number" else
-            if dollars > toFloat maxLegalStakeCents / 100 then Err "Sorry, I hate to be paternalistic, but I don't want to let people bet more than they can afford to lose, so I put in a semi-arbitrary $5000-per-prediction limit. I *do* plan to lift this restriction someday, there are just some site design issues I need to work out first, and they're not on top of my priority queue. Thanks for your patience! [dated 2021-02]" else
-            Ok <| round (100*dollars)
-    , lowPField = Field.init "50" <| \() s ->
-        case String.toFloat s of
-          Nothing -> Err "must be a number 0-100"
-          Just pct -> if pct < 0 || pct > 100 then Err "must be a number 0-100" else Ok (pct/100)
-    , highPField = Field.init "100" <| \{lowP} s ->
-        case String.toFloat s of
-          Nothing -> Err "must be a number 0-100"
-          Just pct -> if pct < 0 || pct > 100 then Err "must be a number 0-100" else let highP = pct/100 in
-            if highP < lowP - epsilon then
-              Err "can't be less than your low prob"
-            else if highP < lowP then
-              Ok lowP
-            else
-              Ok highP
-    , openForUnitField = Field.init "weeks" <| \() s ->
-        case s of
-          "days" -> Ok Days
-          "weeks" -> Ok Weeks
-          _ -> Err "unrecognized time unit"
-    , openForSecondsField = Field.init "2" <| \{unit} s ->
-        case String.toInt s of
-          Nothing -> Err "must be a positive integer"
-          Just n -> if n <= 0 then Err "must be a positive integer" else Ok (n * unitToSeconds unit)
-    , specialRulesField = Field.init "" <| \() s -> Ok s
-    , disabled = False
-    , now = Utils.unixtimeToTime 0
-    }
-  , Task.perform Tick Time.now
-  )
-
-disable : Model -> Model
-disable model = { model | disabled = True }
-enable : Model -> Model
-enable model = { model | disabled = False }
-
-subscriptions : Model -> Sub Msg
-subscriptions _ =
-  Time.every 1000 Tick
-
-main : Program () Model Msg
-main =
-  Browser.element
-    { init = init
-    , view = view
-    , update = update
-    , subscriptions = subscriptions
-    }
+init : State
+init =
+  { predictionField = Field.init "" <| \() s -> if String.isEmpty s then Err "must not be empty" else Ok s
+  , resolvesAtField = Field.init "" <| \{now} s ->
+      case Iso8601.toTime s of
+        Err _ -> Err ""
+        Ok t -> if Utils.timeToUnixtime t < Utils.timeToUnixtime now then Err "must be in the future" else Ok t
+  , stakeField = Field.init "20" <| \() s ->
+      case String.toFloat s of
+        Nothing -> Err "must be a positive number"
+        Just dollars ->
+          if dollars <= 0 then Err "must be a positive number" else
+          if dollars > toFloat maxLegalStakeCents / 100 then Err "Sorry, I hate to be paternalistic, but I don't want to let people bet more than they can afford to lose, so I put in a semi-arbitrary $5000-per-prediction limit. I *do* plan to lift this restriction someday, there are just some site design issues I need to work out first, and they're not on top of my priority queue. Thanks for your patience! [dated 2021-02]" else
+          Ok <| round (100*dollars)
+  , lowPField = Field.init "50" <| \() s ->
+      case String.toFloat s of
+        Nothing -> Err "must be a number 0-100"
+        Just pct -> if pct < 0 || pct > 100 then Err "must be a number 0-100" else Ok (pct/100)
+  , highPField = Field.init "100" <| \{lowP} s ->
+      case String.toFloat s of
+        Nothing -> Err "must be a number 0-100"
+        Just pct -> if pct < 0 || pct > 100 then Err "must be a number 0-100" else let highP = pct/100 in
+          if highP < lowP - epsilon then
+            Err "can't be less than your low prob"
+          else if highP < lowP then
+            Ok lowP
+          else
+            Ok highP
+  , openForUnitField = Field.init "weeks" <| \() s ->
+      case s of
+        "days" -> Ok Days
+        "weeks" -> Ok Weeks
+        _ -> Err "unrecognized time unit"
+  , openForSecondsField = Field.init "2" <| \{unit} s ->
+      case String.toInt s of
+        Nothing -> Err "must be a positive integer"
+        Just n -> if n <= 0 then Err "must be a positive integer" else Ok (n * unitToSeconds unit)
+  , specialRulesField = Field.init "" <| \() s -> Ok s
+  }

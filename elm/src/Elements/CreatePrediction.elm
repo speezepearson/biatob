@@ -12,7 +12,7 @@ import Time
 import Task
 
 import Biatob.Proto.Mvp as Pb
-import Widgets.CreatePredictionWidget as Widget
+import Widgets.CreatePredictionWidget as Form
 import Utils
 
 import Widgets.PredictionWidget as PredictionWidget
@@ -22,7 +22,7 @@ import Utils
 port createdPrediction : Int -> Cmd msg
 
 type alias Model =
-  { form : Widget.Model
+  { form : Form.State
   , auth : Maybe Pb.AuthToken
   , working : Bool
   , createError : Maybe String
@@ -30,7 +30,7 @@ type alias Model =
   }
 
 type Msg
-  = FormMsg Widget.Msg
+  = FormEvent (Maybe Form.Event) Form.State
   | Create
   | CreateFinished (Result Http.Error Pb.CreatePredictionResponse)
   | Tick Time.Posix
@@ -48,26 +48,33 @@ init flags =
   let
     auth : Maybe Pb.AuthToken
     auth =  Utils.decodePbFromFlags Pb.authTokenDecoder "authTokenPbB64" flags
-    (form, formCmd) = Widget.init ()
   in
-  ( { form = form |> if auth == Nothing then Widget.disable else Widget.enable
+  ( { form = Form.init
     , auth = auth
     , working = False
     , createError = Nothing
     , now = Utils.unixtimeToTime 0
     }
-  , Cmd.batch [Task.perform Tick Time.now, Cmd.map FormMsg formCmd]
+  , Task.perform Tick Time.now
   )
 
+formCtx : Model -> Form.Context Msg
+formCtx model =
+  { handle = FormEvent
+  , now = model.now
+  , disabled = (model.auth == Nothing)
+  }
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
-    FormMsg formMsg ->
-      let (newForm, formCmd) = Widget.update formMsg model.form in
-      ({ model | form = newForm }, Cmd.map FormMsg formCmd)
+    FormEvent event newState ->
+      (case event of
+        Nothing ->     ( model , Cmd.none )
+        Just Form.Ignore -> ( model , Cmd.none )
+      ) |> Tuple.mapFirst (\m -> { m | form = newState })
     Create ->
-      case Widget.toCreateRequest model.form of
+      case Form.toCreateRequest (formCtx model) model.form of
         Just req ->
           ( { model | working = True , createError = Nothing }
           , API.postCreate CreateFinished req
@@ -110,11 +117,11 @@ view model =
           [ H.span [HA.style "color" "red"] [H.text "You need to log in to create a new prediction!"]
           , H.hr [] []
           ]
-    , Widget.view model.form |> H.map FormMsg
+    , Form.view (formCtx model) model.form
     , H.div [HA.style "text-align" "center", HA.style "margin-bottom" "2em"]
         [ H.button
             [ HE.onClick Create
-            , HA.disabled (model.auth == Nothing || Widget.toCreateRequest model.form == Nothing || model.working)
+            , HA.disabled (model.auth == Nothing || Form.toCreateRequest (formCtx model) model.form == Nothing || model.working)
             ]
             [ H.text <| if model.auth == Nothing then "Log in to create" else "Create" ]
         ]
@@ -124,7 +131,7 @@ view model =
     , H.hr [] []
     , H.text "Preview:"
     , H.div [HA.style "border" "1px solid black", HA.style "padding" "1em", HA.style "margin" "1em"]
-        [ case Widget.toCreateRequest model.form of
+        [ case Form.toCreateRequest (formCtx model) model.form of
             Just req ->
               previewPrediction {request=req, creatorName=authName model.auth, createdAt=model.now}
               |> (\prediction -> PredictionWidget.view
@@ -153,10 +160,7 @@ previewPrediction {request, creatorName, createdAt} =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-  Sub.batch
-    [ Time.every 1000 Tick
-    , Widget.subscriptions model.form |> Sub.map FormMsg
-    ]
+  Time.every 1000 Tick
 
 main : Program JD.Value Model Msg
 main =
