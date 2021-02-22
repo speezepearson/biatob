@@ -34,7 +34,7 @@ type alias Context msg =
 type alias State =
   { stakeForm : StakeWidget.State
   , working : Bool
-  , notification : Html ()
+  , notification : Html Never
   , invitationWidget : SmallInvitationWidget.State
   }
 
@@ -273,7 +273,7 @@ viewResolveButtons ctx state =
               , H.button [HE.onClick <| ctx.handle (Just <| Resolve Pb.ResolutionInvalid) { state | working = True , notification = H.text "" }] [H.text "Resolve INVALID"]
               ]
           Pb.ResolutionUnrecognized_ _ -> Debug.todo "unrecognized resolution"
-      , state.notification |> H.map (\_ -> ctx.handle Nothing state)
+      , state.notification |> H.map never
       ]
   else
     H.text ""

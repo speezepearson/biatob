@@ -33,7 +33,7 @@ type alias State =
   { usernameField : Field () String
   , passwordField : Field () String
   , working : Bool
-  , notification : Html ()
+  , notification : Html Never
   }
 
 
@@ -182,7 +182,7 @@ view ctx state =
             , HE.onClick registerMsg
             ]
             [H.text "Sign up"]
-        , state.notification |> H.map (\_ -> ctx.handle Nothing state)
+        , state.notification |> H.map never
         ]
     Just auth ->
       H.div []

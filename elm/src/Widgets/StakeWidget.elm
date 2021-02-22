@@ -26,7 +26,7 @@ type alias State =
   , skepticStakeField : Field {max : Int} Int
   , now : Time.Posix
   , working : Bool
-  , notification : Html ()
+  , notification : Html Never
   }
 
 handleStakeResponse : Result Http.Error Pb.StakeResponse -> State -> State
@@ -108,6 +108,7 @@ view config state =
           )
           [H.text "Commit"]
       ]
+    , state.notification |> H.map never
     ]
 
 init : State

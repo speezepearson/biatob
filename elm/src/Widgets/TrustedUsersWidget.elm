@@ -28,7 +28,7 @@ type alias State =
   { invitationWidget : SmallInvitationWidget.State
   , addTrustedUserField : Field () String
   , working : Bool
-  , notification : Html ()
+  , notification : Html Never
   }
 
 invitationWidgetCtx : Context msg -> State -> SmallInvitationWidget.Context msg
@@ -102,7 +102,7 @@ viewInvitations ctx state filter =
 view : Context msg -> State -> Html msg
 view ctx state =
   H.div []
-    [ state.notification |> H.map (\_ -> ctx.handle Nothing state)
+    [ state.notification |> H.map never
     , H.strong [] [H.text "You trust: "]
     , if List.isEmpty ctx.trustedUsers then
         H.text "nobody yet!"

@@ -22,7 +22,7 @@ type alias Context msg =
 type alias State =
   { invitationId : Maybe Pb.InvitationId
   , working : Bool
-  , notification : Html ()
+  , notification : Html Never
   }
 
 handleCreateInvitationResponse : Result Http.Error Pb.CreateInvitationResponse -> State -> State
@@ -79,7 +79,7 @@ view ctx state =
         [ H.text <| if state.working then "Creating..." else if state.invitationId == Nothing then "Create invitation" else "Create another"
         ]
     , H.text " "
-    , state.notification |> H.map (\_ -> ctx.handle Nothing state)
+    , state.notification |> H.map never
     , H.text " "
     , help
     ]

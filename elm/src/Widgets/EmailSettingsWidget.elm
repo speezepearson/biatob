@@ -28,7 +28,7 @@ type alias State =
   { emailField : Field () String
   , codeField : Field () String
   , working : Bool
-  , notification : Html ()
+  , notification : Html Never
   }
 
 init : State
@@ -121,7 +121,7 @@ view ctx state =
             [ HE.onClick submitMsg
             , HA.disabled <| state.working || Result.toMaybe (Field.parse () state.emailField) == Nothing
             ] [H.text "Send verification"]
-        , state.notification |> H.map (\_ -> ctx.handle Nothing state)
+        , state.notification |> H.map never
         ]
     Just (Pb.EmailFlowStateKindCodeSent {email}) ->
       let
@@ -144,7 +144,7 @@ view ctx state =
             , HA.disabled <| state.working || Result.toMaybe (Field.parse () state.codeField) == Nothing
             ] [H.text "Verify code"]
           -- TODO: "Resend email"
-        , state.notification |> H.map (\_ -> ctx.handle Nothing state)
+        , state.notification |> H.map never
         ]
     Just (Pb.EmailFlowStateKindVerified email) ->
       H.div []
@@ -167,7 +167,7 @@ view ctx state =
             , H.text " Email notifications when predictions you've bet on resolve?"
             ]
         , H.br [] []
-        , state.notification |> H.map (\_ -> ctx.handle Nothing state)
+        , state.notification |> H.map never
         ]
     
     Nothing -> Utils.redText "Sorry, you've hit a bug! This should show your email settings."
