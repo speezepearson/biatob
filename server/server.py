@@ -670,7 +670,7 @@ class FsBackedServicer(Servicer):
             requester_info.email.MergeFrom(mvp_pb2.EmailFlowState(code_sent=mvp_pb2.EmailFlowState.CodeSent(email=request.email, code=new_hashed_password(code))))
             wstate.username_users[token.owner.username].info.CopyFrom(requester_info) # TODO: hack
             logger.info('set email address', who=str(token.owner), address=request.email)
-            return mvp_pb2.SetEmailResponse(ok=mvp_pb2.VOID)
+            return mvp_pb2.SetEmailResponse(ok=requester_info.email)
 
     @checks_token
     @log_action
@@ -692,7 +692,7 @@ class FsBackedServicer(Servicer):
                 return mvp_pb2.VerifyEmailResponse(error=mvp_pb2.VerifyEmailResponse.Error(catchall='bad code'))
             requester_info.email.CopyFrom(mvp_pb2.EmailFlowState(verified=code_sent_state.email))
             logger.info('verified email address', who=str(token.owner), address=code_sent_state.email)
-            return mvp_pb2.VerifyEmailResponse(verified_email=code_sent_state.email)
+            return mvp_pb2.VerifyEmailResponse(ok=requester_info.email)
 
     @checks_token
     @log_action
@@ -748,7 +748,10 @@ class FsBackedServicer(Servicer):
                 accepted_by=None,
             )
             info.invitations[nonce].CopyFrom(invitation)
-            return mvp_pb2.CreateInvitationResponse(ok=mvp_pb2.InvitationId(inviter=token.owner, nonce=nonce))
+            return mvp_pb2.CreateInvitationResponse(ok=mvp_pb2.CreateInvitationResponse.Result(
+                id=mvp_pb2.InvitationId(inviter=token.owner, nonce=nonce),
+                invitation=invitation,
+            ))
 
     @checks_token
     @log_action

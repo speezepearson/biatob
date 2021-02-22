@@ -10,7 +10,7 @@ import Biatob.Proto.Mvp as Pb
 import Utils
 
 import Widgets.ChangePasswordWidget as ChangePasswordWidget
-import Elements.EmailSettingsWidget as EmailSettingsWidget
+import Widgets.EmailSettingsWidget as EmailSettingsWidget
 import Widgets.TrustedUsersWidget as TrustedUsersWidget
 import Widgets.CopyWidget as CopyWidget
 import API
@@ -21,9 +21,8 @@ type UserTypeSpecificSettings
 
 type alias Model =
   { auth : Pb.AuthToken
-  , trustedUsers : List Pb.UserId
-  , invitations : Dict String Pb.Invitation
-  , emailSettingsWidget : EmailSettingsWidget.Model
+  , userInfo : Pb.GenericUserInfo
+  , emailSettingsWidget : EmailSettingsWidget.State
   , trustedUsersWidget : TrustedUsersWidget.State
   , userTypeSettings : UserTypeSpecificSettings
   , httpOrigin : String
@@ -33,17 +32,28 @@ trustedUsersCtx : Model -> TrustedUsersWidget.Context Msg
 trustedUsersCtx model =
   { auth = model.auth
   , httpOrigin = model.httpOrigin
-  , invitations = model.invitations
-  , trustedUsers = model.trustedUsers
+  , invitations = model.userInfo.invitations |> Utils.mustMapValues
+  , trustedUsers = model.userInfo.trustedUsers
   , handle = TrustedUsersEvent
   }
 
+emailSettingsCtx : Model -> EmailSettingsWidget.Context Msg
+emailSettingsCtx model =
+  { emailFlowState = model.userInfo |> Utils.mustUserInfoEmail
+  , emailRemindersToResolve = model.userInfo.emailRemindersToResolve
+  , emailResolutionNotifications = model.userInfo.emailResolutionNotifications
+  , handle = EmailSettingsEvent
+  }
+
 type Msg
-  = EmailSettingsMsg EmailSettingsWidget.Msg
+  = EmailSettingsEvent (Maybe EmailSettingsWidget.Event) EmailSettingsWidget.State
   | TrustedUsersEvent (Maybe TrustedUsersWidget.Event) TrustedUsersWidget.State
   | ChangePasswordMsg ChangePasswordWidget.Msg
   | CreateInvitationFinished (Result Http.Error Pb.CreateInvitationResponse)
   | SetTrustedFinished (Result Http.Error Pb.SetTrustedResponse)
+  | SetEmailFinished (Result Http.Error Pb.SetEmailResponse)
+  | VerifyEmailFinished (Result Http.Error Pb.VerifyEmailResponse)
+  | UpdateSettingsFinished (Result Http.Error Pb.UpdateSettingsResponse)
 
 init : JD.Value -> (Model, Cmd Msg)
 init flags =
@@ -54,7 +64,6 @@ init flags =
     genericInfo = case Utils.mustGetSettingsResult pbResp of
       Pb.GetSettingsResultError e -> Debug.todo (Debug.toString e)
       Pb.GetSettingsResultOkUsername usernameInfo -> Utils.mustUsernameGenericInfo usernameInfo
-    (emailSettingsWidget, emailSettingsCmd) = EmailSettingsWidget.initFromUserInfo genericInfo
   in
   case Utils.mustGetSettingsResult pbResp of
     Pb.GetSettingsResultError e -> Debug.todo (Debug.toString e)
@@ -63,17 +72,13 @@ init flags =
         (changePasswordWidget, changePasswordCmd) = ChangePasswordWidget.init ()
       in
       ( { auth = auth
-        , trustedUsers = genericInfo.trustedUsers
-        , invitations = genericInfo.invitations |> Utils.mustMapValues
-        , emailSettingsWidget = emailSettingsWidget
+        , userInfo = genericInfo
+        , emailSettingsWidget = EmailSettingsWidget.init
         , trustedUsersWidget = TrustedUsersWidget.init
         , userTypeSettings = UsernameSettings changePasswordWidget
         , httpOrigin = httpOrigin
         }
-      , Cmd.batch
-          [ Cmd.map ChangePasswordMsg changePasswordCmd
-          , Cmd.map EmailSettingsMsg emailSettingsCmd
-          ]
+      , Cmd.map ChangePasswordMsg changePasswordCmd
       )
 
 update : Msg -> Model -> (Model, Cmd Msg)
@@ -87,10 +92,6 @@ update msg model =
           , Cmd.map ChangePasswordMsg cmd
           )
 
-    EmailSettingsMsg widgetMsg ->
-      let (newWidget, cmd) = EmailSettingsWidget.update widgetMsg model.emailSettingsWidget in
-      ( { model | emailSettingsWidget = newWidget }, Cmd.map EmailSettingsMsg cmd)
-
     TrustedUsersEvent event newWidget ->
       (case event of
         Just (TrustedUsersWidget.Copy s) -> ( model , CopyWidget.copy s )
@@ -100,16 +101,56 @@ update msg model =
         Nothing -> ( model , Cmd.none )
       ) |> Tuple.mapFirst (\m -> { m | trustedUsersWidget = newWidget })
 
+    EmailSettingsEvent event newWidget ->
+      (case event of
+        Just (EmailSettingsWidget.SetEmail req) -> (model, API.postSetEmail SetEmailFinished req)
+        Just (EmailSettingsWidget.VerifyEmail req) -> (model, API.postVerifyEmail VerifyEmailFinished req)
+        Just (EmailSettingsWidget.UpdateSettings req) -> (model, API.postUpdateSettings UpdateSettingsFinished req)
+        Just EmailSettingsWidget.Ignore -> (model, Cmd.none)
+        Nothing -> (model, Cmd.none)
+      ) |> Tuple.mapFirst (\m -> { m | emailSettingsWidget = newWidget })
+
     CreateInvitationFinished res ->
-      ( { model | trustedUsersWidget = model.trustedUsersWidget |> TrustedUsersWidget.handleCreateInvitationResponse res}
+      ( { model | trustedUsersWidget = model.trustedUsersWidget |> TrustedUsersWidget.handleCreateInvitationResponse res
+                , userInfo = case res |> Result.toMaybe |> Maybe.andThen .createInvitationResult of
+                    Just (Pb.CreateInvitationResultOk result) -> model.userInfo |> (\u -> { u | invitations = u.invitations |> Dict.insert (result.id |> Utils.must "" |> .nonce) result.invitation })
+                    _ -> model.userInfo
+        }
       , Cmd.none
       )
 
     SetTrustedFinished res ->
       ( { model | trustedUsersWidget = model.trustedUsersWidget |> TrustedUsersWidget.handleSetTrustedResponse res
-                , trustedUsers = case res |> Result.toMaybe |> Maybe.andThen .setTrustedResult of
-                    Just (Pb.SetTrustedResultOk {values}) -> values
-                    _ -> model.trustedUsers
+                , userInfo = case res |> Result.toMaybe |> Maybe.andThen .setTrustedResult of
+                    Just (Pb.SetTrustedResultOk {values}) -> model.userInfo |> (\u -> { u | trustedUsers = values })
+                    _ -> model.userInfo
+        }
+      , Cmd.none
+      )
+
+    SetEmailFinished res ->
+      ( { model | emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleSetEmailResponse res
+                , userInfo = case res |> Result.toMaybe |> Maybe.andThen .setEmailResult of
+                    Just (Pb.SetEmailResultOk emailFlowState) -> model.userInfo |> (\u -> { u | email = Just emailFlowState })
+                    _ -> model.userInfo
+        }
+      , Cmd.none
+      )
+
+    VerifyEmailFinished res ->
+      ( { model | emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleVerifyEmailResponse res
+                , userInfo = case res |> Result.toMaybe |> Maybe.andThen .verifyEmailResult of
+                    Just (Pb.VerifyEmailResultOk emailFlowState) -> model.userInfo |> (\u -> { u | email = Just emailFlowState })
+                    _ -> model.userInfo
+        }
+      , Cmd.none
+      )
+
+    UpdateSettingsFinished res ->
+      ( { model | emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleUpdateSettingsResponse res
+                , userInfo = case res |> Result.toMaybe |> Maybe.andThen .updateSettingsResult of
+                    Just (Pb.UpdateSettingsResultOk userInfo) -> userInfo
+                    _ -> model.userInfo
         }
       , Cmd.none
       )
@@ -121,7 +162,7 @@ view model =
     [ H.h2 [] [H.text "Settings"]
     , H.hr [] []
     , H.h3 [] [H.text "Email"]
-    , H.map EmailSettingsMsg <| EmailSettingsWidget.view model.emailSettingsWidget
+    , EmailSettingsWidget.view (emailSettingsCtx model) model.emailSettingsWidget
     , H.hr [] []
     , H.h3 [] [H.text "Trust"]
     , TrustedUsersWidget.view (trustedUsersCtx model) model.trustedUsersWidget
@@ -140,12 +181,9 @@ viewUserTypeSettings settings =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-  Sub.batch
-    [ EmailSettingsWidget.subscriptions model.emailSettingsWidget |> Sub.map EmailSettingsMsg
-    , case model.userTypeSettings of
-        UsernameSettings changePasswordWidget ->
-          ChangePasswordWidget.subscriptions changePasswordWidget |> Sub.map ChangePasswordMsg
-    ]
+  case model.userTypeSettings of
+    UsernameSettings changePasswordWidget ->
+      ChangePasswordWidget.subscriptions changePasswordWidget |> Sub.map ChangePasswordMsg
 
 main : Program JD.Value Model Msg
 main =

@@ -2,7 +2,7 @@
 
 
 module Biatob.Proto.Mvp exposing
-    ( Void(..), Resolution(..), Kind(..), UserId, AuthToken, CredentialsConfig, CredentialsConfigSmtpCredentials, InvitationId, Invitation, EmailFlowStateKind(..), EmailFlowState, EmailFlowStateCodeSent, HashedPassword, GenericUserInfo, UsernameInfo, WorldState, WorldStatePrediction, ResolutionEvent, Trade, WhoamiRequest, WhoamiResponse, SignOutRequest, SignOutResponse, RegisterUsernameRequest, RegisterUsernameResult(..), RegisterUsernameResponse, RegisterUsernameResponseError, LogInUsernameRequest, LogInUsernameResult(..), LogInUsernameResponse, LogInUsernameResponseError, CertaintyRange, CreatePredictionRequest, CreatePredictionResult(..), CreatePredictionResponse, CreatePredictionResponseError, GetPredictionRequest, GetPredictionResult(..), GetPredictionResponse, GetPredictionResponseError, UserPredictionView, UserUserView, ListMyStakesRequest, ListMyStakesResult(..), ListMyStakesResponse, ListMyStakesResponseError, PredictionsById, ListPredictionsRequest, ListPredictionsResult(..), ListPredictionsResponse, ListPredictionsResponseError, StakeRequest, StakeResult(..), StakeResponse, StakeResponseError, ResolveRequest, ResolveResult(..), ResolveResponse, ResolveResponseError, SetTrustedRequest, SetTrustedResult(..), SetTrustedResponse, SetTrustedResponseError, UserIds, GetUserRequest, GetUserResult(..), GetUserResponse, GetUserResponseError, ChangePasswordRequest, ChangePasswordResult(..), ChangePasswordResponse, ChangePasswordResponseError, SetEmailRequest, SetEmailResult(..), SetEmailResponse, SetEmailResponseError, VerifyEmailRequest, VerifyEmailResult(..), VerifyEmailResponse, VerifyEmailResponseError, GetSettingsRequest, GetSettingsResult(..), GetSettingsResponse, GetSettingsResponseError, MaybeBool, UpdateSettingsRequest, UpdateSettingsResult(..), UpdateSettingsResponse, UpdateSettingsResponseError, CreateInvitationRequest, CreateInvitationResult(..), CreateInvitationResponse, CreateInvitationResponseError, AcceptInvitationRequest, AcceptInvitationResult(..), AcceptInvitationResponse, AcceptInvitationResponseError
+    ( Void(..), Resolution(..), Kind(..), UserId, AuthToken, CredentialsConfig, CredentialsConfigSmtpCredentials, InvitationId, Invitation, EmailFlowStateKind(..), EmailFlowState, EmailFlowStateCodeSent, HashedPassword, GenericUserInfo, UsernameInfo, WorldState, WorldStatePrediction, ResolutionEvent, Trade, WhoamiRequest, WhoamiResponse, SignOutRequest, SignOutResponse, RegisterUsernameRequest, RegisterUsernameResult(..), RegisterUsernameResponse, RegisterUsernameResponseError, LogInUsernameRequest, LogInUsernameResult(..), LogInUsernameResponse, LogInUsernameResponseError, CertaintyRange, CreatePredictionRequest, CreatePredictionResult(..), CreatePredictionResponse, CreatePredictionResponseError, GetPredictionRequest, GetPredictionResult(..), GetPredictionResponse, GetPredictionResponseError, UserPredictionView, UserUserView, ListMyStakesRequest, ListMyStakesResult(..), ListMyStakesResponse, ListMyStakesResponseError, PredictionsById, ListPredictionsRequest, ListPredictionsResult(..), ListPredictionsResponse, ListPredictionsResponseError, StakeRequest, StakeResult(..), StakeResponse, StakeResponseError, ResolveRequest, ResolveResult(..), ResolveResponse, ResolveResponseError, SetTrustedRequest, SetTrustedResult(..), SetTrustedResponse, SetTrustedResponseError, UserIds, GetUserRequest, GetUserResult(..), GetUserResponse, GetUserResponseError, ChangePasswordRequest, ChangePasswordResult(..), ChangePasswordResponse, ChangePasswordResponseError, SetEmailRequest, SetEmailResult(..), SetEmailResponse, SetEmailResponseError, VerifyEmailRequest, VerifyEmailResult(..), VerifyEmailResponse, VerifyEmailResponseError, GetSettingsRequest, GetSettingsResult(..), GetSettingsResponse, GetSettingsResponseError, MaybeBool, UpdateSettingsRequest, UpdateSettingsResult(..), UpdateSettingsResponse, UpdateSettingsResponseError, CreateInvitationRequest, CreateInvitationResult(..), CreateInvitationResponse, CreateInvitationResponseResult, CreateInvitationResponseError, AcceptInvitationRequest, AcceptInvitationResult(..), AcceptInvitationResponse, AcceptInvitationResponseError
     , userIdDecoder, authTokenDecoder, credentialsConfigDecoder, invitationIdDecoder, invitationDecoder, emailFlowStateDecoder, hashedPasswordDecoder, genericUserInfoDecoder, usernameInfoDecoder, worldStateDecoder, resolutionEventDecoder, tradeDecoder, whoamiRequestDecoder, whoamiResponseDecoder, signOutRequestDecoder, signOutResponseDecoder, registerUsernameRequestDecoder, registerUsernameResponseDecoder, logInUsernameRequestDecoder, logInUsernameResponseDecoder, certaintyRangeDecoder, createPredictionRequestDecoder, createPredictionResponseDecoder, getPredictionRequestDecoder, getPredictionResponseDecoder, userPredictionViewDecoder, userUserViewDecoder, listMyStakesRequestDecoder, listMyStakesResponseDecoder, predictionsByIdDecoder, listPredictionsRequestDecoder, listPredictionsResponseDecoder, stakeRequestDecoder, stakeResponseDecoder, resolveRequestDecoder, resolveResponseDecoder, setTrustedRequestDecoder, setTrustedResponseDecoder, userIdsDecoder, getUserRequestDecoder, getUserResponseDecoder, changePasswordRequestDecoder, changePasswordResponseDecoder, setEmailRequestDecoder, setEmailResponseDecoder, verifyEmailRequestDecoder, verifyEmailResponseDecoder, getSettingsRequestDecoder, getSettingsResponseDecoder, maybeBoolDecoder, updateSettingsRequestDecoder, updateSettingsResponseDecoder, createInvitationRequestDecoder, createInvitationResponseDecoder, acceptInvitationRequestDecoder, acceptInvitationResponseDecoder
     , toUserIdEncoder, toAuthTokenEncoder, toCredentialsConfigEncoder, toInvitationIdEncoder, toInvitationEncoder, toEmailFlowStateEncoder, toHashedPasswordEncoder, toGenericUserInfoEncoder, toUsernameInfoEncoder, toWorldStateEncoder, toResolutionEventEncoder, toTradeEncoder, toWhoamiRequestEncoder, toWhoamiResponseEncoder, toSignOutRequestEncoder, toSignOutResponseEncoder, toRegisterUsernameRequestEncoder, toRegisterUsernameResponseEncoder, toLogInUsernameRequestEncoder, toLogInUsernameResponseEncoder, toCertaintyRangeEncoder, toCreatePredictionRequestEncoder, toCreatePredictionResponseEncoder, toGetPredictionRequestEncoder, toGetPredictionResponseEncoder, toUserPredictionViewEncoder, toUserUserViewEncoder, toListMyStakesRequestEncoder, toListMyStakesResponseEncoder, toPredictionsByIdEncoder, toListPredictionsRequestEncoder, toListPredictionsResponseEncoder, toStakeRequestEncoder, toStakeResponseEncoder, toResolveRequestEncoder, toResolveResponseEncoder, toSetTrustedRequestEncoder, toSetTrustedResponseEncoder, toUserIdsEncoder, toGetUserRequestEncoder, toGetUserResponseEncoder, toChangePasswordRequestEncoder, toChangePasswordResponseEncoder, toSetEmailRequestEncoder, toSetEmailResponseEncoder, toVerifyEmailRequestEncoder, toVerifyEmailResponseEncoder, toGetSettingsRequestEncoder, toGetSettingsResponseEncoder, toMaybeBoolEncoder, toUpdateSettingsRequestEncoder, toUpdateSettingsResponseEncoder, toCreateInvitationRequestEncoder, toCreateInvitationResponseEncoder, toAcceptInvitationRequestEncoder, toAcceptInvitationResponseEncoder
     )
@@ -20,7 +20,7 @@ To run it use [`elm-protocol-buffers`](https://package.elm-lang.org/packages/eri
 
 # Model
 
-@docs Void, Resolution, Kind, UserId, AuthToken, CredentialsConfig, CredentialsConfigSmtpCredentials, InvitationId, Invitation, EmailFlowStateKind, EmailFlowState, EmailFlowStateCodeSent, HashedPassword, GenericUserInfo, UsernameInfo, WorldState, WorldStatePrediction, ResolutionEvent, Trade, WhoamiRequest, WhoamiResponse, SignOutRequest, SignOutResponse, RegisterUsernameRequest, RegisterUsernameResult, RegisterUsernameResponse, RegisterUsernameResponseError, LogInUsernameRequest, LogInUsernameResult, LogInUsernameResponse, LogInUsernameResponseError, CertaintyRange, CreatePredictionRequest, CreatePredictionResult, CreatePredictionResponse, CreatePredictionResponseError, GetPredictionRequest, GetPredictionResult, GetPredictionResponse, GetPredictionResponseError, UserPredictionView, UserUserView, ListMyStakesRequest, ListMyStakesResult, ListMyStakesResponse, ListMyStakesResponseError, PredictionsById, ListPredictionsRequest, ListPredictionsResult, ListPredictionsResponse, ListPredictionsResponseError, StakeRequest, StakeResult, StakeResponse, StakeResponseError, ResolveRequest, ResolveResult, ResolveResponse, ResolveResponseError, SetTrustedRequest, SetTrustedResult, SetTrustedResponse, SetTrustedResponseError, UserIds, GetUserRequest, GetUserResult, GetUserResponse, GetUserResponseError, ChangePasswordRequest, ChangePasswordResult, ChangePasswordResponse, ChangePasswordResponseError, SetEmailRequest, SetEmailResult, SetEmailResponse, SetEmailResponseError, VerifyEmailRequest, VerifyEmailResult, VerifyEmailResponse, VerifyEmailResponseError, GetSettingsRequest, GetSettingsResult, GetSettingsResponse, GetSettingsResponseError, MaybeBool, UpdateSettingsRequest, UpdateSettingsResult, UpdateSettingsResponse, UpdateSettingsResponseError, CreateInvitationRequest, CreateInvitationResult, CreateInvitationResponse, CreateInvitationResponseError, AcceptInvitationRequest, AcceptInvitationResult, AcceptInvitationResponse, AcceptInvitationResponseError
+@docs Void, Resolution, Kind, UserId, AuthToken, CredentialsConfig, CredentialsConfigSmtpCredentials, InvitationId, Invitation, EmailFlowStateKind, EmailFlowState, EmailFlowStateCodeSent, HashedPassword, GenericUserInfo, UsernameInfo, WorldState, WorldStatePrediction, ResolutionEvent, Trade, WhoamiRequest, WhoamiResponse, SignOutRequest, SignOutResponse, RegisterUsernameRequest, RegisterUsernameResult, RegisterUsernameResponse, RegisterUsernameResponseError, LogInUsernameRequest, LogInUsernameResult, LogInUsernameResponse, LogInUsernameResponseError, CertaintyRange, CreatePredictionRequest, CreatePredictionResult, CreatePredictionResponse, CreatePredictionResponseError, GetPredictionRequest, GetPredictionResult, GetPredictionResponse, GetPredictionResponseError, UserPredictionView, UserUserView, ListMyStakesRequest, ListMyStakesResult, ListMyStakesResponse, ListMyStakesResponseError, PredictionsById, ListPredictionsRequest, ListPredictionsResult, ListPredictionsResponse, ListPredictionsResponseError, StakeRequest, StakeResult, StakeResponse, StakeResponseError, ResolveRequest, ResolveResult, ResolveResponse, ResolveResponseError, SetTrustedRequest, SetTrustedResult, SetTrustedResponse, SetTrustedResponseError, UserIds, GetUserRequest, GetUserResult, GetUserResponse, GetUserResponseError, ChangePasswordRequest, ChangePasswordResult, ChangePasswordResponse, ChangePasswordResponseError, SetEmailRequest, SetEmailResult, SetEmailResponse, SetEmailResponseError, VerifyEmailRequest, VerifyEmailResult, VerifyEmailResponse, VerifyEmailResponseError, GetSettingsRequest, GetSettingsResult, GetSettingsResponse, GetSettingsResponseError, MaybeBool, UpdateSettingsRequest, UpdateSettingsResult, UpdateSettingsResponse, UpdateSettingsResponseError, CreateInvitationRequest, CreateInvitationResult, CreateInvitationResponse, CreateInvitationResponseResult, CreateInvitationResponseError, AcceptInvitationRequest, AcceptInvitationResult, AcceptInvitationResponse, AcceptInvitationResponseError
 
 
 # Decoder
@@ -623,7 +623,7 @@ type alias SetEmailRequest =
 {-| SetEmailResult
 -}
 type SetEmailResult
-    = SetEmailResultOk Void
+    = SetEmailResultOk EmailFlowState
     | SetEmailResultError SetEmailResponseError
 
 
@@ -651,7 +651,7 @@ type alias VerifyEmailRequest =
 {-| VerifyEmailResult
 -}
 type VerifyEmailResult
-    = VerifyEmailResultVerifiedEmail String
+    = VerifyEmailResultOk EmailFlowState
     | VerifyEmailResultError VerifyEmailResponseError
 
 
@@ -742,7 +742,7 @@ type alias CreateInvitationRequest =
 {-| CreateInvitationResult
 -}
 type CreateInvitationResult
-    = CreateInvitationResultOk InvitationId
+    = CreateInvitationResultOk CreateInvitationResponseResult
     | CreateInvitationResultError CreateInvitationResponseError
 
 
@@ -750,6 +750,14 @@ type CreateInvitationResult
 -}
 type alias CreateInvitationResponse =
     { createInvitationResult : Maybe CreateInvitationResult
+    }
+
+
+{-| `CreateInvitationResponseResult` message
+-}
+type alias CreateInvitationResponseResult =
+    { id : Maybe InvitationId
+    , invitation : Maybe Invitation
     }
 
 
@@ -1443,7 +1451,7 @@ setEmailResponseDecoder : Decode.Decoder SetEmailResponse
 setEmailResponseDecoder =
     Decode.message (SetEmailResponse Nothing)
         [ Decode.oneOf
-            [ ( 1, Decode.map SetEmailResultOk voidDecoder )
+            [ ( 1, Decode.map SetEmailResultOk emailFlowStateDecoder )
             , ( 2, Decode.map SetEmailResultError setEmailResponseErrorDecoder )
             ]
             setSetEmailResult
@@ -1472,7 +1480,7 @@ verifyEmailResponseDecoder : Decode.Decoder VerifyEmailResponse
 verifyEmailResponseDecoder =
     Decode.message (VerifyEmailResponse Nothing)
         [ Decode.oneOf
-            [ ( 1, Decode.map VerifyEmailResultVerifiedEmail Decode.string )
+            [ ( 1, Decode.map VerifyEmailResultOk emailFlowStateDecoder )
             , ( 2, Decode.map VerifyEmailResultError verifyEmailResponseErrorDecoder )
             ]
             setVerifyEmailResult
@@ -1568,10 +1576,18 @@ createInvitationResponseDecoder : Decode.Decoder CreateInvitationResponse
 createInvitationResponseDecoder =
     Decode.message (CreateInvitationResponse Nothing)
         [ Decode.oneOf
-            [ ( 1, Decode.map CreateInvitationResultOk invitationIdDecoder )
+            [ ( 1, Decode.map CreateInvitationResultOk createInvitationResponseResultDecoder )
             , ( 2, Decode.map CreateInvitationResultError createInvitationResponseErrorDecoder )
             ]
             setCreateInvitationResult
+        ]
+
+
+createInvitationResponseResultDecoder : Decode.Decoder CreateInvitationResponseResult
+createInvitationResponseResultDecoder =
+    Decode.message (CreateInvitationResponseResult Nothing Nothing)
+        [ Decode.optional 1 (Decode.map Just invitationIdDecoder) setId
+        , Decode.optional 2 (Decode.map Just invitationDecoder) setInvitation
         ]
 
 
@@ -2336,7 +2352,7 @@ toSetEmailResultEncoder : SetEmailResult -> ( Int, Encode.Encoder )
 toSetEmailResultEncoder model =
     case model of
         SetEmailResultOk value ->
-            ( 1, toVoidEncoder value )
+            ( 1, toEmailFlowStateEncoder value )
 
         SetEmailResultError value ->
             ( 2, toSetEmailResponseErrorEncoder value )
@@ -2370,8 +2386,8 @@ toVerifyEmailRequestEncoder model =
 toVerifyEmailResultEncoder : VerifyEmailResult -> ( Int, Encode.Encoder )
 toVerifyEmailResultEncoder model =
     case model of
-        VerifyEmailResultVerifiedEmail value ->
-            ( 1, Encode.string value )
+        VerifyEmailResultOk value ->
+            ( 1, toEmailFlowStateEncoder value )
 
         VerifyEmailResultError value ->
             ( 2, toVerifyEmailResponseErrorEncoder value )
@@ -2485,7 +2501,7 @@ toCreateInvitationResultEncoder : CreateInvitationResult -> ( Int, Encode.Encode
 toCreateInvitationResultEncoder model =
     case model of
         CreateInvitationResultOk value ->
-            ( 1, toInvitationIdEncoder value )
+            ( 1, toCreateInvitationResponseResultEncoder value )
 
         CreateInvitationResultError value ->
             ( 2, toCreateInvitationResponseErrorEncoder value )
@@ -2497,6 +2513,14 @@ toCreateInvitationResponseEncoder : CreateInvitationResponse -> Encode.Encoder
 toCreateInvitationResponseEncoder model =
     Encode.message
         [ Maybe.withDefault ( 0, Encode.none ) <| Maybe.map toCreateInvitationResultEncoder model.createInvitationResult
+        ]
+
+
+toCreateInvitationResponseResultEncoder : CreateInvitationResponseResult -> Encode.Encoder
+toCreateInvitationResponseResultEncoder model =
+    Encode.message
+        [ ( 1, (Maybe.withDefault Encode.none << Maybe.map toInvitationIdEncoder) model.id )
+        , ( 2, (Maybe.withDefault Encode.none << Maybe.map toInvitationEncoder) model.invitation )
         ]
 
 
@@ -2964,6 +2988,16 @@ setUpdateSettingsResult value model =
 setCreateInvitationResult : a -> { b | createInvitationResult : a } -> { b | createInvitationResult : a }
 setCreateInvitationResult value model =
     { model | createInvitationResult = value }
+
+
+setId : a -> { b | id : a } -> { b | id : a }
+setId value model =
+    { model | id = value }
+
+
+setInvitation : a -> { b | invitation : a } -> { b | invitation : a }
+setInvitation value model =
+    { model | invitation = value }
 
 
 setInvitationId : a -> { b | invitationId : a } -> { b | invitationId : a }

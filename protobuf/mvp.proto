@@ -332,7 +332,7 @@ message SetEmailRequest {
 }
 message SetEmailResponse {
   oneof set_email_result {
-    Void ok = 1;
+    EmailFlowState ok = 1;
     Error error = 2;
   }
   message Error {
@@ -345,7 +345,7 @@ message VerifyEmailRequest {
 }
 message VerifyEmailResponse {
   oneof verify_email_result {
-    string verified_email = 1;
+    EmailFlowState ok = 1;
     Error error = 2;
   }
   message Error {
@@ -385,8 +385,12 @@ message CreateInvitationRequest {
 }
 message CreateInvitationResponse {
   oneof create_invitation_result {
-    InvitationId ok = 1;
+    Result ok = 1;
     Error error = 2;
+  }
+  message Result {
+    InvitationId id = 1;
+    Invitation invitation = 2;
   }
   message Error {
     string catchall = 1;

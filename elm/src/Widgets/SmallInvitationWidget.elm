@@ -35,7 +35,7 @@ handleCreateInvitationResponse res state =
         Just (Pb.CreateInvitationResultOk result) ->
           { state | working = False
                   , notification = H.text ""
-                  , invitationId = Just result
+                  , invitationId = result.id
           }
         Just (Pb.CreateInvitationResultError e) ->
           { state | working = False , notification = Utils.redText (Debug.toString e) }
