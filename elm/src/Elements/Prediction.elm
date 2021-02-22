@@ -30,6 +30,7 @@ init flags =
       , auth = Utils.decodePbFromFlags Pb.authTokenDecoder "authTokenPbB64" flags
       , now = Utils.unixtimeToTime 0
       , httpOrigin = Utils.mustDecodeFromFlags JD.string "httpOrigin" flags
+      , shouldLinkTitle = False
       , handle = WidgetEvent
       }
     , Widget.init

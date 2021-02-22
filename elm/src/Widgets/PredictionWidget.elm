@@ -28,6 +28,7 @@ type alias Context msg =
   , predictionId : Int
   , now : Time.Posix
   , httpOrigin : String
+  , shouldLinkTitle : Bool
   , handle : Maybe Event -> State -> msg
   }
 type alias State =
@@ -283,7 +284,13 @@ view ctx state =
     creator = Utils.mustPredictionCreator ctx.prediction
   in
   H.div []
-    [ H.h2 [] [H.text <| "Prediction: by " ++ (String.left 10 <| Iso8601.fromTime <| Utils.unixtimeToTime ctx.prediction.resolvesAtUnixtime) ++ ", " ++ ctx.prediction.prediction]
+    [ H.h2 [] [
+        let text = H.text <| "Prediction: by " ++ (String.left 10 <| Iso8601.fromTime <| Utils.unixtimeToTime ctx.prediction.resolvesAtUnixtime) ++ ", " ++ ctx.prediction.prediction in
+        if ctx.shouldLinkTitle then
+          H.a [HA.href <| "/p/" ++ String.fromInt ctx.predictionId] [text]
+        else
+          text
+        ]
     , viewPredictionState ctx state
     , viewResolveButtons ctx state
     , viewWinnings ctx state

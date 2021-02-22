@@ -155,6 +155,7 @@ viewPrediction predictionId model =
         , predictionId = predictionId
         , now = model.now
         , httpOrigin = model.httpOrigin
+        , shouldLinkTitle = True
         , handle = PredictionEvent predictionId
         }
         widget
