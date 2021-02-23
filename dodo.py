@@ -85,6 +85,7 @@ def task_test():
   }
   yield {
     'name': 'pytest',
+    'setup': ['elm'],
     'file_dep': [
       *Path('server').glob('**/*.py'),
       *Path('server').glob('**/*.pyi'),

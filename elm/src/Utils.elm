@@ -43,6 +43,15 @@ outlineIfInvalid : Bool -> H.Attribute msg
 outlineIfInvalid isInvalid =
   HA.style "outline" (if isInvalid then "2px solid red" else "none")
 
+pbB64Decoder : PD.Decoder a -> JD.Decoder a
+pbB64Decoder dec =
+  JD.string
+  |> JD.andThen (\s ->
+      case s |> Base64.toBytes |> Maybe.andThen (PD.decode dec) of
+        Just a -> JD.succeed a
+        Nothing -> JD.fail "invalid b64 protobuf"
+      )
+
 decodePbB64 : PD.Decoder a -> String -> Maybe a
 decodePbB64 dec s =
   s |> Base64.toBytes |> Maybe.andThen (PD.decode dec)
