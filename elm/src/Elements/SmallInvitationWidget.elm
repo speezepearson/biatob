@@ -14,6 +14,7 @@ import API
 
 import Widgets.CopyWidget as CopyWidget
 import Widgets.SmallInvitationWidget as Widget
+import Utils
 
 type alias Model = ( Widget.Context Msg , Widget.State )
 type Msg
@@ -22,7 +23,7 @@ type Msg
 
 init : JD.Value -> (Model, Cmd Msg)
 init flags =
-  ( ( { destination = JD.decodeValue (JD.field "destination" JD.string) flags |> Result.toMaybe
+  ( ( { destination = Utils.mustDecodeFromFlags (JD.nullable JD.string) "destination" flags
       , httpOrigin = Utils.mustDecodeFromFlags JD.string "httpOrigin" flags
       , handle = WidgetEvent
       }

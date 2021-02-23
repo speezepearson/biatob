@@ -52,30 +52,26 @@ pbB64Decoder dec =
         Nothing -> JD.fail "invalid b64 protobuf"
       )
 
-decodePbB64 : PD.Decoder a -> String -> Maybe a
-decodePbB64 dec s =
-  s |> Base64.toBytes |> Maybe.andThen (PD.decode dec)
-encodePbB64 : PE.Encoder -> String
-encodePbB64 enc =
-  PE.encode enc |> Base64.fromBytes |> must "Base64.fromBytes docs say it will never return Nothing"
-
+mustResult : String -> Result e x -> x
+mustResult reason res =
+  case res of
+    Ok x -> x
+    Err e -> Debug.todo (reason ++ " -- " ++ Debug.toString e)
 decodePbFromFlags : PD.Decoder a -> String -> JD.Value -> Maybe a
 decodePbFromFlags dec field val =
-  JD.decodeValue (JD.field field JD.string) val
+  JD.decodeValue (JD.field field (pbB64Decoder dec)) val
   |> Debug.log ("init " ++ field)
   |> Result.toMaybe
-  |> Maybe.andThen (decodePbB64 dec)
 
 mustDecodePbFromFlags : PD.Decoder a -> String -> JD.Value -> a
 mustDecodePbFromFlags dec field val =
   decodePbFromFlags dec field val
-  |> must ("bad " ++ field)
+  |> must field
 
 mustDecodeFromFlags : JD.Decoder a -> String -> JD.Value -> a
 mustDecodeFromFlags dec field val =
   JD.decodeValue (JD.field field dec) val
-  |> Result.toMaybe
-  |> must ("bad " ++ field)
+  |> mustResult field
 
 mustPredictionCreator : Pb.UserPredictionView -> Pb.UserUserView
 mustPredictionCreator {creator} = must "all predictions must have creators" creator

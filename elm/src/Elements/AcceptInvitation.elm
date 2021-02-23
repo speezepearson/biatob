@@ -14,6 +14,7 @@ import API
 import Widgets.AuthWidget as AuthWidget
 import Time
 import Task
+import Utils
 
 port authChanged : () -> Cmd msg
 port accepted : {dest : String} -> Cmd msg
@@ -55,7 +56,7 @@ init flags =
         Just auth_ -> LoggedIn auth_
         Nothing -> LoggedOut AuthWidget.init
     , invitationId = Utils.mustDecodePbFromFlags Pb.invitationIdDecoder "invitationIdPbB64" flags
-    , destination = JD.decodeValue (JD.field "destination" JD.string) flags |> Result.toMaybe
+    , destination = Utils.mustDecodeFromFlags (JD.nullable JD.string) "destination" flags
     , working = False
     , acceptNotification = H.text ""
     , now = Time.millisToPosix 0
