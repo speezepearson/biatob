@@ -77,7 +77,7 @@ update msg model =
       case Form.toCreateRequest (formCtx model) model.form of
         Just req ->
           ( { model | working = True , createError = Nothing }
-          , API.postCreate CreateFinished req
+          , API.postCreatePrediction CreateFinished req
           )
         Nothing ->
           ( { model | createError = Just "bad form" } -- TODO: improve error message

@@ -19,41 +19,41 @@ hit endpoint toMsg req =
     , expect = PD.expectBytes toMsg endpoint.decoder
     }
 
-postLogInUsername : (Result Http.Error Pb.LogInUsernameResponse -> msg) -> Pb.LogInUsernameRequest -> Cmd msg
-postLogInUsername = hit {url="/api/LogInUsername", encoder=Pb.toLogInUsernameRequestEncoder, decoder=Pb.logInUsernameResponseDecoder}
-
-postRegisterUsername : (Result Http.Error Pb.RegisterUsernameResponse -> msg) -> Pb.RegisterUsernameRequest -> Cmd msg
-postRegisterUsername = hit {url="/api/RegisterUsername", encoder=Pb.toRegisterUsernameRequestEncoder, decoder=Pb.registerUsernameResponseDecoder}
-
+postWhoami : (Result Http.Error Pb.WhoamiResponse -> msg) -> Pb.WhoamiRequest -> Cmd msg
+postWhoami = hit {url="/api/Whoami", encoder=Pb.toWhoamiRequestEncoder, decoder=Pb.whoamiResponseDecoder}
 postSignOut : (Result Http.Error Pb.SignOutResponse -> msg) -> Pb.SignOutRequest -> Cmd msg
 postSignOut = hit {url="/api/SignOut", encoder=Pb.toSignOutRequestEncoder, decoder=Pb.signOutResponseDecoder}
-
+postRegisterUsername : (Result Http.Error Pb.RegisterUsernameResponse -> msg) -> Pb.RegisterUsernameRequest -> Cmd msg
+postRegisterUsername = hit {url="/api/RegisterUsername", encoder=Pb.toRegisterUsernameRequestEncoder, decoder=Pb.registerUsernameResponseDecoder}
+postLogInUsername : (Result Http.Error Pb.LogInUsernameResponse -> msg) -> Pb.LogInUsernameRequest -> Cmd msg
+postLogInUsername = hit {url="/api/LogInUsername", encoder=Pb.toLogInUsernameRequestEncoder, decoder=Pb.logInUsernameResponseDecoder}
+postCreatePrediction : (Result Http.Error Pb.CreatePredictionResponse -> msg) -> Pb.CreatePredictionRequest -> Cmd msg
+postCreatePrediction = hit {url="/api/CreatePrediction", encoder=Pb.toCreatePredictionRequestEncoder, decoder=Pb.createPredictionResponseDecoder}
+postGetPrediction : (Result Http.Error Pb.GetPredictionResponse -> msg) -> Pb.GetPredictionRequest -> Cmd msg
+postGetPrediction = hit {url="/api/GetPrediction", encoder=Pb.toGetPredictionRequestEncoder, decoder=Pb.getPredictionResponseDecoder}
+postListMyStakes : (Result Http.Error Pb.ListMyStakesResponse -> msg) -> Pb.ListMyStakesRequest -> Cmd msg
+postListMyStakes = hit {url="/api/ListMyStakes", encoder=Pb.toListMyStakesRequestEncoder, decoder=Pb.listMyStakesResponseDecoder}
+postListPredictions : (Result Http.Error Pb.ListPredictionsResponse -> msg) -> Pb.ListPredictionsRequest -> Cmd msg
+postListPredictions = hit {url="/api/ListPredictions", encoder=Pb.toListPredictionsRequestEncoder, decoder=Pb.listPredictionsResponseDecoder}
+postStake : (Result Http.Error Pb.StakeResponse -> msg) -> Pb.StakeRequest -> Cmd msg
+postStake = hit {url="/api/Stake", encoder=Pb.toStakeRequestEncoder, decoder=Pb.stakeResponseDecoder}
+postResolve : (Result Http.Error Pb.ResolveResponse -> msg) -> Pb.ResolveRequest -> Cmd msg
+postResolve = hit {url="/api/Resolve", encoder=Pb.toResolveRequestEncoder, decoder=Pb.resolveResponseDecoder}
+postSetTrusted : (Result Http.Error Pb.SetTrustedResponse -> msg) -> Pb.SetTrustedRequest -> Cmd msg
+postSetTrusted = hit {url="/api/SetTrusted", encoder=Pb.toSetTrustedRequestEncoder, decoder=Pb.setTrustedResponseDecoder}
+postGetUser : (Result Http.Error Pb.GetUserResponse -> msg) -> Pb.GetUserRequest -> Cmd msg
+postGetUser = hit {url="/api/GetUser", encoder=Pb.toGetUserRequestEncoder, decoder=Pb.getUserResponseDecoder}
 postChangePassword : (Result Http.Error Pb.ChangePasswordResponse -> msg) -> Pb.ChangePasswordRequest -> Cmd msg
-postChangePassword = hit {url="/api/ChangePassword", encoder=Pb.toChangePasswordRequestEncoder, decoder=Pb.changePasswordResponseDecoder }
-
-postCreate : (Result Http.Error Pb.CreatePredictionResponse -> msg) -> Pb.CreatePredictionRequest -> Cmd msg
-postCreate = hit {url="/api/CreatePrediction", encoder=Pb.toCreatePredictionRequestEncoder, decoder=Pb.createPredictionResponseDecoder }
-
+postChangePassword = hit {url="/api/ChangePassword", encoder=Pb.toChangePasswordRequestEncoder, decoder=Pb.changePasswordResponseDecoder}
 postSetEmail : (Result Http.Error Pb.SetEmailResponse -> msg) -> Pb.SetEmailRequest -> Cmd msg
-postSetEmail = hit {url="/api/SetEmail", encoder=Pb.toSetEmailRequestEncoder, decoder=Pb.setEmailResponseDecoder }
-
+postSetEmail = hit {url="/api/SetEmail", encoder=Pb.toSetEmailRequestEncoder, decoder=Pb.setEmailResponseDecoder}
 postVerifyEmail : (Result Http.Error Pb.VerifyEmailResponse -> msg) -> Pb.VerifyEmailRequest -> Cmd msg
 postVerifyEmail = hit {url="/api/VerifyEmail", encoder=Pb.toVerifyEmailRequestEncoder, decoder=Pb.verifyEmailResponseDecoder}
-
+postGetSettings : (Result Http.Error Pb.GetSettingsResponse -> msg) -> Pb.GetSettingsRequest -> Cmd msg
+postGetSettings = hit {url="/api/GetSettings", encoder=Pb.toGetSettingsRequestEncoder, decoder=Pb.getSettingsResponseDecoder}
 postUpdateSettings : (Result Http.Error Pb.UpdateSettingsResponse -> msg) -> Pb.UpdateSettingsRequest -> Cmd msg
 postUpdateSettings = hit {url="/api/UpdateSettings", encoder=Pb.toUpdateSettingsRequestEncoder, decoder=Pb.updateSettingsResponseDecoder}
-
 postCreateInvitation : (Result Http.Error Pb.CreateInvitationResponse -> msg) -> Pb.CreateInvitationRequest -> Cmd msg
-postCreateInvitation = hit {url="/api/CreateInvitation", encoder=Pb.toCreateInvitationRequestEncoder, decoder=Pb.createInvitationResponseDecoder }
-
+postCreateInvitation = hit {url="/api/CreateInvitation", encoder=Pb.toCreateInvitationRequestEncoder, decoder=Pb.createInvitationResponseDecoder}
 postAcceptInvitation : (Result Http.Error Pb.AcceptInvitationResponse -> msg) -> Pb.AcceptInvitationRequest -> Cmd msg
-postAcceptInvitation = hit {url="/api/AcceptInvitation", encoder=Pb.toAcceptInvitationRequestEncoder, decoder=Pb.acceptInvitationResponseDecoder }
-
-postSetTrusted : (Result Http.Error Pb.SetTrustedResponse -> msg) -> Pb.SetTrustedRequest -> Cmd msg
-postSetTrusted = hit {url="/api/SetTrusted", encoder=Pb.toSetTrustedRequestEncoder, decoder=Pb.setTrustedResponseDecoder }
-
-postStake : (Result Http.Error Pb.StakeResponse -> msg) -> Pb.StakeRequest -> Cmd msg
-postStake = hit {url="/api/Stake", encoder=Pb.toStakeRequestEncoder, decoder=Pb.stakeResponseDecoder }
-
-postResolve : (Result Http.Error Pb.ResolveResponse -> msg) -> Pb.ResolveRequest -> Cmd msg
-postResolve = hit {url="/api/Resolve", encoder=Pb.toResolveRequestEncoder, decoder=Pb.resolveResponseDecoder }
+postAcceptInvitation = hit {url="/api/AcceptInvitation", encoder=Pb.toAcceptInvitationRequestEncoder, decoder=Pb.acceptInvitationResponseDecoder}
