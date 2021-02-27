@@ -1,4 +1,4 @@
-port module Elements.Welcome exposing (main)
+module Elements.Welcome exposing (main)
 
 import Browser
 import Html as H exposing (Html)
@@ -13,35 +13,22 @@ import Biatob.Proto.Mvp as Pb
 import Utils
 
 import Widgets.AuthWidget as AuthWidget
+import Widgets.Navbar as Navbar
 import Widgets.SmallInvitationWidget as SmallInvitationWidget
 import Widgets.EmailSettingsWidget as EmailSettingsWidget
 import Widgets.CopyWidget as CopyWidget
-import API
+import Page
 
-port authChanged : () -> Cmd msg
-
-type AuthState = LoggedOut | LoggedIn Pb.AuthToken Pb.GenericUserInfo
-getAuth : AuthState -> Maybe Pb.AuthToken
-getAuth authState = case authState of
-  LoggedOut -> Nothing
-  LoggedIn auth _ -> Just auth
 type alias Model =
-  { authState : AuthState
+  { navbar : Navbar.Model
   , authWidget : AuthWidget.State
   , invitationWidget : SmallInvitationWidget.State
   , emailSettingsWidget : EmailSettingsWidget.State
-  , httpOrigin : String
-  , now : Time.Posix
   }
 
-updateUserInfo : (Pb.GenericUserInfo -> Pb.GenericUserInfo) -> Model -> Model
-updateUserInfo f model =
-  case model.authState of
-    LoggedOut -> model
-    LoggedIn auth info -> { model | authState = LoggedIn auth (f info) }
-
 type Msg
-  = AuthEvent (Maybe AuthWidget.Event) AuthWidget.State
+  = NavbarMsg Navbar.Msg
+  | AuthEvent (Maybe AuthWidget.Event) AuthWidget.State
   | InvitationEvent (Maybe SmallInvitationWidget.Event) SmallInvitationWidget.State
   | EmailSettingsEvent (Maybe EmailSettingsWidget.Event) EmailSettingsWidget.State
   | LogInUsernameFinished (Result Http.Error Pb.LogInUsernameResponse)
@@ -51,27 +38,23 @@ type Msg
   | VerifyEmailFinished (Result Http.Error Pb.VerifyEmailResponse)
   | UpdateSettingsFinished (Result Http.Error Pb.UpdateSettingsResponse)
   | CreateInvitationFinished (Result Http.Error Pb.CreateInvitationResponse)
-  | Copy String
-  | Tick Time.Posix
 
-init : JD.Value -> (Model, Cmd Msg)
-init flags =
-  let
-    auth = Utils.decodePbFromFlags Pb.authTokenDecoder "authTokenPbB64" flags
-    userInfo = Utils.decodePbFromFlags Pb.genericUserInfoDecoder "userInfoPbB64" flags
-    httpOrigin = Utils.mustDecodeFromFlags JD.string "httpOrigin" flags
-  in
-  ( { authState = case (auth, userInfo) of
-        (Nothing, Nothing) -> LoggedOut
-        (Just auth_, Just userInfo_) -> LoggedIn auth_ userInfo_
-        _ -> Debug.todo "bad data from server; auth and userInfo should be both present or both absent"
+pagedef : Page.Element Model Msg
+pagedef =
+  { init = init
+  , view = view
+  , update = update
+  , subscriptions = \_ -> Sub.none
+  }
+
+init : JD.Value -> (Model, Page.Command Msg)
+init _ =
+  ( { navbar = Navbar.init
     , authWidget = AuthWidget.init
     , invitationWidget = SmallInvitationWidget.init
     , emailSettingsWidget = EmailSettingsWidget.init
-    , httpOrigin = httpOrigin
-    , now = Utils.unixtimeToTime 0
     }
-  , Task.perform Tick Time.now
+  , Page.NoCmd
   )
 
 authHandler : AuthWidget.Handler Model
@@ -80,87 +63,52 @@ authHandler =
   , setAuth = \a m -> m -- TODO: I don't like this implicit reliance on reloading the page when this happens
   }
 
-emailSettingsHandler : EmailSettingsWidget.Handler Model
-emailSettingsHandler =
-  { updateWidget = \f m -> { m | emailSettingsWidget = m.emailSettingsWidget |> f }
-  , setEmailFlowState = \e m -> m |> updateUserInfo (\u -> { u | email = Just e })
-  }
-
-update : Msg -> Model -> (Model, Cmd Msg)
+update : Msg -> Model -> (Model, Page.Command Msg)
 update msg model =
   case msg of
+    NavbarMsg innerMsg ->
+      let (newNavbar, innerCmd) = Navbar.update innerMsg model.navbar in
+      ( { model | navbar = newNavbar } , Page.mapCmd NavbarMsg innerCmd )
     AuthEvent event newState ->
-      (case event of
-        Just (AuthWidget.LogInUsername req) -> ( model , API.postLogInUsername LogInUsernameFinished req )
-        Just (AuthWidget.RegisterUsername req) -> ( model , API.postRegisterUsername RegisterUsernameFinished req )
-        Just (AuthWidget.SignOut req) -> ( model , API.postSignOut SignOutFinished req )
-        Nothing -> ( model , Cmd.none )
+      ( { model | authWidget = newState }
+      , case event of
+          Just (AuthWidget.LogInUsername req) -> Page.RequestCmd (Page.LogInUsernameRequest LogInUsernameFinished req)
+          Just (AuthWidget.RegisterUsername req) -> Page.RequestCmd (Page.RegisterUsernameRequest RegisterUsernameFinished req)
+          Just (AuthWidget.SignOut req) -> Page.RequestCmd (Page.SignOutRequest SignOutFinished req)
+          Nothing -> Page.NoCmd
       ) |> Tuple.mapFirst (\m -> { m | authWidget = newState })
     InvitationEvent event newState ->
-      (case event of
-        Just SmallInvitationWidget.CreateInvitation -> ( model , API.postCreateInvitation CreateInvitationFinished {notes=""} )
-        Just (SmallInvitationWidget.Copy s) -> ( model , CopyWidget.copy s )
-        Nothing -> ( model , Cmd.none )
-      ) |> Tuple.mapFirst (\m -> { m | invitationWidget = newState })
+      ( { model | invitationWidget = newState }
+      , case event of
+          Just SmallInvitationWidget.CreateInvitation -> Page.RequestCmd (Page.CreateInvitationRequest CreateInvitationFinished {notes=""})
+          Just (SmallInvitationWidget.Copy s) -> Page.CopyCmd s
+          Nothing -> Page.NoCmd
+      )
     EmailSettingsEvent event newState ->
-      (case event of
-        Just (EmailSettingsWidget.SetEmail req) -> ( model , API.postSetEmail SetEmailFinished req )
-        Just (EmailSettingsWidget.VerifyEmail req) -> ( model , API.postVerifyEmail VerifyEmailFinished req )
-        Just (EmailSettingsWidget.UpdateSettings req) -> ( model , API.postUpdateSettings UpdateSettingsFinished req )
-        Just EmailSettingsWidget.Ignore -> ( model , Cmd.none )
-        Nothing -> ( model , Cmd.none )
-      ) |> Tuple.mapFirst (\m -> { m | emailSettingsWidget = newState })
-
-    LogInUsernameFinished res ->
-      ( AuthWidget.handleLogInUsernameResponse authHandler res model
-      , if AuthWidget.isSuccessfulLogInUsername res then authChanged () else Cmd.none
-      )
-    RegisterUsernameFinished res ->
-      ( AuthWidget.handleRegisterUsernameResponse authHandler res model
-      , if AuthWidget.isSuccessfulRegisterUsername res then authChanged () else Cmd.none
-      )
-    SignOutFinished res ->
-      ( AuthWidget.handleSignOutResponse authHandler res model
-      , if AuthWidget.isSuccessfulSignOut res then authChanged () else Cmd.none
+      ( { model | emailSettingsWidget = newState }
+      , case event of
+        Just (EmailSettingsWidget.SetEmail req) -> Page.RequestCmd (Page.SetEmailRequest SetEmailFinished req)
+        Just (EmailSettingsWidget.VerifyEmail req) -> Page.RequestCmd (Page.VerifyEmailRequest VerifyEmailFinished req)
+        Just (EmailSettingsWidget.UpdateSettings req) -> Page.RequestCmd (Page.UpdateSettingsRequest UpdateSettingsFinished req)
+        Just EmailSettingsWidget.Ignore -> Page.NoCmd
+        Nothing -> Page.NoCmd
       )
 
-
-    SetEmailFinished res ->
-      ( EmailSettingsWidget.handleSetEmailResponse emailSettingsHandler res model
-      , Cmd.none
-      )
-
-    VerifyEmailFinished res ->
-      ( EmailSettingsWidget.handleVerifyEmailResponse emailSettingsHandler res model
-      , Cmd.none
-      )
-    UpdateSettingsFinished res ->
-      ( { model | emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleUpdateSettingsResponse res }
-        |> updateUserInfo (\userInfo ->
-            case res |> Result.toMaybe |> Maybe.andThen .updateSettingsResult of
-              Just (Pb.UpdateSettingsResultOk newInfo) -> newInfo
-              _ -> userInfo
-              )
-      , Cmd.none
-      )
-
-    CreateInvitationFinished res ->
-      ( { model | invitationWidget = model.invitationWidget |> SmallInvitationWidget.handleCreateInvitationResponse res }
-        |> updateUserInfo (\userInfo ->
-            case res |> Result.toMaybe |> Maybe.andThen .createInvitationResult of
-              Just (Pb.CreateInvitationResultOk result) -> userInfo |> \u -> { u | invitations = u.invitations |> Dict.insert (result.id |> Utils.must "" |> .nonce) result.invitation }
-              _ -> userInfo
-              )
-      , Cmd.none
-      )
-
-    Copy s -> ( model , CopyWidget.copy s )
-    Tick now -> ( { model | now = now } , Cmd.none )
+    LogInUsernameFinished res -> ( { model | authWidget = model.authWidget |> AuthWidget.handleLogInUsernameResponse {updateWidget=\f s -> f s, setAuth=always identity} res } , Page.NoCmd )
+    RegisterUsernameFinished res -> ( { model | authWidget = model.authWidget |> AuthWidget.handleRegisterUsernameResponse {updateWidget=\f s -> f s, setAuth=always identity} res } , Page.NoCmd )
+    SignOutFinished res -> ( { model | authWidget = model.authWidget |> AuthWidget.handleSignOutResponse {updateWidget=\f s -> f s, setAuth=always identity} res } , Page.NoCmd )
+    SetEmailFinished res -> ( { model | emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleSetEmailResponse {updateWidget=\f s -> f s, setEmailFlowState=always identity} res } , Page.NoCmd )
+    VerifyEmailFinished res -> ( { model | emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleVerifyEmailResponse {updateWidget=\f s -> f s, setEmailFlowState=always identity} res } , Page.NoCmd )
+    UpdateSettingsFinished res -> ( { model | emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleUpdateSettingsResponse res } , Page.NoCmd )
+    CreateInvitationFinished res -> ( { model | invitationWidget = model.invitationWidget |> SmallInvitationWidget.handleCreateInvitationResponse res } , Page.NoCmd )
 
 
-view : Model -> Html Msg
-view model =
-  H.main_ [HA.id "main", HA.style "text-align" "justify"]
+view : Page.Globals -> Model -> Browser.Document Msg
+view globals model =
+  { title = "Welcome to Biatob!"
+  , body = [
+    Navbar.view globals model.navbar |> H.map NavbarMsg
+   ,H.main_ [HA.id "main", HA.style "text-align" "justify"]
     [ H.h1 [] [H.text "Betting is a tax on BS."]
     , H.p []
         [ H.text "Hi! This is a tool that helps people make friendly wagers, thereby clarifying and concretizing their beliefs and making the world a better, saner place."
@@ -225,8 +173,8 @@ view model =
             [ H.text " Create an account:   "
             , H.div [HA.id "welcome-page-auth-widget"]
                 [ AuthWidget.view
-                    { auth = getAuth model.authState
-                    , now = model.now
+                    { auth = Page.getAuth globals
+                    , now = globals.now
                     , handle = AuthEvent
                     }
                     model.authWidget
@@ -246,23 +194,23 @@ view model =
         , H.li [HA.style "margin-bottom" "1em"]
             [ H.text " Send your friends invitation links so I know who you trust to bet against you:   "
             , H.div [HA.style "border" "1px solid gray", HA.style "padding" "0.5em", HA.style "margin" "0.5em"]
-                [ case model.authState of
-                    LoggedOut -> H.text "(first, log in)"
-                    LoggedIn _ _ ->
-                      SmallInvitationWidget.view
-                        { httpOrigin = model.httpOrigin
-                        , destination = Nothing
-                        , handle = InvitationEvent
-                        }
+                [ if Page.isLoggedIn globals then
+                    SmallInvitationWidget.view
+                      { httpOrigin = globals.httpOrigin
+                      , destination = Nothing
+                      , handle = InvitationEvent
+                      }
                       model.invitationWidget
+                  else
+                    H.text "(first, log in)"
                 ]
             ]
         , H.li [HA.style "margin-bottom" "1em"]
             [ H.text " Consider adding an email address, so I can remind you to resolve your prediction when the time comes:   "
             , H.div [HA.style "border" "1px solid gray", HA.style "padding" "0.5em", HA.style "margin" "0.5em"]
-                [ case model.authState of
-                    LoggedOut -> H.text "(first, log in)"
-                    LoggedIn _ userInfo ->
+                [ case Page.getUserInfo globals of
+                    Nothing -> H.text "(first, log in)"
+                    Just userInfo ->
                       EmailSettingsWidget.view
                         { emailFlowState = userInfo |> Utils.mustUserInfoEmail
                         , emailRemindersToResolve = userInfo.emailRemindersToResolve
@@ -277,12 +225,6 @@ view model =
             ]
         ]
     ]
+  ]}
 
-main : Program JD.Value Model Msg
-main =
-  Browser.element
-    { init = init
-    , subscriptions = \_ -> Time.every 1000 Tick
-    , view = view
-    , update = update
-    }
+main = Page.page pagedef

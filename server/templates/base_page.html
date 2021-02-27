@@ -1,0 +1,37 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>{% block title %}{% endblock %}</title>
+  <link rel="shortcut icon"type="image/x-icon" href="data:image/x-icon;,">
+  <script type="text/javascript">
+    window.elmGlobalFlags = {
+      authSuccessPbB64: {% if auth_success_pb_b64 is defined %} {{ auth_success_pb_b64 | tojson }} {% else %} null {% endif %},
+      timeZoneOffsetMinutes: new Date().getTimezoneOffset(),
+      httpOrigin: window.origin,
+      initUnixtime: +(new Date()),
+    };
+
+    function copy(s) {
+      console.log('copy', s);
+        var e = document.createElement('input');
+        e.value = s;
+        document.body.appendChild(e);
+        e.select();
+        document.execCommand('copy');
+        e.remove();
+    }
+    window.subscribeToCopy = (app) => {
+      if (app.ports.copy) app.ports.copy.subscribe(copy);
+      if (app.ports.pageCopy) app.ports.pageCopy.subscribe(copy);
+    };
+  </script>
+  <link rel="stylesheet" href="/static/base.css">
+</head>
+
+<body>
+  
+  {% block page_body %}{% endblock %}
+
+</body>
+</html>

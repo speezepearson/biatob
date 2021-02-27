@@ -1,33 +1,8 @@
-<!DOCTYPE HTML>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>{% block title %}{% endblock %}</title>
-  <link rel="shortcut icon"type="image/x-icon" href="data:image/x-icon;,">
-  <script type="text/javascript">
-    window.elmGlobalFlags = {
-      timeZoneOffsetMinutes: new Date().getTimezoneOffset(),
-      httpOrigin: window.origin,
-      initTimeMillis: +(new Date()),
-    };
+{% extends 'base_page.html' %}
+{% block title %} Biatob - Welcome {% endblock %}
+{% block page_body %}
 
-    window.subscribeToCopy = (app) => {
-      app.ports.copy.subscribe((s) => {
-        console.log('copy', s);
-        var e = document.createElement('input');
-        e.value = s;
-        document.body.appendChild(e);
-        e.select();
-        document.execCommand('copy');
-        e.remove();
-      });
-    };
-  </script>
-  <link rel="stylesheet" href="/static/base.css">
-</head>
-
-<body>
-  <nav id="navbar-wrapper">
+  <nav class="navbar-wrapper">
     <ul>
       <li><a href="/">Home</a></li>
       {% if auth_token_pb_b64 != None %}
@@ -52,5 +27,4 @@
   
   {% block body %}{% endblock %}
 
-</body>
-</html>
+{% endblock %}

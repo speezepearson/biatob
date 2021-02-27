@@ -367,11 +367,15 @@ class FsBackedServicer(Servicer):
                 return mvp_pb2.RegisterUsernameResponse(error=mvp_pb2.RegisterUsernameResponse.Error(catchall='username taken'))
 
             logger.info('registering username', username=request.username)
-            wstate.username_users[request.username].MergeFrom(mvp_pb2.UsernameInfo(
+            info = wstate.username_users[request.username]
+            info.MergeFrom(mvp_pb2.UsernameInfo(
                 password=new_hashed_password(request.password),
                 info=mvp_pb2.GenericUserInfo(trusted_users=[]),
             ))
-            return mvp_pb2.RegisterUsernameResponse(ok=self._token_mint.mint_token(owner=mvp_pb2.UserId(username=request.username), ttl_seconds=60*60*24*7))
+            return mvp_pb2.RegisterUsernameResponse(ok=mvp_pb2.AuthSuccess(
+                token=self._token_mint.mint_token(owner=mvp_pb2.UserId(username=request.username), ttl_seconds=60*60*24*7),
+                user_info=info.info,
+            ))
 
     @checks_token
     @log_action
@@ -391,7 +395,7 @@ class FsBackedServicer(Servicer):
 
         logger.debug('username logged in', username=request.username)
         token = self._token_mint.mint_token(owner=mvp_pb2.UserId(username=request.username), ttl_seconds=86400)
-        return mvp_pb2.LogInUsernameResponse(ok=token)
+        return mvp_pb2.LogInUsernameResponse(ok=mvp_pb2.AuthSuccess(token=token, user_info=info.info))
 
     @checks_token
     @log_action
@@ -600,7 +604,7 @@ class FsBackedServicer(Servicer):
                 requester_info.trusted_users.append(request.who)
             elif not request.trusted and request.who in requester_info.trusted_users:
                 requester_info.trusted_users.remove(request.who)
-            return mvp_pb2.SetTrustedResponse(ok=mvp_pb2.UserIds(values=requester_info.trusted_users))
+            return mvp_pb2.SetTrustedResponse(ok=requester_info)
 
     @checks_token
     @log_action
@@ -751,6 +755,7 @@ class FsBackedServicer(Servicer):
             return mvp_pb2.CreateInvitationResponse(ok=mvp_pb2.CreateInvitationResponse.Result(
                 id=mvp_pb2.InvitationId(inviter=token.owner, nonce=nonce),
                 invitation=invitation,
+                user_info=info,
             ))
 
     @checks_token
@@ -786,7 +791,7 @@ class FsBackedServicer(Servicer):
                     if token.owner not in inviter_info.trusted_users:
                         inviter_info.trusted_users.append(token.owner)
                     logger.info('accepted invitation', whose=inviter)
-                    return mvp_pb2.AcceptInvitationResponse(ok=mvp_pb2.VOID)
+                    return mvp_pb2.AcceptInvitationResponse(ok=accepter_info)
             logger.warn('attempt to accept nonexistent invitation', possible_malice=True)
             return mvp_pb2.AcceptInvitationResponse(error=mvp_pb2.AcceptInvitationResponse.Error(catchall='no such invitation'))
 
@@ -877,13 +882,13 @@ class ApiServer:
         pb_resp = self._servicer.RegisterUsername(token=self._token_glue.parse_cookie(http_req), request=await parse_proto(http_req, mvp_pb2.RegisterUsernameRequest))
         http_resp = proto_response(pb_resp)
         if pb_resp.WhichOneof('register_username_result') == 'ok':
-            self._token_glue.set_cookie(pb_resp.ok, http_resp)
+            self._token_glue.set_cookie(pb_resp.ok.token, http_resp)
         return http_resp
     async def LogInUsername(self, http_req: web.Request) -> web.Response:
         pb_resp = self._servicer.LogInUsername(token=self._token_glue.parse_cookie(http_req), request=await parse_proto(http_req, mvp_pb2.LogInUsernameRequest))
         http_resp = proto_response(pb_resp)
         if pb_resp.WhichOneof('log_in_username_result') == 'ok':
-            self._token_glue.set_cookie(pb_resp.ok, http_resp)
+            self._token_glue.set_cookie(pb_resp.ok.token, http_resp)
         return http_resp
     async def CreatePrediction(self, http_req: web.Request) -> web.Response:
         return proto_response(self._servicer.CreatePrediction(token=self._token_glue.parse_cookie(http_req), request=await parse_proto(http_req, mvp_pb2.CreatePredictionRequest)))
@@ -967,15 +972,14 @@ class WebServer:
         auth = self._token_glue.parse_cookie(req)
         get_settings_response = self._servicer.GetSettings(auth, mvp_pb2.GetSettingsRequest())
         if get_settings_response.WhichOneof('get_settings_result') == 'ok_username':
-            user_info: Optional[mvp_pb2.GenericUserInfo] = get_settings_response.ok_username.info
+            auth_success: Optional[mvp_pb2.AuthSuccess] = mvp_pb2.AuthSuccess(token=auth, user_info=get_settings_response.ok_username.info)
         else:
             assert get_settings_response.WhichOneof('get_settings_result') == 'error'
-            user_info = None
+            auth_success = None
         return web.Response(
             content_type='text/html',
             body=self._jinja.get_template('Welcome.html').render(
-                auth_token_pb_b64=pb_b64(auth),
-                user_info_pb_b64=pb_b64(user_info),
+                auth_success_pb_b64=pb_b64(auth_success),
             ))
 
     async def get_create_prediction_page(self, req: web.Request) -> web.Response:

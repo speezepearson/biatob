@@ -128,7 +128,7 @@ update msg model =
     SetTrustedFinished res ->
       ( { model | trustedUsersWidget = model.trustedUsersWidget |> TrustedUsersWidget.handleSetTrustedResponse res
                 , userInfo = case res |> Result.toMaybe |> Maybe.andThen .setTrustedResult of
-                    Just (Pb.SetTrustedResultOk {values}) -> model.userInfo |> (\u -> { u | trustedUsers = values })
+                    Just (Pb.SetTrustedResultOk userInfo) -> userInfo
                     _ -> model.userInfo
         }
       , Cmd.none

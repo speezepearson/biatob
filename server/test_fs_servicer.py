@@ -13,7 +13,7 @@ from .test_utils import *
 def new_user_token(fs_servicer: FsBackedServicer, username: str) -> mvp_pb2.AuthToken:
   resp = fs_servicer.RegisterUsername(token=None, request=mvp_pb2.RegisterUsernameRequest(username=username, password=f'{username} password'))
   assert resp.WhichOneof('register_username_result') == 'ok', resp
-  return resp.ok
+  return resp.ok.token
 
 
 def alice_bob_tokens(fs_servicer: FsBackedServicer) -> Tuple[mvp_pb2.AuthToken, mvp_pb2.AuthToken]:
@@ -50,7 +50,7 @@ def test_LogInUsername(fs_servicer: FsBackedServicer):
   rando_token = new_user_token(fs_servicer, 'rando')
   resp = fs_servicer.LogInUsername(None, mvp_pb2.LogInUsernameRequest(username='rando', password='rando password'))
   assert resp.WhichOneof('log_in_username_result') == 'ok', resp
-  assert resp.ok.owner == rando_token.owner
+  assert resp.ok.token.owner == rando_token.owner
 
   resp = fs_servicer.LogInUsername(None, mvp_pb2.LogInUsernameRequest(username='rando', password='WRONG'))
   assert resp.WhichOneof('log_in_username_result') == 'error', resp
@@ -64,7 +64,7 @@ def test_LogInUsername(fs_servicer: FsBackedServicer):
 def test_RegisterUsername(fs_servicer: FsBackedServicer):
   resp = fs_servicer.RegisterUsername(token=None, request=mvp_pb2.RegisterUsernameRequest(username='potato', password='secret'))
   assert resp.WhichOneof('register_username_result') == 'ok', resp
-  token = resp.ok
+  token = resp.ok.token
   assert token.owner.username == 'potato'
 
   resp = fs_servicer.RegisterUsername(token=None, request=mvp_pb2.RegisterUsernameRequest(username='potato', password='secret'))

@@ -109,6 +109,12 @@ mustMapValues d = d |> Dict.map (\_ v -> must "no null values are allowed in a m
 mustInviter : Pb.InvitationId -> Pb.UserId
 mustInviter {inviter} = must "all invitations must have inviters" inviter
 
+mustAuthSuccessToken : Pb.AuthSuccess -> Pb.AuthToken
+mustAuthSuccessToken {token} = must "all AuthSuccesses must have tokens" token
+
+mustAuthSuccessUserInfo : Pb.AuthSuccess -> Pb.GenericUserInfo
+mustAuthSuccessUserInfo {userInfo} = must "all AuthSuccesses must have user_infos" userInfo
+
 currentResolution : Pb.UserPredictionView -> Pb.Resolution
 currentResolution prediction =
   List.head (List.reverse prediction.resolutions)

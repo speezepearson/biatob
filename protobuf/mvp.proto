@@ -139,13 +139,18 @@ message WhoamiResponse {
 message SignOutRequest {}
 message SignOutResponse {}
 
+message AuthSuccess {
+  AuthToken token = 1;
+  GenericUserInfo user_info = 2;
+}
+
 message RegisterUsernameRequest {
   string username = 1;
   string password = 2;
 }
 message RegisterUsernameResponse {
   oneof register_username_result {
-    AuthToken ok = 1;
+    AuthSuccess ok = 1;
     Error error = 2;
   }
   message Error {
@@ -160,7 +165,7 @@ message LogInUsernameRequest {
 }
 message LogInUsernameResponse {
   oneof log_in_username_result {
-    AuthToken ok = 1;
+    AuthSuccess ok = 1;
     Error error = 2;
   }
   message Error {
@@ -289,15 +294,12 @@ message SetTrustedRequest {
 }
 message SetTrustedResponse {
   oneof set_trusted_result {
-    UserIds ok = 1;
+    GenericUserInfo ok = 1;
     Error error = 2;
   }
   message Error {
     string catchall = 1;
   }
-}
-message UserIds {
-  repeated UserId values = 1;
 }
 
 message GetUserRequest {
@@ -391,6 +393,7 @@ message CreateInvitationResponse {
   message Result {
     InvitationId id = 1;
     Invitation invitation = 2;
+    GenericUserInfo user_info = 3;
   }
   message Error {
     string catchall = 1;
@@ -402,7 +405,7 @@ message AcceptInvitationRequest {
 }
 message AcceptInvitationResponse {
   oneof accept_invitation_result {
-    Void ok = 1;
+    GenericUserInfo ok = 1;
     Error error = 2;
   }
   message Error {

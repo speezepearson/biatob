@@ -46,6 +46,6 @@ async def test_smoke(aiohttp_client, app, api_server, fs_servicer):
   ]
   for path in paths:
     resp = await logged_in_cli.get(path)
-    assert resp.status == 200
+    assert resp.status == 200, path
     resp = await logged_out_cli.get(path)
-    assert resp.status == 200
+    assert resp.status == 200, path

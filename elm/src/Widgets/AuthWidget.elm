@@ -46,7 +46,7 @@ type alias Handler a =
 getSuccessfulAuthFromLogInUsername : Result Http.Error Pb.LogInUsernameResponse -> Maybe Pb.AuthToken
 getSuccessfulAuthFromLogInUsername res =
   case res |> Result.toMaybe |> Maybe.andThen .logInUsernameResult of
-    Just (Pb.LogInUsernameResultOk auth) -> Just auth
+    Just (Pb.LogInUsernameResultOk authSuccess) -> Just <| Utils.mustAuthSuccessToken authSuccess
     _ -> Nothing
 isSuccessfulLogInUsername res = getSuccessfulAuthFromLogInUsername res /= Nothing
 handleLogInUsernameResponse : Handler a -> Result Http.Error Pb.LogInUsernameResponse -> a -> a
@@ -71,7 +71,7 @@ handleLogInUsernameResponse thing res a =
 getSuccessfulAuthFromRegisterUsername : Result Http.Error Pb.RegisterUsernameResponse -> Maybe Pb.AuthToken
 getSuccessfulAuthFromRegisterUsername res =
   case res |> Result.toMaybe |> Maybe.andThen .registerUsernameResult of
-    Just (Pb.RegisterUsernameResultOk auth) -> Just auth
+    Just (Pb.RegisterUsernameResultOk auth) -> Just <| Utils.mustAuthSuccessToken auth
     _ -> Nothing
 isSuccessfulRegisterUsername res = getSuccessfulAuthFromRegisterUsername res /= Nothing
 handleRegisterUsernameResponse : Handler a -> Result Http.Error Pb.RegisterUsernameResponse -> a -> a
