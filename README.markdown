@@ -19,45 +19,34 @@ TODO
 --------------
 
 ### P1: make this something _I_ want to use
-- link from My Predictions to the actual prediction pages
+Done!
 
 ### P2: make this something other hardcore betting nerds might use
 
-- **UI:**
-
-    - deal with uint32 overflow in timestamps (e.g. in resolution date for /new)
-
 - **Internals:**
 
-    - write automated tests for the core API flows (create account, log in, log out, create market, bet in market, view settings)
+    - show users their balances with other users
     - CSRF for XSS safety (maybe? or maybe CORS protects us)
-    - get a better bot name (maybe even an email domain if easy?)
 
 ### P3: make this something Less Wrongers might use
 - **Features:**
 
-    - show users their balances with other users
-    - provide a way for users to undo accidental bets
-    - add "hide embeds" button for bettophobes (deceptively complicated! The user doesn't log in, so we have to store it in their cookie, but it should appear on some pages (all pages? Just Settings?))
-    - offer to shame users by emailing the participants if they greatly exceed the resolution deadline
-    - enhance "trust" to have a maximum acceptable exposure across all markets
+    - get a better bot name (maybe even an email domain if easy?)
+    - enhance "trust": "I don't want Alice to be able to owe me more than $1k"
+    - enhance "trust": "I don't want to be able to owe everybody-combined more than $1k"
     - let the creator or challenger mark a particular trade as invalid
 
 - **UI:**
 
-    - consider mentioning arbitration on the "Special Rules" field
-    - consider making "Special Rules" show up not just as an H.text
     - add donation instructions
 
 - **Explanations:**
 
-    - add alternative framings to the betting mechanism "more intuitive"
-    - tutorial video
+    - tutorial video?
 
 - **Internals:**
 
     - scale test
-    - regular backups of state
     - cache images?
     - consider letting people download a list of all their bets (Is this satisfied just Ctrl-S on an "All my markets" page?)
 
@@ -66,6 +55,9 @@ TODO
     - advertise to Caplan/Hanson/LessWrong/EAG/CFAR?
 
 ### P4: things I'll do once I quit my software engineering job to follow this dream
+- consider making "Special Rules" show up not just as an H.text
+- add "hide embeds" button for bettophobes (deceptively complicated! The user doesn't log in, so we have to store it in their cookie, but it should appear on some pages (all pages? Just Settings?))
+- offer to shame users by emailing the participants if they greatly exceed the resolution deadline
 - monetize via freemium or subscription?
 - market privacy controls
 - consider allowing "soft resolutions" so a market can resolve "80% yes"
