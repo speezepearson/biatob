@@ -400,6 +400,19 @@ message CreateInvitationResponse {
   }
 }
 
+message CheckInvitationRequest {
+  InvitationId invitation_id = 1;
+}
+message CheckInvitationResponse {
+  oneof check_invitation_result {
+    bool is_open = 1;
+    Error error = 2;
+  }
+  message Error {
+    string catchall = 1;
+  }
+}
+
 message AcceptInvitationRequest {
   InvitationId invitation_id = 1;
 }

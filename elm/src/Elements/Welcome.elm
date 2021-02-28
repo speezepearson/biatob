@@ -76,7 +76,7 @@ update msg model =
           Just (AuthWidget.RegisterUsername req) -> Page.RequestCmd (Page.RegisterUsernameRequest RegisterUsernameFinished req)
           Just (AuthWidget.SignOut req) -> Page.RequestCmd (Page.SignOutRequest SignOutFinished req)
           Nothing -> Page.NoCmd
-      ) |> Tuple.mapFirst (\m -> { m | authWidget = newState })
+      )
     InvitationEvent event newState ->
       ( { model | invitationWidget = newState }
       , case event of

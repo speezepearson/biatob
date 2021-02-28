@@ -1,19 +1,17 @@
-{% extends 'base.html' %}
+{% extends 'base_page.html' %}
 {% block title %} Biatob - Invitation {% endblock %}
-{% block body %}
-  <main id="main-wrapper"><div id="main"></div></main>
+{% block page_body %}
   <script type="text/javascript" src="/elm/AcceptInvitation.js"></script>
   <script type="text/javascript">
 
-    var authTokenPbB64 = {{ auth_token_pb_b64 | tojson }};
     var invitationIdPbB64 = {{ invitation_id_pb_b64 | tojson }};
+    var invitationIsOpen = {{ invitation_is_open | tojson }};
     var destination = (() => { var m = (/[?&]dest=([^&]+)/).exec(window.location.search); return m ? m[1] : null})();
+    console.log({invitationIsOpen});
 
     var main = Elm.Elements.AcceptInvitation.init({
-      node: document.getElementById('main'),
-      flags: {authTokenPbB64, invitationIdPbB64, destination},
+      flags: {...window.elmGlobalFlags, invitationIsOpen, invitationIdPbB64, destination},
     });
-    main.ports.authChanged.subscribe(() => window.location.reload());
     main.ports.accepted.subscribe(({dest}) => {
       window.location = dest;
     });

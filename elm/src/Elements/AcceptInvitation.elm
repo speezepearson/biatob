@@ -15,146 +15,123 @@ import Widgets.AuthWidget as AuthWidget
 import Time
 import Task
 import Utils
+import Page
+import Widgets.Navbar as Navbar
 
-port authChanged : () -> Cmd msg
 port accepted : {dest : String} -> Cmd msg
 
-type AuthState = LoggedIn Pb.AuthToken | LoggedOut AuthWidget.State
 type alias Model =
-  { authState : AuthState
-  , invitationId : Pb.InvitationId
+  { invitationId : Pb.InvitationId
+  , invitationIsOpen : Bool
   , destination : Maybe String
+  , authWidget : AuthWidget.State
+  , navbar : Navbar.Model
   , working : Bool
   , acceptNotification : Html Msg
-  , now : Time.Posix
   }
 
 type Msg
-  = AcceptInvitation
+  = NavbarMsg Navbar.Msg
+  | AcceptInvitation
   | AcceptInvitationFinished (Result Http.Error Pb.AcceptInvitationResponse)
   | AuthWidgetEvent (Maybe AuthWidget.Event) AuthWidget.State
   | LogInUsernameFinished (Result Http.Error Pb.LogInUsernameResponse)
   | RegisterUsernameFinished (Result Http.Error Pb.RegisterUsernameResponse)
   | SignOutFinished (Result Http.Error Pb.SignOutResponse)
-  | Tick Time.Posix
 
-authThing : AuthWidget.Handler Model
-authThing =
-  { updateWidget = \f m -> case m.authState of
-      LoggedOut state -> { m | authState = LoggedOut (state |> f) }
-      LoggedIn _ -> m
-  , setAuth = \a m -> { m | authState = case a of
-                              Just auth -> LoggedIn auth
-                              Nothing -> LoggedOut AuthWidget.init
-                              }
-  }
-
-init : JD.Value -> (Model, Cmd Msg)
+init : JD.Value -> (Model, Page.Command Msg)
 init flags =
-  let auth = Utils.decodePbFromFlags Pb.authTokenDecoder "authTokenPbB64" flags in
-  ( { authState = case auth of
-        Just auth_ -> LoggedIn auth_
-        Nothing -> LoggedOut AuthWidget.init
-    , invitationId = Utils.mustDecodePbFromFlags Pb.invitationIdDecoder "invitationIdPbB64" flags
+  ( { invitationId = Utils.mustDecodePbFromFlags Pb.invitationIdDecoder "invitationIdPbB64" flags
     , destination = Utils.mustDecodeFromFlags (JD.nullable JD.string) "destination" flags
+    , invitationIsOpen = Utils.mustDecodeFromFlags JD.bool "invitationIsOpen" flags
+    , authWidget = AuthWidget.init
+    , navbar = Navbar.init
     , working = False
     , acceptNotification = H.text ""
-    , now = Time.millisToPosix 0
     }
-  , Task.perform Tick Time.now
+  , Page.NoCmd
   )
 
-authWidgetCtx : Model -> AuthWidget.Context Msg
-authWidgetCtx model =
-  { auth = case model.authState of
-     LoggedIn auth -> Just auth
-     LoggedOut _ -> Nothing
-  , now = model.now
+authWidgetCtx : Page.Globals -> AuthWidget.Context Msg
+authWidgetCtx globals =
+  { auth = Page.getAuth globals
+  , now = globals.now
   , handle = AuthWidgetEvent
   }
 
-update : Msg -> Model -> (Model, Cmd Msg)
+update : Msg -> Model -> (Model, Page.Command Msg)
 update msg model =
   case msg of
     AcceptInvitation ->
       ( { model | working = True , acceptNotification = H.text "" }
-      , API.postAcceptInvitation AcceptInvitationFinished {invitationId=Just model.invitationId}
+      , Page.RequestCmd <| Page.AcceptInvitationRequest AcceptInvitationFinished {invitationId=Just model.invitationId}
       )
     AcceptInvitationFinished (Err e) ->
       ( { model | working = False , acceptNotification = Utils.redText (Debug.toString e) }
-      , Cmd.none
+      , Page.NoCmd
       )
     AcceptInvitationFinished (Ok resp) ->
       case resp.acceptInvitationResult of
         Just (Pb.AcceptInvitationResultOk _) ->
           ( model
-          , accepted {dest = model.destination |> Maybe.withDefault (Utils.pathToUserPage <| Utils.mustInviter model.invitationId) }
+          , Page.MiscCmd <| accepted {dest = model.destination |> Maybe.withDefault (Utils.pathToUserPage <| Utils.mustInviter model.invitationId) }
           )
         Just (Pb.AcceptInvitationResultError e) ->
           ( { model | working = False , acceptNotification = Utils.redText (Debug.toString e) }
-          , Cmd.none
+          , Page.NoCmd
           )
         Nothing ->
           ( { model | working = False , acceptNotification = Utils.redText "Invalid server response (neither Ok nor Error in protobuf)" }
-          , Cmd.none
+          , Page.NoCmd
           )
-    AuthWidgetEvent event widget ->
-      let
-        cmd = case event of
-          Just (AuthWidget.LogInUsername req) ->
-            API.postLogInUsername LogInUsernameFinished req
-          Just (AuthWidget.RegisterUsername req) ->
-            API.postRegisterUsername RegisterUsernameFinished req
-          Just (AuthWidget.SignOut req) ->
-            API.postSignOut SignOutFinished req
-          Nothing ->
-            Cmd.none
-      in
-        ( { model | authState = LoggedOut widget }
-        , cmd
-        )
-    LogInUsernameFinished res ->
-      ( AuthWidget.handleLogInUsernameResponse authThing res model
-      , if AuthWidget.isSuccessfulLogInUsername res then authChanged () else Cmd.none
+    AuthWidgetEvent event newState ->
+      ( { model | authWidget = newState }
+      , case event of
+          Just (AuthWidget.LogInUsername req) -> Page.RequestCmd (Page.LogInUsernameRequest LogInUsernameFinished req)
+          Just (AuthWidget.RegisterUsername req) -> Page.RequestCmd (Page.RegisterUsernameRequest RegisterUsernameFinished req)
+          Just (AuthWidget.SignOut req) -> Page.RequestCmd (Page.SignOutRequest SignOutFinished req)
+          Nothing -> Page.NoCmd
       )
-    RegisterUsernameFinished res ->
-      ( AuthWidget.handleRegisterUsernameResponse authThing res model
-      , if AuthWidget.isSuccessfulRegisterUsername res then authChanged () else Cmd.none
-      )
-    SignOutFinished res ->
-      ( AuthWidget.handleSignOutResponse authThing res model
-      , if AuthWidget.isSuccessfulSignOut res then authChanged () else Cmd.none
-      )
-    Tick now -> ({model | now=now}, Cmd.none)
+    NavbarMsg innerMsg ->
+      let (newNavbar, innerCmd) = Navbar.update innerMsg model.navbar in
+      ( { model | navbar = newNavbar } , Page.mapCmd NavbarMsg innerCmd )
+    LogInUsernameFinished res -> ( { model | authWidget = model.authWidget |> AuthWidget.handleLogInUsernameResponse {updateWidget=\f s -> f s, setAuth=always identity} res } , Page.NoCmd )
+    RegisterUsernameFinished res -> ( { model | authWidget = model.authWidget |> AuthWidget.handleRegisterUsernameResponse {updateWidget=\f s -> f s, setAuth=always identity} res } , Page.NoCmd )
+    SignOutFinished res -> ( { model | authWidget = model.authWidget |> AuthWidget.handleSignOutResponse {updateWidget=\f s -> f s, setAuth=always identity} res } , Page.NoCmd )
 
-isOwnInvitation : AuthState -> Pb.InvitationId -> Bool
-isOwnInvitation authState invitationId =
-  case authState of
-    LoggedIn auth -> auth.owner == invitationId.inviter
-    LoggedOut _ -> False
+isOwnInvitation : Page.Globals -> Pb.InvitationId -> Bool
+isOwnInvitation globals invitationId =
+  Page.getAuth globals
+  |> Maybe.map Utils.mustTokenOwner
+  |> (==) invitationId.inviter
 
-view : Model -> Html Msg
-view model =
-  if isOwnInvitation model.authState model.invitationId then H.text "This is your own invitation!" else
-  H.div []
-    [ H.h2 [] [H.text "Invitation from ", Utils.renderUser <| Utils.mustInviter model.invitationId]
-    , H.p []
-      [ H.text <| "The person who sent you this link is interested in betting against you regarding real-world events,"
-        ++ " with real money, upheld by the honor system!"
-        ++ " They trust you to behave honorably and pay your debts, and hope that you trust them back."
-      ]
-    , H.p [] <|
-      case model.authState of
-        LoggedIn _ ->
+view : Page.Globals -> Model -> Browser.Document Msg
+view globals model =
+  { title = "Accept Invitation"
+  , body = [Navbar.view globals model.navbar |> H.map NavbarMsg
+   ,H.main_ [HA.id "main", HA.style "text-align" "justify"] <|
+    if isOwnInvitation globals model.invitationId then
+      [H.text "This is your own invitation!"]
+    else if not model.invitationIsOpen then
+      [H.text "This invitation has been used up already!"]
+    else
+      [ H.h2 [] [H.text "Invitation from ", Utils.renderUser <| Utils.mustInviter model.invitationId]
+      , H.p []
+        [ H.text <| "The person who sent you this link is interested in betting against you regarding real-world events,"
+          ++ " with real money, upheld by the honor system!"
+          ++ " They trust you to behave honorably and pay your debts, and hope that you trust them back."
+        ]
+      , H.p [] <|
+        if Page.isLoggedIn globals then
           [ H.text "If you trust them back, click "
           , H.button [HE.onClick AcceptInvitation, HA.disabled model.working] [H.text "I trust the person who sent me this link"]
           , model.acceptNotification
           , H.text "; otherwise, just close this tab."
           ]
-        LoggedOut authWidget ->
+        else
           [ H.text "If you trust them back, and you're interested in betting against them:"
           , H.ul []
-            [ H.li [] [H.text "Authenticate yourself: ", AuthWidget.view (authWidgetCtx model) authWidget]
+            [ H.li [] [H.text "Authenticate yourself: ", AuthWidget.view (authWidgetCtx globals) model.authWidget]
             , H.li []
               [ H.text "...then click "
               , H.button
@@ -166,28 +143,25 @@ view model =
               ]
             ]
           ]
-    , H.hr [] []
-    , H.h3 [] [H.text "Huh? What? What is this?"]
-    , H.p [] [H.text "This site is a tool that helps people make concrete predictions and bet on them, thereby clarifying their beliefs and making the world a better, saner place."]
-    , H.p [] [H.text <| "Users can make predictions and say how confident they are;"
-        ++ " then other people can bet real money against them. "
-        , H.strong [] [H.text "Everything is purely honor-system,"]
-        , H.text <| " so you don't have to provide a credit card or anything, but you ", H.i [] [H.text "do"]
-        , H.text <| " have to tell the site who you trust, so that it knows who's allowed to bet against you."
-        ++ " (Honor systems only work where there is honor.)"]
-    , H.p [] [Utils.renderUser <| Utils.mustInviter model.invitationId, H.text <|
-        " thinks you might be interested in gambling against them, and trusts you to pay any debts you incur when you lose;"
-        ++ " if you feel likewise, accept their invitation!"]
-    ]
+      , H.hr [] []
+      , H.h3 [] [H.text "Huh? What? What is this?"]
+      , H.p [] [H.text "This site is a tool that helps people make concrete predictions and bet on them, thereby clarifying their beliefs and making the world a better, saner place."]
+      , H.p [] [H.text <| "Users can make predictions and say how confident they are;"
+          ++ " then other people can bet real money against them. "
+          , H.strong [] [H.text "Everything is purely honor-system,"]
+          , H.text <| " so you don't have to provide a credit card or anything, but you ", H.i [] [H.text "do"]
+          , H.text <| " have to tell the site who you trust, so that it knows who's allowed to bet against you."
+          ++ " (Honor systems only work where there is honor.)"]
+      , H.p [] [Utils.renderUser <| Utils.mustInviter model.invitationId, H.text <|
+          " thinks you might be interested in gambling against them, and trusts you to pay any debts you incur when you lose;"
+          ++ " if you feel likewise, accept their invitation!"]
+      ]
+  ]}
 
 subscriptions : Model -> Sub Msg
 subscriptions _ = Sub.none
 
-main : Program JD.Value Model Msg
-main =
-  Browser.element
-    { init = init
-    , subscriptions = subscriptions
-    , view = view
-    , update = update
-    }
+pagedef : Page.Element Model Msg
+pagedef = {init=init, view=view, update=update, subscriptions=\_ -> Sub.none}
+
+main = Page.page pagedef

@@ -301,6 +301,7 @@ class Servicer(abc.ABC):
     def GetSettings(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.GetSettingsRequest) -> mvp_pb2.GetSettingsResponse: pass
     def UpdateSettings(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.UpdateSettingsRequest) -> mvp_pb2.UpdateSettingsResponse: pass
     def CreateInvitation(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.CreateInvitationRequest) -> mvp_pb2.CreateInvitationResponse: pass
+    def CheckInvitation(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.CheckInvitationRequest) -> mvp_pb2.CheckInvitationResponse: pass
     def AcceptInvitation(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.AcceptInvitationRequest) -> mvp_pb2.AcceptInvitationResponse: pass
 
 
@@ -760,6 +761,25 @@ class FsBackedServicer(Servicer):
 
     @checks_token
     @log_action
+    def CheckInvitation(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.CheckInvitationRequest) -> mvp_pb2.CheckInvitationResponse:
+        if not (request.HasField('invitation_id') and request.invitation_id.HasField('inviter')):
+            logger.warn('malformed CheckInvitationRequest')
+            return mvp_pb2.CheckInvitationResponse(error=mvp_pb2.CheckInvitationResponse.Error(catchall='malformed invitation'))
+        wstate = self._storage.get()
+
+        inviter = request.invitation_id.inviter
+        inviter_info = get_generic_user_info(wstate, inviter)
+        if inviter_info is None:
+            return mvp_pb2.CheckInvitationResponse(error=mvp_pb2.CheckInvitationResponse.Error(catchall='no such invitation'))
+
+        invitation = inviter_info.invitations.get(request.invitation_id.nonce)
+        if invitation is None:
+            return mvp_pb2.CheckInvitationResponse(error=mvp_pb2.CheckInvitationResponse.Error(catchall='no such invitation'))
+
+        return mvp_pb2.CheckInvitationResponse(is_open=not invitation.HasField('accepted_by'))
+
+    @checks_token
+    @log_action
     def AcceptInvitation(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.AcceptInvitationRequest) -> mvp_pb2.AcceptInvitationResponse:
         if token is None:
             logger.warn('not logged in')
@@ -780,6 +800,7 @@ class FsBackedServicer(Servicer):
                 return mvp_pb2.AcceptInvitationResponse(error=mvp_pb2.AcceptInvitationResponse.Error(catchall='no such invitation'))
 
             for orig_nonce, orig_invitation in inviter_info.invitations.items():
+                # TODO: just index in, dummy
                 if orig_nonce == request.invitation_id.nonce:
                     if orig_invitation.HasField('accepted_by'):
                         logger.info('attempt to re-accept invitation')
@@ -1088,10 +1109,21 @@ class WebServer:
             inviter=mvp_pb2.UserId(username=req.match_info['username']),
             nonce=req.match_info['nonce'],
         )
+        check_invitation_resp = self._servicer.CheckInvitation(auth, mvp_pb2.CheckInvitationRequest(invitation_id=invitation_id))
+        if check_invitation_resp.WhichOneof('check_invitation_result') == 'error':
+            return web.HTTPBadRequest(reason=str(check_invitation_resp.error))
+        assert check_invitation_resp.WhichOneof('check_invitation_result') == 'is_open'
+        get_settings_response = self._servicer.GetSettings(auth, mvp_pb2.GetSettingsRequest())
+        if get_settings_response.WhichOneof('get_settings_result') == 'ok_username':
+            auth_success: Optional[mvp_pb2.AuthSuccess] = mvp_pb2.AuthSuccess(token=auth, user_info=get_settings_response.ok_username.info)
+        else:
+            assert get_settings_response.WhichOneof('get_settings_result') == 'error'
+            auth_success = None
         return web.Response(
             content_type='text/html',
             body=self._jinja.get_template('AcceptInvitationPage.html').render(
-                auth_token_pb_b64=pb_b64(auth),
+                auth_success_pb_b64=pb_b64(auth_success),
+                invitation_is_open=check_invitation_resp.is_open,
                 invitation_id_pb_b64=pb_b64(invitation_id),
             ))
 
