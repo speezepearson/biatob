@@ -1,21 +1,10 @@
-{% extends 'base.html' %}
+{% extends 'base_page.html' %}
 {% block title %} Biatob - Settings {% endblock %}
-{% block body %}
-  <main id="main-wrapper"><div id="main"></div></main>
+{% block page_body %}
   <script type="text/javascript" src="/elm/Settings.js"></script>
   <script type="text/javascript">
-
-    var authTokenPbB64 = {{ auth_token_pb_b64 | tojson }};
-    var settingsRespPbB64 = {{ settings_response_pb_b64 | tojson }};
-    var httpOrigin = window.location.origin;
-
-    if (!authTokenPbB64) {
-      window.location = "/"; // TODO(P2): should be /login
-    }
-
     var main = Elm.Elements.Settings.init({
-      node: document.getElementById('main'),
-      flags: {authTokenPbB64, settingsRespPbB64, httpOrigin},
+      flags: {...window.elmGlobalFlags},
     });
     subscribeToCopy(main);
   </script>

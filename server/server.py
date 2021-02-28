@@ -1075,11 +1075,11 @@ class WebServer:
         get_settings_response = self._servicer.GetSettings(auth, mvp_pb2.GetSettingsRequest())
         if get_settings_response.WhichOneof('get_settings_result') == 'error':
             return web.HTTPBadRequest(reason=str(get_settings_response.error))
+        assert get_settings_response.WhichOneof('get_settings_result') == 'ok_username'
         return web.Response(
             content_type='text/html',
             body=self._jinja.get_template('SettingsPage.html').render(
-                auth_token_pb_b64=pb_b64(auth),
-                settings_response_pb_b64=pb_b64(get_settings_response),
+                auth_success_pb_b64=pb_b64(mvp_pb2.AuthSuccess(token=auth, user_info=get_settings_response.ok_username.info)),
             ))
 
     async def get_invitation(self, req: web.Request) -> web.Response:

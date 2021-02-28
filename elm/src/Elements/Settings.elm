@@ -2,6 +2,7 @@ module Elements.Settings exposing (main)
 
 import Browser
 import Html as H exposing (Html)
+import Html.Attributes as HA
 import Json.Decode as JD
 import Http
 import Dict exposing (Dict)
@@ -15,40 +16,31 @@ import Widgets.TrustedUsersWidget as TrustedUsersWidget
 import Widgets.CopyWidget as CopyWidget
 import API
 import Widgets.SmallInvitationWidget as SmallInvitationWidget
-
-type UserTypeSpecificSettings
-  = UsernameSettings ChangePasswordWidget.Model
+import Page
+import Widgets.Navbar as Navbar
 
 type alias Model =
-  { auth : Pb.AuthToken
-  , userInfo : Pb.GenericUserInfo
-  , emailSettingsWidget : EmailSettingsWidget.State
+  { emailSettingsWidget : EmailSettingsWidget.State
   , trustedUsersWidget : TrustedUsersWidget.State
-  , userTypeSettings : UserTypeSpecificSettings
-  , httpOrigin : String
+  , changePasswordWidget : ChangePasswordWidget.Model
+  , navbar : Navbar.Model
   }
 
-trustedUsersCtx : Model -> TrustedUsersWidget.Context Msg
-trustedUsersCtx model =
-  { auth = model.auth
-  , httpOrigin = model.httpOrigin
-  , invitations = model.userInfo.invitations |> Utils.mustMapValues
-  , trustedUsers = model.userInfo.trustedUsers
+trustedUsersCtx : Pb.AuthToken -> Pb.GenericUserInfo -> String -> TrustedUsersWidget.Context Msg
+trustedUsersCtx auth userInfo httpOrigin =
+  { auth = auth
+  , httpOrigin = httpOrigin
+  , invitations = userInfo.invitations |> Utils.mustMapValues
+  , trustedUsers = userInfo.trustedUsers
   , handle = TrustedUsersEvent
   }
 
-emailSettingsCtx : Model -> EmailSettingsWidget.Context Msg
-emailSettingsCtx model =
-  { emailFlowState = model.userInfo |> Utils.mustUserInfoEmail
-  , emailRemindersToResolve = model.userInfo.emailRemindersToResolve
-  , emailResolutionNotifications = model.userInfo.emailResolutionNotifications
+emailSettingsCtx : Pb.GenericUserInfo -> EmailSettingsWidget.Context Msg
+emailSettingsCtx userInfo =
+  { emailFlowState = userInfo |> Utils.mustUserInfoEmail
+  , emailRemindersToResolve = userInfo.emailRemindersToResolve
+  , emailResolutionNotifications = userInfo.emailResolutionNotifications
   , handle = EmailSettingsEvent
-  }
-
-emailSettingsHandler : EmailSettingsWidget.Handler Model
-emailSettingsHandler =
-  { updateWidget = \f m -> { m | emailSettingsWidget = m.emailSettingsWidget |> f }
-  , setEmailFlowState = \e m -> { m | userInfo = m.userInfo |> \u -> { u | email = Just e } }
   }
 
 type Msg
@@ -60,134 +52,113 @@ type Msg
   | SetEmailFinished (Result Http.Error Pb.SetEmailResponse)
   | VerifyEmailFinished (Result Http.Error Pb.VerifyEmailResponse)
   | UpdateSettingsFinished (Result Http.Error Pb.UpdateSettingsResponse)
+  | NavbarMsg Navbar.Msg
 
-init : JD.Value -> (Model, Cmd Msg)
+init : JD.Value -> (Model, Page.Command Msg)
 init flags =
   let
-    auth = Utils.mustDecodePbFromFlags Pb.authTokenDecoder "authTokenPbB64" flags
-    httpOrigin = Utils.mustDecodeFromFlags JD.string "httpOrigin" flags
-    pbResp = Utils.mustDecodePbFromFlags Pb.getSettingsResponseDecoder "settingsRespPbB64" flags
-    genericInfo = case Utils.mustGetSettingsResult pbResp of
-      Pb.GetSettingsResultError e -> Debug.todo (Debug.toString e)
-      Pb.GetSettingsResultOkUsername usernameInfo -> Utils.mustUsernameGenericInfo usernameInfo
+    (changePasswordWidget, changePasswordCmd) = ChangePasswordWidget.init ()
   in
-  case Utils.mustGetSettingsResult pbResp of
-    Pb.GetSettingsResultError e -> Debug.todo (Debug.toString e)
-    Pb.GetSettingsResultOkUsername _ ->
-      let
-        (changePasswordWidget, changePasswordCmd) = ChangePasswordWidget.init ()
-      in
-      ( { auth = auth
-        , userInfo = genericInfo
-        , emailSettingsWidget = EmailSettingsWidget.init
-        , trustedUsersWidget = TrustedUsersWidget.init
-        , userTypeSettings = UsernameSettings changePasswordWidget
-        , httpOrigin = httpOrigin
-        }
-      , Cmd.map ChangePasswordMsg changePasswordCmd
-      )
+  ( { emailSettingsWidget = EmailSettingsWidget.init
+    , trustedUsersWidget = TrustedUsersWidget.init
+    , changePasswordWidget = changePasswordWidget
+    , navbar = Navbar.init
+    }
+  , Page.MiscCmd <| Cmd.map ChangePasswordMsg changePasswordCmd
+  )
 
-update : Msg -> Model -> (Model, Cmd Msg)
+update : Msg -> Model -> (Model, Page.Command Msg)
 update msg model =
   case msg of
     ChangePasswordMsg widgetMsg ->
-      case model.userTypeSettings of
-        UsernameSettings widget ->
-          let (newWidget, cmd) = ChangePasswordWidget.update widgetMsg widget in
-          ( { model | userTypeSettings = UsernameSettings newWidget }
-          , Cmd.map ChangePasswordMsg cmd
-          )
+      let (newWidget, cmd) = ChangePasswordWidget.update widgetMsg model.changePasswordWidget in
+      ( { model | changePasswordWidget = newWidget }
+      , Page.mapCmd ChangePasswordMsg (Page.MiscCmd cmd)
+      )
 
     TrustedUsersEvent event newWidget ->
-      (case event of
-        Just (TrustedUsersWidget.Copy s) -> ( model , CopyWidget.copy s )
-        Just (TrustedUsersWidget.InvitationEvent (SmallInvitationWidget.Copy s)) -> ( model , CopyWidget.copy s )
-        Just (TrustedUsersWidget.InvitationEvent SmallInvitationWidget.CreateInvitation) -> ( model , API.postCreateInvitation CreateInvitationFinished {notes=""} )
-        Just (TrustedUsersWidget.RemoveTrust who) -> ( model , API.postSetTrusted SetTrustedFinished {who=Just who, trusted=False} )
-        Nothing -> ( model , Cmd.none )
-      ) |> Tuple.mapFirst (\m -> { m | trustedUsersWidget = newWidget })
+      ( { model | trustedUsersWidget = newWidget }
+      , case event of
+          Just (TrustedUsersWidget.Copy s) -> Page.CopyCmd s
+          Just (TrustedUsersWidget.InvitationEvent (SmallInvitationWidget.Copy s)) -> Page.CopyCmd s
+          Just (TrustedUsersWidget.InvitationEvent SmallInvitationWidget.CreateInvitation) -> Page.RequestCmd <| Page.CreateInvitationRequest CreateInvitationFinished {notes=""}
+          Just (TrustedUsersWidget.RemoveTrust who) -> Page.RequestCmd <| Page.SetTrustedRequest SetTrustedFinished {who=Just who, trusted=False}
+          Nothing -> Page.NoCmd
+      )
 
     EmailSettingsEvent event newWidget ->
-      (case event of
-        Just (EmailSettingsWidget.SetEmail req) -> (model, API.postSetEmail SetEmailFinished req)
-        Just (EmailSettingsWidget.VerifyEmail req) -> (model, API.postVerifyEmail VerifyEmailFinished req)
-        Just (EmailSettingsWidget.UpdateSettings req) -> (model, API.postUpdateSettings UpdateSettingsFinished req)
-        Just EmailSettingsWidget.Ignore -> (model, Cmd.none)
-        Nothing -> (model, Cmd.none)
-      ) |> Tuple.mapFirst (\m -> { m | emailSettingsWidget = newWidget })
+      ( { model | emailSettingsWidget = newWidget }
+      , case event of
+        Just (EmailSettingsWidget.SetEmail req) -> Page.RequestCmd <| Page.SetEmailRequest SetEmailFinished req
+        Just (EmailSettingsWidget.VerifyEmail req) -> Page.RequestCmd <| Page.VerifyEmailRequest VerifyEmailFinished req
+        Just (EmailSettingsWidget.UpdateSettings req) -> Page.RequestCmd <| Page.UpdateSettingsRequest UpdateSettingsFinished req
+        Just EmailSettingsWidget.Ignore -> Page.NoCmd
+        Nothing -> Page.NoCmd
+      )
 
     CreateInvitationFinished res ->
       ( { model | trustedUsersWidget = model.trustedUsersWidget |> TrustedUsersWidget.handleCreateInvitationResponse res
-                , userInfo = case res |> Result.toMaybe |> Maybe.andThen .createInvitationResult of
-                    Just (Pb.CreateInvitationResultOk result) -> model.userInfo |> (\u -> { u | invitations = u.invitations |> Dict.insert (result.id |> Utils.must "" |> .nonce) result.invitation })
-                    _ -> model.userInfo
         }
-      , Cmd.none
+      , Page.NoCmd
       )
 
     SetTrustedFinished res ->
       ( { model | trustedUsersWidget = model.trustedUsersWidget |> TrustedUsersWidget.handleSetTrustedResponse res
-                , userInfo = case res |> Result.toMaybe |> Maybe.andThen .setTrustedResult of
-                    Just (Pb.SetTrustedResultOk userInfo) -> userInfo
-                    _ -> model.userInfo
         }
-      , Cmd.none
+      , Page.NoCmd
       )
 
     SetEmailFinished res ->
-      ( EmailSettingsWidget.handleSetEmailResponse emailSettingsHandler res model
-      , Cmd.none
+      ( { model | emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleSetEmailResponse {updateWidget=\f s -> f s, setEmailFlowState=always identity} res }
+      , Page.NoCmd
       )
 
     VerifyEmailFinished res ->
-      ( EmailSettingsWidget.handleVerifyEmailResponse emailSettingsHandler res model
-      , Cmd.none
+      ( { model | emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleVerifyEmailResponse {updateWidget=\f s -> f s, setEmailFlowState=always identity} res }
+      , Page.NoCmd
       )
 
     UpdateSettingsFinished res ->
-      ( { model | emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleUpdateSettingsResponse res
-                , userInfo = case res |> Result.toMaybe |> Maybe.andThen .updateSettingsResult of
-                    Just (Pb.UpdateSettingsResultOk userInfo) -> userInfo
-                    _ -> model.userInfo
-        }
-      , Cmd.none
+      ( { model | emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleUpdateSettingsResponse res }
+      , Page.NoCmd
       )
 
+    NavbarMsg innerMsg ->
+      let (newNavbar, innerCmd) = Navbar.update innerMsg model.navbar in
+      ( { model | navbar = newNavbar } , Page.mapCmd NavbarMsg innerCmd )
 
-view : Model -> Html Msg
-view model =
-  H.div []
-    [ H.h2 [] [H.text "Settings"]
-    , H.hr [] []
-    , H.h3 [] [H.text "Email"]
-    , EmailSettingsWidget.view (emailSettingsCtx model) model.emailSettingsWidget
-    , H.hr [] []
-    , H.h3 [] [H.text "Trust"]
-    , TrustedUsersWidget.view (trustedUsersCtx model) model.trustedUsersWidget
-    , H.hr [] []
-    , viewUserTypeSettings model.userTypeSettings
-    ]
 
-viewUserTypeSettings : UserTypeSpecificSettings -> Html Msg
-viewUserTypeSettings settings =
-  case settings of
-    UsernameSettings changePasswordWidget ->
-      H.div []
-        [ H.h3 [] [H.text "Change password"]
-        , H.map ChangePasswordMsg <| ChangePasswordWidget.view changePasswordWidget
-        ]
 
-subscriptions : Model -> Sub Msg
-subscriptions model =
-  case model.userTypeSettings of
-    UsernameSettings changePasswordWidget ->
-      ChangePasswordWidget.subscriptions changePasswordWidget |> Sub.map ChangePasswordMsg
+view : Page.Globals -> Model -> Browser.Document Msg
+view globals model =
+  { title = "Settings"
+  , body = [
+    Navbar.view globals model.navbar |> H.map NavbarMsg
+   ,H.main_ [HA.id "main", HA.style "text-align" "justify"] <| List.singleton <| case globals.authState of
+      Nothing -> H.text "You have to log in to view your settings!"
+      Just auth ->
+        let
+          token = Utils.mustAuthSuccessToken auth
+          userInfo = Utils.mustAuthSuccessUserInfo auth
+        in
+          H.div []
+            [ H.h2 [] [H.text "Settings"]
+            , H.hr [] []
+            , H.h3 [] [H.text "Email"]
+            , EmailSettingsWidget.view (emailSettingsCtx userInfo) model.emailSettingsWidget
+            , H.hr [] []
+            , H.h3 [] [H.text "Trust"]
+            , TrustedUsersWidget.view (trustedUsersCtx token userInfo globals.httpOrigin) model.trustedUsersWidget
+            , H.hr [] []
+            , H.div []
+                [ H.h3 [] [H.text "Change password"]
+                , H.map ChangePasswordMsg <| ChangePasswordWidget.view model.changePasswordWidget
+                ]
+            ]
+  ]
+  }
 
-main : Program JD.Value Model Msg
-main =
-  Browser.element
-    { init = init
-    , subscriptions = subscriptions
-    , view = view
-    , update = update
-    }
+pagedef : Page.Element Model Msg
+pagedef = {init=init, view=view, update=update, subscriptions=\_ -> Sub.none}
+
+main = Page.page pagedef
