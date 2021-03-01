@@ -1,6 +1,7 @@
 module Elements.Prediction exposing (main)
 
 import Browser
+import Html as H exposing (Html)
 import Http
 import Json.Decode as JD
 import Time
@@ -14,75 +15,46 @@ import API
 import Widgets.PredictionWidget as Widget
 import Widgets.StakeWidget as StakeWidget
 import Widgets.SmallInvitationWidget as SmallInvitationWidget
+import Page
 
-type alias Model = ( Widget.Context Msg , Widget.State )
+type alias Model = ( Widget.Context , Widget.Model )
 type Msg
-  = WidgetEvent (Maybe Widget.Event) Widget.State
-  | Tick Time.Posix
-  | StakeFinished (Result Http.Error Pb.StakeResponse)
-  | ResolveFinished (Result Http.Error Pb.ResolveResponse)
-  | CreateInvitationFinished (Result Http.Error Pb.CreateInvitationResponse)
+  = WidgetMsg Widget.Msg
 
-init : JD.Value -> (Model, Cmd Msg)
+init : JD.Value -> Model
 init flags =
-  ( ( { prediction = Utils.mustDecodePbFromFlags Pb.userPredictionViewDecoder "predictionPbB64" flags
-      , predictionId = Utils.mustDecodeFromFlags JD.int "predictionId" flags
-      , auth = Utils.decodePbFromFlags Pb.authTokenDecoder "authTokenPbB64" flags
-      , now = Utils.unixtimeToTime 0
-      , httpOrigin = Utils.mustDecodeFromFlags JD.string "httpOrigin" flags
-      , shouldLinkTitle = False
-      , handle = WidgetEvent
-      }
-    , Widget.init
-    )
-  , Task.perform Tick Time.now
+  let predictionId = Utils.mustDecodeFromFlags JD.int "predictionId" flags in
+  ( { prediction = Utils.mustDecodePbFromFlags Pb.userPredictionViewDecoder "predictionPbB64" flags
+    , predictionId = predictionId
+    , shouldLinkTitle = False
+    }
+  , Widget.init predictionId
   )
 
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg (ctx, model) =
+update : Msg -> Model -> ( Model, Page.Command Msg )
+update msg (ctx, widget) =
   case msg of
-    WidgetEvent event newState ->
+    WidgetMsg widgetMsg ->
       let
-        cmd = case event of
-          Nothing -> Cmd.none
-          Just (Widget.Copy s) -> CopyWidget.copy s
-          Just (Widget.InvitationEvent (SmallInvitationWidget.Copy s)) -> CopyWidget.copy s
-          Just (Widget.InvitationEvent SmallInvitationWidget.CreateInvitation) -> API.postCreateInvitation CreateInvitationFinished {notes=""}
-          Just (Widget.StakeEvent (StakeWidget.Staked {bettorIsASkeptic, bettorStakeCents})) -> API.postStake StakeFinished {predictionId=ctx.predictionId, bettorIsASkeptic=bettorIsASkeptic, bettorStakeCents=bettorStakeCents}
-          Just (Widget.Resolve resolution) -> API.postResolve ResolveFinished {predictionId=ctx.predictionId, resolution=resolution, notes = ""}
+        (newWidget, innerCmd) = Widget.update widgetMsg widget
+        newPrediction = case widgetMsg of
+          Widget.StakeMsg (StakeWidget.StakeFinished _) -> Debug.todo ""
+          Widget.ResolveFinished _ -> Debug.todo ""
+          _ -> Nothing
       in
-        ((ctx, newState), cmd)
-    Tick now -> (({ctx | now = now}, model), Cmd.none)
-    CreateInvitationFinished res ->
-      ( ( ctx
-        , model |> Widget.handleCreateInvitationResponse res
-        )
-      , Cmd.none
-      )
-    StakeFinished res ->
-      ( ( { ctx | prediction = case res |> Result.toMaybe |> Maybe.andThen .stakeResult of
-                    Just (Pb.StakeResultOk pred) -> pred
-                    _ -> ctx.prediction
-          }
-        , model |> Widget.handleStakeResponse res
-        )
-      , Cmd.none
-      )
-    ResolveFinished res ->
-      ( ( { ctx | prediction = case res |> Result.toMaybe |> Maybe.andThen .resolveResult of
-                    Just (Pb.ResolveResultOk pred) -> pred
-                    _ -> ctx.prediction
-          }
-        , model |> Widget.handleResolveResponse res
-        )
-      , Cmd.none
+      ( ( ctx , newWidget )
+      , Page.mapCmd WidgetMsg innerCmd
       )
 
-main : Program JD.Value Model Msg
-main =
-  Browser.element
-    { init = init
-    , subscriptions = \_ -> Time.every 1000 Tick
-    , view = \(ctx, model) -> Widget.view ctx model
-    , update = update
-    }
+pagedef : Page.Element Model Msg
+pagedef =
+  { init = \flags -> (init flags, Page.NoCmd)
+  , view = \globals (ctx, widget) ->
+      { title = ""
+      , body = [H.main_ [] [Widget.view ctx globals widget |> H.map WidgetMsg]]
+      }
+  , update = update
+  , subscriptions = \_ -> Sub.none
+  }
+
+main = Page.page pagedef

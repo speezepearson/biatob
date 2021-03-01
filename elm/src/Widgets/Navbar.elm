@@ -8,13 +8,9 @@ import Widgets.AuthWidget as AuthWidget
 import Page
 import Biatob.Proto.Mvp as Pb
 
-type alias Model = { authWidget : AuthWidget.State }
+type alias Model = { authWidget : AuthWidget.Model }
 type Msg
-  = AuthEvent (Maybe AuthWidget.Event) AuthWidget.State
-  | LogInUsernameFinished (Result Http.Error Pb.LogInUsernameResponse)
-  | RegisterUsernameFinished (Result Http.Error Pb.RegisterUsernameResponse)
-  | SignOutFinished (Result Http.Error Pb.SignOutResponse)
-
+  = AuthWidgetMsg AuthWidget.Msg
 
 init : Model
 init = { authWidget = AuthWidget.init }
@@ -33,20 +29,12 @@ view globals model =
     [ H.ul [] <|
         [H.li [] [H.a [HA.href "/"] [H.text "Home"]]]
         ++ (if Page.isLoggedIn globals then loggedInItems else [])
-        ++ [H.li [] [AuthWidget.view {auth=Page.getAuth globals, now=globals.now, handle=AuthEvent} model.authWidget]]
+        ++ [H.li [] [AuthWidget.view globals model.authWidget |> H.map AuthWidgetMsg]]
     ]
 
 update : Msg -> Model -> ( Model , Page.Command Msg )
 update msg model =
   case msg of
-    AuthEvent event newState ->
-      ( { model | authWidget = newState }
-      , case event of
-          Just (AuthWidget.LogInUsername req) -> Page.RequestCmd (Page.LogInUsernameRequest LogInUsernameFinished req)
-          Just (AuthWidget.RegisterUsername req) -> Page.RequestCmd (Page.RegisterUsernameRequest RegisterUsernameFinished req)
-          Just (AuthWidget.SignOut req) -> Page.RequestCmd (Page.SignOutRequest SignOutFinished req)
-          Nothing -> Page.NoCmd
-      )
-    LogInUsernameFinished res -> ( { model | authWidget = model.authWidget |> AuthWidget.handleLogInUsernameResponse {updateWidget=\f s -> f s, setAuth=always identity} res } , Page.NoCmd )
-    RegisterUsernameFinished res -> ( { model | authWidget = model.authWidget |> AuthWidget.handleRegisterUsernameResponse {updateWidget=\f s -> f s, setAuth=always identity} res } , Page.NoCmd )
-    SignOutFinished res -> ( { model | authWidget = model.authWidget |> AuthWidget.handleSignOutResponse {updateWidget=\f s -> f s, setAuth=always identity} res } , Page.NoCmd )
+    AuthWidgetMsg widgetMsg ->
+      let (newWidget, innerCmd) = AuthWidget.update widgetMsg model.authWidget in
+      ( { model | authWidget = newWidget } , Page.mapCmd AuthWidgetMsg innerCmd )

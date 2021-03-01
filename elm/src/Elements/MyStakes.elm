@@ -8,23 +8,23 @@ import Utils
 
 import Biatob.Proto.Mvp exposing (StakeResult(..))
 import Widgets.ViewPredictionsWidget as ViewPredictionsWidget
+import Page
 
 type alias Model = ViewPredictionsWidget.Model
 type alias Msg = ViewPredictionsWidget.Msg
 
-initFromFlags : JD.Value -> (Model, Cmd Msg)
-initFromFlags flags =
-  ViewPredictionsWidget.init
-    { auth =  Utils.decodePbFromFlags Pb.authTokenDecoder "authTokenPbB64" flags
-    , predictions = Utils.mustDecodePbFromFlags Pb.predictionsByIdDecoder "predictionsPbB64" flags |> Utils.mustPredictionsById
-    , httpOrigin = Utils.mustDecodeFromFlags JD.string "httpOrigin" flags
-    }
+init : JD.Value -> (Model, Page.Command Msg)
+init flags =
+  ( ViewPredictionsWidget.init <| Utils.mustPredictionsById <| Utils.mustDecodePbFromFlags Pb.predictionsByIdDecoder "predictionsPbB64" flags
+  , Page.NoCmd
+  )
 
-main : Program JD.Value Model Msg
-main =
-  Browser.element
-    { init = initFromFlags
-    , subscriptions = ViewPredictionsWidget.subscriptions
-    , view = ViewPredictionsWidget.view
-    , update = ViewPredictionsWidget.update
-    }
+pagedef : Page.Element Model Msg
+pagedef =
+  { init = init
+  , view = \g m -> {title="My stakes", body=[ViewPredictionsWidget.view g m]}
+  , update = ViewPredictionsWidget.update
+  , subscriptions = ViewPredictionsWidget.subscriptions
+  }
+
+main = Page.page pagedef

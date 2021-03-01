@@ -16,102 +16,109 @@ import Utils
 import Widgets.StakeWidget as StakeWidget
 import Widgets.CopyWidget as CopyWidget
 import Widgets.SmallInvitationWidget as SmallInvitationWidget
+import Page
 
-type Event
-  = InvitationEvent SmallInvitationWidget.Event
-  | StakeEvent StakeWidget.Event
+type Msg
+  = InvitationMsg SmallInvitationWidget.Msg
+  | StakeMsg StakeWidget.Msg
   | Copy String
-  | Resolve Pb.Resolution
-type alias Context msg =
-  { auth : Maybe Pb.AuthToken
+  | Resolve Int Pb.Resolution
+  | ResolveFinished (Result Http.Error Pb.ResolveResponse)
+type alias Context =
+  { predictionId : Int
   , prediction : Pb.UserPredictionView
-  , predictionId : Int
-  , now : Time.Posix
-  , httpOrigin : String
   , shouldLinkTitle : Bool
-  , handle : Maybe Event -> State -> msg
   }
-type alias State =
-  { stakeForm : StakeWidget.State
+type alias Model =
+  { stakeForm : StakeWidget.Model
   , working : Bool
   , notification : Html Never
-  , invitationWidget : SmallInvitationWidget.State
+  , invitationWidget : SmallInvitationWidget.Model
   }
 
-invitationWidgetCtx : Context msg -> State -> SmallInvitationWidget.Context msg
-invitationWidgetCtx ctx state =
-  { httpOrigin = ctx.httpOrigin
-  , destination = Just <| "/p/" ++ String.fromInt ctx.predictionId
-  , handle = \e m -> ctx.handle (Maybe.map InvitationEvent e) { state | invitationWidget = m }
-  }
-
-init : State
-init =
+init : Int -> Model
+init predictionId =
   { stakeForm = StakeWidget.init
   , working = False
   , notification = H.text ""
-  , invitationWidget = SmallInvitationWidget.init
+  , invitationWidget = SmallInvitationWidget.init (Just <| "/p/" ++ String.fromInt predictionId)
   }
 
-handleStakeResponse : Result Http.Error Pb.StakeResponse -> State -> State
-handleStakeResponse  res state =
-  { state | stakeForm = state.stakeForm |> StakeWidget.handleStakeResponse res }
-handleCreateInvitationResponse : Result Http.Error Pb.CreateInvitationResponse -> State -> State
-handleCreateInvitationResponse res state =
-  { state | invitationWidget = state.invitationWidget |> SmallInvitationWidget.handleCreateInvitationResponse res }
-handleResolveResponse : Result Http.Error Pb.ResolveResponse -> State -> State
-handleResolveResponse res state =
-  case res of
-    Err e ->
-      { state | working = False , notification = Utils.redText (Debug.toString e) }
-    Ok resp ->
-      case resp.resolveResult of
-        Just (Pb.ResolveResultOk _) ->
-          { state | working = False
-                  , notification = H.text ""
-          }
-        Just (Pb.ResolveResultError e) ->
-          { state | working = False , notification = Utils.redText (Debug.toString e) }
-        Nothing ->
-          { state | working = False , notification = Utils.redText "Invalid server response (neither Ok nor Error in protobuf)" }
+update : Msg -> Model -> ( Model , Page.Command Msg )
+update msg model =
+  case msg of
+    InvitationMsg widgetMsg ->
+      let (newWidget, widgetCmd) = SmallInvitationWidget.update widgetMsg model.invitationWidget in
+      ( { model | invitationWidget = newWidget }
+      , Page.mapCmd InvitationMsg widgetCmd
+      )
+    StakeMsg widgetMsg ->
+      let (newWidget, widgetCmd) = StakeWidget.update widgetMsg model.stakeForm in
+      ( { model | stakeForm = newWidget }
+      , Page.mapCmd StakeMsg widgetCmd
+      )
+    Copy s ->
+      ( model
+      , Page.CopyCmd s
+      )
 
-viewStakeWidgetOrExcuse : Context msg -> State -> Html msg
-viewStakeWidgetOrExcuse ctx state =
+    Resolve predictionId resolution ->
+      ( { model | working = True , notification = H.text "" }
+      , Page.RequestCmd <| Page.ResolveRequest ResolveFinished {predictionId=predictionId, resolution=resolution, notes=""}
+      )
+    ResolveFinished res ->
+      ( case res of
+          Err e ->
+            { model | working = False , notification = Utils.redText (Debug.toString e) }
+          Ok resp ->
+            case resp.resolveResult of
+              Just (Pb.ResolveResultOk _) ->
+                { model | working = False
+                        , notification = H.text ""
+                }
+              Just (Pb.ResolveResultError e) ->
+                { model | working = False , notification = Utils.redText (Debug.toString e) }
+              Nothing ->
+                { model | working = False , notification = Utils.redText "Invalid server response (neither Ok nor Error in protobuf)" }
+      , Page.NoCmd
+      )
+
+viewStakeWidgetOrExcuse : Context -> Page.Globals -> Model -> Html Msg
+viewStakeWidgetOrExcuse ctx globals model =
   let creator = Utils.mustPredictionCreator ctx.prediction in
   if Utils.resolutionIsTerminal (Utils.currentResolution ctx.prediction) then
     H.text "This prediction has resolved, so cannot be bet in."
-  else if ctx.prediction.closesUnixtime < Utils.timeToUnixtime ctx.now then
+  else if ctx.prediction.closesUnixtime < Utils.timeToUnixtime globals.now then
     H.text <| "This prediction closed on " ++ Utils.dateStr Time.utc (Utils.predictionClosesTime ctx.prediction) ++ " (UTC)."
-  else case ctx.auth of
-    Nothing ->
-      H.div []
-        [ H.text "You must be logged in to participate in this prediction!"
-        ]
-    Just _ ->
-      if creator.isSelf then
-        H.text ""
-      else case (creator.trustsYou, creator.isTrusted) of
-        (True, True) ->
-          StakeWidget.view (stakeFormConfig ctx state) state.stakeForm
-        (False, False) ->
-          H.div []
-            [ H.text <| "You and " ++ creator.displayName ++ " don't trust each other! If, in real life, you "
-            , H.i [] [H.text "do"]
-            , H.text " trust each other to pay your debts, send them an invitation! "
-            , SmallInvitationWidget.view (invitationWidgetCtx ctx state) state.invitationWidget
-            ]
-        (True, False) ->
-          H.div []
-            [ H.text <| "You don't trust " ++ creator.displayName ++ "."
-            -- TODO(P0)
-            ]
-        (False, True) ->
-          H.div []
-            [ H.text <| creator.displayName ++ " hasn't marked you as trusted! If you think that, in real life, they "
-            , H.i [] [H.text "do"]
-            , H.text " trust you to pay your debts, send them an invitation link: "
-            , SmallInvitationWidget.view (invitationWidgetCtx ctx state) state.invitationWidget
-            ]
+  else if not (Page.isLoggedIn globals) then
+    H.div []
+      [ H.text "You must be logged in to participate in this prediction!"
+      ]
+  else
+    if creator.isSelf then
+      H.text ""
+    else case (creator.trustsYou, creator.isTrusted) of
+      (True, True) ->
+        StakeWidget.view {prediction=ctx.prediction, predictionId=ctx.predictionId, disableCommit=False{- TODO -}} globals model.stakeForm |> H.map StakeMsg
+      (False, False) ->
+        H.div []
+          [ H.text <| "You and " ++ creator.displayName ++ " don't trust each other! If, in real life, you "
+          , H.i [] [H.text "do"]
+          , H.text " trust each other to pay your debts, send them an invitation! "
+          , SmallInvitationWidget.view globals model.invitationWidget |> H.map InvitationMsg
+          ]
+      (True, False) ->
+        H.div []
+          [ H.text <| "You don't trust " ++ creator.displayName ++ "."
+          -- TODO(P0)
+          ]
+      (False, True) ->
+        H.div []
+          [ H.text <| creator.displayName ++ " hasn't marked you as trusted! If you think that, in real life, they "
+          , H.i [] [H.text "do"]
+          , H.text " trust you to pay your debts, send them an invitation link: "
+          , SmallInvitationWidget.view globals model.invitationWidget |> H.map InvitationMsg
+          ]
 
 creatorWinningsByBettor : Bool -> List Pb.Trade -> Dict String Int -- TODO: avoid key serialization collisions
 creatorWinningsByBettor resolvedYes trades =
@@ -122,7 +129,7 @@ stateWinnings : String -> Int -> String
 stateWinnings counterparty win =
   (if win > 0 then counterparty ++ " owes you" else "You owe " ++ counterparty) ++ " " ++ Utils.formatCents (abs win) ++ "."
 
-enumerateWinnings : Dict String Int -> Html msg
+enumerateWinnings : Dict String Int -> Html Msg
 enumerateWinnings winningsByUser =
   H.ul [] <| (
     winningsByUser
@@ -131,10 +138,10 @@ enumerateWinnings winningsByUser =
     |> List.map (\(b, win) -> H.li [] [H.text <| stateWinnings b win])
     )
 
-viewPredictionState : Context msg -> State -> Html msg
-viewPredictionState ctx state =
+viewPredictionState : Context -> Page.Globals -> Model -> Html Msg
+viewPredictionState ctx globals model =
   let
-    auditLog : Html msg
+    auditLog : Html Msg
     auditLog =
       if List.isEmpty ctx.prediction.resolutions then H.text "" else
       H.details [HA.style "opacity" "50%"]
@@ -162,8 +169,8 @@ viewPredictionState ctx state =
         H.text "This prediction has resolved INVALID. "
       Pb.ResolutionNoneYet ->
         let
-          secondsToClose = ctx.prediction.closesUnixtime - Utils.timeToUnixtime ctx.now
-          secondsToResolve = ctx.prediction.resolvesAtUnixtime - Utils.timeToUnixtime ctx.now
+          secondsToClose = ctx.prediction.closesUnixtime - Utils.timeToUnixtime globals.now
+          secondsToResolve = ctx.prediction.resolvesAtUnixtime - Utils.timeToUnixtime globals.now
         in
           H.text <|
             ( if secondsToClose > 0 then
@@ -182,10 +189,10 @@ viewPredictionState ctx state =
     , auditLog
     ]
 
-viewWinnings : Context msg -> State -> Html msg
-viewWinnings ctx state =
+viewWinnings : Context -> Page.Globals -> Model -> Html Msg
+viewWinnings ctx globals model =
   let
-    auditLog : Html msg
+    auditLog : Html Msg
     auditLog =
       if List.isEmpty ctx.prediction.yourTrades then H.text "" else
       H.details [HA.style "opacity" "50%"]
@@ -196,7 +203,7 @@ viewWinnings ctx state =
                                      , H.text <| " bet " ++ (if t.bettorIsASkeptic then "NO" else "YES") ++ " staking " ++ Utils.formatCents t.bettorStakeCents ++ " against " ++ Utils.formatCents t.creatorStakeCents])
           |> H.ul []
         ]
-    ifRes : Bool -> Html msg
+    ifRes : Bool -> Html Msg
     ifRes res =
       creatorWinningsByBettor res ctx.prediction.yourTrades
         |> let creator = Utils.mustPredictionCreator ctx.prediction in
@@ -223,8 +230,8 @@ viewWinnings ctx state =
     , auditLog
     ]
 
-viewCreationParams : Context msg -> State -> Html msg
-viewCreationParams ctx state =
+viewCreationParams : Context -> Page.Globals -> Model -> Html Msg
+viewCreationParams ctx globals model =
   let
     creator = Utils.mustPredictionCreator ctx.prediction
     openTime = Utils.unixtimeToTime ctx.prediction.createdUnixtime
@@ -247,8 +254,8 @@ viewCreationParams ctx state =
     , H.text "."
     ]
 
-viewResolveButtons : Context msg -> State -> Html msg
-viewResolveButtons ctx state =
+viewResolveButtons : Context -> Page.Globals -> Model -> Html Msg
+viewResolveButtons ctx globals model =
   if (Utils.mustPredictionCreator ctx.prediction).isSelf then
     H.div []
       [ let
@@ -256,7 +263,7 @@ viewResolveButtons ctx state =
             H.details [HA.style "color" "gray"]
               [ H.summary [] [H.text "Mistake?"]
               , H.text "If you resolved this prediction incorrectly, you can "
-              , H.button [HE.onClick <| ctx.handle (Just <| Resolve Pb.ResolutionNoneYet) { state | working = True , notification = H.text "" }] [H.text "un-resolve it."]
+              , H.button [HE.onClick (Resolve ctx.predictionId Pb.ResolutionNoneYet)] [H.text "un-resolve it."]
               ]
         in
         case Utils.currentResolution ctx.prediction of
@@ -268,18 +275,18 @@ viewResolveButtons ctx state =
             mistakeDetails
           Pb.ResolutionNoneYet ->
             H.div []
-              [ H.button [HE.onClick <| ctx.handle (Just <| Resolve Pb.ResolutionYes    ) { state | working = True , notification = H.text "" }] [H.text "Resolve YES"]
-              , H.button [HE.onClick <| ctx.handle (Just <| Resolve Pb.ResolutionNo     ) { state | working = True , notification = H.text "" }] [H.text "Resolve NO"]
-              , H.button [HE.onClick <| ctx.handle (Just <| Resolve Pb.ResolutionInvalid) { state | working = True , notification = H.text "" }] [H.text "Resolve INVALID"]
+              [ H.button [HE.onClick (Resolve ctx.predictionId Pb.ResolutionYes    )] [H.text "Resolve YES"]
+              , H.button [HE.onClick (Resolve ctx.predictionId Pb.ResolutionNo     )] [H.text "Resolve NO"]
+              , H.button [HE.onClick (Resolve ctx.predictionId Pb.ResolutionInvalid)] [H.text "Resolve INVALID"]
               ]
           Pb.ResolutionUnrecognized_ _ -> Debug.todo "unrecognized resolution"
-      , state.notification |> H.map never
+      , model.notification |> H.map never
       ]
   else
     H.text ""
 
-view : Context msg -> State -> Html msg
-view ctx state =
+view : Context -> Page.Globals -> Model -> Html Msg
+view ctx globals model =
   let
     creator = Utils.mustPredictionCreator ctx.prediction
   in
@@ -291,11 +298,11 @@ view ctx state =
         else
           text
         ]
-    , viewPredictionState ctx state
-    , viewResolveButtons ctx state
-    , viewWinnings ctx state
+    , viewPredictionState ctx globals model
+    , viewResolveButtons ctx globals model
+    , viewWinnings ctx globals model
     , H.hr [] []
-    , viewCreationParams ctx state
+    , viewCreationParams ctx globals model
     , case ctx.prediction.specialRules of
         "" ->
           H.text ""
@@ -305,23 +312,23 @@ view ctx state =
             , H.text <| " " ++ rules
             ]
     , H.hr [] []
-    , viewStakeWidgetOrExcuse ctx state
+    , viewStakeWidgetOrExcuse ctx globals model
     , if creator.isSelf then
         H.div []
           [ H.text "If you want to link to your prediction, here are some snippets of HTML you could copy-paste:"
-          , viewEmbedInfo ctx state
+          , viewEmbedInfo ctx globals model
           , H.text "If there are people you want to participate, but you haven't already established trust with them in Biatob, send them invitations: "
-          , SmallInvitationWidget.view (invitationWidgetCtx ctx state) state.invitationWidget
+          , SmallInvitationWidget.view globals model.invitationWidget |> H.map InvitationMsg
           ]
       else
         H.text ""
     ]
 
-viewEmbedInfo : Context msg -> State -> Html msg
-viewEmbedInfo ctx state =
+viewEmbedInfo : Context -> Page.Globals -> Model -> Html Msg
+viewEmbedInfo ctx globals model =
   let
-    linkUrl = ctx.httpOrigin ++ "/p/" ++ String.fromInt ctx.predictionId  -- TODO(P0): needs origin to get stuck in text field
-    imgUrl = ctx.httpOrigin ++ "/p/" ++ String.fromInt ctx.predictionId ++ "/embed.png"
+    linkUrl = globals.httpOrigin ++ "/p/" ++ String.fromInt ctx.predictionId  -- TODO(P0): needs origin to get stuck in text field
+    imgUrl = globals.httpOrigin ++ "/p/" ++ String.fromInt ctx.predictionId ++ "/embed.png"
     imgStyles = [("max-height","1.5ex"), ("border-bottom","1px solid #008800")]
     imgCode =
       "<a href=\"" ++ linkUrl ++ "\">"
@@ -340,7 +347,7 @@ viewEmbedInfo ctx state =
     H.ul []
       [ H.li [] <|
         [ H.text "A linked inline image: "
-        , CopyWidget.view (\s -> ctx.handle (Just <| Copy s) state) imgCode
+        , CopyWidget.view Copy imgCode
         , H.br [] []
         , H.text "This would render as: "
         , H.a [HA.href linkUrl]
@@ -348,16 +355,9 @@ viewEmbedInfo ctx state =
         ]
       , H.li [] <|
         [ H.text "A boring old link: "
-        , CopyWidget.view (\s -> ctx.handle (Just <| Copy s) state) linkCode
+        , CopyWidget.view Copy linkCode
         , H.br [] []
         , H.text "This would render as: "
         , H.a [HA.href linkUrl] [H.text linkText]
         ]
       ]
-
-stakeFormConfig : Context msg -> State -> StakeWidget.Config msg
-stakeFormConfig ctx state =
-  { disableCommit = (ctx.auth == Nothing || (Utils.mustPredictionCreator ctx.prediction).isSelf)
-  , prediction = ctx.prediction
-  , handle = \e m -> ctx.handle (Maybe.map StakeEvent e) { state | stakeForm = m }
-  }

@@ -11,6 +11,8 @@ import Biatob.Proto.Mvp as Pb
 import Biatob.Proto.Mvp exposing (StakeResult(..))
 import Field exposing (Field)
 import API
+import Page
+import Page
 
 type alias Model =
   { oldPasswordField : Field () String
@@ -25,42 +27,40 @@ type Msg
   | ChangePassword
   | ChangePasswordFinished (Result Http.Error Pb.ChangePasswordResponse)
 
-init : () -> (Model, Cmd Msg)
-init _ =
-  ( { oldPasswordField = Field.okIfEmpty <| Field.init "" <| \() s -> if s=="" then Err "" else Ok s
-    , newPasswordField = Field.okIfEmpty <| Field.init "" <| \() s -> if s=="" then Err "" else Ok s
-    , working = False
-    , error = Nothing
-    }
-  , Cmd.none
-  )
+init : Model
+init =
+  { oldPasswordField = Field.okIfEmpty <| Field.init "" <| \() s -> if s=="" then Err "" else Ok s
+  , newPasswordField = Field.okIfEmpty <| Field.init "" <| \() s -> if s=="" then Err "" else Ok s
+  , working = False
+  , error = Nothing
+  }
 
-update : Msg -> Model -> (Model, Cmd Msg)
+update : Msg -> Model -> (Model, Page.Command Msg)
 update msg model =
   case msg of
-    SetOldPasswordField s -> ( { model | oldPasswordField = model.oldPasswordField |> Field.setStr s } , Cmd.none)
-    SetNewPasswordField s -> ( { model | newPasswordField = model.newPasswordField |> Field.setStr s } , Cmd.none)
+    SetOldPasswordField s -> ( { model | oldPasswordField = model.oldPasswordField |> Field.setStr s } , Page.NoCmd)
+    SetNewPasswordField s -> ( { model | newPasswordField = model.newPasswordField |> Field.setStr s } , Page.NoCmd)
     ChangePassword ->
       ( { model | working = True , error = Nothing }
       , case (Field.parse () model.oldPasswordField, Field.parse () model.newPasswordField) of
-          (Ok old, Ok new) -> API.postChangePassword ChangePasswordFinished {oldPassword=old, newPassword=new}
-          _ -> Cmd.none
+          (Ok old, Ok new) -> Page.RequestCmd <| Page.ChangePasswordRequest ChangePasswordFinished {oldPassword=old, newPassword=new}
+          _ -> Page.NoCmd
       )
     ChangePasswordFinished (Err e) ->
       ( { model | working = False , error = Just (Debug.toString e) }
-      , Cmd.none
+      , Page.NoCmd
       )
     ChangePasswordFinished (Ok resp) ->
       case resp.changePasswordResult of
         Just (Pb.ChangePasswordResultOk _) ->
-          init ()
+          ( init , Page.NoCmd )
         Just (Pb.ChangePasswordResultError e) ->
           ( { model | working = False , error = Just (Debug.toString e) }
-          , Cmd.none
+          , Page.NoCmd
           )
         Nothing ->
           ( { model | working = False , error = Just "Invalid server response (neither Ok nor Error in protobuf)" }
-          , Cmd.none
+          , Page.NoCmd
           )
 
 view : Model -> Html Msg
@@ -89,12 +89,3 @@ view model =
 
 subscriptions : Model -> Sub Msg
 subscriptions _ = Sub.none
-
-main : Program () Model Msg
-main =
-  Browser.element
-    { init = init
-    , subscriptions = subscriptions
-    , view = view
-    , update = update
-    }

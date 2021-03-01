@@ -19,94 +19,26 @@ import Field exposing (Field)
 import Set
 import Field
 import Biatob.Proto.Mvp exposing (LogInUsernameRequest)
+import Page
+import Field
+import Page
 
-type Event
-  = LogInUsername Pb.LogInUsernameRequest
-  | RegisterUsername Pb.RegisterUsernameRequest
-  | SignOut Pb.SignOutRequest
-type alias Context msg =
-  { auth : Maybe Pb.AuthToken
-  , now : Time.Posix
-  , handle : Maybe Event -> State -> msg
-  }
-type alias State =
+type Msg
+  = SetUsernameField String
+  | SetPasswordField String
+  | Ignore
+  | LogInUsername
+  | LogInUsernameFinished (Result Http.Error Pb.LogInUsernameResponse)
+  | RegisterUsername
+  | RegisterUsernameFinished (Result Http.Error Pb.RegisterUsernameResponse)
+  | SignOut
+  | SignOutFinished (Result Http.Error Pb.SignOutResponse)
+type alias Model =
   { usernameField : Field () String
   , passwordField : Field () String
   , working : Bool
   , notification : Html Never
   }
-
-
-
-type alias Handler a =
-  { updateWidget : (State -> State) -> a -> a
-  , setAuth : Maybe Pb.AuthToken -> a -> a
-  }
-
-getSuccessfulAuthFromLogInUsername : Result Http.Error Pb.LogInUsernameResponse -> Maybe Pb.AuthToken
-getSuccessfulAuthFromLogInUsername res =
-  case res |> Result.toMaybe |> Maybe.andThen .logInUsernameResult of
-    Just (Pb.LogInUsernameResultOk authSuccess) -> Just <| Utils.mustAuthSuccessToken authSuccess
-    _ -> Nothing
-isSuccessfulLogInUsername res = getSuccessfulAuthFromLogInUsername res /= Nothing
-handleLogInUsernameResponse : Handler a -> Result Http.Error Pb.LogInUsernameResponse -> a -> a
-handleLogInUsernameResponse thing res a =
-  a
-  |> thing.updateWidget (\state ->
-      case res of
-        Err e -> { state | working = False , notification = Utils.redText (Debug.toString e)}
-        Ok resp ->
-          case resp.logInUsernameResult of
-            Just (Pb.LogInUsernameResultOk _) ->
-              { state | working = False , notification = H.text "" }
-            Just (Pb.LogInUsernameResultError e) ->
-              { state | working = False , notification = Utils.redText (Debug.toString e) }
-            Nothing ->
-              { state | working = False , notification = Utils.redText "Invalid server response (neither Ok nor Error in protobuf)" }
-    )
-  |> case getSuccessfulAuthFromLogInUsername res of
-      Just auth -> thing.setAuth (Just auth)
-      _ -> identity
-
-getSuccessfulAuthFromRegisterUsername : Result Http.Error Pb.RegisterUsernameResponse -> Maybe Pb.AuthToken
-getSuccessfulAuthFromRegisterUsername res =
-  case res |> Result.toMaybe |> Maybe.andThen .registerUsernameResult of
-    Just (Pb.RegisterUsernameResultOk auth) -> Just <| Utils.mustAuthSuccessToken auth
-    _ -> Nothing
-isSuccessfulRegisterUsername res = getSuccessfulAuthFromRegisterUsername res /= Nothing
-handleRegisterUsernameResponse : Handler a -> Result Http.Error Pb.RegisterUsernameResponse -> a -> a
-handleRegisterUsernameResponse thing res a =
-  a
-  |> thing.updateWidget (\state ->
-      case res of
-        Err e -> { state | working = False , notification = Utils.redText (Debug.toString e)}
-        Ok resp ->
-          case resp.registerUsernameResult of
-            Just (Pb.RegisterUsernameResultOk _) ->
-              { state | working = False , notification = H.text "" }
-            Just (Pb.RegisterUsernameResultError e) ->
-              { state | working = False , notification = Utils.redText (Debug.toString e) }
-            Nothing ->
-              { state | working = False , notification = Utils.redText "Invalid server response (neither Ok nor Error in protobuf)" }
-    )
-  |> case getSuccessfulAuthFromRegisterUsername res of
-      Just auth -> thing.setAuth (Just auth)
-      _ -> identity
-
-isSuccessfulSignOut : Result Http.Error Pb.SignOutResponse -> Bool
-isSuccessfulSignOut res =
-  case res of
-    Ok _ -> True
-    Err _ -> False
-handleSignOutResponse : Handler a -> Result Http.Error Pb.SignOutResponse -> a -> a
-handleSignOutResponse thing res a =
-  a
-  |> thing.updateWidget (\state ->
-      case res of
-        Err e -> { state | working = False , notification = Utils.redText (Debug.toString e)}
-        Ok _ -> { state | working = False , notification = H.text "" }
-    )
-  |> if isSuccessfulSignOut res then thing.setAuth Nothing else identity
 
 illegalUsernameCharacters : String -> Set.Set Char
 illegalUsernameCharacters s =
@@ -116,7 +48,7 @@ illegalUsernameCharacters s =
   in
     Set.diff presentChars okayChars
 
-init : State
+init : Model
 init =
   { usernameField = Field.okIfEmpty <| Field.init "" <| \() s ->
       if s=="" then
@@ -135,60 +67,115 @@ init =
   , notification = H.text ""
   }
 
-view : Context msg -> State -> Html msg
-view ctx state =
-  case ctx.auth of
+view : Page.Globals -> Model -> Html Msg
+view globals model =
+  case Page.getAuth globals of
     Nothing ->
       let
-        disableButtons = case (Field.parse () state.usernameField, Field.parse () state.passwordField) of
+        disableButtons = case (Field.parse () model.usernameField, Field.parse () model.passwordField) of
           (Ok _, Ok _) -> False
           _ -> True
-
-        (loginMsg, registerMsg) = case (Field.parse () state.usernameField, Field.parse () state.passwordField) of
-          (Ok username, Ok password) ->
-            ( ctx.handle (Just <| LogInUsername    {username=username, password=password}) { state | working = True , notification = H.text "" }
-            , ctx.handle (Just <| RegisterUsername {username=username, password=password}) { state | working = True , notification = H.text "" }
-            )
-          _ ->
-            ( ctx.handle Nothing state
-            , ctx.handle Nothing state
-            )
       in
       H.div []
-        [ Field.inputFor (\s -> ctx.handle Nothing {state | usernameField = state.usernameField |> Field.setStr s}) () state.usernameField
+        [ Field.inputFor SetUsernameField () model.usernameField
             H.input
-            [ HA.disabled state.working
+            [ HA.disabled model.working
             , HA.style "width" "8em"
             , HA.type_ "text"
             , HA.placeholder "username"
             , HA.class "username-field"
             ] []
-        , Field.inputFor (\s -> ctx.handle Nothing {state | passwordField = state.passwordField |> Field.setStr s}) () state.passwordField
+        , Field.inputFor SetPasswordField () model.passwordField
             H.input
-            [ HA.disabled state.working
+            [ HA.disabled model.working
             , HA.style "width" "8em"
             , HA.type_ "password"
             , HA.placeholder "password"
-            , Utils.onEnter loginMsg (ctx.handle Nothing state)
+            , Utils.onEnter LogInUsername Ignore
             ] []
         , H.button
-            [ HA.disabled <| state.working || disableButtons
-            , HE.onClick loginMsg
+            [ HA.disabled <| model.working || disableButtons
+            , HE.onClick LogInUsername
             ]
             [H.text "Log in"]
         , H.text " or "
         , H.button
-            [ HA.disabled <| state.working || disableButtons
-            , HE.onClick registerMsg
+            [ HA.disabled <| model.working || disableButtons
+            , HE.onClick RegisterUsername
             ]
             [H.text "Sign up"]
-        , state.notification |> H.map never
+        , model.notification |> H.map never
         ]
     Just auth ->
       H.div []
         [ H.text <| "Signed in as "
         , Utils.renderUser <| Utils.mustTokenOwner auth
         , H.text " "
-        , H.button [HA.disabled state.working, HE.onClick (ctx.handle (Just <| SignOut {}) { state | working = True , notification = H.text ""})] [H.text "Sign out"]
-        , state.notification |> H.map (\_ -> ctx.handle Nothing state)
+        , H.button [HA.disabled model.working, HE.onClick SignOut] [H.text "Sign out"]
+        , model.notification |> H.map never
         ]
+
+update : Msg -> Model -> ( Model , Page.Command Msg )
+update msg model =
+  case msg of
+    SetUsernameField s -> ( { model | usernameField = model.usernameField |> Field.setStr s } , Page.NoCmd )
+    SetPasswordField s -> ( { model | passwordField = model.passwordField |> Field.setStr s } , Page.NoCmd )
+    LogInUsername ->
+      case (Field.parse () model.usernameField, Field.parse () model.passwordField) of
+        (Ok username, Ok password) ->
+          ( { model | working = True , notification = H.text "" }
+          , Page.RequestCmd <| Page.LogInUsernameRequest LogInUsernameFinished {username=username, password=password}
+          )
+        _ ->
+          ( model
+          , Page.NoCmd
+          )
+    LogInUsernameFinished res ->
+      ( case res of
+          Err e -> { model | working = False , notification = Utils.redText (Debug.toString e)}
+          Ok resp ->
+            case resp.logInUsernameResult of
+              Just (Pb.LogInUsernameResultOk _) ->
+                { model | working = False , notification = H.text "" }
+              Just (Pb.LogInUsernameResultError e) ->
+                { model | working = False , notification = Utils.redText (Debug.toString e) }
+              Nothing ->
+                { model | working = False , notification = Utils.redText "Invalid server response (neither Ok nor Error in protobuf)" }
+      , Page.NoCmd
+      )
+
+    RegisterUsername ->
+      case (Field.parse () model.usernameField, Field.parse () model.passwordField) of
+        (Ok username, Ok password) ->
+          ( { model | working = True , notification = H.text "" }
+          , Page.RequestCmd <| Page.RegisterUsernameRequest RegisterUsernameFinished {username=username, password=password}
+          )
+        _ ->
+          ( model
+          , Page.NoCmd
+          )
+    RegisterUsernameFinished res ->
+      ( case res of
+          Err e -> { model | working = False , notification = Utils.redText (Debug.toString e)}
+          Ok resp ->
+            case resp.registerUsernameResult of
+              Just (Pb.RegisterUsernameResultOk _) ->
+                { model | working = False , notification = H.text "" }
+              Just (Pb.RegisterUsernameResultError e) ->
+                { model | working = False , notification = Utils.redText (Debug.toString e) }
+              Nothing ->
+                { model | working = False , notification = Utils.redText "Invalid server response (neither Ok nor Error in protobuf)" }
+      , Page.NoCmd
+      )
+    SignOut ->
+      ( { model | working = True , notification = H.text "" }
+      , Page.RequestCmd <| Page.SignOutRequest SignOutFinished {}
+      )
+    SignOutFinished res ->
+      ( case res of
+          Err e -> { model | working = False , notification = Utils.redText (Debug.toString e)}
+          Ok _ -> { model | working = False , notification = H.text "" }
+      , Page.NoCmd
+      )
+
+    Ignore -> ( model , Page.NoCmd )

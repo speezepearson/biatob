@@ -11,60 +11,74 @@ import Biatob.Proto.Mvp as Pb
 import Utils exposing (b)
 
 import Field exposing (Field)
+import Page
 
 epsilon = 0.0000001 -- 🎵 I hate floating-point arithmetic 🎶
 
-type Event = Staked {bettorIsASkeptic:Bool, bettorStakeCents:Int}
-type alias Config msg =
-  { handle : Maybe Event -> State -> msg
-  , disableCommit : Bool
-  , prediction : Pb.UserPredictionView
-  }
+type Msg
+  = SetBelieverStakeField String
+  | SetSkepticStakeField String
+  | Stake {predictionId : Int, bettorIsASkeptic : Bool}
+  | StakeFinished (Result Http.Error Pb.StakeResponse)
 
-type alias State =
+type alias Context =
+  { disableCommit : Bool
+  , prediction : Pb.UserPredictionView
+  , predictionId : Int
+  }
+type alias Model =
   { believerStakeField : Field {max : Int} Int
   , skepticStakeField : Field {max : Int} Int
-  , now : Time.Posix
   , working : Bool
   , notification : Html Never
   }
 
-handleStakeResponse : Result Http.Error Pb.StakeResponse -> State -> State
-handleStakeResponse res state =
-  case res of
-    Err e ->
-      { state | working = False , notification = Utils.redText (Debug.toString e) }
-    Ok resp ->
-      case resp.stakeResult of
-        Just (Pb.StakeResultOk _) ->
-          { state | working = False , notification = H.text "" }
-        Just (Pb.StakeResultError e) ->
-          { state | working = False , notification = Utils.redText (Debug.toString e) }
-        Nothing ->
-          { state | working = False , notification = Utils.redText "Invalid server response (neither Ok nor Error in protobuf)" }
+update : Msg -> Model -> ( Model , Page.Command Msg )
+update msg model =
+  case msg of
+    SetBelieverStakeField s -> ( { model | believerStakeField = model.believerStakeField |> Field.setStr s } , Page.NoCmd )
+    SetSkepticStakeField s -> ( { model | skepticStakeField = model.skepticStakeField |> Field.setStr s } , Page.NoCmd )
+    Stake {predictionId, bettorIsASkeptic} ->
+      case Field.parse {max=Debug.todo ""} (if bettorIsASkeptic then model.skepticStakeField else model.believerStakeField) of
+        Err _ -> ( model , Page.NoCmd )
+        Ok stakeCents ->
+          ( { model | working = True , notification = H.text "" }
+          , Page.RequestCmd <| Page.StakeRequest StakeFinished {predictionId=predictionId, bettorIsASkeptic=bettorIsASkeptic, bettorStakeCents=stakeCents}
+          )
+    StakeFinished res ->
+      ( case res of
+          Err e ->
+            { model | working = False , notification = Utils.redText (Debug.toString e) }
+          Ok resp ->
+            case resp.stakeResult of
+              Just (Pb.StakeResultOk _) ->
+                { model | working = False , notification = H.text "" }
+              Just (Pb.StakeResultError e) ->
+                { model | working = False , notification = Utils.redText (Debug.toString e) }
+              Nothing ->
+                { model | working = False , notification = Utils.redText "Invalid server response (neither Ok nor Error in protobuf)" }
+      , Page.NoCmd
+      )
 
 
-view : Config msg -> State -> Html msg
-view config state =
+view : Context -> Page.Globals -> Model -> Html Msg
+view ctx globals model =
   let
-    creator = Utils.mustPredictionCreator config.prediction
-    certainty = Utils.mustPredictionCertainty config.prediction
+    creator = Utils.mustPredictionCreator ctx.prediction
+    certainty = Utils.mustPredictionCertainty ctx.prediction
 
-    isClosed = Utils.timeToUnixtime state.now > config.prediction.closesUnixtime
-    disableInputs = isClosed || Utils.resolutionIsTerminal (Utils.currentResolution config.prediction)
+    isClosed = Utils.timeToUnixtime globals.now > ctx.prediction.closesUnixtime
+    disableInputs = isClosed || Utils.resolutionIsTerminal (Utils.currentResolution ctx.prediction)
     creatorStakeFactorVsBelievers = (1 - certainty.high) / certainty.high
     creatorStakeFactorVsSkeptics = certainty.low / (1 - certainty.low)
-    maxBelieverStakeCents = if creatorStakeFactorVsBelievers == 0 then 0 else toFloat config.prediction.remainingStakeCentsVsBelievers / creatorStakeFactorVsBelievers + 0.001 |> floor
-    maxSkepticStakeCents = if creatorStakeFactorVsSkeptics == 0 then 0 else toFloat config.prediction.remainingStakeCentsVsSkeptics / creatorStakeFactorVsSkeptics + 0.001 |> floor
+    maxBelieverStakeCents = if creatorStakeFactorVsBelievers == 0 then 0 else toFloat ctx.prediction.remainingStakeCentsVsBelievers / creatorStakeFactorVsBelievers + 0.001 |> floor
+    maxSkepticStakeCents = if creatorStakeFactorVsSkeptics == 0 then 0 else toFloat ctx.prediction.remainingStakeCentsVsSkeptics / creatorStakeFactorVsSkeptics + 0.001 |> floor
   in
   H.div []
     [ if certainty.low == 0 then H.text "" else
-      let
-        ctx = {max=maxSkepticStakeCents}
-      in
       H.p []
       [ H.text "Do you ", b "strongly doubt", H.text " that this will happen? Then stake $"
-      , Field.inputFor (\s -> config.handle Nothing {state | skepticStakeField = state.skepticStakeField |> Field.setStr s}) ctx state.skepticStakeField
+      , Field.inputFor SetSkepticStakeField {max=maxSkepticStakeCents} model.skepticStakeField
           H.input
           [ HA.style "width" "5em"
           , HA.type_"number", HA.min "0", HA.max (toFloat maxSkepticStakeCents / 100 + epsilon |> String.fromFloat), HA.step "any"
@@ -72,24 +86,21 @@ view config state =
           ]
           []
       , H.text <| " that it won't, against " ++ creator.displayName ++ "'s "
-      , H.strong [] [Field.parse ctx state.skepticStakeField |> Result.map (toFloat >> (*) creatorStakeFactorVsSkeptics >> round >> Utils.formatCents) |> Result.withDefault "???" |> H.text]
+      , H.strong [] [Field.parse {max=maxSkepticStakeCents} model.skepticStakeField |> Result.map (toFloat >> (*) creatorStakeFactorVsSkeptics >> round >> Utils.formatCents) |> Result.withDefault "???" |> H.text]
       , H.text ". "
       , H.button
-          (case Field.parse ctx state.skepticStakeField of
+          (case Field.parse {max=maxSkepticStakeCents} model.skepticStakeField of
             Ok stake ->
-              [ HE.onClick <| config.handle (Just <| Staked {bettorIsASkeptic=True, bettorStakeCents=stake}) { state | working = True , notification = H.text ""} ]
+              [ HE.onClick (Stake {bettorIsASkeptic=True, predictionId=ctx.predictionId}) ]
             Err _ ->
               [ HA.disabled True ]
           )
           [H.text "Commit"]
       ]
     , if certainty.high == 1 then H.text "" else
-      let
-        ctx = {max=maxSkepticStakeCents}
-      in
       H.p []
       [ H.text "Do you ", b "strongly believe", H.text " that this will happen? Then stake $"
-      , Field.inputFor (\s -> config.handle Nothing {state | believerStakeField = state.believerStakeField |> Field.setStr s}) ctx state.believerStakeField
+      , Field.inputFor SetBelieverStakeField {max=maxBelieverStakeCents} model.believerStakeField
           H.input
           [ HA.style "width" "5em"
           , HA.type_"number", HA.min "0", HA.max (toFloat maxBelieverStakeCents / 100 + epsilon |> String.fromFloat), HA.step "any"
@@ -97,21 +108,21 @@ view config state =
           ]
           []
       , H.text <| " that it will, against " ++ creator.displayName ++ "'s "
-      , H.strong [] [Field.parse ctx state.believerStakeField |> Result.map (toFloat >> (*) creatorStakeFactorVsBelievers >> round >> Utils.formatCents) |> Result.withDefault "???" |> H.text]
+      , H.strong [] [Field.parse {max=maxBelieverStakeCents} model.believerStakeField |> Result.map (toFloat >> (*) creatorStakeFactorVsBelievers >> round >> Utils.formatCents) |> Result.withDefault "???" |> H.text]
       , H.text ". "
       , H.button
-          (case Field.parse ctx state.believerStakeField of
+          (case Field.parse {max=maxBelieverStakeCents} model.believerStakeField of
             Ok stake ->
-              [ HE.onClick <| config.handle (Just <| Staked {bettorIsASkeptic=False, bettorStakeCents=stake}) { state | working = True , notification = H.text ""} ]
+              [ HE.onClick (Stake {bettorIsASkeptic=False, predictionId=ctx.predictionId}) ]
             Err _ ->
               [ HA.disabled True ]
           )
           [H.text "Commit"]
       ]
-    , state.notification |> H.map never
+    , model.notification |> H.map never
     ]
 
-init : State
+init : Model
 init =
   let
     parseCents : {max:Int} -> String -> Result String Int
@@ -124,33 +135,6 @@ init =
   in
   { believerStakeField = Field.init "0" parseCents
   , skepticStakeField = Field.init "0" parseCents
-  , now = Utils.unixtimeToTime 0
   , working = False
   , notification = H.text ""
   }
-
-type ReactorMsg = ReactorMsg (Maybe Event) State
-main =
-  let
-    prediction : Pb.UserPredictionView
-    prediction =
-      { prediction = "at least 50% of U.S. COVID-19 cases will be B117 or a derivative strain, as reported by the CDC"
-      , certainty = Just {low = 0.8, high = 0.9}
-      , maximumStakeCents = 10000
-      , remainingStakeCentsVsBelievers = 10000
-      , remainingStakeCentsVsSkeptics = 5000
-      , createdUnixtime = 0.0
-      , closesUnixtime = 86400.0
-      , specialRules = "If the CDC doesn't publish statistics on this, I'll fall back to some other official organization, like the WHO; failing that, I'll look for journal papers on U.S. cases, and go with a consensus if I find one; failing that, the prediction is unresolvable."
-      , creator = Just {displayName = "Spencer", isSelf=False, trustsYou=True, isTrusted=True}
-      , resolutions = []
-      , yourTrades = []
-      , resolvesAtUnixtime = 0.0
-      }
-
-  in
-  Browser.sandbox
-    { init = init
-    , view = view {prediction=prediction, handle=ReactorMsg, disableCommit=True}
-    , update = \(ReactorMsg event newState) _ -> Debug.log (Debug.toString event) newState
-    }

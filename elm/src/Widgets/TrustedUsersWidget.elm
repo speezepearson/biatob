@@ -1,4 +1,6 @@
 module Widgets.TrustedUsersWidget exposing (..)
+import Biatob.Proto.Mvp exposing (SetTrustedRequest)
+import Page
 
 import Html as H exposing (Html)
 import Html.Attributes as HA
@@ -16,110 +18,118 @@ import Utils
 import Widgets.SmallInvitationWidget as SmallInvitationWidget
 import Widgets.CopyWidget as CopyWidget
 
-type Event = Copy String | InvitationEvent SmallInvitationWidget.Event | RemoveTrust Pb.UserId
-type alias Context msg =
-  { auth : Pb.AuthToken
-  , trustedUsers : List Pb.UserId
-  , httpOrigin : String
-  , invitations : Dict String Pb.Invitation
-  , handle : (Maybe Event) -> State -> msg
-  }
-type alias State =
-  { invitationWidget : SmallInvitationWidget.State
+type Msg
+  = Copy String
+  | InvitationMsg SmallInvitationWidget.Msg
+  | RemoveTrust Pb.UserId
+  | SetTrustedFinished (Result Http.Error Pb.SetTrustedResponse)
+
+type alias Model =
+  { invitationWidget : SmallInvitationWidget.Model
   , addTrustedUserField : Field () String
   , working : Bool
   , notification : Html Never
   }
 
-invitationWidgetCtx : Context msg -> State -> SmallInvitationWidget.Context msg
-invitationWidgetCtx ctx state =
-  { destination = Nothing
-  , httpOrigin = ctx.httpOrigin
-  , handle = \e m -> ctx.handle (Maybe.map InvitationEvent e) { state | invitationWidget = m }
-  }
-
-init : State
+init : Model
 init =
-  { invitationWidget = SmallInvitationWidget.init
+  { invitationWidget = SmallInvitationWidget.init Nothing
   , addTrustedUserField = Field.okIfEmpty <| Field.init "" <| \() s -> if String.isEmpty s then Err "must not be empty" else Ok s
   , working = False
   , notification = H.text ""
   }
 
-handleSetTrustedResponse : Result Http.Error Pb.SetTrustedResponse -> State -> State
-handleSetTrustedResponse res state =
-  case res of
-    Err e ->
-      { state | working = False , notification = Utils.redText (Debug.toString e) }
-    Ok resp ->
-      case resp.setTrustedResult of
-        Just (Pb.SetTrustedResultOk _) ->
-          { state | working = False }
-        Just (Pb.SetTrustedResultError e) ->
-          { state | working = False , notification = Utils.redText (Debug.toString e) }
+update : Msg -> Model -> ( Model , Page.Command Msg )
+update msg model =
+  case msg of
+    Copy s -> ( model , Page.CopyCmd s )
+    RemoveTrust u ->
+      ( { model | working = True, notification = H.text "" }
+      , Page.RequestCmd <| Page.SetTrustedRequest SetTrustedFinished {who=Just u, trusted=False}
+      )
+    InvitationMsg widgetMsg ->
+      let (newWidget, widgetCmd) = SmallInvitationWidget.update widgetMsg model.invitationWidget in
+      ( { model | invitationWidget = newWidget }
+      , Page.mapCmd InvitationMsg widgetCmd
+      )
+    SetTrustedFinished res ->
+      ( case res of
+          Err e ->
+            { model | working = False , notification = Utils.redText (Debug.toString e) }
+          Ok resp ->
+            case resp.setTrustedResult of
+              Just (Pb.SetTrustedResultOk _) ->
+                { model | working = False , notification = H.text "" }
+              Just (Pb.SetTrustedResultError e) ->
+                { model | working = False , notification = Utils.redText (Debug.toString e) }
+              Nothing ->
+                { model | working = False , notification = Utils.redText "Invalid server response (neither Ok nor Error in protobuf)" }
+      , Page.NoCmd
+      )
+
+viewInvitation : Page.Globals -> String -> Pb.Invitation -> Html Msg
+viewInvitation globals nonce invitation =
+  case Page.getAuth globals of
+    Nothing -> Utils.redText "Hrrm, strange, I'm confused about whether you're logged in. Sorry!"
+    Just auth ->
+      case invitation.acceptedBy of
+        Just accepter ->
+          H.li []
+            [ H.text "Accepted by "
+            , Utils.renderUser accepter
+            , H.text <| " on " ++ Utils.dateStr Time.utc (Utils.unixtimeToTime invitation.createdUnixtime)
+            , H.text <| " (created " ++ Utils.dateStr Time.utc (Utils.unixtimeToTime invitation.createdUnixtime) ++ ")"
+            ]
         Nothing ->
-          { state | working = False , notification = Utils.redText "Invalid server response (neither Ok nor Error in protobuf)" }
+          H.li []
+            [ CopyWidget.view Copy (globals.httpOrigin ++ Utils.invitationPath {inviter=auth.owner, nonce=nonce})
+            , H.text <| " (created " ++ Utils.dateStr Time.utc (Utils.unixtimeToTime invitation.createdUnixtime) ++ ")"
+            ]
 
-handleCreateInvitationResponse : Result Http.Error Pb.CreateInvitationResponse -> State -> State
-handleCreateInvitationResponse res state = { state | invitationWidget = state.invitationWidget |> SmallInvitationWidget.handleCreateInvitationResponse res}
+viewInvitations : Page.Globals -> (Pb.Invitation -> Bool) -> Html Msg
+viewInvitations globals filter =
+  case Page.getUserInfo globals of
+    Nothing -> Utils.redText "Hrrm, strange, I'm confused about whether you're logged in. Sorry!"
+    Just userInfo ->
+      let
+        matches =
+          userInfo.invitations
+          |> Utils.mustMapValues
+          |> D.filter (always filter)
+          |> D.toList
+          |> List.sortBy (\(_, invitation) -> -invitation.createdUnixtime)
+      in
+        if List.isEmpty matches then
+          H.text " none yet!"
+        else
+          matches
+          |> List.map (\(nonce, invitation) -> H.li [] [viewInvitation globals nonce invitation])
+          |> H.ul []
 
-viewInvitation : Context msg -> State -> String -> Pb.Invitation -> Html msg
-viewInvitation ctx state nonce invitation =
-  case invitation.acceptedBy of
-    Just accepter ->
-      H.li []
-        [ H.text "Accepted by "
-        , Utils.renderUser accepter
-        , H.text <| " on " ++ Utils.dateStr Time.utc (Utils.unixtimeToTime invitation.createdUnixtime)
-        , H.text <| " (created " ++ Utils.dateStr Time.utc (Utils.unixtimeToTime invitation.createdUnixtime) ++ ")"
+view : Page.Globals -> Model -> Html Msg
+view globals model =
+  case globals.authState of
+    Nothing -> H.text "(Log in to see who you trust!)"
+    Just auth ->
+      H.div []
+        [ model.notification |> H.map never
+        , H.strong [] [H.text "You trust: "]
+        , case (Utils.mustAuthSuccessUserInfo auth).trustedUsers of
+            [] -> H.text "nobody yet!"
+            trustedUsers ->
+              H.ul []
+              <| List.map (\u -> H.li []
+                  [ Utils.renderUser u
+                  , H.text " "
+                  , H.button
+                      [ HE.onClick (RemoveTrust u)
+                      , HA.disabled model.working
+                      ] [H.text "Remove trust"]
+                  ])
+                  trustedUsers
+        , H.br [] []
+        , H.strong [] [H.text "Invitations: "]
+        , SmallInvitationWidget.view globals model.invitationWidget |> H.map InvitationMsg
+        , H.div [] [H.text "Outstanding:", viewInvitations globals (\inv -> inv.acceptedBy == Nothing) ]
+        , H.div [] [H.text "Past:",        viewInvitations globals (\inv -> inv.acceptedBy /= Nothing) ]
         ]
-    Nothing ->
-      H.li []
-        [ let
-            id : Pb.InvitationId
-            id = { inviter = ctx.auth.owner , nonce = nonce }
-          in
-            CopyWidget.view (\s -> ctx.handle (Just <| Copy s) state) (ctx.httpOrigin ++ Utils.invitationPath id)
-        , H.text <| " (created " ++ Utils.dateStr Time.utc (Utils.unixtimeToTime invitation.createdUnixtime) ++ ")"
-        ]
-
-viewInvitations : Context msg -> State -> (Pb.Invitation -> Bool) -> Html msg
-viewInvitations ctx state filter =
-  let
-    matches =
-      ctx.invitations
-      |> D.filter (always filter)
-      |> D.toList
-      |> List.sortBy (\(_, invitation) -> -invitation.createdUnixtime)
-  in
-  if List.isEmpty matches then
-    H.text " none yet!"
-  else
-    matches
-    |> List.map (\(nonce, invitation) -> H.li [] [viewInvitation ctx state nonce invitation])
-    |> H.ul []
-
-view : Context msg -> State -> Html msg
-view ctx state =
-  H.div []
-    [ state.notification |> H.map never
-    , H.strong [] [H.text "You trust: "]
-    , if List.isEmpty ctx.trustedUsers then
-        H.text "nobody yet!"
-      else
-        H.ul []
-        <| List.map (\u -> H.li []
-            [ Utils.renderUser u
-            , H.text " "
-            , H.button
-                [ HE.onClick (ctx.handle (Just <| RemoveTrust u) { state | working = True , notification = H.text ""})
-                , HA.disabled state.working
-                ] [H.text "Remove trust"]
-            ])
-        <| ctx.trustedUsers
-    , H.br [] []
-    , H.strong [] [H.text "Invitations: "]
-    , SmallInvitationWidget.view (invitationWidgetCtx ctx state) state.invitationWidget
-    , H.div [] [H.text "Outstanding:", viewInvitations ctx state (\inv -> inv.acceptedBy == Nothing) ]
-    , H.div [] [H.text "Past:",        viewInvitations ctx state (\inv -> inv.acceptedBy /= Nothing) ]
-    ]

@@ -16,6 +16,7 @@ import Widgets.StakeWidget as StakeWidget
 import Widgets.CopyWidget as CopyWidget
 import Task
 import API
+import Page
 
 type LifecyclePhase
   = Open
@@ -125,116 +126,55 @@ sortPredictions toPrediction order predictions =
       List.sortBy (toPrediction >> \p -> p.createdUnixtime * sortKeySign dir) predictions
 
 type alias Model =
-  { predictions : Dict Int (Pb.UserPredictionView, PredictionWidget.State)
+  { predictions : Dict Int (Pb.UserPredictionView, PredictionWidget.Model)
   , filter : Filter
   , order : SortOrder
-  , auth : Maybe Pb.AuthToken
-  , now : Time.Posix
   , allowFilterByOwner : Bool
-  , httpOrigin : String
   }
 
 type Msg
-  = PredictionEvent Int (Maybe PredictionWidget.Event) PredictionWidget.State
-  | Tick Time.Posix
+  = PredictionMsg Int PredictionWidget.Msg
   | SetSortOrder SortOrder
   | SetFilter Filter
-  | StakeFinished Int (Result Http.Error Pb.StakeResponse)
-  | ResolveFinished Int (Result Http.Error Pb.ResolveResponse)
-  | CreateInvitationFinished Int (Result Http.Error Pb.CreateInvitationResponse)
   | Ignore
 
-viewPrediction : Int -> Model -> Maybe (Html Msg)
-viewPrediction predictionId model =
-  case Dict.get predictionId model.predictions of
-    Nothing -> Nothing
-    Just (prediction, widget) -> Just <|
-      PredictionWidget.view
-        { auth = model.auth
-        , prediction = prediction
-        , predictionId = predictionId
-        , now = model.now
-        , httpOrigin = model.httpOrigin
-        , shouldLinkTitle = True
-        , handle = PredictionEvent predictionId
-        }
-        widget
-
-init : {auth: Maybe Pb.AuthToken, predictions:Dict Int Pb.UserPredictionView, httpOrigin:String} -> (Model, Cmd Msg)
-init flags =
-  ( { predictions = flags.predictions |> Dict.map (\_ p -> (p, PredictionWidget.init))
-    , httpOrigin = flags.httpOrigin
-    , filter = { own = Nothing , phase = Nothing }
-    , order = CreatedDate Desc
-    , auth = flags.auth
-    , now = Utils.unixtimeToTime 0
-    , allowFilterByOwner = True
-    }
-  , Task.perform Tick Time.now
-  )
+init : Dict Int Pb.UserPredictionView -> Model
+init predictions =
+  { predictions = predictions |> Dict.map (\id p -> (p, PredictionWidget.init id))
+  , filter = { own = Nothing , phase = Nothing }
+  , order = CreatedDate Desc
+  , allowFilterByOwner = True
+  }
 
 noFilterByOwner : Model -> Model
 noFilterByOwner model = { model | allowFilterByOwner = False }
 
-update : Msg -> Model -> (Model, Cmd Msg)
+update : Msg -> Model -> (Model, Page.Command Msg)
 update msg model =
   case msg of
-    PredictionEvent id event newWidget ->
+    PredictionMsg id widgetMsg ->
       case Dict.get id model.predictions of
         Nothing -> Debug.todo "got message for unknown prediction"
-        Just (prediction, _) ->
-          ( { model | predictions = model.predictions |> Dict.insert id (prediction, newWidget) }
-          , case event of
-            Nothing -> Cmd.none
-            Just (PredictionWidget.Copy s) -> CopyWidget.copy s
-            Just (PredictionWidget.InvitationEvent (SmallInvitationWidget.Copy s)) -> CopyWidget.copy s
-            Just (PredictionWidget.InvitationEvent SmallInvitationWidget.CreateInvitation) -> API.postCreateInvitation (CreateInvitationFinished id) {notes=""}
-            Just (PredictionWidget.StakeEvent (StakeWidget.Staked {bettorIsASkeptic, bettorStakeCents})) -> API.postStake (StakeFinished id) {predictionId=id, bettorIsASkeptic=bettorIsASkeptic, bettorStakeCents=bettorStakeCents}
-            Just (PredictionWidget.Resolve resolution) -> API.postResolve (ResolveFinished id) {predictionId=id, resolution=resolution, notes = ""}
+        Just (pred, widget) ->
+          let (newWidget, widgetCmd) = PredictionWidget.update widgetMsg widget in
+          ( { model | predictions = model.predictions |> Dict.insert id (pred, newWidget) }
+          , Page.mapCmd (PredictionMsg id) widgetCmd
           )
-    Tick t ->
-      ( { model | now = t }
-      , Cmd.none
-      )
 
     SetSortOrder order ->
       ( { model | order = order }
-      , Cmd.none
+      , Page.NoCmd
       )
 
     SetFilter filter ->
       ( { model | filter = filter }
-      , Cmd.none
-      )
-    CreateInvitationFinished id res ->
-      ( { model | predictions = model.predictions |> Dict.update id (Maybe.map <| Tuple.mapSecond <| PredictionWidget.handleCreateInvitationResponse res) }
-      , Cmd.none
-      )
-    StakeFinished id res ->
-      ( { model | predictions = model.predictions |> Dict.update id (Maybe.map <| \(pred, widget) ->
-                    ( case res |> Result.toMaybe |> Maybe.andThen .stakeResult of
-                        Just (Pb.StakeResultOk newPred) -> newPred
-                        _ -> pred
-                    , widget |> PredictionWidget.handleStakeResponse res)
-                    )
-        }
-      , Cmd.none
-      )
-    ResolveFinished id res ->
-      ( { model | predictions = model.predictions |> Dict.update id (Maybe.map <| \(pred, widget) ->
-                    ( case res |> Result.toMaybe |> Maybe.andThen .resolveResult of
-                        Just (Pb.ResolveResultOk newPred) -> newPred
-                        _ -> pred
-                    , widget |> PredictionWidget.handleResolveResponse res)
-                    )
-        }
-      , Cmd.none
+      , Page.NoCmd
       )
 
-    Ignore -> ( model , Cmd.none )
+    Ignore -> ( model , Page.NoCmd )
 
-view : Model -> Html Msg
-view model =
+view : Page.Globals -> Model -> Html Msg
+view globals model =
   H.div []
     [ if model.allowFilterByOwner then
         H.span [] [H.text "Filter: ", viewFilterInput model.filter]
@@ -249,11 +189,13 @@ view model =
         model.predictions
         |> Dict.toList
         |> sortPredictions (\(_, (pred, _)) -> pred) model.order
-        |> List.filter (\(_, (pred, _)) -> filterMatches model.now model.filter pred)
-        |> List.map (\(id, _) -> H.div [HA.style "margin" "1em", HA.style "padding" "1em", HA.style "border" "1px solid black"] [viewPrediction id model |> Utils.must "id just came out of dict"])
+        |> List.filter (\(_, (pred, _)) -> filterMatches globals.now model.filter pred)
+        |> List.map (\(id, (pred, widget)) ->
+            H.div [HA.style "margin" "1em", HA.style "padding" "1em", HA.style "border" "1px solid black"]
+              [PredictionWidget.view {prediction=pred, predictionId=id, shouldLinkTitle=True} globals widget |> H.map (PredictionMsg id)])
         |> List.intersperse (H.hr [] [])
         |> H.div []
     ]
 
 subscriptions : Model -> Sub Msg
-subscriptions _ = Time.every 1000 Tick
+subscriptions _ = Sub.none

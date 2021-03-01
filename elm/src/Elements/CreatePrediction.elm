@@ -18,22 +18,20 @@ import Utils
 import Widgets.PredictionWidget as PredictionWidget
 import API
 import Utils
+import Page
 
 port createdPrediction : Int -> Cmd msg
 
 type alias Model =
-  { form : Form.State
-  , auth : Maybe Pb.AuthToken
+  { form : Form.Model
   , working : Bool
   , createError : Maybe String
-  , now : Time.Posix
   }
 
 type Msg
-  = FormEvent (Maybe Form.Event) Form.State
-  | Create
+  = FormMsg Form.Msg
+  | Create Time.Posix
   | CreateFinished (Result Http.Error Pb.CreatePredictionResponse)
-  | Tick Time.Posix
   | Ignore
 
 authName : Maybe Pb.AuthToken -> String
@@ -43,87 +41,68 @@ authName auth =
   |> Maybe.map Utils.renderUserPlain
   |> Maybe.withDefault "[Creator]"
 
-init : JD.Value -> (Model, Cmd Msg)
-init flags =
-  let
-    auth : Maybe Pb.AuthToken
-    auth =  Utils.decodePbFromFlags Pb.authTokenDecoder "authTokenPbB64" flags
-  in
-  ( { form = Form.init
-    , auth = auth
-    , working = False
-    , createError = Nothing
-    , now = Utils.unixtimeToTime 0
-    }
-  , Task.perform Tick Time.now
-  )
-
-formCtx : Model -> Form.Context Msg
-formCtx model =
-  { handle = FormEvent
-  , now = model.now
-  , disabled = (model.auth == Nothing)
+init : Model
+init =
+  { form = Form.init
+  , working = False
+  , createError = Nothing
   }
 
-update : Msg -> Model -> (Model, Cmd Msg)
+update : Msg -> Model -> (Model, Page.Command Msg)
 update msg model =
   case msg of
-    FormEvent event newState ->
-      (case event of
-        Nothing ->     ( model , Cmd.none )
-        Just Form.Ignore -> ( model , Cmd.none )
-      ) |> Tuple.mapFirst (\m -> { m | form = newState })
-    Create ->
-      case Form.toCreateRequest (formCtx model) model.form of
+    FormMsg widgetMsg ->
+      let (newWidget, innerCmd) = Form.update widgetMsg model.form in
+      ( { model | form = newWidget } , Page.mapCmd FormMsg innerCmd )
+    Create now ->
+      case Form.toCreateRequest now model.form of
         Just req ->
           ( { model | working = True , createError = Nothing }
-          , API.postCreatePrediction CreateFinished req
+          , Page.RequestCmd <| Page.CreatePredictionRequest CreateFinished req
           )
         Nothing ->
           ( { model | createError = Just "bad form" } -- TODO: improve error message
-          , Cmd.none
+          , Page.NoCmd
           )
     CreateFinished (Err e) ->
       ( { model | working = False , createError = Just (Debug.toString e) }
-      , Cmd.none
+      , Page.NoCmd
       )
     CreateFinished (Ok resp) ->
       case resp.createPredictionResult of
         Just (Pb.CreatePredictionResultNewPredictionId id) ->
           ( model
-          , createdPrediction id
+          , Page.MiscCmd <| createdPrediction id
           )
         Just (Pb.CreatePredictionResultError e) ->
           ( { model | working = False , createError = Just (Debug.toString e) }
-          , Cmd.none
+          , Page.NoCmd
           )
         Nothing ->
           ( { model | working = False , createError = Just "Invalid server response (neither Ok nor Error in protobuf)" }
-          , Cmd.none
+          , Page.NoCmd
           )
-    Tick t ->
-      ( { model | now = t } , Cmd.none )
     Ignore ->
-      (model, Cmd.none)
+      (model, Page.NoCmd)
 
-view : Model -> Html Msg
-view model =
-  H.div []
+view : Page.Globals -> Model -> Browser.Document Msg
+view globals model =
+  {title="New prediction", body = [H.main_ [HA.id "main", HA.style "text-align" "justify"]
     [ H.h2 [] [H.text "New Prediction"]
-    , case model.auth of
+    , case Page.getAuth globals of
        Just _ -> H.text ""
        Nothing ->
         H.div []
           [ H.span [HA.style "color" "red"] [H.text "You need to log in to create a new prediction!"]
           , H.hr [] []
           ]
-    , Form.view (formCtx model) model.form
+    , Form.view globals model.form |> H.map FormMsg
     , H.div [HA.style "text-align" "center", HA.style "margin-bottom" "2em"]
         [ H.button
-            [ HE.onClick Create
-            , HA.disabled (model.auth == Nothing || Form.toCreateRequest (formCtx model) model.form == Nothing || model.working)
+            [ HE.onClick (Create globals.now)
+            , HA.disabled (Page.isLoggedIn globals || Form.toCreateRequest globals.now model.form == Nothing || model.working)
             ]
-            [ H.text <| if model.auth == Nothing then "Log in to create" else "Create" ]
+            [ H.text <| if Page.isLoggedIn globals then "Log in to create" else "Create" ]
         ]
     , case model.createError of
         Just e -> H.div [HA.style "color" "red"] [H.text e]
@@ -131,16 +110,18 @@ view model =
     , H.hr [] []
     , H.text "Preview:"
     , H.div [HA.style "border" "1px solid black", HA.style "padding" "1em", HA.style "margin" "1em"]
-        [ case Form.toCreateRequest (formCtx model) model.form of
+        [ case Form.toCreateRequest globals.now model.form of
             Just req ->
-              previewPrediction {request=req, creatorName=authName model.auth, createdAt=model.now}
+              previewPrediction {request=req, creatorName=Page.getAuth globals |> authName, createdAt=globals.now}
               |> (\prediction -> PredictionWidget.view
-                    {prediction=prediction, predictionId=12345, auth=model.auth, now=model.now, httpOrigin="http://dummy", handle = \_ _ -> Ignore, shouldLinkTitle = False}
-                    PredictionWidget.init)
+                    {prediction=prediction, predictionId=12345, shouldLinkTitle = False}
+                    globals
+                    (PredictionWidget.init 12345)
+                    |> H.map (always Ignore))
             Nothing ->
               H.span [HA.style "color" "red"] [H.text "(invalid prediction)"]
         ]
-    ]
+    ]]}
 
 previewPrediction : {request:Pb.CreatePredictionRequest, creatorName:String, createdAt:Time.Posix} -> Pb.UserPredictionView
 previewPrediction {request, creatorName, createdAt} =
@@ -159,14 +140,9 @@ previewPrediction {request, creatorName, createdAt} =
   }
 
 subscriptions : Model -> Sub Msg
-subscriptions model =
-  Time.every 1000 Tick
+subscriptions _ = Sub.none
 
-main : Program JD.Value Model Msg
-main =
-  Browser.element
-    { init = init
-    , subscriptions = subscriptions
-    , view = view
-    , update = update
-    }
+pagedef : Page.Element Model Msg
+pagedef = {init=\_ -> (init, Page.NoCmd), view=view, update=update, subscriptions=subscriptions}
+
+main = Page.page pagedef

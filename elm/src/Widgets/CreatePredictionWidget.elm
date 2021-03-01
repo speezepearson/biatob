@@ -11,6 +11,7 @@ import Field exposing (Field)
 import Biatob.Proto.Mvp as Pb
 import Iso8601
 import Utils
+import Page
 
 maxLegalStakeCents = 500000
 epsilon = 0.000001
@@ -22,13 +23,7 @@ unitToSeconds u =
     Days -> 60 * 60 * 24
     Weeks -> unitToSeconds Days * 7
 
-type Event = Ignore
-type alias Context msg =
-  { handle : Maybe Event -> State -> msg
-  , disabled : Bool
-  , now : Time.Posix
-  }
-type alias State =
+type alias Model =
   { predictionField : Field () String
   , resolvesAtField : Field {now:Time.Posix} Time.Posix
   , stakeField : Field () Int
@@ -38,17 +33,26 @@ type alias State =
   , openForSecondsField : Field {unit:OpenForUnit, resolvesAt:Maybe Time.Posix} Int
   , specialRulesField : Field () String
   }
+type Msg
+  = SetPredictionField String
+  | SetResolvesAtField String
+  | SetStakeField String
+  | SetLowPField String
+  | SetHighPField String
+  | SetOpenForUnitField String
+  | SetOpenForSecondsField String
+  | SetSpecialRulesField String
 
-toCreateRequest : Context msg -> State -> Maybe Pb.CreatePredictionRequest
-toCreateRequest ctx state =
-  Field.parse () state.predictionField |> Result.andThen (\prediction ->
-  Field.parse {now=ctx.now} state.resolvesAtField |> Result.andThen (\resolvesAt ->
-  Field.parse () state.stakeField |> Result.andThen (\stake ->
-  Field.parse () state.lowPField |> Result.andThen (\lowP ->
-  Field.parse {lowP=lowP} state.highPField |> Result.andThen (\highP ->
-  Field.parse () state.openForUnitField |> Result.andThen (\unit ->
-  Field.parse {unit=unit,resolvesAt=Just resolvesAt} state.openForSecondsField |> Result.andThen (\openForSeconds ->
-  Field.parse () state.specialRulesField |> Result.andThen (\specialRules ->
+toCreateRequest : Time.Posix -> Model -> Maybe Pb.CreatePredictionRequest
+toCreateRequest now model =
+  Field.parse () model.predictionField |> Result.andThen (\prediction ->
+  Field.parse {now=now} model.resolvesAtField |> Result.andThen (\resolvesAt ->
+  Field.parse () model.stakeField |> Result.andThen (\stake ->
+  Field.parse () model.lowPField |> Result.andThen (\lowP ->
+  Field.parse {lowP=lowP} model.highPField |> Result.andThen (\highP ->
+  Field.parse () model.openForUnitField |> Result.andThen (\unit ->
+  Field.parse {unit=unit,resolvesAt=Just resolvesAt} model.openForSecondsField |> Result.andThen (\openForSeconds ->
+  Field.parse () model.specialRulesField |> Result.andThen (\specialRules ->
     Ok
       { prediction = prediction
       , certainty = Just { low=lowP, high=highP }
@@ -60,10 +64,11 @@ toCreateRequest ctx state =
   ))))))))
   |> Result.toMaybe
 
-view : Context msg -> State -> Html msg
-view ctx state =
+view : Page.Globals -> Model -> Html Msg
+view globals model =
   let
-    highPCtx = {lowP = Field.parse () state.lowPField |> Result.withDefault 0}
+    disabled = not <| Page.isLoggedIn globals
+    highPCtx = {lowP = Field.parse () model.lowPField |> Result.withDefault 0}
     placeholders =
       { prediction = "at least 50% of U.S. COVID-19 cases will be B117 or a derivative strain, as reported by the CDC"
       , stake = "100"
@@ -74,19 +79,19 @@ view ctx state =
     [ H.ul [HA.class "new-prediction-form"]
         [ H.li []
             [ H.text "I predict that, by "
-            , Field.inputFor (\s -> ctx.handle Nothing { state | resolvesAtField = state.resolvesAtField |> Field.setStr s}) {now=ctx.now} state.resolvesAtField
+            , Field.inputFor SetResolvesAtField {now=globals.now} model.resolvesAtField
                 H.input
                 [ HA.type_ "date"
                 , HA.class "resolves-at-field"
-                , HA.disabled ctx.disabled
+                , HA.disabled disabled
                 ] []
             , H.text ", "
             , H.br [] []
-            , Field.inputFor (\s -> ctx.handle Nothing { state | predictionField = state.predictionField |> Field.setStr s}) () state.predictionField
+            , Field.inputFor SetPredictionField () model.predictionField
                 H.textarea
                 [ HA.style "width" "100%"
                 , HA.placeholder placeholders.prediction
-                , HA.disabled ctx.disabled
+                , HA.disabled disabled
                 , HA.class "prediction-field"
                 ] []
             , H.details []
@@ -102,23 +107,23 @@ view ctx state =
           ]
         , H.li []
             [ H.text "I think this has at least a"
-            , Field.inputFor (\s -> ctx.handle Nothing { state | lowPField = state.lowPField |> Field.setStr s}) () state.lowPField
+            , Field.inputFor SetLowPField () model.lowPField
                 H.input
                 [ HA.type_ "number", HA.min "0", HA.max "100", HA.step "any"
                 , HA.style "width" "5em"
-                , HA.disabled ctx.disabled
+                , HA.disabled disabled
                 ] []
             , H.text "% chance of happening,"
             , H.br [] []
             , H.text "but not more than a "
-            , Field.inputFor (\s -> ctx.handle Nothing { state | highPField = state.highPField |> Field.setStr s}) highPCtx state.highPField
+            , Field.inputFor SetHighPField highPCtx model.highPField
                 H.input
-                [ HA.type_ "number", HA.min (String.fromFloat <| Result.withDefault 100 <| Field.parse () state.lowPField), HA.max "100", HA.step "any"
+                [ HA.type_ "number", HA.min (String.fromFloat <| Result.withDefault 100 <| Field.parse () model.lowPField), HA.max "100", HA.step "any"
                 , HA.style "width" "5em"
-                , HA.disabled ctx.disabled
+                , HA.disabled disabled
                 ] []
             , H.text "% chance."
-            , case Field.parse () state.lowPField of
+            , case Field.parse () model.lowPField of
                 Ok lowP ->
                   if lowP == 0 then
                     H.div [HA.style "opacity" "50%"]
@@ -159,26 +164,26 @@ view ctx state =
             ]
         , H.li []
             [ H.text "I'm willing to bet up to $"
-            , Field.inputFor (\s -> ctx.handle Nothing { state | stakeField = state.stakeField |> Field.setStr s}) () state.stakeField
+            , Field.inputFor SetStakeField () model.stakeField
                 H.input
                 [ HA.type_ "number", HA.min "0", HA.max (String.fromInt <| maxLegalStakeCents//100)
                 , HA.style "width" "5em"
                 , HA.placeholder placeholders.stake
-                , HA.disabled ctx.disabled
+                , HA.disabled disabled
                 ] []
             , H.text " at these odds."
-            , case Field.parse () state.stakeField of
+            , case Field.parse () model.stakeField of
                   Err _ -> H.text ""
                   Ok stakeCents ->
                     let
                       betVsSkeptics : Maybe String
                       betVsSkeptics =
-                        Field.parse () state.lowPField
+                        Field.parse () model.lowPField
                         |> Result.toMaybe
                         |> Maybe.andThen (\lowP -> if lowP == 0 then Nothing else Just <| Utils.formatCents stakeCents ++ " against " ++ Utils.formatCents (round <| toFloat stakeCents * (1-lowP)/lowP))
                       betVsBelievers : Maybe String
                       betVsBelievers =
-                        Field.parse highPCtx state.highPField
+                        Field.parse highPCtx model.highPField
                         |> Result.toMaybe
                         |> Maybe.andThen (\highP -> if highP == 1 then Nothing else Just <| Utils.formatCents stakeCents ++ " against " ++ Utils.formatCents (round <| toFloat stakeCents * highP/(1-highP)))
                     in
@@ -190,15 +195,15 @@ view ctx state =
             ]
         , H.li []
             [ H.text "This offer is open for "
-            , Field.inputFor (\s -> ctx.handle Nothing { state | openForSecondsField = state.openForSecondsField |> Field.setStr s}) {unit=Field.parse () state.openForUnitField |> Result.withDefault Weeks, resolvesAt=Field.parse {now=ctx.now} state.resolvesAtField |> Result.toMaybe} state.openForSecondsField
+            , Field.inputFor SetOpenForSecondsField {unit=Field.parse () model.openForUnitField |> Result.withDefault Weeks, resolvesAt=Field.parse {now=globals.now} model.resolvesAtField |> Result.toMaybe} model.openForSecondsField
                 H.input
                 [ HA.type_ "number", HA.min "1"
                 , HA.style "width" "5em"
-                , HA.disabled ctx.disabled
+                , HA.disabled disabled
                 ] []
-            , Field.inputFor (\s -> ctx.handle Nothing { state | openForUnitField = state.openForUnitField |> Field.setStr s}) () state.openForUnitField
+            , Field.inputFor SetOpenForUnitField () model.openForUnitField
                 H.select
-                [ HA.disabled ctx.disabled
+                [ HA.disabled disabled
                 ]
                 [ H.option [] [H.text "weeks"]
                 , H.option [] [H.text "days"]
@@ -214,11 +219,11 @@ view ctx state =
             ]
         , H.li []
             [ H.text "Special rules (e.g. implicit assumptions, what counts as cheating):"
-            , Field.inputFor (\s -> ctx.handle Nothing { state | specialRulesField = state.specialRulesField |> Field.setStr s}) () state.specialRulesField
+            , Field.inputFor SetSpecialRulesField () model.specialRulesField
                 H.textarea
                 [ HA.style "width" "100%"
                 , HA.placeholder placeholders.specialRules
-                , HA.disabled ctx.disabled
+                , HA.disabled disabled
                 , HA.class "special-rules-field"
                 ]
                 []
@@ -226,7 +231,19 @@ view ctx state =
         ]
     ]
 
-init : State
+update : Msg -> Model -> ( Model , Page.Command Msg )
+update msg model =
+  case msg of
+    SetPredictionField s -> ( { model | predictionField = model.predictionField |> Field.setStr s } , Page.NoCmd )
+    SetResolvesAtField s -> ( { model | resolvesAtField = model.resolvesAtField |> Field.setStr s } , Page.NoCmd )
+    SetStakeField s -> ( { model | stakeField = model.stakeField |> Field.setStr s } , Page.NoCmd )
+    SetLowPField s -> ( { model | lowPField = model.lowPField |> Field.setStr s } , Page.NoCmd )
+    SetHighPField s -> ( { model | highPField = model.highPField |> Field.setStr s } , Page.NoCmd )
+    SetOpenForUnitField s -> ( { model | openForUnitField = model.openForUnitField |> Field.setStr s } , Page.NoCmd )
+    SetOpenForSecondsField s -> ( { model | openForSecondsField = model.openForSecondsField |> Field.setStr s } , Page.NoCmd )
+    SetSpecialRulesField s -> ( { model | specialRulesField = model.specialRulesField |> Field.setStr s } , Page.NoCmd )
+
+init : Model
 init =
   { predictionField = Field.init "" <| \() s -> if String.isEmpty s then Err "must not be empty" else Ok s
   , resolvesAtField = Field.init "" <| \{now} s ->

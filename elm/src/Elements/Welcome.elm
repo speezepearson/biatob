@@ -21,23 +21,16 @@ import Page
 
 type alias Model =
   { navbar : Navbar.Model
-  , authWidget : AuthWidget.State
-  , invitationWidget : SmallInvitationWidget.State
-  , emailSettingsWidget : EmailSettingsWidget.State
+  , authWidget : AuthWidget.Model
+  , invitationWidget : SmallInvitationWidget.Model
+  , emailSettingsWidget : EmailSettingsWidget.Model
   }
 
 type Msg
   = NavbarMsg Navbar.Msg
-  | AuthEvent (Maybe AuthWidget.Event) AuthWidget.State
-  | InvitationEvent (Maybe SmallInvitationWidget.Event) SmallInvitationWidget.State
-  | EmailSettingsEvent (Maybe EmailSettingsWidget.Event) EmailSettingsWidget.State
-  | LogInUsernameFinished (Result Http.Error Pb.LogInUsernameResponse)
-  | RegisterUsernameFinished (Result Http.Error Pb.RegisterUsernameResponse)
-  | SignOutFinished (Result Http.Error Pb.SignOutResponse)
-  | SetEmailFinished (Result Http.Error Pb.SetEmailResponse)
-  | VerifyEmailFinished (Result Http.Error Pb.VerifyEmailResponse)
-  | UpdateSettingsFinished (Result Http.Error Pb.UpdateSettingsResponse)
-  | CreateInvitationFinished (Result Http.Error Pb.CreateInvitationResponse)
+  | AuthWidgetMsg AuthWidget.Msg
+  | InvitationMsg SmallInvitationWidget.Msg
+  | EmailSettingsMsg EmailSettingsWidget.Msg
 
 pagedef : Page.Element Model Msg
 pagedef =
@@ -51,56 +44,28 @@ init : JD.Value -> (Model, Page.Command Msg)
 init _ =
   ( { navbar = Navbar.init
     , authWidget = AuthWidget.init
-    , invitationWidget = SmallInvitationWidget.init
+    , invitationWidget = SmallInvitationWidget.init Nothing
     , emailSettingsWidget = EmailSettingsWidget.init
     }
   , Page.NoCmd
   )
 
-authHandler : AuthWidget.Handler Model
-authHandler =
-  { updateWidget = \f m -> { m | authWidget = m.authWidget |> f }
-  , setAuth = \a m -> m -- TODO: I don't like this implicit reliance on reloading the page when this happens
-  }
 
 update : Msg -> Model -> (Model, Page.Command Msg)
 update msg model =
   case msg of
-    NavbarMsg innerMsg ->
-      let (newNavbar, innerCmd) = Navbar.update innerMsg model.navbar in
-      ( { model | navbar = newNavbar } , Page.mapCmd NavbarMsg innerCmd )
-    AuthEvent event newState ->
-      ( { model | authWidget = newState }
-      , case event of
-          Just (AuthWidget.LogInUsername req) -> Page.RequestCmd (Page.LogInUsernameRequest LogInUsernameFinished req)
-          Just (AuthWidget.RegisterUsername req) -> Page.RequestCmd (Page.RegisterUsernameRequest RegisterUsernameFinished req)
-          Just (AuthWidget.SignOut req) -> Page.RequestCmd (Page.SignOutRequest SignOutFinished req)
-          Nothing -> Page.NoCmd
-      )
-    InvitationEvent event newState ->
-      ( { model | invitationWidget = newState }
-      , case event of
-          Just SmallInvitationWidget.CreateInvitation -> Page.RequestCmd (Page.CreateInvitationRequest CreateInvitationFinished {notes=""})
-          Just (SmallInvitationWidget.Copy s) -> Page.CopyCmd s
-          Nothing -> Page.NoCmd
-      )
-    EmailSettingsEvent event newState ->
-      ( { model | emailSettingsWidget = newState }
-      , case event of
-        Just (EmailSettingsWidget.SetEmail req) -> Page.RequestCmd (Page.SetEmailRequest SetEmailFinished req)
-        Just (EmailSettingsWidget.VerifyEmail req) -> Page.RequestCmd (Page.VerifyEmailRequest VerifyEmailFinished req)
-        Just (EmailSettingsWidget.UpdateSettings req) -> Page.RequestCmd (Page.UpdateSettingsRequest UpdateSettingsFinished req)
-        Just EmailSettingsWidget.Ignore -> Page.NoCmd
-        Nothing -> Page.NoCmd
-      )
-
-    LogInUsernameFinished res -> ( { model | authWidget = model.authWidget |> AuthWidget.handleLogInUsernameResponse {updateWidget=\f s -> f s, setAuth=always identity} res } , Page.NoCmd )
-    RegisterUsernameFinished res -> ( { model | authWidget = model.authWidget |> AuthWidget.handleRegisterUsernameResponse {updateWidget=\f s -> f s, setAuth=always identity} res } , Page.NoCmd )
-    SignOutFinished res -> ( { model | authWidget = model.authWidget |> AuthWidget.handleSignOutResponse {updateWidget=\f s -> f s, setAuth=always identity} res } , Page.NoCmd )
-    SetEmailFinished res -> ( { model | emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleSetEmailResponse {updateWidget=\f s -> f s, setEmailFlowState=always identity} res } , Page.NoCmd )
-    VerifyEmailFinished res -> ( { model | emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleVerifyEmailResponse {updateWidget=\f s -> f s, setEmailFlowState=always identity} res } , Page.NoCmd )
-    UpdateSettingsFinished res -> ( { model | emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleUpdateSettingsResponse res } , Page.NoCmd )
-    CreateInvitationFinished res -> ( { model | invitationWidget = model.invitationWidget |> SmallInvitationWidget.handleCreateInvitationResponse res } , Page.NoCmd )
+    NavbarMsg widgetMsg ->
+      let (newWidget, innerCmd) = Navbar.update widgetMsg model.navbar in
+      ( { model | navbar = newWidget } , Page.mapCmd NavbarMsg innerCmd )
+    AuthWidgetMsg widgetMsg ->
+      let (newWidget, innerCmd) = AuthWidget.update widgetMsg model.authWidget in
+      ( { model | authWidget = newWidget } , Page.mapCmd AuthWidgetMsg innerCmd )
+    EmailSettingsMsg widgetMsg ->
+      let (newWidget, innerCmd) = EmailSettingsWidget.update widgetMsg model.emailSettingsWidget in
+      ( { model | emailSettingsWidget = newWidget } , Page.mapCmd EmailSettingsMsg innerCmd )
+    InvitationMsg widgetMsg ->
+      let (newWidget, innerCmd) = SmallInvitationWidget.update widgetMsg model.invitationWidget in
+      ( { model | invitationWidget = newWidget } , Page.mapCmd InvitationMsg innerCmd )
 
 
 view : Page.Globals -> Model -> Browser.Document Msg
@@ -172,13 +137,7 @@ view globals model =
         [ H.li [HA.style "margin-bottom" "1em"]
             [ H.text " Create an account:   "
             , H.div [HA.id "welcome-page-auth-widget"]
-                [ AuthWidget.view
-                    { auth = Page.getAuth globals
-                    , now = globals.now
-                    , handle = AuthEvent
-                    }
-                    model.authWidget
-                ]
+                [ AuthWidget.view globals model.authWidget |> H.map AuthWidgetMsg ]
             ]
         , H.li [HA.style "margin-bottom" "1em"]
             [ H.a [HA.name "postcreateaccount"] []
@@ -195,12 +154,7 @@ view globals model =
             [ H.text " Send your friends invitation links so I know who you trust to bet against you:   "
             , H.div [HA.style "border" "1px solid gray", HA.style "padding" "0.5em", HA.style "margin" "0.5em"]
                 [ if Page.isLoggedIn globals then
-                    SmallInvitationWidget.view
-                      { httpOrigin = globals.httpOrigin
-                      , destination = Nothing
-                      , handle = InvitationEvent
-                      }
-                      model.invitationWidget
+                    SmallInvitationWidget.view globals model.invitationWidget |> H.map InvitationMsg
                   else
                     H.text "(first, log in)"
                 ]
@@ -211,13 +165,7 @@ view globals model =
                 [ case Page.getUserInfo globals of
                     Nothing -> H.text "(first, log in)"
                     Just userInfo ->
-                      EmailSettingsWidget.view
-                        { emailFlowState = userInfo |> Utils.mustUserInfoEmail
-                        , emailRemindersToResolve = userInfo.emailRemindersToResolve
-                        , emailResolutionNotifications = userInfo.emailResolutionNotifications
-                        , handle = EmailSettingsEvent
-                        }
-                      model.emailSettingsWidget
+                      EmailSettingsWidget.view globals model.emailSettingsWidget |> H.map EmailSettingsMsg
                 ]
             ]
         , H.li [HA.style "margin-bottom" "1em"]

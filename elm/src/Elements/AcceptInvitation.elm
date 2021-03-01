@@ -24,7 +24,7 @@ type alias Model =
   { invitationId : Pb.InvitationId
   , invitationIsOpen : Bool
   , destination : Maybe String
-  , authWidget : AuthWidget.State
+  , authWidget : AuthWidget.Model
   , navbar : Navbar.Model
   , working : Bool
   , acceptNotification : Html Msg
@@ -34,10 +34,7 @@ type Msg
   = NavbarMsg Navbar.Msg
   | AcceptInvitation
   | AcceptInvitationFinished (Result Http.Error Pb.AcceptInvitationResponse)
-  | AuthWidgetEvent (Maybe AuthWidget.Event) AuthWidget.State
-  | LogInUsernameFinished (Result Http.Error Pb.LogInUsernameResponse)
-  | RegisterUsernameFinished (Result Http.Error Pb.RegisterUsernameResponse)
-  | SignOutFinished (Result Http.Error Pb.SignOutResponse)
+  | AuthWidgetMsg AuthWidget.Msg
 
 init : JD.Value -> (Model, Page.Command Msg)
 init flags =
@@ -51,13 +48,6 @@ init flags =
     }
   , Page.NoCmd
   )
-
-authWidgetCtx : Page.Globals -> AuthWidget.Context Msg
-authWidgetCtx globals =
-  { auth = Page.getAuth globals
-  , now = globals.now
-  , handle = AuthWidgetEvent
-  }
 
 update : Msg -> Model -> (Model, Page.Command Msg)
 update msg model =
@@ -84,20 +74,12 @@ update msg model =
           ( { model | working = False , acceptNotification = Utils.redText "Invalid server response (neither Ok nor Error in protobuf)" }
           , Page.NoCmd
           )
-    AuthWidgetEvent event newState ->
-      ( { model | authWidget = newState }
-      , case event of
-          Just (AuthWidget.LogInUsername req) -> Page.RequestCmd (Page.LogInUsernameRequest LogInUsernameFinished req)
-          Just (AuthWidget.RegisterUsername req) -> Page.RequestCmd (Page.RegisterUsernameRequest RegisterUsernameFinished req)
-          Just (AuthWidget.SignOut req) -> Page.RequestCmd (Page.SignOutRequest SignOutFinished req)
-          Nothing -> Page.NoCmd
-      )
+    AuthWidgetMsg widgetMsg ->
+      let (newWidget, widgetCmd) = AuthWidget.update widgetMsg model.authWidget in
+      ( { model | authWidget = newWidget } , Page.mapCmd AuthWidgetMsg widgetCmd )
     NavbarMsg innerMsg ->
       let (newNavbar, innerCmd) = Navbar.update innerMsg model.navbar in
       ( { model | navbar = newNavbar } , Page.mapCmd NavbarMsg innerCmd )
-    LogInUsernameFinished res -> ( { model | authWidget = model.authWidget |> AuthWidget.handleLogInUsernameResponse {updateWidget=\f s -> f s, setAuth=always identity} res } , Page.NoCmd )
-    RegisterUsernameFinished res -> ( { model | authWidget = model.authWidget |> AuthWidget.handleRegisterUsernameResponse {updateWidget=\f s -> f s, setAuth=always identity} res } , Page.NoCmd )
-    SignOutFinished res -> ( { model | authWidget = model.authWidget |> AuthWidget.handleSignOutResponse {updateWidget=\f s -> f s, setAuth=always identity} res } , Page.NoCmd )
 
 isOwnInvitation : Page.Globals -> Pb.InvitationId -> Bool
 isOwnInvitation globals invitationId =
@@ -131,7 +113,7 @@ view globals model =
         else
           [ H.text "If you trust them back, and you're interested in betting against them:"
           , H.ul []
-            [ H.li [] [H.text "Authenticate yourself: ", AuthWidget.view (authWidgetCtx globals) model.authWidget]
+            [ H.li [] [H.text "Authenticate yourself: ", AuthWidget.view globals model.authWidget |> H.map AuthWidgetMsg]
             , H.li []
               [ H.text "...then click "
               , H.button

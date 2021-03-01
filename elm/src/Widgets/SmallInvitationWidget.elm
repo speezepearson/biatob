@@ -12,50 +12,60 @@ import Utils
 
 import Utils
 import Widgets.CopyWidget as CopyWidget
+import Page
 
-type Event = Copy String | CreateInvitation
-type alias Context msg =
-  { httpOrigin : String
-  , destination : Maybe String
-  , handle : Maybe Event -> State -> msg
-  }
-type alias State =
+type Msg
+  = Copy String
+  | CreateInvitation
+  | CreateInvitationFinished (Result Http.Error Pb.CreateInvitationResponse)
+type alias Model =
   { invitationId : Maybe Pb.InvitationId
+  , destination : Maybe String
   , working : Bool
   , notification : Html Never
   }
 
-handleCreateInvitationResponse : Result Http.Error Pb.CreateInvitationResponse -> State -> State
-handleCreateInvitationResponse res state =
-  case res of
-    Err e ->
-      { state | working = False , notification = Utils.redText (Debug.toString e) }
-    Ok resp ->
-      case resp.createInvitationResult of
-        Just (Pb.CreateInvitationResultOk result) ->
-          { state | working = False
-                  , notification = H.text ""
-                  , invitationId = result.id
-          }
-        Just (Pb.CreateInvitationResultError e) ->
-          { state | working = False , notification = Utils.redText (Debug.toString e) }
-        Nothing ->
-          { state | working = False , notification = Utils.redText "Invalid server response (neither Ok nor Error in protobuf)" }
+update : Msg -> Model -> ( Model , Page.Command Msg )
+update msg model =
+  case msg of
+    Copy s -> ( model , Page.CopyCmd s )
+    CreateInvitation ->
+      ( { model | working = False , notification = H.text "" }
+      , Page.RequestCmd <| Page.CreateInvitationRequest CreateInvitationFinished {notes=""}
+      )
+    CreateInvitationFinished res ->
+      ( case res of
+          Err e ->
+            { model | working = False , notification = Utils.redText (Debug.toString e) }
+          Ok resp ->
+            case resp.createInvitationResult of
+              Just (Pb.CreateInvitationResultOk result) ->
+                { model | working = False
+                        , notification = H.text ""
+                        , invitationId = result.id
+                }
+              Just (Pb.CreateInvitationResultError e) ->
+                { model | working = False , notification = Utils.redText (Debug.toString e) }
+              Nothing ->
+                { model | working = False , notification = Utils.redText "Invalid server response (neither Ok nor Error in protobuf)" }
+      , Page.NoCmd
+      )
 
-setInvitation : Maybe Pb.InvitationId -> State -> State
-setInvitation inv state = { state | invitationId = inv }
+setInvitation : Maybe Pb.InvitationId -> Model -> Model
+setInvitation inv model = { model | invitationId = inv }
 
-init : State
-init =
+init : Maybe String -> Model
+init destination =
   { invitationId = Nothing
+  , destination = destination
   , working = False
   , notification = H.text ""
   }
 
-view : Context msg -> State -> Html msg
-view ctx state =
+view : Page.Globals -> Model -> Html Msg
+view globals model =
   let
-    help : Html msg
+    help : Html Msg
     help =
       H.details [HA.style "display" "inline", HA.style "outline" "1px solid #cccccc"]
         [ H.summary [] [H.text "?"]
@@ -66,20 +76,20 @@ view ctx state =
         ]
   in
   H.span []
-    [ case state.invitationId of
+    [ case model.invitationId of
         Nothing -> H.text ""
         Just id ->
-          CopyWidget.view (\s -> ctx.handle (Just <| Copy s) state) (ctx.httpOrigin ++ Utils.invitationPath id ++ case ctx.destination of
+          CopyWidget.view Copy (globals.httpOrigin ++ Utils.invitationPath id ++ case model.destination of
              Just d -> "?dest="++d
              Nothing -> "" )
     , H.button
-        [ HA.disabled state.working
-        , HE.onClick (ctx.handle (Just CreateInvitation) { state | working = True , notification = H.text "" })
+        [ HA.disabled model.working
+        , HE.onClick CreateInvitation
         ]
-        [ H.text <| if state.working then "Creating..." else if state.invitationId == Nothing then "Create invitation" else "Create another"
+        [ H.text <| if model.working then "Creating..." else if model.invitationId == Nothing then "Create invitation" else "Create another"
         ]
     , H.text " "
-    , state.notification |> H.map never
+    , model.notification |> H.map never
     , H.text " "
     , help
     ]
