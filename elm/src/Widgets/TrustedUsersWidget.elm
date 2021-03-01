@@ -77,13 +77,13 @@ viewInvitation globals nonce invitation =
           H.li []
             [ H.text "Accepted by "
             , Utils.renderUser accepter
-            , H.text <| " on " ++ Utils.dateStr Time.utc (Utils.unixtimeToTime invitation.createdUnixtime)
-            , H.text <| " (created " ++ Utils.dateStr Time.utc (Utils.unixtimeToTime invitation.createdUnixtime) ++ ")"
+            , H.text <| " on " ++ Utils.dateStr globals.timeZone (Utils.unixtimeToTime invitation.createdUnixtime)
+            , H.text <| " (created " ++ Utils.dateStr globals.timeZone (Utils.unixtimeToTime invitation.createdUnixtime) ++ ")"
             ]
         Nothing ->
           H.li []
             [ CopyWidget.view Copy (globals.httpOrigin ++ Utils.invitationPath {inviter=auth.owner, nonce=nonce})
-            , H.text <| " (created " ++ Utils.dateStr Time.utc (Utils.unixtimeToTime invitation.createdUnixtime) ++ ")"
+            , H.text <| " (created " ++ Utils.dateStr globals.timeZone (Utils.unixtimeToTime invitation.createdUnixtime) ++ ")"
             ]
 
 viewInvitations : Page.Globals -> (Pb.Invitation -> Bool) -> Html Msg

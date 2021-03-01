@@ -28,7 +28,7 @@ type alias Model =
 
 type Msg
   = FormMsg Form.Msg
-  | Create Time.Posix
+  | Create Time.Posix Time.Zone
   | CreateFinished (Result Http.Error Pb.CreatePredictionResponse)
   | Ignore
 
@@ -52,8 +52,8 @@ update msg model =
     FormMsg widgetMsg ->
       let (newWidget, innerCmd) = Form.update widgetMsg model.form in
       ( { model | form = newWidget } , Page.mapCmd FormMsg innerCmd )
-    Create now ->
-      case Form.toCreateRequest now model.form of
+    Create now zone ->
+      case Form.toCreateRequest now zone model.form of
         Just req ->
           ( { model | working = True , createError = Nothing }
           , Page.RequestCmd <| Page.CreatePredictionRequest CreateFinished req
@@ -97,8 +97,8 @@ view globals model =
     , Form.view globals model.form |> H.map FormMsg
     , H.div [HA.style "text-align" "center", HA.style "margin-bottom" "2em"]
         [ H.button
-            [ HE.onClick (Create globals.now)
-            , HA.disabled (not (Page.isLoggedIn globals) || Form.toCreateRequest globals.now model.form == Nothing || model.working)
+            [ HE.onClick (Create globals.now globals.timeZone)
+            , HA.disabled (not (Page.isLoggedIn globals) || Form.toCreateRequest globals.now globals.timeZone model.form == Nothing || model.working)
             ]
             [ H.text <| if Page.isLoggedIn globals then "Create" else "Log in to create" ]
         ]
@@ -108,7 +108,7 @@ view globals model =
     , H.hr [] []
     , H.text "Preview:"
     , H.div [HA.style "border" "1px solid black", HA.style "padding" "1em", HA.style "margin" "1em"]
-        [ case Form.toCreateRequest globals.now model.form of
+        [ case Form.toCreateRequest globals.now globals.timeZone model.form of
             Just req ->
               previewPrediction {request=req, creatorName=Page.getAuth globals |> authName, createdAt=globals.now}
               |> (\prediction -> PredictionWidget.view

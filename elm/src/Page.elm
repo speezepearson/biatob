@@ -35,6 +35,7 @@ type alias Element model msg =
 type alias Globals =
   { authState : Maybe Pb.AuthSuccess
   , now : Time.Posix
+  , timeZone : Time.Zone
   , httpOrigin : String
   }
 

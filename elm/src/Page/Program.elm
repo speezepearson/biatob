@@ -224,9 +224,10 @@ updateGlobalsFromResponse resp globals =
 
 globalsDecoder : JD.Decoder Globals
 globalsDecoder =
-  JD.map3 Globals
+  JD.map4 Globals
     (JD.field "authSuccessPbB64" <| JD.nullable <| Utils.pbB64Decoder Pb.authSuccessDecoder)
     (JD.field "initUnixtime" JD.float |> JD.map Utils.unixtimeToTime)
+    (JD.field "timeZoneOffsetMinutes" JD.int |> JD.map (\n -> Time.customZone n []))
     (JD.field "httpOrigin" JD.string)
 
 updateUserInfo : (Pb.GenericUserInfo -> Pb.GenericUserInfo) -> Globals -> Globals

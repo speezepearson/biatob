@@ -25,7 +25,7 @@ unitToSeconds u =
 
 type alias Model =
   { predictionField : Field () String
-  , resolvesAtField : Field {now:Time.Posix} Time.Posix
+  , resolvesAtField : Field {now:Time.Posix, timeZone:Time.Zone} Time.Posix
   , stakeField : Field () Int
   , lowPField : Field () Float
   , highPField : Field {lowP:Float} Float
@@ -43,10 +43,10 @@ type Msg
   | SetOpenForSecondsField String
   | SetSpecialRulesField String
 
-toCreateRequest : Time.Posix -> Model -> Maybe Pb.CreatePredictionRequest
-toCreateRequest now model =
+toCreateRequest : Time.Posix -> Time.Zone -> Model -> Maybe Pb.CreatePredictionRequest
+toCreateRequest now zone model =
   Field.parse () model.predictionField |> Result.andThen (\prediction ->
-  Field.parse {now=now} model.resolvesAtField |> Result.andThen (\resolvesAt ->
+  Field.parse {now=now, timeZone=zone} model.resolvesAtField |> Result.andThen (\resolvesAt ->
   Field.parse () model.stakeField |> Result.andThen (\stake ->
   Field.parse () model.lowPField |> Result.andThen (\lowP ->
   Field.parse {lowP=lowP} model.highPField |> Result.andThen (\highP ->
@@ -79,7 +79,7 @@ view globals model =
     [ H.ul [HA.class "new-prediction-form"]
         [ H.li []
             [ H.text "I predict that, by "
-            , Field.inputFor SetResolvesAtField {now=globals.now} model.resolvesAtField
+            , Field.inputFor SetResolvesAtField {now=globals.now, timeZone=globals.timeZone} model.resolvesAtField
                 H.input
                 [ HA.type_ "date"
                 , HA.class "resolves-at-field"
@@ -195,7 +195,7 @@ view globals model =
             ]
         , H.li []
             [ H.text "This offer is open for "
-            , Field.inputFor SetOpenForSecondsField {unit=Field.parse () model.openForUnitField |> Result.withDefault Weeks, resolvesAt=Field.parse {now=globals.now} model.resolvesAtField |> Result.toMaybe} model.openForSecondsField
+            , Field.inputFor SetOpenForSecondsField {unit=Field.parse () model.openForUnitField |> Result.withDefault Weeks, resolvesAt=Field.parse {now=globals.now, timeZone=globals.timeZone} model.resolvesAtField |> Result.toMaybe} model.openForSecondsField
                 H.input
                 [ HA.type_ "number", HA.min "1"
                 , HA.style "width" "5em"

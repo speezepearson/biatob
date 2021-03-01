@@ -92,7 +92,7 @@ viewStakeWidgetOrExcuse ctx globals model =
   if Utils.resolutionIsTerminal (Utils.currentResolution ctx.prediction) then
     H.text "This prediction has resolved, so cannot be bet in."
   else if ctx.prediction.closesUnixtime < Utils.timeToUnixtime globals.now then
-    H.text <| "This prediction closed on " ++ Utils.dateStr Time.utc (Utils.predictionClosesTime ctx.prediction) ++ " (UTC)."
+    H.text <| "This prediction closed on " ++ Utils.dateStr globals.timeZone (Utils.predictionClosesTime ctx.prediction) ++ "."
   else if not (Page.isLoggedIn globals) then
     H.div []
       [ H.text "You must be logged in to participate in this prediction!"
@@ -177,14 +177,24 @@ viewPredictionState ctx globals model =
         in
           H.text <|
             ( if secondsToClose > 0 then
-                "Betting closes in " ++ Utils.renderIntervalSeconds secondsToClose ++ ", and "
+                "Betting closes " ++ (
+                  if secondsToClose < 86400 then
+                    "in " ++ Utils.renderIntervalSeconds secondsToClose
+                  else
+                    "on " ++ Utils.dateStr globals.timeZone (Utils.unixtimeToTime ctx.prediction.closesUnixtime)
+                ) ++ ", and "
               else
-                "Betting closed " ++ Utils.renderIntervalSeconds (abs secondsToClose) ++ " ago, and "
+                "Betting closed on" ++ Utils.dateStr globals.timeZone (Utils.unixtimeToTime ctx.prediction.closesUnixtime) ++ ", and "
             ) ++
             ( if secondsToResolve > 0 then
-                "the prediction should resolve in " ++ Utils.renderIntervalSeconds secondsToResolve ++ ". "
+                "the prediction should resolve " ++ (
+                  if secondsToResolve < 86400 then
+                    "in " ++ Utils.renderIntervalSeconds secondsToResolve
+                  else
+                    "on " ++ Utils.dateStr globals.timeZone (Utils.unixtimeToTime ctx.prediction.resolvesAtUnixtime)
+                ) ++ ". "
               else
-                "the prediction should have resolved " ++ Utils.renderIntervalSeconds (abs secondsToResolve) ++ " ago. Consider pinging the creator! "
+                "the prediction should have resolved on " ++ Utils.dateStr globals.timeZone (Utils.unixtimeToTime ctx.prediction.resolvesAtUnixtime) ++ ". Consider pinging the creator! "
             )
       Pb.ResolutionUnrecognized_ _ ->
         H.span [HA.style "color" "red"]
@@ -241,7 +251,7 @@ viewCreationParams ctx globals model =
     certainty = Utils.mustPredictionCertainty ctx.prediction
   in
   H.p []
-    [ H.text <| "On " ++ Utils.dateStr Time.utc openTime ++ " UTC, "
+    [ H.text <| "On " ++ Utils.dateStr globals.timeZone openTime ++ ", "
     , H.strong [] [H.text <| if creator.isSelf then "you" else creator.displayName]
     , H.text " assigned this a "
     , certainty.low |> (*) 100 |> round |> String.fromInt |> H.text
