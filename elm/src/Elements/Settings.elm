@@ -17,27 +17,23 @@ import Widgets.CopyWidget as CopyWidget
 import API
 import Widgets.SmallInvitationWidget as SmallInvitationWidget
 import Page
-import Widgets.Navbar as Navbar
 
 type alias Model =
   { emailSettingsWidget : EmailSettingsWidget.Model
   , trustedUsersWidget : TrustedUsersWidget.Model
   , changePasswordWidget : ChangePasswordWidget.Model
-  , navbar : Navbar.Model
   }
 
 type Msg
   = EmailSettingsMsg EmailSettingsWidget.Msg
   | TrustedUsersMsg TrustedUsersWidget.Msg
   | ChangePasswordMsg ChangePasswordWidget.Msg
-  | NavbarMsg Navbar.Msg
 
 init : Model
 init =
   { emailSettingsWidget = EmailSettingsWidget.init
   , trustedUsersWidget = TrustedUsersWidget.init
   , changePasswordWidget = ChangePasswordWidget.init
-  , navbar = Navbar.init
   }
 
 update : Msg -> Model -> (Model, Page.Command Msg)
@@ -54,18 +50,12 @@ update msg model =
       let (newWidget, innerCmd) = EmailSettingsWidget.update widgetMsg model.emailSettingsWidget in
       ( { model | emailSettingsWidget = newWidget } , Page.mapCmd EmailSettingsMsg innerCmd )
 
-    NavbarMsg innerMsg ->
-      let (newNavbar, innerCmd) = Navbar.update innerMsg model.navbar in
-      ( { model | navbar = newNavbar } , Page.mapCmd NavbarMsg innerCmd )
-
-
 
 view : Page.Globals -> Model -> Browser.Document Msg
 view globals model =
   { title = "Settings"
   , body = [
-    Navbar.view globals model.navbar |> H.map NavbarMsg
-   ,H.main_ [HA.id "main", HA.style "text-align" "justify"] <| List.singleton <| case globals.authState of
+    H.main_ [HA.id "main", HA.style "text-align" "justify"] <| List.singleton <| case globals.authState of
       Nothing -> H.text "You have to log in to view your settings!"
       Just _ ->
         H.div []

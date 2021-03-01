@@ -1,24 +1,17 @@
-{% extends 'base.html' %}
-{% block title %} Biatob - My Stakes {% endblock %}
-{% block body %}
-  <main id="main-wrapper">
-    <h2>My Stakes</h2>
-    <div id="main"></div>
-  </main>
+{% extends 'base_page.html' %}
+{% block title %} Biatob - Invitation {% endblock %}
+{% block page_body %}
   <script type="text/javascript" src="/elm/MyStakes.js"></script>
   <script type="text/javascript">
 
-    var authTokenPbB64 = {{ auth_token_pb_b64 | tojson }};
     var predictionsPbB64 = {{ predictions_pb_b64 | tojson }};
-    var httpOrigin = window.location.origin;
 
-    if (!authTokenPbB64) {
+    if (!window.elmGlobalFlags.authTokenPbB64) {
       window.location = "/"; // TODO(P2): should be /login
     }
 
     var main = Elm.Elements.MyStakes.init({
-      node: document.getElementById('main'),
-      flags: {authTokenPbB64, predictionsPbB64, httpOrigin},
+      flags: {...window.elmGlobalFlags, predictionsPbB64},
     });
     subscribeToCopy(main);
 

@@ -1,6 +1,6 @@
 module Elements.MyStakes exposing (main)
 
-import Browser
+import Html as H
 import Json.Decode as JD
 
 import Biatob.Proto.Mvp as Pb
@@ -22,7 +22,7 @@ init flags =
 pagedef : Page.Element Model Msg
 pagedef =
   { init = init
-  , view = \g m -> {title="My stakes", body=[ViewPredictionsWidget.view g m]}
+  , view = \g m -> {title="My stakes", body=[H.h2 [] [H.text "My Stakes"], ViewPredictionsWidget.view g m]}
   , update = ViewPredictionsWidget.update
   , subscriptions = ViewPredictionsWidget.subscriptions
   }

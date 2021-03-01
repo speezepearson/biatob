@@ -1,18 +1,15 @@
-{% extends 'base.html' %}
-{% block title %} {{title}} {% endblock %}
-{% block body %}
+{% extends 'base_page.html' %}
+{% block title %} Biatob - Invitation {% endblock %}
+{% block page_body %}
   <script type="text/javascript" src="/elm/Prediction.js"></script>
-  <main id="main-wrapper"><div id="main"></div></main>
   <script type="text/javascript">
 
-    var authTokenPbB64 = {{ auth_token_pb_b64 | tojson }};
     var predictionPbB64 = {{ prediction_pb_b64 | tojson }};
     var predictionId = {{ prediction_id | tojson }};
-    var httpOrigin = window.location.origin;
 
     var main = Elm.Elements.Prediction.init({
       node: document.getElementById('main'),
-      flags: {authTokenPbB64, predictionPbB64, predictionId, httpOrigin},
+      flags: {...window.elmGlobalFlags, predictionPbB64, predictionId},
     });
     subscribeToCopy(main);
   </script>

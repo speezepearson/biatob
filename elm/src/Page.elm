@@ -12,10 +12,10 @@ port module Page exposing
 
 import Browser
 import Html as H exposing (Html)
+import Html.Attributes as HA
 import Json.Decode as JD
 import Time
 import Http
-import Dict
 
 import Biatob.Proto.Mvp as Pb
 import API

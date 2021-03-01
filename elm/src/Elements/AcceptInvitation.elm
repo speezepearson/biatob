@@ -16,7 +16,6 @@ import Time
 import Task
 import Utils
 import Page
-import Widgets.Navbar as Navbar
 
 port accepted : {dest : String} -> Cmd msg
 
@@ -25,14 +24,12 @@ type alias Model =
   , invitationIsOpen : Bool
   , destination : Maybe String
   , authWidget : AuthWidget.Model
-  , navbar : Navbar.Model
   , working : Bool
   , acceptNotification : Html Msg
   }
 
 type Msg
-  = NavbarMsg Navbar.Msg
-  | AcceptInvitation
+  = AcceptInvitation
   | AcceptInvitationFinished (Result Http.Error Pb.AcceptInvitationResponse)
   | AuthWidgetMsg AuthWidget.Msg
 
@@ -42,7 +39,6 @@ init flags =
     , destination = Utils.mustDecodeFromFlags (JD.nullable JD.string) "destination" flags
     , invitationIsOpen = Utils.mustDecodeFromFlags JD.bool "invitationIsOpen" flags
     , authWidget = AuthWidget.init
-    , navbar = Navbar.init
     , working = False
     , acceptNotification = H.text ""
     }
@@ -77,9 +73,6 @@ update msg model =
     AuthWidgetMsg widgetMsg ->
       let (newWidget, widgetCmd) = AuthWidget.update widgetMsg model.authWidget in
       ( { model | authWidget = newWidget } , Page.mapCmd AuthWidgetMsg widgetCmd )
-    NavbarMsg innerMsg ->
-      let (newNavbar, innerCmd) = Navbar.update innerMsg model.navbar in
-      ( { model | navbar = newNavbar } , Page.mapCmd NavbarMsg innerCmd )
 
 isOwnInvitation : Page.Globals -> Pb.InvitationId -> Bool
 isOwnInvitation globals invitationId =
@@ -90,8 +83,8 @@ isOwnInvitation globals invitationId =
 view : Page.Globals -> Model -> Browser.Document Msg
 view globals model =
   { title = "Accept Invitation"
-  , body = [Navbar.view globals model.navbar |> H.map NavbarMsg
-   ,H.main_ [HA.id "main", HA.style "text-align" "justify"] <|
+  , body = [
+    H.main_ [HA.id "main", HA.style "text-align" "justify"] <|
     if isOwnInvitation globals model.invitationId then
       [H.text "This is your own invitation!"]
     else if not model.invitationIsOpen then

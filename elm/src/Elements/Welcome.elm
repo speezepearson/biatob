@@ -13,22 +13,19 @@ import Biatob.Proto.Mvp as Pb
 import Utils
 
 import Widgets.AuthWidget as AuthWidget
-import Widgets.Navbar as Navbar
 import Widgets.SmallInvitationWidget as SmallInvitationWidget
 import Widgets.EmailSettingsWidget as EmailSettingsWidget
 import Widgets.CopyWidget as CopyWidget
 import Page
 
 type alias Model =
-  { navbar : Navbar.Model
-  , authWidget : AuthWidget.Model
+  { authWidget : AuthWidget.Model
   , invitationWidget : SmallInvitationWidget.Model
   , emailSettingsWidget : EmailSettingsWidget.Model
   }
 
 type Msg
-  = NavbarMsg Navbar.Msg
-  | AuthWidgetMsg AuthWidget.Msg
+  = AuthWidgetMsg AuthWidget.Msg
   | InvitationMsg SmallInvitationWidget.Msg
   | EmailSettingsMsg EmailSettingsWidget.Msg
 
@@ -42,8 +39,7 @@ pagedef =
 
 init : JD.Value -> (Model, Page.Command Msg)
 init _ =
-  ( { navbar = Navbar.init
-    , authWidget = AuthWidget.init
+  ( { authWidget = AuthWidget.init
     , invitationWidget = SmallInvitationWidget.init Nothing
     , emailSettingsWidget = EmailSettingsWidget.init
     }
@@ -54,9 +50,6 @@ init _ =
 update : Msg -> Model -> (Model, Page.Command Msg)
 update msg model =
   case msg of
-    NavbarMsg widgetMsg ->
-      let (newWidget, innerCmd) = Navbar.update widgetMsg model.navbar in
-      ( { model | navbar = newWidget } , Page.mapCmd NavbarMsg innerCmd )
     AuthWidgetMsg widgetMsg ->
       let (newWidget, innerCmd) = AuthWidget.update widgetMsg model.authWidget in
       ( { model | authWidget = newWidget } , Page.mapCmd AuthWidgetMsg innerCmd )
@@ -72,8 +65,7 @@ view : Page.Globals -> Model -> Browser.Document Msg
 view globals model =
   { title = "Welcome to Biatob!"
   , body = [
-    Navbar.view globals model.navbar |> H.map NavbarMsg
-   ,H.main_ [HA.id "main", HA.style "text-align" "justify"]
+    H.main_ [HA.id "main", HA.style "text-align" "justify"]
     [ H.h1 [] [H.text "Betting is a tax on BS."]
     , H.p []
         [ H.text "Hi! This is a tool that helps people make friendly wagers, thereby clarifying and concretizing their beliefs and making the world a better, saner place."
