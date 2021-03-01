@@ -988,6 +988,14 @@ class WebServer:
             raise web.HTTPBadRequest()
         return web.FileResponse(_HERE/'static'/filename)  # type: ignore
 
+    async def get_wellknown(self, req: web.Request) -> web.StreamResponse:
+        path = Path(req.match_info['path'])
+        root = Path('/home/public/.well-known')
+        try:
+            return web.FileResponse(root / ((root/path).absolute().relative_to(root)))
+        except Exception:
+            raise web.HTTPBadRequest()
+
     async def get_elm_module(self, req: web.Request) -> web.Response:
         module = req.match_info['module']
         return web.Response(content_type='text/javascript', body=(_HERE.parent/f'elm/dist/{module}.js').read_text()) # type: ignore
@@ -1134,6 +1142,7 @@ class WebServer:
         self._token_glue.add_to_app(app)
 
         app.router.add_get('/', self.get_index)
+        app.router.add_get('/.well-known/{path:.*}', self.get_wellknown)
         app.router.add_get('/static/{filename}', self.get_static)
         app.router.add_get('/elm/{module}.js', self.get_elm_module)
         app.router.add_get('/welcome', self.get_welcome)
