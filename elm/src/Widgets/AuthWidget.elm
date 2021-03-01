@@ -54,6 +54,8 @@ init =
   , passwordField = Field.okIfEmpty <| Field.init "" <| \() s ->
       if s=="" then
         Err ""
+      else if String.length s > 256 then
+        Err "must not be over 256 characters, good grief"
       else
         Ok s
   , working = False
