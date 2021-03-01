@@ -1,8 +1,8 @@
 {% extends 'base_page.html' %}
 {% block title %} Biatob - Invitation {% endblock %}
 {% block page_body %}
-  <main id="main-wrapper">
-    <h2> Log in </h2>
-    ...using the navbar at the top of the page, as always.
-  </main>
+  <script type="text/javascript" src="/elm/Login.js"></script>
+  <script type="text/javascript">
+    main({elmApp: Elm.Elements.Login, flags: {}});
+  </script>
 {% endblock %}
