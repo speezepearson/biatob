@@ -50,7 +50,52 @@
       app.ports.navigate.subscribe(dest => {if (dest) {window.location=dest} else window.location.reload()});
     }
   </script>
-  <link rel="stylesheet" href="/static/base.css">
+  <style>
+    .navbar-wrapper {
+      background-color: lightblue;
+    }
+    .navbar-wrapper > ul {
+      max-width: 45em;
+      margin: auto;
+
+      display: flex;
+      flex-direction: row;
+      list-style: none;
+      align-items: center;
+    }
+    .navbar-wrapper li {
+      margin: 0.5ex 1ex;
+    }
+
+    main {
+      max-width: 45em;
+      margin: auto;
+    }
+
+    h1, h2, h3 {
+      text-align: center;
+    }
+
+    .new-prediction-form {
+      list-style: none;
+      padding: 0;
+    }
+
+    .new-prediction-form li {
+      margin: 1ex;
+      padding: 1ex;
+      background-color: #ddffff;
+      border-radius: 1ex;
+      border: 1px solid lightblue;
+      text-align: left;
+    }
+
+    .prediction-field, .special-rules-field {
+      font-family: inherit;
+      height: 6em;
+    }
+
+  </style>
 </head>
 
 <body>
