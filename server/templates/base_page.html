@@ -4,6 +4,16 @@
   <meta charset="UTF-8">
   <title>{% block title %}{% endblock %}</title>
   <link rel="shortcut icon"type="image/x-icon" href="data:image/x-icon;,">
+
+  <!-- Global site tag (gtag.js) - Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-9CYYH7HZ13"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-9CYYH7HZ13');
+  </script>
+
   <script type="text/javascript">
     window.elmGlobalFlags = {
       authSuccessPbB64: {% if auth_success_pb_b64 is defined %} {{ auth_success_pb_b64 | tojson }} {% else %} null {% endif %},
