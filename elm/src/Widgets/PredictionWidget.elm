@@ -95,7 +95,7 @@ viewStakeWidgetOrExcuse ctx globals model =
     H.text <| "This prediction closed on " ++ Utils.dateStr globals.timeZone (Utils.predictionClosesTime ctx.prediction) ++ "."
   else if not (Page.isLoggedIn globals) then
     H.div []
-      [ H.text "You must be logged in to participate in this prediction!"
+      [ H.text "You must be logged in to bet on this prediction!"
       ]
   else
     if creator.isSelf then
