@@ -3,9 +3,7 @@
 {% block page_body %}
   <script type="text/javascript" src="/elm/Welcome.js"></script>
   <script type="text/javascript">
-  var main = Elm.Elements.Welcome.init({
-    flags: {...window.elmGlobalFlags},
-  });
+  main({elmApp: Elm.Elements.Welcome, flags: {}});
   subscribeToCopy(main);
 </script>
 

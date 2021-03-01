@@ -17,6 +17,7 @@ import Widgets.CopyWidget as CopyWidget
 import API
 import Widgets.SmallInvitationWidget as SmallInvitationWidget
 import Page
+import Page.Program
 
 type alias Model =
   { emailSettingsWidget : EmailSettingsWidget.Model
@@ -78,4 +79,4 @@ view globals model =
 pagedef : Page.Element Model Msg
 pagedef = {init=\_ -> (init, Page.NoCmd), view=view, update=update, subscriptions=\_ -> Sub.none}
 
-main = Page.page pagedef
+main = Page.Program.page pagedef

@@ -68,7 +68,7 @@ view globals model =
     help : Html Msg
     help =
       H.details [HA.style "display" "inline", HA.style "outline" "1px solid #cccccc"]
-        [ H.summary [] [H.text "?"]
+        [ H.summary [] [H.text "(huh?)"]
         , H.text <|
             "An invitation link is a one-time-use code that you send to people you trust, in order to let Biatob know you trust them."
             ++ " The intended use is: you create an invitation; you send it to somebody you trust;"

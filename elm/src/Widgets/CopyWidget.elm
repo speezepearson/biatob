@@ -1,10 +1,8 @@
-port module Widgets.CopyWidget exposing (..)
+module Widgets.CopyWidget exposing (..)
 
 import Html as H exposing (Html)
 import Html.Attributes as HA
 import Html.Events as HE
-
-port copy : String -> Cmd msg
 
 view : (String -> msg) -> String -> Html msg
 view onClick value =

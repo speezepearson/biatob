@@ -995,7 +995,7 @@ class WebServer:
     async def get_index(self, req: web.Request) -> web.StreamResponse:
         auth = self._token_glue.parse_cookie(req)
         if auth is None:
-            return await self.get_welcome(req)
+            return web.HTTPTemporaryRedirect('/welcome')
         else:
             return await self.get_my_stakes(req)
 

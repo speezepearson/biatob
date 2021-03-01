@@ -9,11 +9,6 @@
     var destination = (() => { var m = (/[?&]dest=([^&]+)/).exec(window.location.search); return m ? m[1] : null})();
     console.log({invitationIsOpen});
 
-    var main = Elm.Elements.AcceptInvitation.init({
-      flags: {...window.elmGlobalFlags, invitationIsOpen, invitationIdPbB64, destination},
-    });
-    main.ports.accepted.subscribe(({dest}) => {
-      window.location = dest;
-    });
+    main({elmApp: Elm.Elements.AcceptInvitation, flags: {invitationIsOpen, invitationIdPbB64, destination}});
   </script>
 {% endblock %}

@@ -6,6 +6,7 @@ import Html.Attributes as HA
 import Html.Events as HE
 import Http
 import Json.Decode as JD
+import Dict
 
 import Biatob.Proto.Mvp as Pb
 import Utils
@@ -15,11 +16,14 @@ import Widgets.SmallInvitationWidget as SmallInvitationWidget
 import Widgets.ViewPredictionsWidget as ViewPredictionsWidget
 import Widgets.CopyWidget as CopyWidget
 import Page
+import Page exposing (getUserInfo)
+import Page exposing (getUserInfo)
+import Page.Program
 
 type alias Model =
   { userId : Pb.UserId
   , userView : Pb.UserUserView
-  , predictionsWidget : Maybe ViewPredictionsWidget.Model
+  , predictionsWidget : ViewPredictionsWidget.Model
   , working : Bool
   , notification : Html Never
   , invitationWidget : SmallInvitationWidget.Model
@@ -34,17 +38,12 @@ type Msg
 init : JD.Value -> (Model, Page.Command Msg)
 init flags =
   let
-    httpOrigin = Utils.mustDecodeFromFlags JD.string "httpOrigin" flags
-    auth = Utils.decodePbFromFlags Pb.authTokenDecoder "authTokenPbB64" flags
-    predsWidget = case auth of
-      Just _ -> case Utils.decodePbFromFlags Pb.predictionsByIdDecoder "predictionsPbB64" flags of
+    predsWidget =
+      case Utils.decodePbFromFlags Pb.predictionsByIdDecoder "predictionsPbB64" flags of
+        Nothing -> ViewPredictionsWidget.init (Dict.empty)
         Just preds ->
           ViewPredictionsWidget.init (Utils.mustMapValues preds.predictions)
           |> ViewPredictionsWidget.noFilterByOwner
-          |> Just
-          
-        Nothing -> Nothing
-      Nothing -> Nothing
   in
   ( { userId = Utils.mustDecodePbFromFlags Pb.userIdDecoder "userIdPbB64" flags
     , userView = Utils.mustDecodePbFromFlags Pb.userUserViewDecoder "userViewPbB64" flags
@@ -78,13 +77,10 @@ update msg model =
       , Page.NoCmd
       )
     PredictionsMsg widgetMsg ->
-      case model.predictionsWidget of
-        Just widget ->
-          let (newWidget, widgetCmd) = ViewPredictionsWidget.update widgetMsg widget in
-          ( { model | predictionsWidget = Just newWidget }
-          , Page.mapCmd PredictionsMsg widgetCmd
-          )
-        Nothing -> Debug.todo "bad state"
+        let (newWidget, widgetCmd) = ViewPredictionsWidget.update widgetMsg model.predictionsWidget in
+        ( { model | predictionsWidget = newWidget }
+        , Page.mapCmd PredictionsMsg widgetCmd
+        )
     InvitationMsg widgetMsg ->
       let (newWidget, innerCmd) = SmallInvitationWidget.update widgetMsg model.invitationWidget in
       ( { model | invitationWidget = newWidget } , Page.mapCmd InvitationMsg innerCmd )
@@ -101,37 +97,40 @@ view globals model =
           , H.a [HA.href "/settings"] [H.text "your settings"]
           , H.text "?"
           ]
-      else if not (Page.isLoggedIn globals) then
-        H.text "Log in to see your relationship with this user."
-      else
-        H.div []
-          [ if model.userView.trustsYou then
-              H.text "This user trusts you! :)"
-            else
-              H.div []
-                [ H.text "This user hasn't marked you as trusted! If you think that, in real life, they "
-                , H.i [] [H.text "do"]
-                , H.text " trust you, send them an invitation: "
-                , SmallInvitationWidget.view globals model.invitationWidget |> H.map InvitationMsg
-                ]
-          , H.br [] []
-          , if model.userView.isTrusted then
-              H.div []
-                [ H.text "You trust this user. "
-                , H.button [HA.disabled model.working, HE.onClick (SetTrusted False)] [H.text "Mark untrusted"]
-                ]
-            else
-              H.div []
-                [ H.text "You don't trust this user. "
-                , H.button [HA.disabled model.working, HE.onClick (SetTrusted True)] [H.text "Mark trusted"]
-                ]
-          , model.notification |> H.map never
-          , H.br [] []
-          , H.h3 [] [H.text "Predictions"]
-          , case model.predictionsWidget of
-              Nothing -> H.text "No predictions to show."
-              Just widget -> ViewPredictionsWidget.view globals widget |> H.map PredictionsMsg
-          ]
+      else case globals.authState of
+        Nothing -> H.text "Log in to see your relationship with this user."
+        Just auth -> let userInfo = Utils.mustAuthSuccessUserInfo auth in
+          H.div []
+            [ if model.userView.trustsYou then
+                H.text "This user trusts you! :)"
+              else
+                H.div []
+                  [ H.text "This user hasn't marked you as trusted! If you think that, in real life, they "
+                  , H.i [] [H.text "do"]
+                  , H.text " trust you, send them an invitation: "
+                  , SmallInvitationWidget.view globals model.invitationWidget |> H.map InvitationMsg
+                  ]
+            , H.br [] []
+            , if List.member model.userId userInfo.trustedUsers then
+                H.div []
+                  [ H.text "You trust this user. "
+                  , H.button [HA.disabled model.working, HE.onClick (SetTrusted False)] [H.text "Mark untrusted"]
+                  ]
+              else
+                H.div []
+                  [ H.text "You don't trust this user. "
+                  , H.button [HA.disabled model.working, HE.onClick (SetTrusted True)] [H.text "Mark trusted"]
+                  ]
+            , model.notification |> H.map never
+            , H.br [] []
+            , if model.userView.trustsYou then
+                H.div []
+                  [ H.h3 [] [H.text "Predictions"]
+                  , ViewPredictionsWidget.view globals model.predictionsWidget |> H.map PredictionsMsg
+                  ]
+              else
+                H.text ""
+            ]
   ]]}
 
 subscriptions : Model -> Sub Msg
@@ -140,4 +139,4 @@ subscriptions _ = Sub.none
 pagedef : Page.Element Model Msg
 pagedef = {init=init, view=view, update=update, subscriptions=subscriptions}
 
-main = Page.page pagedef
+main = Page.Program.page pagedef

@@ -6,14 +6,7 @@
 
     var predictionsPbB64 = {{ predictions_pb_b64 | tojson }};
 
-    if (!window.elmGlobalFlags.authTokenPbB64) {
-      window.location = "/"; // TODO(P2): should be /login
-    }
-
-    var main = Elm.Elements.MyStakes.init({
-      flags: {...window.elmGlobalFlags, predictionsPbB64},
-    });
-    subscribeToCopy(main);
+    main({elmApp: Elm.Elements.MyStakes, flags: {predictionsPbB64}});
 
     var usernameField = document.getElementsByClassName('username-field')[0];
     if (usernameField) usernameField.focus();

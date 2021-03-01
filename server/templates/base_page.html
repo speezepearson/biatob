@@ -14,13 +14,27 @@
     console.log('global flags', window.elmGlobalFlags);
 
     function copy(s) {
-      console.log('copy', s);
         var e = document.createElement('input');
         e.value = s;
         document.body.appendChild(e);
         e.select();
         document.execCommand('copy');
         e.remove();
+    }
+
+    function main({elmApp, flags}) {
+      var app = elmApp.init({
+        flags: {...window.elmGlobalFlags, ...flags},
+      });
+      app.ports.pageCopy.subscribe(s => {
+        var e = document.createElement('input');
+        e.value = s;
+        document.body.appendChild(e);
+        e.select();
+        document.execCommand('copy');
+        e.remove();
+      })
+      app.ports.navigate.subscribe(dest => {if (dest) {window.location=dest} else window.location.reload()});
     }
     window.subscribeToCopy = (app) => {
       if (app.ports.copy) app.ports.copy.subscribe(copy);

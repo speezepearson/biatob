@@ -17,6 +17,7 @@ import Widgets.SmallInvitationWidget as SmallInvitationWidget
 import Widgets.EmailSettingsWidget as EmailSettingsWidget
 import Widgets.CopyWidget as CopyWidget
 import Page
+import Page.Program
 
 type alias Model =
   { authWidget : AuthWidget.Model
@@ -132,8 +133,7 @@ view globals model =
                 [ AuthWidget.view globals model.authWidget |> H.map AuthWidgetMsg ]
             ]
         , H.li [HA.style "margin-bottom" "1em"]
-            [ H.a [HA.name "postcreateaccount"] []
-            , H.text " Go to "
+            [ H.text " Go to "
             , H.a [HA.href "/new"]
                 [ H.text "the New Prediction page"
                 ]
@@ -167,4 +167,4 @@ view globals model =
     ]
   ]}
 
-main = Page.page pagedef
+main = Page.Program.page pagedef

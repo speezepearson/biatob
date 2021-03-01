@@ -1,4 +1,4 @@
-port module Elements.CreatePrediction exposing (main)
+module Elements.CreatePrediction exposing (main)
 
 import Browser
 import Html as H exposing (Html)
@@ -19,8 +19,7 @@ import Widgets.PredictionWidget as PredictionWidget
 import API
 import Utils
 import Page
-
-port createdPrediction : Int -> Cmd msg
+import Page.Program
 
 type alias Model =
   { form : Form.Model
@@ -72,7 +71,7 @@ update msg model =
       case resp.createPredictionResult of
         Just (Pb.CreatePredictionResultNewPredictionId id) ->
           ( model
-          , Page.MiscCmd <| createdPrediction id
+          , Page.NavigateCmd <| Just <| "/p/" ++ String.fromInt id
           )
         Just (Pb.CreatePredictionResultError e) ->
           ( { model | working = False , createError = Just (Debug.toString e) }
@@ -145,4 +144,4 @@ subscriptions _ = Sub.none
 pagedef : Page.Element Model Msg
 pagedef = {init=\_ -> (init, Page.NoCmd), view=view, update=update, subscriptions=subscriptions}
 
-main = Page.page pagedef
+main = Page.Program.page pagedef

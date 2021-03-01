@@ -1,4 +1,4 @@
-port module Elements.AcceptInvitation exposing (main)
+module Elements.AcceptInvitation exposing (main)
 
 import Browser
 import Html as H exposing (Html)
@@ -16,8 +16,7 @@ import Time
 import Task
 import Utils
 import Page
-
-port accepted : {dest : String} -> Cmd msg
+import Page.Program
 
 type alias Model =
   { invitationId : Pb.InvitationId
@@ -60,7 +59,7 @@ update msg model =
       case resp.acceptInvitationResult of
         Just (Pb.AcceptInvitationResultOk _) ->
           ( model
-          , Page.MiscCmd <| accepted {dest = model.destination |> Maybe.withDefault (Utils.pathToUserPage <| Utils.mustInviter model.invitationId) }
+          , Page.NavigateCmd <| Just <| Maybe.withDefault (Utils.pathToUserPage <| Utils.mustInviter model.invitationId) model.destination
           )
         Just (Pb.AcceptInvitationResultError e) ->
           ( { model | working = False , acceptNotification = Utils.redText (Debug.toString e) }
@@ -139,4 +138,4 @@ subscriptions _ = Sub.none
 pagedef : Page.Element Model Msg
 pagedef = {init=init, view=view, update=update, subscriptions=\_ -> Sub.none}
 
-main = Page.page pagedef
+main = Page.Program.page pagedef

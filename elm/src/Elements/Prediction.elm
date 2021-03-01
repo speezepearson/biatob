@@ -16,6 +16,7 @@ import Widgets.PredictionWidget as Widget
 import Widgets.StakeWidget as StakeWidget
 import Widgets.SmallInvitationWidget as SmallInvitationWidget
 import Page
+import Page.Program
 
 type alias Model = ( Widget.Context , Widget.Model )
 type Msg
@@ -57,4 +58,4 @@ pagedef =
   , subscriptions = \_ -> Sub.none
   }
 
-main = Page.page pagedef
+main = Page.Program.page pagedef

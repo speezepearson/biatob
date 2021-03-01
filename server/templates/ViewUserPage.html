@@ -8,11 +8,6 @@
     var userViewPbB64 = {{ user_view_pb_b64 | tojson }};
     var predictionsPbB64 = {{ predictions_pb_b64 | tojson }};
 
-    var main = Elm.Elements.ViewUser.init({
-      node: document.getElementById('main'),
-      flags: {...window.elmGlobalFlags, userIdPbB64, userViewPbB64, predictionsPbB64},
-    });
-    subscribeToCopy(main);
-    main.ports.trustChanged.subscribe(() => window.location.reload());
+    main({elmApp: Elm.Elements.ViewUser, flags: {userIdPbB64, userViewPbB64, predictionsPbB64}});
   </script>
 {% endblock %}

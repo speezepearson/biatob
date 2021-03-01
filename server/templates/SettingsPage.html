@@ -3,9 +3,6 @@
 {% block page_body %}
   <script type="text/javascript" src="/elm/Settings.js"></script>
   <script type="text/javascript">
-    var main = Elm.Elements.Settings.init({
-      flags: {...window.elmGlobalFlags},
-    });
-    subscribeToCopy(main);
+    main({elmApp: Elm.Elements.Settings, flags: {}});
   </script>
 {% endblock %}

@@ -4,12 +4,7 @@
   <script type="text/javascript" src="/elm/CreatePrediction.js"></script>
   <script type="text/javascript">
 
-    var main = Elm.Elements.CreatePrediction.init({
-      flags: {...window.elmGlobalFlags},
-    });
-    main.ports.createdPrediction.subscribe((predictionId) => {
-      window.location = `/p/${predictionId}`;
-    });
+    main({elmApp: Elm.Elements.CreatePrediction, flags: {}});
 
     var resolvesAtField = document.getElementsByClassName('resolves-at-field')[0];
     if (resolvesAtField) resolvesAtField.focus();

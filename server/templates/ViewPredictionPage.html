@@ -7,10 +7,6 @@
     var predictionPbB64 = {{ prediction_pb_b64 | tojson }};
     var predictionId = {{ prediction_id | tojson }};
 
-    var main = Elm.Elements.Prediction.init({
-      node: document.getElementById('main'),
-      flags: {...window.elmGlobalFlags, predictionPbB64, predictionId},
-    });
-    subscribeToCopy(main);
+    main({elmApp: Elm.Elements.Prediction, flags: {predictionPbB64, predictionId}});
   </script>
 {% endblock %}

@@ -179,3 +179,7 @@ update msg model =
       )
 
     Ignore -> ( model , Page.NoCmd )
+
+subscriptions : Model -> Sub Msg
+subscriptions _ =
+  Sub.none
