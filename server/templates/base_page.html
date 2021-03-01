@@ -26,6 +26,8 @@
       var app = elmApp.init({
         flags: {...window.elmGlobalFlags, ...flags},
       });
+      var usernameField = document.getElementsByClassName('username-field')[0];
+      if (usernameField) usernameField.focus();
       app.ports.pageCopy.subscribe(s => {
         var e = document.createElement('input');
         e.value = s;
@@ -36,10 +38,6 @@
       })
       app.ports.navigate.subscribe(dest => {if (dest) {window.location=dest} else window.location.reload()});
     }
-    window.subscribeToCopy = (app) => {
-      if (app.ports.copy) app.ports.copy.subscribe(copy);
-      if (app.ports.pageCopy) app.ports.pageCopy.subscribe(copy);
-    };
   </script>
   <link rel="stylesheet" href="/static/base.css">
 </head>

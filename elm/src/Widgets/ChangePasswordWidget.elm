@@ -10,8 +10,6 @@ import Biatob.Proto.Mvp as Pb
 
 import Biatob.Proto.Mvp exposing (StakeResult(..))
 import Field exposing (Field)
-import API
-import Page
 import Page
 
 type alias Model =

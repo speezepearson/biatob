@@ -16,7 +16,6 @@ import Widgets.CreatePredictionWidget as Form
 import Utils
 
 import Widgets.PredictionWidget as PredictionWidget
-import API
 import Utils
 import Page
 import Page.Program
@@ -99,9 +98,9 @@ view globals model =
     , H.div [HA.style "text-align" "center", HA.style "margin-bottom" "2em"]
         [ H.button
             [ HE.onClick (Create globals.now)
-            , HA.disabled (Page.isLoggedIn globals || Form.toCreateRequest globals.now model.form == Nothing || model.working)
+            , HA.disabled (not (Page.isLoggedIn globals) || Form.toCreateRequest globals.now model.form == Nothing || model.working)
             ]
-            [ H.text <| if Page.isLoggedIn globals then "Log in to create" else "Create" ]
+            [ H.text <| if Page.isLoggedIn globals then "Create" else "Log in to create" ]
         ]
     , case model.createError of
         Just e -> H.div [HA.style "color" "red"] [H.text e]

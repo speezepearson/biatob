@@ -11,7 +11,6 @@ import Utils
 
 import Task
 import Widgets.CopyWidget as CopyWidget
-import API
 import Widgets.PredictionWidget as Widget
 import Widgets.StakeWidget as StakeWidget
 import Widgets.SmallInvitationWidget as SmallInvitationWidget
@@ -37,13 +36,12 @@ update msg (ctx, widget) =
   case msg of
     WidgetMsg widgetMsg ->
       let
-        (newWidget, innerCmd) = Widget.update widgetMsg widget
-        newPrediction = case widgetMsg of
-          Widget.StakeMsg (StakeWidget.StakeFinished _) -> Debug.todo ""
-          Widget.ResolveFinished _ -> Debug.todo ""
-          _ -> Nothing
+        (newWidget, innerCmd, event) = Widget.update widgetMsg widget
+        newCtx = case event of
+          Nothing -> ctx
+          Just (Widget.SetPrediction newPrediction) -> { ctx | prediction = newPrediction }
       in
-      ( ( ctx , newWidget )
+      ( ( newCtx , newWidget )
       , Page.mapCmd WidgetMsg innerCmd
       )
 

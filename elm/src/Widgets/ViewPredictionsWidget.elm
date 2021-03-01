@@ -5,17 +5,11 @@ import Html.Attributes as HA
 import Html.Events as HE
 import Dict exposing (Dict)
 import Time
-import Http
 
 import Biatob.Proto.Mvp as Pb
 import Utils
 
 import Widgets.PredictionWidget as PredictionWidget
-import Widgets.SmallInvitationWidget as SmallInvitationWidget
-import Widgets.StakeWidget as StakeWidget
-import Widgets.CopyWidget as CopyWidget
-import Task
-import API
 import Page
 
 type LifecyclePhase
@@ -156,8 +150,13 @@ update msg model =
       case Dict.get id model.predictions of
         Nothing -> Debug.todo "got message for unknown prediction"
         Just (pred, widget) ->
-          let (newWidget, widgetCmd) = PredictionWidget.update widgetMsg widget in
-          ( { model | predictions = model.predictions |> Dict.insert id (pred, newWidget) }
+          let
+            (newWidget, widgetCmd, event) = PredictionWidget.update widgetMsg widget
+            newPrediction = case event of
+              Just (PredictionWidget.SetPrediction newPred) -> newPred
+              Nothing -> pred
+          in
+          ( { model | predictions = model.predictions |> Dict.insert id (newPrediction, newWidget) }
           , Page.mapCmd (PredictionMsg id) widgetCmd
           )
 

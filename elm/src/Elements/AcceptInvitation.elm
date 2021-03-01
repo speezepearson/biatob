@@ -10,7 +10,6 @@ import Json.Decode as JD
 import Biatob.Proto.Mvp as Pb
 import Utils
 
-import API
 import Widgets.AuthWidget as AuthWidget
 import Time
 import Task

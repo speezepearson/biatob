@@ -13,9 +13,6 @@ import Utils
 import Widgets.ChangePasswordWidget as ChangePasswordWidget
 import Widgets.EmailSettingsWidget as EmailSettingsWidget
 import Widgets.TrustedUsersWidget as TrustedUsersWidget
-import Widgets.CopyWidget as CopyWidget
-import API
-import Widgets.SmallInvitationWidget as SmallInvitationWidget
 import Page
 import Page.Program
 

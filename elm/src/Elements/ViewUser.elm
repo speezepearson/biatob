@@ -11,7 +11,6 @@ import Dict
 import Biatob.Proto.Mvp as Pb
 import Utils
 
-import API
 import Widgets.SmallInvitationWidget as SmallInvitationWidget
 import Widgets.ViewPredictionsWidget as ViewPredictionsWidget
 import Widgets.CopyWidget as CopyWidget

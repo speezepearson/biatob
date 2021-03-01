@@ -6,6 +6,7 @@ import Time
 import Json.Decode as JD
 import Html as H exposing (Html)
 import Html.Attributes as HA
+import Task
 
 import Biatob.Proto.Mvp as Pb
 import API
@@ -41,7 +42,7 @@ page elem =
         , reloading = False
         , inner = inner
         }
-      , toCmd RequestFinished Inner cmd
+      , Cmd.batch [Task.perform Tick Time.now, toCmd RequestFinished Inner cmd]
       )
 
     view : Model model -> Browser.Document (Msg msg)
@@ -66,28 +67,24 @@ page elem =
         Tick now ->
           ( { model | globals = model.globals |> \g -> { g | now = now } } , Cmd.none )
         RequestFinished resp innerMsg ->
-          case resp of
-            LogInUsernameResponse _ -> ( {model|reloading=True} , navigate Nothing )
-            RegisterUsernameResponse _ -> ( {model|reloading=True} , navigate Nothing )
-            SignOutResponse _ -> ( {model|reloading=True} , navigate Nothing )
-            _ ->
-              let (newInner, cmd) = elem.update innerMsg model.inner in
-              ( { model | inner = newInner , globals = model.globals |> updateGlobalsFromResponse resp }
-              , toCmd RequestFinished Inner cmd
-              )
+          if didAuthChange resp then
+            ( {model|reloading=True} , navigate Nothing )
+          else
+            let (newInner, cmd) = elem.update innerMsg model.inner in
+            ( { model | inner = newInner , globals = model.globals |> updateGlobalsFromResponse resp }
+            , toCmd RequestFinished Inner cmd
+            )
         NavbarMsg widgetMsg ->
           let (newWidget, widgetCmd) = Navbar.update widgetMsg model.navbar in
           ( { model | navbar = newWidget } , toCmd NavbarRequestFinished NavbarMsg widgetCmd )
         NavbarRequestFinished resp widgetMsg ->
-          case resp of
-            LogInUsernameResponse _ -> ( {model|reloading=True} , navigate Nothing )
-            RegisterUsernameResponse _ -> ( {model|reloading=True} , navigate Nothing )
-            SignOutResponse _ -> ( {model|reloading=True} , navigate Nothing )
-            _ ->
-              let (newWidget, widgetCmd) = Navbar.update widgetMsg model.navbar in
-              ( { model | navbar = newWidget , globals = model.globals |> updateGlobalsFromResponse resp }
-              , toCmd NavbarRequestFinished NavbarMsg widgetCmd
-              )
+          if didAuthChange resp then
+            ( {model|reloading=True} , navigate Nothing )
+          else
+            let (newWidget, widgetCmd) = Navbar.update widgetMsg model.navbar in
+            ( { model | navbar = newWidget , globals = model.globals |> updateGlobalsFromResponse resp }
+            , toCmd NavbarRequestFinished NavbarMsg widgetCmd
+            )
 
     subscriptions : Model model -> Sub (Msg msg)
     subscriptions model =
@@ -97,6 +94,18 @@ page elem =
         ]
   in
   Browser.document {init=init, view=view, update=update, subscriptions=subscriptions}
+
+didAuthChange : Response -> Bool
+didAuthChange resp =
+  case resp of
+    LogInUsernameResponse (Ok {logInUsernameResult}) -> case logInUsernameResult of
+      Just (Pb.LogInUsernameResultOk _) -> True
+      _ -> False
+    RegisterUsernameResponse (Ok {registerUsernameResult}) -> case registerUsernameResult of
+      Just (Pb.RegisterUsernameResultOk _) -> True
+      _ -> False
+    SignOutResponse (Ok _) -> True
+    _ -> False
 
 toCmd : (Response -> a -> Msg msg) -> (a -> Msg msg) -> Command a -> Cmd (Msg msg)
 toCmd wrapResponse wrapMisc cmd =

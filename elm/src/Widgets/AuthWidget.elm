@@ -1,24 +1,17 @@
 module Widgets.AuthWidget exposing (..)
 
-import Browser
 import Html as H exposing (Html)
 import Html.Attributes as HA
 import Html.Events as HE
-import Json.Decode as JD
-import Json.Encode as JE
-import Time
 import Html exposing (s)
 
 import Biatob.Proto.Mvp as Pb
 import Utils
 import Http
-import Task
 
-import API
 import Field exposing (Field)
 import Set
 import Field
-import Biatob.Proto.Mvp exposing (LogInUsernameRequest)
 import Page
 import Field
 import Page

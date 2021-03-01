@@ -210,6 +210,8 @@ pathToUserPage user =
   case mustUserKind user of
     Pb.KindUsername username -> "/username/" ++ username
 
+greenText : String -> Html msg
+greenText s = H.span [HA.style "color" "green"] [H.text s]
 redText : String -> Html msg
 redText s = H.span [HA.style "color" "red"] [H.text s]
 

@@ -29,6 +29,7 @@ type alias Context =
   , prediction : Pb.UserPredictionView
   , shouldLinkTitle : Bool
   }
+type ContextEvent = SetPrediction Pb.UserPredictionView
 type alias Model =
   { stakeForm : StakeWidget.Model
   , working : Bool
@@ -44,44 +45,46 @@ init predictionId =
   , invitationWidget = SmallInvitationWidget.init (Just <| "/p/" ++ String.fromInt predictionId)
   }
 
-update : Msg -> Model -> ( Model , Page.Command Msg )
+update : Msg -> Model -> ( Model , Page.Command Msg, Maybe ContextEvent )
 update msg model =
   case msg of
     InvitationMsg widgetMsg ->
       let (newWidget, widgetCmd) = SmallInvitationWidget.update widgetMsg model.invitationWidget in
       ( { model | invitationWidget = newWidget }
       , Page.mapCmd InvitationMsg widgetCmd
+      , Nothing
       )
     StakeMsg widgetMsg ->
-      let (newWidget, widgetCmd) = StakeWidget.update widgetMsg model.stakeForm in
+      let (newWidget, widgetCmd, event) = StakeWidget.update widgetMsg model.stakeForm in
       ( { model | stakeForm = newWidget }
       , Page.mapCmd StakeMsg widgetCmd
+      , case event of
+          Nothing -> Nothing
+          Just (StakeWidget.SetPrediction pred) -> Just (SetPrediction pred)
       )
     Copy s ->
       ( model
       , Page.CopyCmd s
+      , Nothing
       )
 
     Resolve predictionId resolution ->
       ( { model | working = True , notification = H.text "" }
       , Page.RequestCmd <| Page.ResolveRequest ResolveFinished {predictionId=predictionId, resolution=resolution, notes=""}
+      , Nothing
       )
     ResolveFinished res ->
-      ( case res of
-          Err e ->
-            { model | working = False , notification = Utils.redText (Debug.toString e) }
-          Ok resp ->
-            case resp.resolveResult of
-              Just (Pb.ResolveResultOk _) ->
-                { model | working = False
-                        , notification = H.text ""
-                }
-              Just (Pb.ResolveResultError e) ->
-                { model | working = False , notification = Utils.redText (Debug.toString e) }
-              Nothing ->
-                { model | working = False , notification = Utils.redText "Invalid server response (neither Ok nor Error in protobuf)" }
-      , Page.NoCmd
-      )
+      case res of
+        Err e ->
+          ( { model | working = False , notification = Utils.redText (Debug.toString e) } , Page.NoCmd , Nothing )
+        Ok resp ->
+          case resp.resolveResult of
+            Just (Pb.ResolveResultOk newPrediction) ->
+              ( { model | working = False , notification = H.text "" } , Page.NoCmd , Just (SetPrediction newPrediction) )
+            Just (Pb.ResolveResultError e) ->
+              ( { model | working = False , notification = Utils.redText (Debug.toString e) } , Page.NoCmd , Nothing )
+            Nothing ->
+              ( { model | working = False , notification = Utils.redText "Invalid server response (neither Ok nor Error in protobuf)" } , Page.NoCmd , Nothing )
 
 viewStakeWidgetOrExcuse : Context -> Page.Globals -> Model -> Html Msg
 viewStakeWidgetOrExcuse ctx globals model =
