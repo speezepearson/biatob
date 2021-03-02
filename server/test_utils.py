@@ -1,3 +1,4 @@
+import asyncio
 import random
 import pytest
 import unittest.mock
@@ -27,9 +28,15 @@ def fs_storage(tmp_path):
 
 @pytest.fixture
 def fs_servicer(fs_storage, clock, token_mint):
+  emailer = unittest.mock.Mock(
+    send_resolution_notifications=lambda *args, **kwargs: asyncio.sleep(0),
+    send_resolution_reminder=lambda *args, **kwargs: asyncio.sleep(0),
+    send_email_verification=lambda *args, **kwargs: asyncio.sleep(0),
+    send_backup=lambda *args, **kwargs: asyncio.sleep(0),
+  )
   return FsBackedServicer(
     storage=fs_storage,
-    emailer=unittest.mock.Mock(),  # TODO: make this a fixture
+    emailer=emailer,
     random_seed=0,
     clock=clock.now,
     token_mint=token_mint,

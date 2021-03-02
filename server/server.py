@@ -16,6 +16,7 @@ import io
 import json
 from pathlib import Path
 import random
+import re
 import secrets
 import string
 import sys
@@ -704,6 +705,8 @@ class FsBackedServicer(Servicer):
         if token is None:
             logger.warn('not logged in')
             return mvp_pb2.SetEmailResponse(error=mvp_pb2.SetEmailResponse.Error(catchall='must log in to set an email'))
+        if not re.match('^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9_.-]+$', request.email):
+            return mvp_pb2.SetEmailResponse(error=mvp_pb2.SetEmailResponse.Error(catchall='bad email'))
 
         # TODO: prevent an email address from getting "too many" emails if somebody abuses us
         code = secrets.token_urlsafe(nbytes=16)

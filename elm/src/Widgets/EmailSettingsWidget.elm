@@ -12,7 +12,8 @@ import Utils
 
 import Field exposing (Field)
 import Page
-import Field
+import Parser exposing (Parser, (|.), (|=))
+import Set
 
 type Msg
   = Ignore
@@ -34,11 +35,26 @@ type alias Model =
 
 init : Model
 init =
-  { emailField = Field.okIfEmpty <| Field.init "" <| \() s -> if String.contains "@" s then Ok s else Err "must be an email address"
+  { emailField = Field.okIfEmpty <| Field.init "" <| \() s ->
+      case Parser.run emailParser s of
+        Ok _ -> Ok s
+        Err _ -> Err "doesn't look valid, sorry"
   , codeField = Field.init "" <| \() s -> if String.isEmpty s then Err "enter code" else Ok s
   , working = False
   , notification = H.text ""
   }
+
+emailParser : Parser.Parser String
+emailParser =
+  let
+    validNameChars = Set.fromList <| String.toList "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-+."
+    validDomainChars = Set.fromList <| String.toList "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-+."
+  in
+  Parser.succeed (\s1 s2 -> s1 ++ "@" ++ s2)
+    |= Parser.variable {start=\c -> Set.member c validNameChars, inner=\c -> Set.member c validNameChars, reserved=Set.empty}
+    |. Parser.symbol "@"
+    |= Parser.variable {start=\c -> Set.member c validDomainChars, inner=\c -> Set.member c validDomainChars, reserved=Set.empty}
+    |. Parser.end
 
 update : Msg -> Model -> ( Model , Page.Command Msg )
 update msg model =
