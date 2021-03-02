@@ -239,6 +239,26 @@ class Emailer:
         )
         logger.info('sent email', subject=subject, to=to)
 
+    async def send_bccs(self, *, bccs: Sequence[str], subject: str, body: str, content_type: str = 'text/html') -> None:
+        for i in range(0, len(bccs), 32):
+            bccs_chunk = bccs[i:i+32]
+            message = EmailMessage()
+            message["From"] = self._from_addr
+            message["To"] = 'blackhole@biatob.com'
+            message["Subject"] = subject
+            message["Bcc"] = ', '.join(bccs_chunk)
+            message.set_content(body)
+            message.set_type(content_type)
+            await self._aiosmtplib.send(
+                message=message,
+                hostname=self._hostname,
+                port=self._port,
+                username=self._username,
+                password=self._password,
+                use_tls=True,
+            )
+            logger.info('sent mass email', subject=subject, bcc=bccs_chunk)
+
 
 class TokenMint:
 
@@ -577,14 +597,13 @@ class FsBackedServicer(Servicer):
                 f'https://biatob.com/p/{request.prediction_id} has resolved INVALID' if request.resolution == mvp_pb2.RESOLUTION_INVALID else
                 f'https://biatob.com/p/{request.prediction_id} has UN-resolved'
             )
-            for addr in email_addrs:
-                asyncio.create_task(self._emailer.send(
-                    to=addr,
-                    subject=f'Prediction resolved: {prediction.prediction!r}',
-                    body=email_body,
-                ))
-            logger.debug('finished sending resolution emails', prediction_id=request.prediction_id)
-            return mvp_pb2.ResolveResponse(ok=view_prediction(wstate, token.owner, prediction))
+        asyncio.create_task(self._emailer.send_bccs(
+            bccs=email_addrs,
+            subject=f'Prediction resolved: {prediction.prediction!r}',
+            body=email_body,
+        ))
+        logger.debug('kicked off task to send resolution emails', prediction_id=request.prediction_id)
+        return mvp_pb2.ResolveResponse(ok=view_prediction(wstate, token.owner, prediction))
 
     @checks_token
     @log_action
