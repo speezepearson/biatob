@@ -986,7 +986,7 @@ class WebServer:
         filename = req.match_info['filename']
         if (not filename) or filename.startswith('.'):
             raise web.HTTPBadRequest()
-        return web.FileResponse(_HERE/'static'/filename)  # type: ignore
+        return web.FileResponse(_HERE/'static'/filename)
 
     async def get_wellknown(self, req: web.Request) -> web.StreamResponse:
         path = Path(req.match_info['path'])
@@ -996,9 +996,9 @@ class WebServer:
         except Exception:
             raise web.HTTPBadRequest()
 
-    async def get_elm_module(self, req: web.Request) -> web.Response:
+    async def get_elm_module(self, req: web.Request) -> web.StreamResponse:
         module = req.match_info['module']
-        return web.Response(content_type='text/javascript', body=(_HERE.parent/f'elm/dist/{module}.js').read_text()) # type: ignore
+        return web.FileResponse(_HERE.parent/f'elm/dist/{module}.js')
 
     async def get_index(self, req: web.Request) -> web.StreamResponse:
         auth = self._token_glue.parse_cookie(req)

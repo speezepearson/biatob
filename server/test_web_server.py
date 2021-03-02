@@ -33,7 +33,6 @@ async def test_smoke(aiohttp_client, app, api_server, fs_servicer):
   logged_out_cli = await aiohttp_client(app)
 
   paths = [
-    '/static/base.css',
     '/elm/Prediction.js',
     '/',
     '/welcome',
