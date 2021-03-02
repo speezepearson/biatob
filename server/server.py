@@ -1220,6 +1220,58 @@ async def email_daily_backups_forever(storage: FsStorage, emailer: Emailer, reci
             wstate=storage.get(),
         )
 
+def prediction_needs_email_reminder(now: datetime.datetime, prediction: mvp_pb2.WorldState.Prediction) -> bool:
+    history = prediction.resolution_reminder_history
+    return (
+        prediction.resolves_at_unixtime < now.timestamp()
+        and not history.skipped
+        and not any(attempt.succeeded for attempt in history.attempts)
+        and not (len(history.attempts) >= 3 and not any(attempt.succeeded for attempt in history.attempts[-3:]))
+    )
+
+def get_email_for_resolution_reminder(user_info: mvp_pb2.GenericUserInfo) -> Optional[str]:
+    if (user_info.email_reminders_to_resolve
+        and user_info.HasField('email')
+        and user_info.email.WhichOneof('email_flow_state_kind') == 'verified'
+        ):
+        return user_info.email.verified
+    return None
+
+async def email_resolution_reminder_if_necessary(now: datetime.datetime, emailer: Emailer, storage: FsStorage, prediction_id: PredictionId) -> None:
+    immut_wstate = storage.get()
+    prediction = immut_wstate.predictions.get(prediction_id)
+    if prediction is None:
+        raise KeyError(f'no such prediction: {prediction_id}')
+
+    if not prediction_needs_email_reminder(now=now, prediction=prediction):
+        return
+
+    creator_info = get_generic_user_info(immut_wstate, prediction.creator)
+    if creator_info is None:
+        logging.error("prediction has nonexistent creator", prediction_id=prediction_id, creator=prediction.creator)
+        return
+    email_addr = get_email_for_resolution_reminder(creator_info)
+
+    if email_addr is None:
+        with storage.mutate() as mut_wstate:
+            mut_wstate.predictions[prediction_id].resolution_reminder_history.skipped = True
+    else:
+        try:
+            await emailer.send_resolution_reminder(
+                to=email_addr,
+                prediction_id=PredictionId(prediction_id),
+                prediction=prediction,
+            )
+            succeeded = True
+        except Exception as e:
+            logger.error('failed to send resolution reminder email', to=email_addr, prediction_id=prediction_id)
+            succeeded = False
+
+        with storage.mutate() as mut_wstate:
+            mut_wstate.predictions[prediction_id].resolution_reminder_history.attempts.append(
+                mvp_pb2.EmailAttempt(unixtime=now.timestamp(), succeeded=succeeded)
+            )
+
 async def email_resolution_reminders_forever(storage: FsStorage, emailer: Emailer, interval: datetime.timedelta = datetime.timedelta(hours=1)):
     interval_secs = interval.total_seconds()
     while True:
@@ -1227,29 +1279,13 @@ async def email_resolution_reminders_forever(storage: FsStorage, emailer: Emaile
         cycle_start_time = int(time.time())
         wstate = storage.get()
 
-        todo = []
-
         for prediction_id, prediction in wstate.predictions.items():
-            resolved_recently = wstate.email_reminders_sent_up_to_unixtime <= prediction.resolves_at_unixtime < cycle_start_time
-            if resolved_recently:
-                creator_info = get_generic_user_info(wstate, prediction.creator)
-                if creator_info is None:
-                    logging.error("prediction has nonexistent creator", prediction_id=prediction_id, creator=prediction.creator)
-                    continue
-                if not creator_info.HasField('email'):
-                    continue
-                if creator_info.email_reminders_to_resolve and creator_info.email.WhichOneof('email_flow_state_kind') == 'verified':
-                    todo.append((creator_info.email.verified, PredictionId(prediction_id), prediction))
-
-        for addr, prediction_id, prediction in todo:
-            await emailer.send_resolution_reminder(
-                to=addr,
-                prediction_id=prediction_id,
-                prediction=prediction,
+            await email_resolution_reminder_if_necessary(
+                now=datetime.datetime.now(),
+                emailer=emailer,
+                storage=storage,
+                prediction_id=PredictionId(prediction_id),
             )
-
-        with storage.mutate() as wstate:
-            wstate.email_reminders_sent_up_to_unixtime = cycle_start_time
 
         next_cycle_time = cycle_start_time + interval_secs
         time_to_next_cycle = next_cycle_time - time.time()

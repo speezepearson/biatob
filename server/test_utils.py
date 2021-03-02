@@ -27,13 +27,16 @@ def fs_storage(tmp_path):
   return FsStorage(tmp_path / 'state.WorldState.pb')
 
 @pytest.fixture
-def fs_servicer(fs_storage, clock, token_mint):
-  emailer = unittest.mock.Mock(
-    send_resolution_notifications=lambda *args, **kwargs: asyncio.sleep(0),
-    send_resolution_reminder=lambda *args, **kwargs: asyncio.sleep(0),
-    send_email_verification=lambda *args, **kwargs: asyncio.sleep(0),
-    send_backup=lambda *args, **kwargs: asyncio.sleep(0),
+def emailer():
+  return unittest.mock.Mock(
+    send_resolution_notifications=unittest.mock.Mock(wraps=lambda *args, **kwargs: asyncio.sleep(0)),
+    send_resolution_reminder=unittest.mock.Mock(wraps=lambda *args, **kwargs: asyncio.sleep(0)),
+    send_email_verification=unittest.mock.Mock(wraps=lambda *args, **kwargs: asyncio.sleep(0)),
+    send_backup=unittest.mock.Mock(wraps=lambda *args, **kwargs: asyncio.sleep(0)),
   )
+
+@pytest.fixture
+def fs_servicer(fs_storage, clock, token_mint, emailer):
   return FsBackedServicer(
     storage=fs_storage,
     emailer=emailer,
