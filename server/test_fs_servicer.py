@@ -7,7 +7,7 @@ from typing import Tuple
 import pytest
 
 from .protobuf import mvp_pb2
-from .server import FsBackedServicer
+from .server import FsBackedServicer, Emailer
 from .test_utils import *
 
 def new_user_token(fs_servicer: FsBackedServicer, username: str) -> mvp_pb2.AuthToken:
@@ -86,6 +86,30 @@ async def test_cuj__register__create__invite__accept__stake__resolve(fs_servicer
     fs_servicer.Resolve(creator_token, mvp_pb2.ResolveRequest(prediction_id=prediction_id, resolution=mvp_pb2.RESOLUTION_YES)),
     'resolve_result', 'ok', mvp_pb2.UserPredictionView)
   assert list(prediction.resolutions) ==[mvp_pb2.ResolutionEvent(unixtime=clock.now(), resolution=mvp_pb2.RESOLUTION_YES)]
+
+
+async def test_cuj___set_email__verify_email__update_settings(fs_servicer: FsBackedServicer, emailer: Emailer):
+  token = assert_oneof(
+    fs_servicer.RegisterUsername(None, mvp_pb2.RegisterUsernameRequest(username='creator', password='secret')),
+    'register_username_result', 'ok', mvp_pb2.AuthSuccess).token
+
+  assert assert_oneof(fs_servicer.SetEmail(token, mvp_pb2.SetEmailRequest(email='nobody@example.com')),
+    'set_email_result', 'ok', mvp_pb2.EmailFlowState).code_sent.email == 'nobody@example.com'
+
+  emailer.send_email_verification.assert_called_once()
+  code = emailer.send_email_verification.call_args[1]['code']
+
+  assert assert_oneof(fs_servicer.VerifyEmail(token, mvp_pb2.VerifyEmailRequest(code=code)),
+    'verify_email_result', 'ok', mvp_pb2.EmailFlowState).verified == 'nobody@example.com'
+
+  assert not assert_oneof(fs_servicer.GetSettings(token, mvp_pb2.GetSettingsRequest()),
+    'get_settings_result', 'ok_username', mvp_pb2.UsernameInfo).info.email_reminders_to_resolve
+
+  assert assert_oneof(fs_servicer.UpdateSettings(token, mvp_pb2.UpdateSettingsRequest(email_reminders_to_resolve=mvp_pb2.MaybeBool(value=True))),
+    'update_settings_result', 'ok', mvp_pb2.GenericUserInfo).email_reminders_to_resolve
+
+  assert assert_oneof(fs_servicer.GetSettings(token, mvp_pb2.GetSettingsRequest()),
+    'get_settings_result', 'ok_username', mvp_pb2.UsernameInfo).info.email_reminders_to_resolve
 
 
 async def test_Whoami(fs_servicer: FsBackedServicer):
