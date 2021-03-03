@@ -85,7 +85,7 @@ update msg model =
 
 view : Page.Globals -> Model -> Browser.Document Msg
 view globals model =
-  {title="New prediction", body = [H.main_ [HA.id "main", HA.style "text-align" "justify"]
+  {title="New prediction", body = [H.main_ []
     [ H.h2 [] [H.text "New Prediction"]
     , case Page.getAuth globals of
        Just _ -> H.text ""

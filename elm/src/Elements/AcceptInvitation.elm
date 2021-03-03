@@ -82,7 +82,7 @@ view : Page.Globals -> Model -> Browser.Document Msg
 view globals model =
   { title = "Accept Invitation"
   , body = [
-    H.main_ [HA.id "main", HA.style "text-align" "justify"] <|
+    H.main_ [HA.style "text-align" "justify"] <|
     if isOwnInvitation globals model.invitationId then
       [H.text "This is your own invitation!"]
     else if not model.invitationIsOpen then

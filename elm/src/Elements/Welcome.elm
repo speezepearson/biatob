@@ -66,7 +66,7 @@ view : Page.Globals -> Model -> Browser.Document Msg
 view globals model =
   { title = "Welcome to Biatob!"
   , body = [
-    H.main_ [HA.id "main", HA.style "text-align" "justify"]
+    H.main_ [HA.style "text-align" "justify"]
     [ H.h1 [] [H.text "Betting is a tax on BS."]
     , H.p []
         [ H.text "Hi! This is a tool that helps people make friendly wagers, thereby clarifying and concretizing their beliefs and making the world a better, saner place."
