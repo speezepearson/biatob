@@ -70,6 +70,11 @@ message UsernameInfo {
   HashedPassword password = 2;
 }
 
+message EmailAttempt {
+  double unixtime = 1;
+  bool succeeded = 2;
+}
+
 // For MVP purposes, we're just gonna store the entire worldstate in a protobuf blob. "Data base"? Huh?
 // TODO(P3): ^ stop doing that
 message WorldState {
@@ -80,7 +85,7 @@ message WorldState {
 
   map<uint32, Prediction> predictions = 2;
 
-  double email_reminders_sent_up_to_unixtime = 4;
+  double email_reminders_sent_up_to_unixtime_depr = 4;
 
   // message GoogleOauthInfo {
   //   GenericUserInfo info = 1;
@@ -102,6 +107,13 @@ message WorldState {
     // Append-only
     repeated Trade trades = 8;
     repeated ResolutionEvent resolutions = 10;
+
+    // Fully mutable
+    ResolutionReminderHistory resolution_reminder_history = 16;
+  }
+  message ResolutionReminderHistory {
+    bool skipped = 1;
+    repeated EmailAttempt attempts = 2;
   }
 }
 

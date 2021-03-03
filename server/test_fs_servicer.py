@@ -37,7 +37,7 @@ def some_create_prediction_request(**kwargs) -> mvp_pb2.CreatePredictionRequest:
   init_kwargs.update(kwargs)
   return mvp_pb2.CreatePredictionRequest(**init_kwargs)  # type: ignore
 
-def test_Whoami(fs_servicer: FsBackedServicer):
+async def test_Whoami(fs_servicer: FsBackedServicer):
   resp = fs_servicer.Whoami(None, mvp_pb2.WhoamiRequest())
   assert not resp.HasField('auth')
 
@@ -46,7 +46,7 @@ def test_Whoami(fs_servicer: FsBackedServicer):
   assert resp.auth == rando_token
 
 
-def test_LogInUsername(fs_servicer: FsBackedServicer):
+async def test_LogInUsername(fs_servicer: FsBackedServicer):
   rando_token = new_user_token(fs_servicer, 'rando')
   resp = fs_servicer.LogInUsername(None, mvp_pb2.LogInUsernameRequest(username='rando', password='rando password'))
   assert resp.WhichOneof('log_in_username_result') == 'ok', resp
@@ -61,7 +61,7 @@ def test_LogInUsername(fs_servicer: FsBackedServicer):
   assert not resp.HasField('ok')
 
 
-def test_RegisterUsername(fs_servicer: FsBackedServicer):
+async def test_RegisterUsername(fs_servicer: FsBackedServicer):
   resp = fs_servicer.RegisterUsername(token=None, request=mvp_pb2.RegisterUsernameRequest(username='potato', password='secret'))
   assert resp.WhichOneof('register_username_result') == 'ok', resp
   token = resp.ok.token
@@ -75,13 +75,13 @@ def test_RegisterUsername(fs_servicer: FsBackedServicer):
 
 
 
-def test_CreatePrediction_returns_distinct_ids(token_mint, fs_servicer):
+async def test_CreatePrediction_returns_distinct_ids(token_mint, fs_servicer):
   token = new_user_token(fs_servicer, 'rando')
   ids = {fs_servicer.CreatePrediction(token, some_create_prediction_request()).new_prediction_id for _ in range(30)}
   assert len(ids) == 30
 
 
-def test_GetPrediction(fs_servicer: FsBackedServicer, clock: MockClock):
+async def test_GetPrediction(fs_servicer: FsBackedServicer, clock: MockClock):
   req = some_create_prediction_request()
   rando_token = new_user_token(fs_servicer, 'rando')
   prediction_id = fs_servicer.CreatePrediction(
@@ -106,7 +106,7 @@ def test_GetPrediction(fs_servicer: FsBackedServicer, clock: MockClock):
   ))
 
 
-def test_ListMyStakes(fs_servicer: FsBackedServicer):
+async def test_ListMyStakes(fs_servicer: FsBackedServicer):
   alice_token, bob_token = alice_bob_tokens(fs_servicer)
   prediction_1_id = fs_servicer.CreatePrediction(token=alice_token, request=some_create_prediction_request()).new_prediction_id
   prediction_2_id = fs_servicer.CreatePrediction(token=alice_token, request=some_create_prediction_request()).new_prediction_id
@@ -127,7 +127,7 @@ def test_ListMyStakes(fs_servicer: FsBackedServicer):
   assert set(resp.ok.predictions.keys()) == {prediction_1_id, prediction_2_id}
 
 
-def test_Stake(fs_servicer, clock):
+async def test_Stake(fs_servicer, clock):
   alice_token, bob_token = alice_bob_tokens(fs_servicer)
   prediction_id = fs_servicer.CreatePrediction(
     token=alice_token,
@@ -165,7 +165,7 @@ def test_Stake(fs_servicer, clock):
     ),
   ]
 
-def test_Stake_protects_against_overpromising(fs_servicer: FsBackedServicer):
+async def test_Stake_protects_against_overpromising(fs_servicer: FsBackedServicer):
   alice_token, bob_token = alice_bob_tokens(fs_servicer)
   prediction_id = fs_servicer.CreatePrediction(
     token=alice_token,
@@ -198,7 +198,7 @@ def test_Stake_protects_against_overpromising(fs_servicer: FsBackedServicer):
     bettor_stake_cents=9,
   )).WhichOneof('stake_result') == 'error'
 
-def test_Stake_enforces_trust(fs_servicer: FsBackedServicer):
+async def test_Stake_enforces_trust(fs_servicer: FsBackedServicer):
   alice_token, bob_token = alice_bob_tokens(fs_servicer)
   rando_token = new_user_token(fs_servicer, 'rando')
   prediction_id = fs_servicer.CreatePrediction(
@@ -226,7 +226,7 @@ def test_Stake_enforces_trust(fs_servicer: FsBackedServicer):
   assert fs_servicer.Stake(bob_token, stake_req).WhichOneof('stake_result') == 'ok'
 
 
-def test_Resolve(fs_servicer: FsBackedServicer, clock: MockClock):
+async def test_Resolve(fs_servicer: FsBackedServicer, clock: MockClock):
   rando_token = new_user_token(fs_servicer, 'rando')
   prediction_id = fs_servicer.CreatePrediction(
     token=rando_token,
@@ -260,7 +260,7 @@ def test_Resolve(fs_servicer: FsBackedServicer, clock: MockClock):
   assert list(get_resp.prediction.resolutions) == planned_events
 
 
-def test_Resolve_ensures_creator(fs_servicer: FsBackedServicer):
+async def test_Resolve_ensures_creator(fs_servicer: FsBackedServicer):
   alice_token, bob_token = alice_bob_tokens(fs_servicer)
   prediction_id = fs_servicer.CreatePrediction(
     token=alice_token,
@@ -272,7 +272,7 @@ def test_Resolve_ensures_creator(fs_servicer: FsBackedServicer):
   assert 'not the creator' in str(resp.error)
 
 
-def test_GetUser(fs_servicer: FsBackedServicer):
+async def test_GetUser(fs_servicer: FsBackedServicer):
   alice_token, bob_token = alice_bob_tokens(fs_servicer)
 
   resp = fs_servicer.GetUser(alice_token, mvp_pb2.GetUserRequest(who=bob_token.owner))
