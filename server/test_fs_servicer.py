@@ -97,8 +97,8 @@ class TestCUJs:
     assert assert_oneof(fs_servicer.SetEmail(token, mvp_pb2.SetEmailRequest(email='nobody@example.com')),
       'set_email_result', 'ok', mvp_pb2.EmailFlowState).code_sent.email == 'nobody@example.com'
 
-    emailer.send_email_verification.assert_called_once()
-    code = emailer.send_email_verification.call_args[1]['code']
+    emailer.send_email_verification.assert_called_once()  # type: ignore
+    code = emailer.send_email_verification.call_args[1]['code']  # type: ignore
 
     assert assert_oneof(fs_servicer.VerifyEmail(token, mvp_pb2.VerifyEmailRequest(code=code)),
       'verify_email_result', 'ok', mvp_pb2.EmailFlowState).verified == 'nobody@example.com'
@@ -547,7 +547,7 @@ class TestSetEmail:
     token = new_user_token(fs_servicer, 'rando')
     assert assert_oneof(fs_servicer.SetEmail(token=token, request=mvp_pb2.SetEmailRequest(email='nobody@example.com')),
       'set_email_result', 'ok', mvp_pb2.EmailFlowState).code_sent.email == 'nobody@example.com'
-    emailer.send_email_verification.assert_called_once_with(to='nobody@example.com', code=ANY)
+    emailer.send_email_verification.assert_called_once_with(to='nobody@example.com', code=ANY)  # type: ignore
     assert fs_storage.get().username_users['rando'].info.email.code_sent.email == 'nobody@example.com'
 
   async def test_error_if_logged_out(self, fs_storage: FsStorage, fs_servicer: FsBackedServicer):
@@ -569,14 +569,14 @@ class TestVerifyEmail:
   async def test_happy_path(self, fs_storage: FsStorage, emailer: Emailer, fs_servicer: FsBackedServicer):
     token = new_user_token(fs_servicer, 'rando')
     assert_oneof(fs_servicer.SetEmail(token=token, request=mvp_pb2.SetEmailRequest(email='nobody@example.com')), 'set_email_result', 'ok', object)
-    code = emailer.send_email_verification.call_args[1]['code']
+    code = emailer.send_email_verification.call_args[1]['code']  # type: ignore
     assert assert_oneof(fs_servicer.VerifyEmail(token=token, request=mvp_pb2.VerifyEmailRequest(code=code)),
       'verify_email_result', 'ok', mvp_pb2.EmailFlowState).verified == 'nobody@example.com'
 
   async def test_error_if_wrong_code(self, fs_storage: FsStorage, emailer: Emailer, fs_servicer: FsBackedServicer):
     token = new_user_token(fs_servicer, 'rando')
     assert_oneof(fs_servicer.SetEmail(token=token, request=mvp_pb2.SetEmailRequest(email='nobody@example.com')), 'set_email_result', 'ok', object)
-    code = emailer.send_email_verification.call_args[1]['code']
+    code = emailer.send_email_verification.call_args[1]['code']  # type: ignore
     assert 'bad code' in assert_oneof(fs_servicer.VerifyEmail(token=token, request=mvp_pb2.VerifyEmailRequest(code='not ' + code)),
       'verify_email_result', 'error', mvp_pb2.VerifyEmailResponse.Error).catchall
 
