@@ -1248,7 +1248,7 @@ async def email_resolution_reminder_if_necessary(now: datetime.datetime, emailer
 
     creator_info = get_generic_user_info(immut_wstate, prediction.creator)
     if creator_info is None:
-        logging.error("prediction has nonexistent creator", prediction_id=prediction_id, creator=prediction.creator)
+        logger.error("prediction has nonexistent creator", prediction_id=prediction_id, creator=prediction.creator)
         return
     email_addr = get_email_for_resolution_reminder(creator_info)
 
