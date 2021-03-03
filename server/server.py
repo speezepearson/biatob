@@ -16,12 +16,13 @@ import io
 import json
 from pathlib import Path
 import random
+import re
 import secrets
 import string
 import sys
 import tempfile
 import time
-from typing import Iterator, Optional, Container, NewType, Callable, NoReturn, Tuple, Iterable, Sequence, TypeVar
+from typing import Any, Mapping, Iterator, Optional, Container, NewType, Callable, NoReturn, Tuple, Iterable, Sequence, TypeVar
 import argparse
 import logging
 import os
@@ -221,14 +222,26 @@ class Emailer:
         self._from_addr = from_addr
         self._aiosmtplib = aiosmtplib_for_testing
 
-    async def send(self, *, to: str, subject: str, body: str, content_type: str = 'text/html') -> None:
+        jenv = jinja2.Environment( # adapted from https://jinja.palletsprojects.com/en/2.11.x/api/#basics
+            loader=jinja2.FileSystemLoader(searchpath=[_HERE/'templates'/'emails'], encoding='utf-8'),
+            autoescape=jinja2.select_autoescape(['html', 'xml']),
+        )
+        jenv.undefined = jinja2.StrictUndefined  # raise exception if a template uses an undefined variable; adapted from https://stackoverflow.com/a/39127941/8877656
+        self._ResolutionNotification_template = jenv.get_template('ResolutionNotification.html')
+        self._ResolutionReminder_template = jenv.get_template('ResolutionReminder.html')
+        self._EmailVerification_template = jenv.get_template('EmailVerification.html')
+        self._Backup_template = jenv.get_template('Backup.html')
+
+    async def _send(self, *, to: str, subject: str, body: str, headers: Mapping[str, str] = {}) -> None:
         # adapted from https://aiosmtplib.readthedocs.io/en/stable/usage.html#authentication
         message = EmailMessage()
         message["From"] = self._from_addr
         message["To"] = to
         message["Subject"] = subject
+        for k, v in headers.items():
+            message[k] = v
         message.set_content(body)
-        message.set_type(content_type)
+        message.set_type('text/html')
         await self._aiosmtplib.send(
             message=message,
             hostname=self._hostname,
@@ -238,6 +251,47 @@ class Emailer:
             use_tls=True,
         )
         logger.info('sent email', subject=subject, to=to)
+
+    async def _send_bccs(self, *, bccs: Sequence[str], subject: str, body: str) -> None:
+        for i in range(0, len(bccs), 32):
+            bccs_chunk = bccs[i:i+32]
+            await self._send(
+                subject=subject,
+                to='blackhole@biatob.com',
+                headers={'Bcc': ', '.join(bccs_chunk)},
+                body=body,
+            )
+
+    async def send_resolution_notifications(self, bccs: Sequence[str], prediction_id: PredictionId, prediction: mvp_pb2.WorldState.Prediction) -> None:
+        if not prediction.resolutions:
+            raise ValueError(f'trying to email resolution-notifications for prediction {prediction_id}, but it has never resolved')
+        resolution = prediction.resolutions[-1].resolution
+        await self._send_bccs(
+            bccs=bccs,
+            subject=f'Prediction resolved: {json.dumps(prediction.prediction)}',
+            body=self._ResolutionNotification_template.render(prediction_id=prediction_id, resolution=resolution, mvp_pb2=mvp_pb2),
+        )
+
+    async def send_resolution_reminder(self, to: str, prediction_id: PredictionId, prediction: mvp_pb2.WorldState.Prediction) -> None:
+        await self._send(
+            to=to,
+            subject=f'Resolve your prediction: {json.dumps(prediction.prediction)}',
+            body=self._ResolutionReminder_template.render(prediction_id=prediction_id, prediction=prediction),
+        )
+
+    async def send_email_verification(self, to: str, code: str) -> None:
+        await self._send(
+            to=to,
+            subject='Your Biatob email-verification',
+            body=self._EmailVerification_template.render(code=code),
+        )
+
+    async def send_backup(self, to: str, now: datetime.datetime, wstate: mvp_pb2.WorldState) -> None:
+        await self._send(
+            to=to,
+            subject=f'Biatob backup for {now:%Y-%m-%d}',
+            body=self._Backup_template.render(wstate_textproto=google.protobuf.text_format.MessageToString(wstate)),
+        )
 
 
 class TokenMint:
@@ -561,30 +615,22 @@ class FsBackedServicer(Servicer):
             prediction.resolutions.append(mvp_pb2.ResolutionEvent(unixtime=int(self._clock()), resolution=request.resolution, notes=request.notes))
             logger.info('prediction resolved', prediction_id=request.prediction_id, resolution=str(request.resolution))
 
-            email_addrs = []
-            for stakeholder in unique_protos([prediction.creator, *(trade.bettor for trade in prediction.trades)]):
-                info = get_generic_user_info(wstate, stakeholder)
-                if info is None:
-                    logger.error('prediction references nonexistent user', prediction_id=request.prediction_id, user=stakeholder)
-                    continue
-                elif info.email_resolution_notifications and info.email.WhichOneof('email_flow_state_kind') == 'verified':
-                    email_addrs.append(info.email.verified)
+        email_addrs = []
+        for stakeholder in unique_protos([prediction.creator, *(trade.bettor for trade in prediction.trades)]):
+            info = get_generic_user_info(wstate, stakeholder)
+            if info is None:
+                logger.error('prediction references nonexistent user', prediction_id=request.prediction_id, user=stakeholder)
+                continue
+            elif info.email_resolution_notifications and info.email.WhichOneof('email_flow_state_kind') == 'verified':
+                email_addrs.append(info.email.verified)
 
-            logger.info('sending resolution emails', prediction_id=request.prediction_id, email_addrs=email_addrs)
-            email_body = (
-                f'https://biatob.com/p/{request.prediction_id} has resolved YES' if request.resolution == mvp_pb2.RESOLUTION_YES else
-                f'https://biatob.com/p/{request.prediction_id} has resolved NO' if request.resolution == mvp_pb2.RESOLUTION_NO else
-                f'https://biatob.com/p/{request.prediction_id} has resolved INVALID' if request.resolution == mvp_pb2.RESOLUTION_INVALID else
-                f'https://biatob.com/p/{request.prediction_id} has UN-resolved'
-            )
-            for addr in email_addrs:
-                asyncio.create_task(self._emailer.send(
-                    to=addr,
-                    subject=f'Prediction resolved: {prediction.prediction!r}',
-                    body=email_body,
-                ))
-            logger.debug('finished sending resolution emails', prediction_id=request.prediction_id)
-            return mvp_pb2.ResolveResponse(ok=view_prediction(wstate, token.owner, prediction))
+        logger.info('sending resolution emails', prediction_id=request.prediction_id, email_addrs=email_addrs)
+        asyncio.create_task(self._emailer.send_resolution_notifications(
+            bccs=email_addrs,
+            prediction_id=PredictionId(request.prediction_id),
+            prediction=prediction,
+        ))
+        return mvp_pb2.ResolveResponse(ok=view_prediction(wstate, token.owner, prediction))
 
     @checks_token
     @log_action
@@ -659,13 +705,14 @@ class FsBackedServicer(Servicer):
         if token is None:
             logger.warn('not logged in')
             return mvp_pb2.SetEmailResponse(error=mvp_pb2.SetEmailResponse.Error(catchall='must log in to set an email'))
+        if not re.match('^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9_.-]+$', request.email):
+            return mvp_pb2.SetEmailResponse(error=mvp_pb2.SetEmailResponse.Error(catchall='bad email'))
 
         # TODO: prevent an email address from getting "too many" emails if somebody abuses us
         code = secrets.token_urlsafe(nbytes=16)
-        asyncio.create_task(self._emailer.send(
+        asyncio.create_task(self._emailer.send_email_verification(
             to=request.email,
-            subject='Your Biatob email-verification',
-            body=f"Here's your code: {code}",  # TODO: handle abuse
+            code=code,
         ))
 
         with self._storage.mutate() as wstate:
@@ -1167,12 +1214,63 @@ async def email_daily_backups_forever(storage: FsStorage, emailer: Emailer, reci
         next_day = datetime.datetime.fromtimestamp(86400 * (1 + now.timestamp()//86400))
         await asyncio.sleep((next_day - now).total_seconds())
         logger.info('emailing backups')
-        await emailer.send(
+        await emailer.send_backup(
             to=recipient_email,
-            subject=f'Biatob backup for {now:%Y-%m-%d}',
-            body=google.protobuf.text_format.MessageToString(storage.get()),
-            content_type='text/plain',
+            now=now,
+            wstate=storage.get(),
         )
+
+def prediction_needs_email_reminder(now: datetime.datetime, prediction: mvp_pb2.WorldState.Prediction) -> bool:
+    history = prediction.resolution_reminder_history
+    return (
+        prediction.resolves_at_unixtime < now.timestamp()
+        and not history.skipped
+        and not any(attempt.succeeded for attempt in history.attempts)
+        and not (len(history.attempts) >= 3 and not any(attempt.succeeded for attempt in history.attempts[-3:]))
+    )
+
+def get_email_for_resolution_reminder(user_info: mvp_pb2.GenericUserInfo) -> Optional[str]:
+    if (user_info.email_reminders_to_resolve
+        and user_info.HasField('email')
+        and user_info.email.WhichOneof('email_flow_state_kind') == 'verified'
+        ):
+        return user_info.email.verified
+    return None
+
+async def email_resolution_reminder_if_necessary(now: datetime.datetime, emailer: Emailer, storage: FsStorage, prediction_id: PredictionId) -> None:
+    immut_wstate = storage.get()
+    prediction = immut_wstate.predictions.get(prediction_id)
+    if prediction is None:
+        raise KeyError(f'no such prediction: {prediction_id}')
+
+    if not prediction_needs_email_reminder(now=now, prediction=prediction):
+        return
+
+    creator_info = get_generic_user_info(immut_wstate, prediction.creator)
+    if creator_info is None:
+        logger.error("prediction has nonexistent creator", prediction_id=prediction_id, creator=prediction.creator)
+        return
+    email_addr = get_email_for_resolution_reminder(creator_info)
+
+    if email_addr is None:
+        with storage.mutate() as mut_wstate:
+            mut_wstate.predictions[prediction_id].resolution_reminder_history.skipped = True
+    else:
+        try:
+            await emailer.send_resolution_reminder(
+                to=email_addr,
+                prediction_id=PredictionId(prediction_id),
+                prediction=prediction,
+            )
+            succeeded = True
+        except Exception as e:
+            logger.error('failed to send resolution reminder email', to=email_addr, prediction_id=prediction_id)
+            succeeded = False
+
+        with storage.mutate() as mut_wstate:
+            mut_wstate.predictions[prediction_id].resolution_reminder_history.attempts.append(
+                mvp_pb2.EmailAttempt(unixtime=now.timestamp(), succeeded=succeeded)
+            )
 
 async def email_resolution_reminders_forever(storage: FsStorage, emailer: Emailer, interval: datetime.timedelta = datetime.timedelta(hours=1)):
     interval_secs = interval.total_seconds()
@@ -1181,29 +1279,13 @@ async def email_resolution_reminders_forever(storage: FsStorage, emailer: Emaile
         cycle_start_time = int(time.time())
         wstate = storage.get()
 
-        todo = []
-
         for prediction_id, prediction in wstate.predictions.items():
-            resolved_recently = wstate.email_reminders_sent_up_to_unixtime <= prediction.resolves_at_unixtime < cycle_start_time
-            if resolved_recently:
-                creator_info = get_generic_user_info(wstate, prediction.creator)
-                if creator_info is None:
-                    logging.error("prediction has nonexistent creator", prediction_id=prediction_id, creator=prediction.creator)
-                    continue
-                if not creator_info.HasField('email'):
-                    continue
-                if creator_info.email_reminders_to_resolve and creator_info.email.WhichOneof('email_flow_state_kind') == 'verified':
-                    todo.append((creator_info.email.verified, prediction_id, prediction))
-
-        for addr, prediction_id, prediction in todo:
-            await emailer.send(
-                to=addr,
-                subject='Resolve your prediction: ' + json.dumps(prediction.prediction),
-                body=f'https://biatob.com/p/{prediction_id} became resolvable recently.',
+            await email_resolution_reminder_if_necessary(
+                now=datetime.datetime.now(),
+                emailer=emailer,
+                storage=storage,
+                prediction_id=PredictionId(prediction_id),
             )
-
-        with storage.mutate() as wstate:
-            wstate.email_reminders_sent_up_to_unixtime = cycle_start_time
 
         next_cycle_time = cycle_start_time + interval_secs
         time_to_next_cycle = next_cycle_time - time.time()

@@ -28,8 +28,16 @@ def change_uint32_times_to_doubles(obj: object) -> None:
       new_fieldname = desc.name[:-5]
       setattr(obj, new_fieldname, value)
 
+def move_resolution_reminder_history_into_predictions(obj: object) -> None:
+  if not isinstance(obj, WorldState):
+    return
+  for prediction in obj.predictions.values():
+    if prediction.resolves_at_unixtime < obj.email_reminders_sent_up_to_unixtime_depr and not prediction.HasField('resolution_reminder_history'):
+      prediction.resolution_reminder_history.skipped = True
+
 MIGRATIONS: Sequence[Callable[[object], None]] = [
-  change_uint32_times_to_doubles
+  change_uint32_times_to_doubles,
+  move_resolution_reminder_history_into_predictions,
 ]
 
 parser = argparse.ArgumentParser()
