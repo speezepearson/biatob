@@ -505,7 +505,7 @@ class FsBackedServicer(Servicer):
         ws_prediction = wstate.predictions.get(request.prediction_id)
         if ws_prediction is None:
             logger.info('trying to get nonexistent prediction', prediction_id=request.prediction_id)
-            return mvp_pb2.GetPredictionResponse(error=mvp_pb2.GetPredictionResponse.Error(no_such_prediction=mvp_pb2.VOID))
+            return mvp_pb2.GetPredictionResponse(error=mvp_pb2.GetPredictionResponse.Error(catchall='no such prediction'))
 
         return mvp_pb2.GetPredictionResponse(prediction=view_prediction(wstate, (token.owner if token is not None else None), ws_prediction))
 
@@ -568,6 +568,10 @@ class FsBackedServicer(Servicer):
             if not trusts(wstate, token.owner, prediction.creator):
                 logger.warn('trying to bet against untrusted creator', prediction_id=request.prediction_id)
                 return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall="you don't trust the creator"))
+            if prediction.resolutions and (prediction.resolutions[-1].resolution != mvp_pb2.RESOLUTION_NONE_YET):
+                logger.warn('trying to bet on a resolved prediction', prediction_id=request.prediction_id)
+                return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall="prediction has already resolved"))
+
             if request.bettor_is_a_skeptic:
                 lowP = prediction.certainty.low
                 creator_stake_cents = int(request.bettor_stake_cents * lowP/(1-lowP))
@@ -692,7 +696,7 @@ class FsBackedServicer(Servicer):
 
             if not check_password(request.old_password, info.password):
                 logger.warn('password-change request has wrong password', possible_malice=True)
-                return mvp_pb2.ChangePasswordResponse(error=mvp_pb2.ChangePasswordResponse.Error(catchall='bad password'))
+                return mvp_pb2.ChangePasswordResponse(error=mvp_pb2.ChangePasswordResponse.Error(catchall='wrong old password'))
 
             info.password.CopyFrom(new_hashed_password(request.new_password))
 
@@ -817,11 +821,13 @@ class FsBackedServicer(Servicer):
         inviter = request.invitation_id.inviter
         inviter_info = get_generic_user_info(wstate, inviter)
         if inviter_info is None:
-            return mvp_pb2.CheckInvitationResponse(error=mvp_pb2.CheckInvitationResponse.Error(catchall='no such invitation'))
+            logger.warn('trying to get invitation from nonexistent user')
+            return mvp_pb2.CheckInvitationResponse(is_open=False)
 
         invitation = inviter_info.invitations.get(request.invitation_id.nonce)
         if invitation is None:
-            return mvp_pb2.CheckInvitationResponse(error=mvp_pb2.CheckInvitationResponse.Error(catchall='no such invitation'))
+            logger.warn('trying to get nonexistent invitation')
+            return mvp_pb2.CheckInvitationResponse(is_open=False)
 
         return mvp_pb2.CheckInvitationResponse(is_open=not invitation.HasField('accepted_by'))
 
@@ -844,14 +850,14 @@ class FsBackedServicer(Servicer):
             inviter = request.invitation_id.inviter
             inviter_info = get_generic_user_info(wstate, inviter)
             if inviter_info is None:
-                return mvp_pb2.AcceptInvitationResponse(error=mvp_pb2.AcceptInvitationResponse.Error(catchall='no such invitation'))
+                return mvp_pb2.AcceptInvitationResponse(error=mvp_pb2.AcceptInvitationResponse.Error(catchall='invitation is non-existent or already used'))
 
             for orig_nonce, orig_invitation in inviter_info.invitations.items():
                 # TODO: just index in, dummy
                 if orig_nonce == request.invitation_id.nonce:
                     if orig_invitation.HasField('accepted_by'):
                         logger.info('attempt to re-accept invitation')
-                        return mvp_pb2.AcceptInvitationResponse(error=mvp_pb2.AcceptInvitationResponse.Error(catchall='invitation has already been used'))
+                        return mvp_pb2.AcceptInvitationResponse(error=mvp_pb2.AcceptInvitationResponse.Error(catchall='invitation is non-existent or already used'))
                     orig_invitation.accepted_by.CopyFrom(token.owner)
                     orig_invitation.accepted_unixtime = int(self._clock())
                     if inviter not in accepter_info.trusted_users:
@@ -861,7 +867,7 @@ class FsBackedServicer(Servicer):
                     logger.info('accepted invitation', whose=inviter)
                     return mvp_pb2.AcceptInvitationResponse(ok=accepter_info)
             logger.warn('attempt to accept nonexistent invitation', possible_malice=True)
-            return mvp_pb2.AcceptInvitationResponse(error=mvp_pb2.AcceptInvitationResponse.Error(catchall='no such invitation'))
+            return mvp_pb2.AcceptInvitationResponse(error=mvp_pb2.AcceptInvitationResponse.Error(catchall='invitation is non-existent or already used'))
 
 
 from typing import TypeVar, Type, Tuple, Union, Awaitable

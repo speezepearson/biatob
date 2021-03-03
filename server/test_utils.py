@@ -1,8 +1,10 @@
 import asyncio
+import contextlib
+import copy
 import random
 import pytest
 import unittest.mock
-from typing import Type, TypeVar
+from typing import Type, TypeVar, Iterator
 
 from google.protobuf.message import Message
 
@@ -55,3 +57,10 @@ def assert_oneof(pb: Message, oneof: str, case: str, typ: Type[_T]) -> _T:
   result = getattr(pb, case)
   assert isinstance(result, typ), result
   return result
+
+
+@contextlib.contextmanager
+def assert_unchanged(fs_storage: FsStorage) -> Iterator[None]:
+  original = copy.deepcopy(fs_storage.get())
+  yield
+  assert fs_storage.get() == original
