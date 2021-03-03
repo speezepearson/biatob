@@ -1,7 +1,12 @@
 import asyncio
+import contextlib
+import copy
 import random
 import pytest
 import unittest.mock
+from typing import Type, TypeVar, Iterator
+
+from google.protobuf.message import Message
 
 from .server import TokenMint, FsBackedServicer, FsStorage
 
@@ -44,3 +49,18 @@ def fs_servicer(fs_storage, clock, token_mint, emailer):
     clock=clock.now,
     token_mint=token_mint,
   )
+
+
+_T = TypeVar('_T')
+def assert_oneof(pb: Message, oneof: str, case: str, typ: Type[_T]) -> _T:
+  assert pb.WhichOneof(oneof) == case, pb
+  result = getattr(pb, case)
+  assert isinstance(result, typ), result
+  return result
+
+
+@contextlib.contextmanager
+def assert_unchanged(fs_storage: FsStorage) -> Iterator[None]:
+  original = copy.deepcopy(fs_storage.get())
+  yield
+  assert fs_storage.get() == original
