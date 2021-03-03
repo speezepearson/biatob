@@ -709,23 +709,27 @@ class FsBackedServicer(Servicer):
         if token is None:
             logger.warn('not logged in')
             return mvp_pb2.SetEmailResponse(error=mvp_pb2.SetEmailResponse.Error(catchall='must log in to set an email'))
-        if not re.match('^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9_.-]+$', request.email):
-            return mvp_pb2.SetEmailResponse(error=mvp_pb2.SetEmailResponse.Error(catchall='bad email'))
-
-        # TODO: prevent an email address from getting "too many" emails if somebody abuses us
-        code = secrets.token_urlsafe(nbytes=16)
-        asyncio.create_task(self._emailer.send_email_verification(
-            to=request.email,
-            code=code,
-        ))
 
         with self._storage.mutate() as wstate:
             requester_info = get_generic_user_info(wstate, token.owner)
             if requester_info is None:
                 raise ForgottenTokenError(token)
-            requester_info.email.MergeFrom(mvp_pb2.EmailFlowState(code_sent=mvp_pb2.EmailFlowState.CodeSent(email=request.email, code=new_hashed_password(code))))
-            wstate.username_users[token.owner.username].info.CopyFrom(requester_info) # TODO: hack
-            logger.info('set email address', who=str(token.owner), address=request.email)
+            if request.email:
+                if not re.match('^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9_.-]+$', request.email):
+                    return mvp_pb2.SetEmailResponse(error=mvp_pb2.SetEmailResponse.Error(catchall='bad email'))
+
+                # TODO: prevent an email address from getting "too many" emails if somebody abuses us
+                code = secrets.token_urlsafe(nbytes=16)
+                asyncio.create_task(self._emailer.send_email_verification(
+                    to=request.email,
+                    code=code,
+                ))
+                requester_info.email.MergeFrom(mvp_pb2.EmailFlowState(code_sent=mvp_pb2.EmailFlowState.CodeSent(email=request.email, code=new_hashed_password(code))))
+                wstate.username_users[token.owner.username].info.CopyFrom(requester_info) # TODO: hack
+                logger.info('set email address', who=str(token.owner), address=request.email)
+            else:
+                requester_info.email.MergeFrom(mvp_pb2.EmailFlowState(unstarted=mvp_pb2.VOID))
+                logger.info('dissociated email address', who=str(token.owner))
             return mvp_pb2.SetEmailResponse(ok=requester_info.email)
 
     @checks_token

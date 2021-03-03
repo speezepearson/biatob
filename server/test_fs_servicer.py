@@ -550,6 +550,29 @@ class TestSetEmail:
     emailer.send_email_verification.assert_called_once_with(to='nobody@example.com', code=ANY)  # type: ignore
     assert fs_storage.get().username_users['rando'].info.email.code_sent.email == 'nobody@example.com'
 
+  async def test_works_in_all_stages(self, fs_storage: FsStorage, emailer: Emailer, fs_servicer: FsBackedServicer):
+    token = new_user_token(fs_servicer, 'rando')
+    for (name, flow_state) in [('null', mvp_pb2.EmailFlowState()),
+                               ('unstarted', mvp_pb2.EmailFlowState(unstarted=mvp_pb2.VOID)),
+                               ('code_sent', mvp_pb2.EmailFlowState(code_sent=mvp_pb2.EmailFlowState.CodeSent(email='old@example.com'))),
+                               ('verified', mvp_pb2.EmailFlowState(verified='old@example.com')),
+                              ]:
+      with fs_storage.mutate() as wstate:
+        wstate.username_users['rando'].info.email.CopyFrom(flow_state)
+      assert assert_oneof(fs_servicer.SetEmail(token=token, request=mvp_pb2.SetEmailRequest(email='new@example.com')),
+        'set_email_result', 'ok', mvp_pb2.EmailFlowState).code_sent.email == 'new@example.com'
+      emailer.send_email_verification.assert_called_with(to='new@example.com', code=ANY)  # type: ignore
+
+  async def test_clear(self, fs_storage: FsStorage, emailer: Emailer, fs_servicer: FsBackedServicer):
+    token = new_user_token(fs_servicer, 'rando')
+    assert_oneof(fs_servicer.SetEmail(token=token, request=mvp_pb2.SetEmailRequest(email='nobody@example.com')),
+      'set_email_result', 'ok', mvp_pb2.EmailFlowState).code_sent.email
+
+    emailer.send_email_verification.reset_mock()  # type: ignore
+    assert_oneof(fs_servicer.SetEmail(token=token, request=mvp_pb2.SetEmailRequest(email='')).ok,
+      'email_flow_state_kind', 'unstarted', object)
+    emailer.send_email_verification.assert_not_called()  # type: ignore
+
   async def test_error_if_logged_out(self, fs_storage: FsStorage, fs_servicer: FsBackedServicer):
     with assert_unchanged(fs_storage):
       assert 'must log in' in assert_oneof(fs_servicer.SetEmail(token=None, request=mvp_pb2.SetEmailRequest(email='nobody@example.com')), 'set_email_result', 'error', mvp_pb2.SetEmailResponse.Error).catchall

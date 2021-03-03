@@ -22,6 +22,7 @@ type Msg
   | SetEmailResolutionNotifications Bool
   | SetEmailRemindersToResolve Bool
   | UpdateSettingsFinished (Result Http.Error Pb.UpdateSettingsResponse)
+  | DissociateEmail
   | SetEmail
   | SetEmailFinished (Result Http.Error Pb.SetEmailResponse)
   | VerifyEmail
@@ -85,6 +86,10 @@ update msg model =
       , Page.NoCmd
       )
 
+    DissociateEmail ->
+      ( { model | working = True , notification = H.text "" }
+      , Page.RequestCmd <| Page.SetEmailRequest SetEmailFinished {email=""}
+      )
     SetEmail ->
       case Field.parse () model.emailField of
         Err _ -> ( model , Page.NoCmd )
@@ -179,11 +184,16 @@ view globals model =
                     ] [H.text "Verify code"]
                   -- TODO: "Resend email"
                 , model.notification |> H.map never
+                , H.text " (Or, "
+                , H.button [HE.onClick DissociateEmail] [H.text "delete email"]
+                , H.text ")"
                 ]
             Pb.EmailFlowStateKindVerified email ->
               H.div []
                 [ H.text "Your email address is: "
                 , H.strong [] [H.text email]
+                , H.text ". "
+                , H.button [HE.onClick DissociateEmail] [H.text "delete?"]
                 , H.br [] []
                 , model.notification |> H.map never
                 ]
