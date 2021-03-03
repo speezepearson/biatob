@@ -95,6 +95,16 @@
       height: 6em;
     }
 
+    #footer-wrapper {
+      background-color: lightblue;
+    }
+    footer {
+      max-width: 45em;
+      margin: auto;
+      padding: 0.5ex 1ex;
+    }
+
+
   </style>
 </head>
 
@@ -102,9 +112,11 @@
   
   {% block page_body %}{% endblock %}
 
-  <footer>
-    <a href="mailto:contact@biatob.com">Contact us!</a>
-  </footer>
+  <div id="footer-wrapper">
+    <footer>
+      <a href="mailto:contact@biatob.com">Contact us!</a>
+    </footer>
+  </div>
 
 </body>
 </html>
