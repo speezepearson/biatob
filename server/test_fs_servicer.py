@@ -37,7 +37,59 @@ def some_create_prediction_request(**kwargs) -> mvp_pb2.CreatePredictionRequest:
   init_kwargs.update(kwargs)
   return mvp_pb2.CreatePredictionRequest(**init_kwargs)  # type: ignore
 
-def test_Whoami(fs_servicer: FsBackedServicer):
+
+
+
+async def test_cuj__register__create__invite__accept__stake__resolve(fs_servicer: FsBackedServicer, clock: MockClock):
+  creator_token = assert_oneof(
+    fs_servicer.RegisterUsername(None, mvp_pb2.RegisterUsernameRequest(username='creator', password='secret')),
+    'register_username_result', 'ok', mvp_pb2.AuthSuccess).token
+
+  prediction_id = assert_oneof(
+    fs_servicer.CreatePrediction(creator_token, mvp_pb2.CreatePredictionRequest(
+      prediction='a thing will happen',
+      resolves_at_unixtime=clock.now() + 86400,
+      certainty=mvp_pb2.CertaintyRange(low=0.40, high=0.60),
+      maximum_stake_cents=100_00,
+      open_seconds=3600,
+    )),
+    'create_prediction_result', 'new_prediction_id', int)
+
+  invitation_id = assert_oneof(
+    fs_servicer.CreateInvitation(creator_token, mvp_pb2.CreateInvitationRequest()),
+    'create_invitation_result', 'ok', mvp_pb2.CreateInvitationResponse.Result).id
+
+  assert assert_oneof(
+    fs_servicer.CheckInvitation(None, mvp_pb2.CheckInvitationRequest(invitation_id=invitation_id)),
+    'check_invitation_result', 'is_open', bool)
+
+  friend_token = assert_oneof(
+    fs_servicer.RegisterUsername(None, mvp_pb2.RegisterUsernameRequest(username='friend', password='secret')),
+    'register_username_result', 'ok', mvp_pb2.AuthSuccess).token
+
+  friend_settings = assert_oneof(
+    fs_servicer.AcceptInvitation(friend_token, mvp_pb2.AcceptInvitationRequest(invitation_id=invitation_id)),
+    'accept_invitation_result', 'ok', mvp_pb2.GenericUserInfo)
+  assert creator_token.owner in friend_settings.trusted_users
+
+  prediction = assert_oneof(
+    fs_servicer.Stake(friend_token, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_is_a_skeptic=True, bettor_stake_cents=6_00)),
+    'stake_result', 'ok', mvp_pb2.UserPredictionView)
+  assert list(prediction.your_trades) == [mvp_pb2.Trade(
+    bettor=friend_token.owner,
+    bettor_is_a_skeptic=True,
+    bettor_stake_cents=6_00,
+    creator_stake_cents=4_00,
+    transacted_unixtime=clock.now(),
+  )]
+
+  prediction = assert_oneof(
+    fs_servicer.Resolve(creator_token, mvp_pb2.ResolveRequest(prediction_id=prediction_id, resolution=mvp_pb2.RESOLUTION_YES)),
+    'resolve_result', 'ok', mvp_pb2.UserPredictionView)
+  assert list(prediction.resolutions) ==[mvp_pb2.ResolutionEvent(unixtime=clock.now(), resolution=mvp_pb2.RESOLUTION_YES)]
+
+
+async def test_Whoami(fs_servicer: FsBackedServicer):
   resp = fs_servicer.Whoami(None, mvp_pb2.WhoamiRequest())
   assert not resp.HasField('auth')
 
