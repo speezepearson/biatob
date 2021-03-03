@@ -85,6 +85,8 @@ message WorldState {
 
   map<uint32, Prediction> predictions = 2;
 
+  double email_reminders_sent_up_to_unixtime_depr = 4;
+
   // message GoogleOauthInfo {
   //   GenericUserInfo info = 1;
   // }

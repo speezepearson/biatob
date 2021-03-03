@@ -184,6 +184,7 @@ type alias EmailAttempt =
 type alias WorldState =
     { usernameUsers : Dict.Dict String (Maybe UsernameInfo)
     , predictions : Dict.Dict Int (Maybe WorldStatePrediction)
+    , emailRemindersSentUpToUnixtimeDepr : Float
     }
 
 
@@ -1019,9 +1020,10 @@ emailAttemptDecoder =
 -}
 worldStateDecoder : Decode.Decoder WorldState
 worldStateDecoder =
-    Decode.message (WorldState Dict.empty Dict.empty)
+    Decode.message (WorldState Dict.empty Dict.empty 0)
         [ Decode.mapped 1 ( "", Nothing ) Decode.string (Decode.map Just usernameInfoDecoder) .usernameUsers setUsernameUsers
         , Decode.mapped 2 ( 0, Nothing ) Decode.uint32 (Decode.map Just worldStatePredictionDecoder) .predictions setPredictions
+        , Decode.optional 4 Decode.double setEmailRemindersSentUpToUnixtimeDepr
         ]
 
 
@@ -1908,6 +1910,7 @@ toWorldStateEncoder model =
     Encode.message
         [ ( 1, Encode.dict Encode.string (Maybe.withDefault Encode.none << Maybe.map toUsernameInfoEncoder) model.usernameUsers )
         , ( 2, Encode.dict Encode.uint32 (Maybe.withDefault Encode.none << Maybe.map toWorldStatePredictionEncoder) model.predictions )
+        , ( 4, Encode.double model.emailRemindersSentUpToUnixtimeDepr )
         ]
 
 
@@ -2878,6 +2881,11 @@ setUsernameUsers value model =
 setPredictions : a -> { b | predictions : a } -> { b | predictions : a }
 setPredictions value model =
     { model | predictions = value }
+
+
+setEmailRemindersSentUpToUnixtimeDepr : a -> { b | emailRemindersSentUpToUnixtimeDepr : a } -> { b | emailRemindersSentUpToUnixtimeDepr : a }
+setEmailRemindersSentUpToUnixtimeDepr value model =
+    { model | emailRemindersSentUpToUnixtimeDepr = value }
 
 
 setPrediction : a -> { b | prediction : a } -> { b | prediction : a }
