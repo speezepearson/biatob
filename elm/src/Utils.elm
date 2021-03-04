@@ -88,6 +88,11 @@ mustUserKind {kind} = must "all UserIds must have kinds" kind
 mustTokenOwner : Pb.AuthToken -> Pb.UserId
 mustTokenOwner {owner} = must "all AuthTokens must have owners" owner
 
+mustUsername : Pb.UserId -> String
+mustUsername uid = case uid.kind of
+   Just (Pb.KindUsername u) -> u
+   _ -> Debug.todo "users without usernames were a mistaaaake"
+
 mustUsernameGenericInfo : Pb.UsernameInfo -> Pb.GenericUserInfo
 mustUsernameGenericInfo {info} = must "all UserInfos must have GenericUserInfos" info
 

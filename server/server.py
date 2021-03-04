@@ -105,10 +105,17 @@ def user_exists(wstate: mvp_pb2.WorldState, user: mvp_pb2.UserId) -> bool:
     return get_generic_user_info(wstate, user) is not None
 
 def trusts(wstate: mvp_pb2.WorldState, a: mvp_pb2.UserId, b: mvp_pb2.UserId) -> bool:
+    assert a.WhichOneof('kind') == 'username'
+    assert b.WhichOneof('kind') == 'username'
     if a == b:
         return True
     a_info = get_generic_user_info(wstate, a)
-    return (a_info is not None) and b in a_info.trusted_users
+    if a_info is None:
+        return False
+    relationship = a_info.relationships.get(b.username)
+    if relationship is None:
+        return False
+    return relationship.trusted
 
 def describe_username_problems(username: str) -> Optional[str]:
     if not username:
@@ -425,7 +432,7 @@ class FsBackedServicer(Servicer):
             info = wstate.username_users[request.username]
             info.MergeFrom(mvp_pb2.UsernameInfo(
                 password=new_hashed_password(request.password),
-                info=mvp_pb2.GenericUserInfo(trusted_users=[]),
+                info=mvp_pb2.GenericUserInfo(),
             ))
             return mvp_pb2.RegisterUsernameResponse(ok=mvp_pb2.AuthSuccess(
                 token=self._token_mint.mint_token(owner=mvp_pb2.UserId(username=request.username), ttl_seconds=60*60*24*7),
@@ -651,10 +658,8 @@ class FsBackedServicer(Servicer):
                 logger.warn('attempting to set trust for nonexistent user')
                 return mvp_pb2.SetTrustedResponse(error=mvp_pb2.SetTrustedResponse.Error(catchall='no such user'))
             logger.info('setting user trust', who=str(request.who), trusted=request.trusted)
-            if request.trusted and request.who not in requester_info.trusted_users:
-                requester_info.trusted_users.append(request.who)
-            elif not request.trusted and request.who in requester_info.trusted_users:
-                requester_info.trusted_users.remove(request.who)
+            assert request.who.WhichOneof('kind') == 'username'
+            requester_info.relationships[request.who.username].trusted = request.trusted
             return mvp_pb2.SetTrustedResponse(ok=requester_info)
 
     @checks_token
@@ -856,6 +861,9 @@ class FsBackedServicer(Servicer):
             if inviter_info is None:
                 return mvp_pb2.AcceptInvitationResponse(error=mvp_pb2.AcceptInvitationResponse.Error(catchall='invitation is non-existent or already used'))
 
+            assert token.owner.WhichOneof('kind') == 'username'
+            assert inviter.WhichOneof('kind') == 'username'
+
             for orig_nonce, orig_invitation in inviter_info.invitations.items():
                 # TODO: just index in, dummy
                 if orig_nonce == request.invitation_id.nonce:
@@ -864,10 +872,8 @@ class FsBackedServicer(Servicer):
                         return mvp_pb2.AcceptInvitationResponse(error=mvp_pb2.AcceptInvitationResponse.Error(catchall='invitation is non-existent or already used'))
                     orig_invitation.accepted_by.CopyFrom(token.owner)
                     orig_invitation.accepted_unixtime = int(self._clock())
-                    if inviter not in accepter_info.trusted_users:
-                        accepter_info.trusted_users.append(inviter)
-                    if token.owner not in inviter_info.trusted_users:
-                        inviter_info.trusted_users.append(token.owner)
+                    accepter_info.relationships[inviter.username].trusted = True
+                    inviter_info.relationships[token.owner.username].trusted = True
                     logger.info('accepted invitation', whose=inviter)
                     return mvp_pb2.AcceptInvitationResponse(ok=accepter_info)
             logger.warn('attempt to accept nonexistent invitation', possible_malice=True)

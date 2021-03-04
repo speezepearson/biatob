@@ -5,7 +5,7 @@ from typing import Callable, Iterator, Mapping, Sequence, Tuple
 
 from google.protobuf.message import Message
 
-from .protobuf.mvp_pb2 import WorldState
+from .protobuf.mvp_pb2 import WorldState, GenericUserInfo, Relationship
 from .server import FsStorage
 
 def walk(obj: object) -> Iterator[object]:
@@ -35,9 +35,18 @@ def move_resolution_reminder_history_into_predictions(obj: object) -> None:
     if prediction.resolves_at_unixtime < obj.email_reminders_sent_up_to_unixtime_depr and not prediction.HasField('resolution_reminder_history'):
       prediction.resolution_reminder_history.skipped = True
 
+def trusted_users_to_relationships(obj: object) -> None:
+  if not isinstance(obj, GenericUserInfo):
+    return
+  for uid in obj.trusted_users_depr:
+    assert uid.WhichOneof('kind') == 'username'
+    if uid.username not in obj.relationships:
+      obj.relationships[uid.username].CopyFrom(Relationship(trusted=True))
+
 MIGRATIONS: Sequence[Callable[[object], None]] = [
   change_uint32_times_to_doubles,
   move_resolution_reminder_history_into_predictions,
+  trusted_users_to_relationships,
 ]
 
 parser = argparse.ArgumentParser()

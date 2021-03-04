@@ -21,7 +21,7 @@ import Widgets.CopyWidget as CopyWidget
 type Msg
   = Copy String
   | InvitationMsg SmallInvitationWidget.Msg
-  | RemoveTrust Pb.UserId
+  | RemoveTrust String
   | SetTrustedFinished (Result Http.Error Pb.SetTrustedResponse)
 
 type alias Model =
@@ -45,7 +45,7 @@ update msg model =
     Copy s -> ( model , Page.CopyCmd s )
     RemoveTrust u ->
       ( { model | working = True, notification = H.text "" }
-      , Page.RequestCmd <| Page.SetTrustedRequest SetTrustedFinished {who=Just u, trusted=False}
+      , Page.RequestCmd <| Page.SetTrustedRequest SetTrustedFinished {who=Just {kind=Just (Pb.KindUsername u)}, trusted=False}
       )
     InvitationMsg widgetMsg ->
       let (newWidget, widgetCmd) = SmallInvitationWidget.update widgetMsg model.invitationWidget in
@@ -113,20 +113,42 @@ view globals model =
     Just auth ->
       H.div []
         [ model.notification |> H.map never
-        , H.strong [] [H.text "You trust: "]
-        , case (Utils.mustAuthSuccessUserInfo auth).trustedUsers of
-            [] -> H.text "nobody yet!"
-            trustedUsers ->
-              H.ul []
-              <| List.map (\u -> H.li []
-                  [ Utils.renderUser u
-                  , H.text " "
-                  , H.button
-                      [ HE.onClick (RemoveTrust u)
-                      , HA.disabled model.working
-                      ] [H.text "Remove trust"]
-                  ])
-                  trustedUsers
+        , H.strong [] [H.text "Your relationships: "]
+        , let relationships = Utils.mustAuthSuccessUserInfo auth |> .relationships |> Utils.mustMapValues in
+          if D.isEmpty relationships then
+            H.text "nobody yet!"
+          else
+            H.ul []
+            <| List.map (\(u, rel) -> H.li []
+                [ Utils.renderUser <| {kind=Just (Pb.KindUsername u)}
+                , H.text ": "
+                , if rel.trusted then
+                    H.span []
+                      [ H.text "trusted "
+                      , H.button
+                          [ HE.onClick (RemoveTrust u)
+                          , HA.disabled model.working
+                          ] [H.text "Remove trust"]
+                      ]
+                  else
+                    H.text " untrusted"
+                , if List.isEmpty rel.sidePayments then H.text "" else
+                  H.div []
+                  [ H.text "Payments from them to you:"
+                  , H.ul []
+                    <| List.map (\p -> H.li []
+                        [ H.text <| Utils.dateStr globals.timeZone <| Utils.unixtimeToTime p.unixtime
+                        , H.text " - "
+                        , if p.receivedCents > 0 then
+                            H.text <| "paid you " ++ Utils.formatCents (abs p.receivedCents)
+                          else
+                            H.text <| "you paid " ++ Utils.formatCents (abs p.receivedCents)
+                        ]
+                        )
+                    <| rel.sidePayments
+                  ]
+                ])
+            <| D.toList relationships
         , H.br [] []
         , H.strong [] [H.text "Invitations: "]
         , SmallInvitationWidget.view globals model.invitationWidget |> H.map InvitationMsg

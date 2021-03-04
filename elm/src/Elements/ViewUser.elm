@@ -110,7 +110,7 @@ view globals model =
                   , SmallInvitationWidget.view globals model.invitationWidget |> H.map InvitationMsg
                   ]
             , H.br [] []
-            , if List.member model.userId userInfo.trustedUsers then
+            , if Dict.get (Utils.mustUsername model.userId) (Utils.mustMapValues userInfo.relationships) |> Maybe.map .trusted |> Maybe.withDefault False then
                 H.div []
                   [ H.text "You trust this user. "
                   , H.button [HA.disabled model.working, HE.onClick (SetTrusted False)] [H.text "Mark untrusted"]

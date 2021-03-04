@@ -70,7 +70,7 @@ class TestCUJs:
     friend_settings = assert_oneof(
       fs_servicer.AcceptInvitation(friend_token, mvp_pb2.AcceptInvitationRequest(invitation_id=invitation_id)),
       'accept_invitation_result', 'ok', mvp_pb2.GenericUserInfo)
-    assert creator_token.owner in friend_settings.trusted_users
+    assert friend_settings.relationships[creator_token.owner.username].trusted
 
     prediction = assert_oneof(
       fs_servicer.Stake(friend_token, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_is_a_skeptic=True, bettor_stake_cents=6_00)),
@@ -618,7 +618,7 @@ class TestGetSettings:
     alice_token, bob_token = alice_bob_tokens(fs_servicer)
     geninfo = assert_oneof(fs_servicer.GetSettings(token=alice_token, request=mvp_pb2.GetSettingsRequest()),
       'get_settings_result', 'ok_username', mvp_pb2.UsernameInfo).info
-    assert list(geninfo.trusted_users) == [bob_token.owner]
+    assert dict(geninfo.relationships) == {'Bob': mvp_pb2.Relationship(trusted=True)}
 
 
 class TestUpdateSettings:

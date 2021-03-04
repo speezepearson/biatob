@@ -59,12 +59,23 @@ message HashedPassword {
 }
 
 message GenericUserInfo {
-  repeated UserId trusted_users = 1;
+  repeated UserId trusted_users_depr = 1;
   EmailFlowState email = 2;
   bool email_reminders_to_resolve = 3;
   bool email_resolution_notifications = 4;
   map<string, Invitation> invitations = 5;
+  map<string, Relationship> relationships = 6;
 }
+message Relationship {
+  bool trusted = 1;
+  repeated SidePayment side_payments = 2;
+}
+message SidePayment {
+  double unixtime = 1;
+  uint32 received_cents = 2;
+  string notes = 3;
+}
+
 message UsernameInfo {
   GenericUserInfo info = 1;
   HashedPassword password = 2;
