@@ -136,13 +136,14 @@ view globals model =
                   H.div []
                   [ H.text "Payments from them to you:"
                   , H.ul []
-                    <| List.map (\p -> H.li []
-                        [ H.text <| Utils.dateStr globals.timeZone <| Utils.unixtimeToTime p.unixtime
+                    <| List.map (\payment -> H.li []
+                        [ H.text <| Utils.dateStr globals.timeZone <| Utils.unixtimeToTime payment.unixtime
                         , H.text " - "
-                        , if p.receivedCents > 0 then
-                            H.text <| "paid you " ++ Utils.formatCents (abs p.receivedCents)
+                        , if payment.receivedCents > 0 then
+                            H.text <| "paid you " ++ Utils.formatCents (abs payment.receivedCents)
                           else
-                            H.text <| "you paid " ++ Utils.formatCents (abs p.receivedCents)
+                            H.text <| "you paid " ++ Utils.formatCents (abs payment.receivedCents)
+                        , H.text <| " - " ++ payment.notes
                         ]
                         )
                     <| rel.sidePayments
