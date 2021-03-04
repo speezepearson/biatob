@@ -22,7 +22,7 @@ import string
 import sys
 import tempfile
 import time
-from typing import Any, Mapping, Iterator, Optional, Container, NewType, Callable, NoReturn, Tuple, Iterable, Sequence, TypeVar
+from typing import Any, Mapping, Iterator, Optional, Container, NewType, Callable, NoReturn, Tuple, Iterable, Sequence, TypeVar, MutableSequence
 import argparse
 import logging
 import os
@@ -238,6 +238,7 @@ class Emailer:
         self._ResolutionReminder_template = jenv.get_template('ResolutionReminder.html')
         self._EmailVerification_template = jenv.get_template('EmailVerification.html')
         self._Backup_template = jenv.get_template('Backup.html')
+        self._InvariantViolations_template = jenv.get_template('InvariantViolations.html')
 
     async def _send(self, *, to: str, subject: str, body: str, headers: Mapping[str, str] = {}) -> None:
         # adapted from https://aiosmtplib.readthedocs.io/en/stable/usage.html#authentication
@@ -298,6 +299,13 @@ class Emailer:
             to=to,
             subject=f'Biatob backup for {now:%Y-%m-%d}',
             body=self._Backup_template.render(wstate_textproto=google.protobuf.text_format.MessageToString(wstate)),
+        )
+
+    async def send_invariant_violations(self, to: str, now: datetime.datetime, violations: Sequence[Mapping[str, Any]]) -> None:
+        await self._send(
+            to=to,
+            subject=f'INVARIANT VIOLATIONS for {now:%Y-%m-%dT%H:%M:%S}',
+            body=self._InvariantViolations_template.render(violations_json=json.dumps(violations, indent=True)),
         )
 
 
@@ -1224,6 +1232,48 @@ def pb_b64(message: Optional[Message]) -> Optional[str]:
     return base64.b64encode(message.SerializeToString()).decode('ascii')
 
 
+def walk(obj: object) -> Iterator[object]:
+  yield obj
+  if isinstance(obj, Message):
+    for _, child in obj.ListFields():
+      yield from walk(child)
+  elif isinstance(obj, Mapping):
+    for child in obj.values():
+      yield from walk(child)
+  elif isinstance(obj, Sequence) and not isinstance(obj, str):
+    for child in obj:
+      yield from walk(child)
+
+def find_invariant_violations(wstate: mvp_pb2.WorldState) -> Sequence[Mapping[str, Any]]:
+    violations: MutableSequence[Mapping[str, Any]] = []
+    for obj in walk(wstate):
+        if isinstance(obj, mvp_pb2.UserId):
+            if obj.WhichOneof('kind') != 'username':
+                violations.append({'type': 'non-username user', 'user':str(obj)})
+            if not user_exists(wstate, obj):
+                violations.append({'type':'nonexistent user', 'user':str(obj)})
+    for prediction_id, prediction in wstate.predictions.items():
+        if sum(t.creator_stake_cents for t in prediction.trades if     t.bettor_is_a_skeptic) > prediction.maximum_stake_cents:
+            violations.append({'type':'exposure exceeded', 'prediction_id':prediction_id})
+        if sum(t.creator_stake_cents for t in prediction.trades if not t.bettor_is_a_skeptic) > prediction.maximum_stake_cents:
+            violations.append({'type':'exposure exceeded', 'prediction_id':prediction_id})
+    return violations
+
+
+async def email_invariant_violations_forever(storage: FsStorage, emailer: Emailer, recipient_email: str):
+    while True:
+        now = datetime.datetime.now()
+        next_hour = datetime.datetime.fromtimestamp(3600 * (1 + now.timestamp()//3600))
+        await asyncio.sleep((next_hour - now).total_seconds())
+        logger.info('checking invariants')
+        violations = find_invariant_violations(storage.get())
+        if violations:
+            await emailer.send_invariant_violations(
+                to=recipient_email,
+                now=next_hour,
+                violations=violations,
+            )
+
 async def email_daily_backups_forever(storage: FsStorage, emailer: Emailer, recipient_email: str):
     while True:
         now = datetime.datetime.now()
@@ -1232,7 +1282,7 @@ async def email_daily_backups_forever(storage: FsStorage, emailer: Emailer, reci
         logger.info('emailing backups')
         await emailer.send_backup(
             to=recipient_email,
-            now=now,
+            now=next_day,
             wstate=storage.get(),
         )
 
@@ -1317,6 +1367,7 @@ parser.add_argument("--elm-dist", type=Path, default="elm/dist")
 parser.add_argument("--state-path", type=Path, required=True)
 parser.add_argument("--credentials-path", type=Path, required=True)
 parser.add_argument("--email-daily-backups-to", help='send daily backups to this email address')
+parser.add_argument("--email-invariant-violations-to", help='send notifications of invariant violations to this email address')
 parser.add_argument("-v", "--verbose", action="count", default=0)
 
 async def main(args):
@@ -1356,6 +1407,8 @@ async def main(args):
     asyncio.get_running_loop().create_task(email_resolution_reminders_forever(storage=storage, emailer=emailer))
     if args.email_daily_backups_to is not None:
         asyncio.get_running_loop().create_task(email_daily_backups_forever(storage=storage, emailer=emailer, recipient_email=args.email_daily_backups_to))
+    if args.email_invariant_violations_to is not None:
+        asyncio.get_running_loop().create_task(email_invariant_violations_forever(storage=storage, emailer=emailer, recipient_email=args.email_daily_backups_to))
 
     # adapted from https://docs.aiohttp.org/en/stable/web_advanced.html#application-runners
     runner = web.AppRunner(app)

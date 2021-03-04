@@ -6,19 +6,7 @@ from typing import Callable, Iterator, Mapping, Sequence, Tuple
 from google.protobuf.message import Message
 
 from .protobuf.mvp_pb2 import WorldState, GenericUserInfo, Relationship
-from .server import FsStorage
-
-def walk(obj: object) -> Iterator[object]:
-  yield obj
-  if isinstance(obj, Message):
-    for _, child in obj.ListFields():
-      yield from walk(child)
-  elif isinstance(obj, Mapping):
-    for child in obj.values():
-      yield from walk(child)
-  elif isinstance(obj, Sequence) and not isinstance(obj, str):
-    for child in obj:
-      yield from walk(child)
+from .server import FsStorage, walk
 
 def change_uint32_times_to_doubles(obj: object) -> None:
   if not isinstance(obj, Message):
