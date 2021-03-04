@@ -326,6 +326,50 @@ view ctx globals model =
             ]
     , H.hr [] []
     , viewStakeWidgetOrExcuse ctx globals model
+    , if Page.isLoggedIn globals then
+        H.text ""
+      else
+        H.div []
+          [ H.hr [HA.style "margin" "4em 0"] []
+          , H.h3 [] [H.text "Huh? What is this?"]
+          , H.p []
+              [ H.text "This site is a tool that helps people make friendly wagers, thereby clarifying and concretizing their beliefs and making the world a better, saner place."
+              ]
+          , H.p []
+              [ H.strong [] [H.text <| creator.displayName]
+              , H.text <| " is putting their money where their mouth is: they've staked " ++ Utils.formatCents ctx.prediction.maximumStakeCents ++ " of real-life money on this prediction,"
+                  ++ " and they're willing to bet at the above odds against anybody they trust. Good for them!"
+              ]
+          , H.p []
+              [ H.text "If you know and trust ", H.strong [] [H.text <| creator.displayName]
+              , H.text <| ", and they know and trust you, and you want to bet against them on this prediction,"
+                  ++ " then message them however you normally do, and ask them for an invitation to this market!"
+              ]
+          , H.hr [] []
+          , H.h3 [] [H.text "But... why would you do this?"]
+          , H.p []
+              [ H.text "Personally, when I force myself to make concrete predictions -- especially on topics I feel strongly about -- it frequently turns out that "
+              , Utils.i "I don't actually believe what I thought I did."
+              , H.text " Crazy, right!? Brains suck! And betting, i.e. attaching money to my predictions, is "
+              , H.a [HA.href "https://marginalrevolution.com/marginalrevolution/2012/11/a-bet-is-a-tax-on-bullshit.html"]
+                  [ H.text "an incentive to actually try to get them right"
+                  ]
+              , H.text ": it forces my brain to cut through (some of) the layers of "
+              , H.a [HA.href "https://en.wikipedia.org/wiki/Social-desirability_bias"]
+                  [ H.text "social-desirability bias"
+                  ]
+              , H.text " and "
+              , H.a [HA.href "https://www.lesswrong.com/posts/DSnamjnW7Ad8vEEKd/trivers-on-self-deception"]
+                  [ H.text "Triversian self-deception"
+                  ]
+              , H.text " to lay bare "
+              , H.a [HA.href "https://www.lesswrong.com/posts/a7n8GdKiAZRX86T5A/making-beliefs-pay-rent-in-anticipated-experiences"]
+                  [ H.text "my actual beliefs about what I expect to see"
+                  ]
+              , H.text "."
+              ]
+          , H.p [] [H.text "I made this tool to share that joy with you."]
+          ]
     , if creator.isSelf then
         H.div []
           [ H.text "If you want to link to your prediction, here are some snippets of HTML you could copy-paste:"
