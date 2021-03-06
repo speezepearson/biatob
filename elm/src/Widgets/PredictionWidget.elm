@@ -126,7 +126,7 @@ viewStakeWidgetOrExcuse ctx globals model =
 creatorWinningsByBettor : Bool -> List Pb.Trade -> Dict String Int -- TODO: avoid key serialization collisions
 creatorWinningsByBettor resolvedYes trades =
   trades
-  |> List.foldl (\t d -> D.update (Utils.renderUserPlain <| Utils.mustTradeBettor t) (Maybe.withDefault 0 >> ((+) (if xor resolvedYes t.bettorIsASkeptic then -t.creatorStakeCents else t.bettorStakeCents)) >> Just) d) D.empty
+  |> List.foldl (\t d -> D.update t.bettor (Maybe.withDefault 0 >> ((+) (if xor resolvedYes t.bettorIsASkeptic then -t.creatorStakeCents else t.bettorStakeCents)) >> Just) d) D.empty
 
 stateWinnings : String -> Int -> String
 stateWinnings counterparty win =
@@ -212,7 +212,7 @@ viewWinnings ctx globals model =
         [ H.summary [] [H.text "Details"]
         , ctx.prediction.yourTrades
           |> List.map (\t -> H.li [] [ H.text <| "[" ++ Utils.isoStr Time.utc (Utils.unixtimeToTime t.transactedUnixtime) ++ " UTC] "
-                                     , Utils.renderUser (Utils.mustTradeBettor t)
+                                     , Utils.renderUser t.bettor
                                      , H.text <| " bet " ++ (if t.bettorIsASkeptic then "NO" else "YES") ++ " staking " ++ Utils.formatCents t.bettorStakeCents ++ " against " ++ Utils.formatCents t.creatorStakeCents])
           |> H.ul []
         ]

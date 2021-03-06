@@ -104,7 +104,7 @@ view globals model =
     Just auth ->
       H.div []
         [ H.text <| "Signed in as "
-        , Utils.renderUser <| Utils.mustTokenOwner auth
+        , Utils.renderUser auth.owner
         , H.text " "
         , H.button [HA.disabled model.working, HE.onClick SignOut] [H.text "Sign out"]
         , model.notification |> H.map never

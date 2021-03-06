@@ -49,16 +49,18 @@ def userids_to_usernames(obj: object) -> None:
       if desc.label == desc.LABEL_REPEATED:
         assert all(v.WhichOneof('kind') == 'username' for v in value)
         setattr(obj, new_fieldname, [v.username for v in value])
+        obj.ClearField(desc.name)
       else:
         assert value.WhichOneof('kind') == 'username'
         setattr(obj, new_fieldname, value.username)
+        obj.ClearField(desc.name)
 
 
 MIGRATIONS: Sequence[Callable[[object], None]] = [
   change_uint32_times_to_doubles,
   move_resolution_reminder_history_into_predictions,
   trusted_users_to_relationships,
-  # userids_to_usernames,
+  userids_to_usernames,
 ]
 
 parser = argparse.ArgumentParser()

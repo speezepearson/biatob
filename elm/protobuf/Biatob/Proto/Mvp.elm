@@ -730,7 +730,7 @@ type alias GetSettingsRequest =
 {-| GetSettingsResult
 -}
 type GetSettingsResult
-    = GetSettingsResultOkUsername UsernameInfo
+    = GetSettingsResultOk GenericUserInfo
     | GetSettingsResultError GetSettingsResponseError
 
 
@@ -1644,7 +1644,7 @@ getSettingsResponseDecoder : Decode.Decoder GetSettingsResponse
 getSettingsResponseDecoder =
     Decode.message (GetSettingsResponse Nothing)
         [ Decode.oneOf
-            [ ( 1, Decode.map GetSettingsResultOkUsername usernameInfoDecoder )
+            [ ( 1, Decode.map GetSettingsResultOk genericUserInfoDecoder )
             , ( 2, Decode.map GetSettingsResultError getSettingsResponseErrorDecoder )
             ]
             setGetSettingsResult
@@ -2645,8 +2645,8 @@ toGetSettingsRequestEncoder model =
 toGetSettingsResultEncoder : GetSettingsResult -> ( Int, Encode.Encoder )
 toGetSettingsResultEncoder model =
     case model of
-        GetSettingsResultOkUsername value ->
-            ( 1, toUsernameInfoEncoder value )
+        GetSettingsResultOk value ->
+            ( 1, toGenericUserInfoEncoder value )
 
         GetSettingsResultError value ->
             ( 2, toGetSettingsResponseErrorEncoder value )

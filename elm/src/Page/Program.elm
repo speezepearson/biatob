@@ -203,7 +203,7 @@ updateGlobalsFromResponse resp globals =
       Err _ -> globals
     GetSettingsResponse res -> case res of
       Ok {getSettingsResult} -> case getSettingsResult of
-        Just (Pb.GetSettingsResultOkUsername newInfo) -> globals |> updateUserInfo (always (newInfo |> Utils.mustUsernameGenericInfo))
+        Just (Pb.GetSettingsResultOk newInfo) -> globals |> updateUserInfo (always newInfo)
         _ -> globals
       Err _ -> globals
     UpdateSettingsResponse res -> case res of

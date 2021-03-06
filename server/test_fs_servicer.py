@@ -21,8 +21,8 @@ def alice_bob_tokens(fs_servicer: FsBackedServicer) -> Tuple[mvp_pb2.AuthToken, 
   token_a = new_user_token(fs_servicer, 'Alice')
   token_b = new_user_token(fs_servicer, 'Bob')
 
-  fs_servicer.SetTrusted(token_a, mvp_pb2.SetTrustedRequest(who_depr=token_b.owner_depr, trusted=True))
-  fs_servicer.SetTrusted(token_b, mvp_pb2.SetTrustedRequest(who_depr=token_a.owner_depr, trusted=True))
+  fs_servicer.SetTrusted(token_a, mvp_pb2.SetTrustedRequest(who=token_b.owner, trusted=True))
+  fs_servicer.SetTrusted(token_b, mvp_pb2.SetTrustedRequest(who=token_a.owner, trusted=True))
 
   return (token_a, token_b)
 
@@ -70,13 +70,13 @@ class TestCUJs:
     friend_settings = assert_oneof(
       fs_servicer.AcceptInvitation(friend_token, mvp_pb2.AcceptInvitationRequest(invitation_id=invitation_id)),
       'accept_invitation_result', 'ok', mvp_pb2.GenericUserInfo)
-    assert friend_settings.relationships[creator_token.owner_depr.username].trusted
+    assert friend_settings.relationships[creator_token.owner].trusted
 
     prediction = assert_oneof(
       fs_servicer.Stake(friend_token, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_is_a_skeptic=True, bettor_stake_cents=6_00)),
       'stake_result', 'ok', mvp_pb2.UserPredictionView)
     assert list(prediction.your_trades) == [mvp_pb2.Trade(
-      bettor_depr=friend_token.owner_depr,
+      bettor=friend_token.owner,
       bettor_is_a_skeptic=True,
       bettor_stake_cents=6_00,
       creator_stake_cents=4_00,
@@ -104,13 +104,13 @@ class TestCUJs:
       'verify_email_result', 'ok', mvp_pb2.EmailFlowState).verified == 'nobody@example.com'
 
     assert not assert_oneof(fs_servicer.GetSettings(token, mvp_pb2.GetSettingsRequest()),
-      'get_settings_result', 'ok_username', mvp_pb2.UsernameInfo).info.email_reminders_to_resolve
+      'get_settings_result', 'ok', mvp_pb2.GenericUserInfo).email_reminders_to_resolve
 
     assert assert_oneof(fs_servicer.UpdateSettings(token, mvp_pb2.UpdateSettingsRequest(email_reminders_to_resolve=mvp_pb2.MaybeBool(value=True))),
       'update_settings_result', 'ok', mvp_pb2.GenericUserInfo).email_reminders_to_resolve
 
     assert assert_oneof(fs_servicer.GetSettings(token, mvp_pb2.GetSettingsRequest()),
-      'get_settings_result', 'ok_username', mvp_pb2.UsernameInfo).info.email_reminders_to_resolve
+      'get_settings_result', 'ok', mvp_pb2.GenericUserInfo).email_reminders_to_resolve
 
 
 
@@ -138,7 +138,7 @@ class TestRegisterUsername:
 
   async def test_success(self, fs_servicer: FsBackedServicer):
     assert assert_oneof(fs_servicer.RegisterUsername(token=None, request=mvp_pb2.RegisterUsernameRequest(username='alice', password='secret')),
-      'register_username_result', 'ok', mvp_pb2.AuthSuccess).token.owner_depr.username == 'alice'
+      'register_username_result', 'ok', mvp_pb2.AuthSuccess).token.owner == 'alice'
 
   async def test_error_when_already_exists(self, fs_storage: FsStorage, fs_servicer: FsBackedServicer):
     new_user_token(fs_servicer, 'rando')
@@ -164,7 +164,7 @@ class TestLogInUsername:
   async def test_success(self, fs_servicer: FsBackedServicer):
     new_user_token(fs_servicer, 'rando')
     assert assert_oneof(fs_servicer.LogInUsername(token=None, request=mvp_pb2.LogInUsernameRequest(username='rando', password='rando password')),
-      'log_in_username_result', 'ok', mvp_pb2.AuthSuccess).token.owner_depr.username == 'rando'
+      'log_in_username_result', 'ok', mvp_pb2.AuthSuccess).token.owner == 'rando'
 
   async def test_no_such_user(self, fs_servicer: FsBackedServicer):
     assert 'no such user' in assert_oneof(fs_servicer.LogInUsername(token=None, request=mvp_pb2.LogInUsernameRequest(username='alice', password='secret')),
@@ -236,7 +236,7 @@ class TestGetPrediction:
       special_rules=req.special_rules,
       creator=mvp_pb2.UserUserView(display_name='Alice', is_self=False, is_trusted=True, trusts_you=True),
       resolutions=[mvp_pb2.ResolutionEvent(unixtime=resolve_time, resolution=mvp_pb2.RESOLUTION_YES)],
-      your_trades=[mvp_pb2.Trade(bettor_depr=bob_token.owner_depr, bettor_is_a_skeptic=True, bettor_stake_cents=1_00, creator_stake_cents=1_00, transacted_unixtime=stake_time)],
+      your_trades=[mvp_pb2.Trade(bettor=bob_token.owner, bettor_is_a_skeptic=True, bettor_stake_cents=1_00, creator_stake_cents=1_00, transacted_unixtime=stake_time)],
     )
 
 
@@ -287,7 +287,7 @@ class TestListPredictions:
     irrelevant_prediction_id = assert_oneof(fs_servicer.CreatePrediction(new_user_token(fs_servicer, 'otherrando'), some_create_prediction_request()),
       'create_prediction_result', 'new_prediction_id', int)
 
-    assert set(assert_oneof(fs_servicer.ListPredictions(token=token, request=mvp_pb2.ListPredictionsRequest(creator_depr=token.owner_depr)),
+    assert set(assert_oneof(fs_servicer.ListPredictions(token=token, request=mvp_pb2.ListPredictionsRequest(creator=token.owner)),
       'list_predictions_result', 'ok', mvp_pb2.PredictionsById).predictions.keys()) == {prediction_id}
 
   async def test_success_listing_friend(self, fs_servicer: FsBackedServicer):
@@ -296,17 +296,17 @@ class TestListPredictions:
       'create_prediction_result', 'new_prediction_id', int)
     irrelevant_prediction_id = assert_oneof(fs_servicer.CreatePrediction(bob_token, some_create_prediction_request(maximum_stake_cents=100_00)),
       'create_prediction_result', 'new_prediction_id', int)
-    assert set(assert_oneof(fs_servicer.ListPredictions(token=bob_token, request=mvp_pb2.ListPredictionsRequest(creator_depr=alice_token.owner_depr)),
+    assert set(assert_oneof(fs_servicer.ListPredictions(token=bob_token, request=mvp_pb2.ListPredictionsRequest(creator=alice_token.owner)),
       'list_predictions_result', 'ok', mvp_pb2.PredictionsById).predictions.keys()) == {alice_prediction_id}
 
   async def test_error_listing_untruster(self, fs_servicer: FsBackedServicer):
     alice_token, bob_token = alice_bob_tokens(fs_servicer)
-    assert_oneof(fs_servicer.SetTrusted(alice_token, mvp_pb2.SetTrustedRequest(who_depr=bob_token.owner_depr, trusted=False)),
+    assert_oneof(fs_servicer.SetTrusted(alice_token, mvp_pb2.SetTrustedRequest(who=bob_token.owner, trusted=False)),
       'set_trusted_result', 'ok', object)
     alice_prediction_id = assert_oneof(fs_servicer.CreatePrediction(alice_token, some_create_prediction_request(maximum_stake_cents=100_00)),
       'create_prediction_result', 'new_prediction_id', int)
     for token in [bob_token, new_user_token(fs_servicer, 'rando')]:
-      assert "creator doesn't trust you" in assert_oneof(fs_servicer.ListPredictions(token=token, request=mvp_pb2.ListPredictionsRequest(creator_depr=alice_token.owner_depr)),
+      assert "creator doesn't trust you" in assert_oneof(fs_servicer.ListPredictions(token=token, request=mvp_pb2.ListPredictionsRequest(creator=alice_token.owner)),
         'list_predictions_result', 'error', mvp_pb2.ListPredictionsResponse.Error).catchall
 
 
@@ -348,14 +348,14 @@ class TestStake:
     ))
     assert list(fs_servicer.GetPrediction(alice_token, mvp_pb2.GetPredictionRequest(prediction_id=prediction_id)).prediction.your_trades) == [
       mvp_pb2.Trade(
-        bettor_depr=bob_token.owner_depr,
+        bettor=bob_token.owner,
         bettor_is_a_skeptic=True,
         bettor_stake_cents=20_00,
         creator_stake_cents=80_00,
         transacted_unixtime=clock.now(),
       ),
       mvp_pb2.Trade(
-        bettor_depr=bob_token.owner_depr,
+        bettor=bob_token.owner,
         bettor_is_a_skeptic=False,
         bettor_stake_cents=90_00,
         creator_stake_cents=10_00,
@@ -416,12 +416,12 @@ class TestStake:
     )
 
     truster_token = new_user_token(fs_servicer, 'truster')
-    assert fs_servicer.SetTrusted(truster_token, mvp_pb2.SetTrustedRequest(who_depr=creator_token.owner_depr, trusted=True)).HasField('ok')
+    assert fs_servicer.SetTrusted(truster_token, mvp_pb2.SetTrustedRequest(who=creator_token.owner, trusted=True)).HasField('ok')
     with assert_unchanged(fs_storage):
       assert "creator doesn't trust you" in assert_oneof(fs_servicer.Stake(truster_token, stake_req), 'stake_result', 'error', mvp_pb2.StakeResponse.Error).catchall
 
     trustee_token = new_user_token(fs_servicer, 'trustee')
-    fs_servicer.SetTrusted(creator_token, mvp_pb2.SetTrustedRequest(who_depr=trustee_token.owner_depr, trusted=True))
+    fs_servicer.SetTrusted(creator_token, mvp_pb2.SetTrustedRequest(who=trustee_token.owner, trusted=True))
     with assert_unchanged(fs_storage):
       assert "you don't trust the creator" in assert_oneof(fs_servicer.Stake(trustee_token, stake_req), 'stake_result', 'error', mvp_pb2.StakeResponse.Error).catchall
 
@@ -497,26 +497,26 @@ class TestGetUser:
 
   async def test_get_self(self, fs_servicer: FsBackedServicer):
     token = new_user_token(fs_servicer, 'rando')
-    resp = assert_oneof(fs_servicer.GetUser(token, mvp_pb2.GetUserRequest(who_depr=token.owner_depr)),
+    resp = assert_oneof(fs_servicer.GetUser(token, mvp_pb2.GetUserRequest(who=token.owner)),
       'get_user_result', 'ok', mvp_pb2.UserUserView)
     assert resp == mvp_pb2.UserUserView(display_name='rando', is_self=True, is_trusted=True, trusts_you=True)
 
   async def test_get_other(self, fs_servicer: FsBackedServicer):
     alice_token, bob_token = alice_bob_tokens(fs_servicer)
 
-    resp = assert_oneof(fs_servicer.GetUser(alice_token, mvp_pb2.GetUserRequest(who_depr=bob_token.owner_depr)),
+    resp = assert_oneof(fs_servicer.GetUser(alice_token, mvp_pb2.GetUserRequest(who=bob_token.owner)),
       'get_user_result', 'ok', mvp_pb2.UserUserView)
     assert resp == mvp_pb2.UserUserView(display_name='Bob', is_self=False, is_trusted=True, trusts_you=True)
 
     truster_token = new_user_token(fs_servicer, 'truster')
-    fs_servicer.SetTrusted(truster_token, mvp_pb2.SetTrustedRequest(who_depr=alice_token.owner_depr, trusted=True))
-    resp = assert_oneof(fs_servicer.GetUser(alice_token, mvp_pb2.GetUserRequest(who_depr=truster_token.owner_depr)),
+    fs_servicer.SetTrusted(truster_token, mvp_pb2.SetTrustedRequest(who=alice_token.owner, trusted=True))
+    resp = assert_oneof(fs_servicer.GetUser(alice_token, mvp_pb2.GetUserRequest(who=truster_token.owner)),
       'get_user_result', 'ok', mvp_pb2.UserUserView)
     assert resp == mvp_pb2.UserUserView(display_name='truster', is_self=False, is_trusted=False, trusts_you=True)
 
   async def test_logged_out(self, fs_servicer: FsBackedServicer):
     new_user_token(fs_servicer, 'rando')
-    resp = assert_oneof(fs_servicer.GetUser(None, mvp_pb2.GetUserRequest(who_depr=mvp_pb2.UserId(username='rando'))),
+    resp = assert_oneof(fs_servicer.GetUser(None, mvp_pb2.GetUserRequest(who='rando')),
       'get_user_result', 'ok', mvp_pb2.UserUserView)
     assert resp == mvp_pb2.UserUserView(display_name='rando', is_self=False, is_trusted=False, trusts_you=False)
 
@@ -548,7 +548,7 @@ class TestSetEmail:
     assert assert_oneof(fs_servicer.SetEmail(token=token, request=mvp_pb2.SetEmailRequest(email='nobody@example.com')),
       'set_email_result', 'ok', mvp_pb2.EmailFlowState).code_sent.email == 'nobody@example.com'
     emailer.send_email_verification.assert_called_once_with(to='nobody@example.com', code=ANY)  # type: ignore
-    assert fs_storage.get().username_users_depr['rando'].info.email.code_sent.email == 'nobody@example.com'
+    assert fs_storage.get().user_settings['rando'].email.code_sent.email == 'nobody@example.com'
 
   async def test_works_in_all_stages(self, fs_storage: FsStorage, emailer: Emailer, fs_servicer: FsBackedServicer):
     token = new_user_token(fs_servicer, 'rando')
@@ -558,7 +558,7 @@ class TestSetEmail:
                                ('verified', mvp_pb2.EmailFlowState(verified='old@example.com')),
                               ]:
       with fs_storage.mutate() as wstate:
-        wstate.username_users_depr['rando'].info.email.CopyFrom(flow_state)
+        wstate.user_settings['rando'].email.CopyFrom(flow_state)
       assert assert_oneof(fs_servicer.SetEmail(token=token, request=mvp_pb2.SetEmailRequest(email='new@example.com')),
         'set_email_result', 'ok', mvp_pb2.EmailFlowState).code_sent.email == 'new@example.com'
       emailer.send_email_verification.assert_called_with(to='new@example.com', code=ANY)  # type: ignore
@@ -617,7 +617,7 @@ class TestGetSettings:
   async def test_happy_path(self, fs_storage: FsStorage, emailer: Emailer, fs_servicer: FsBackedServicer):
     alice_token, bob_token = alice_bob_tokens(fs_servicer)
     geninfo = assert_oneof(fs_servicer.GetSettings(token=alice_token, request=mvp_pb2.GetSettingsRequest()),
-      'get_settings_result', 'ok_username', mvp_pb2.UsernameInfo).info
+      'get_settings_result', 'ok', mvp_pb2.GenericUserInfo)
     assert dict(geninfo.relationships) == {'Bob': mvp_pb2.Relationship(trusted=True)}
 
 
@@ -631,7 +631,7 @@ class TestUpdateSettings:
     alice_token, bob_token = alice_bob_tokens(fs_servicer)
     assert assert_oneof(fs_servicer.UpdateSettings(token=alice_token, request=mvp_pb2.UpdateSettingsRequest(email_reminders_to_resolve=mvp_pb2.MaybeBool(value=True))),
       'update_settings_result', 'ok', mvp_pb2.GenericUserInfo).email_reminders_to_resolve
-    assert fs_storage.get().username_users_depr['Alice'].info.email_reminders_to_resolve
+    assert fs_storage.get().user_settings['Alice'].email_reminders_to_resolve
 
 
 class TestCreateInvitation:
@@ -649,7 +649,7 @@ class TestCheckInvitation:
 
   async def test_no_such_invitation(self, fs_servicer: FsBackedServicer):
     new_user_token(fs_servicer, 'rando')
-    assert not assert_oneof(fs_servicer.CheckInvitation(token=None, request=mvp_pb2.CheckInvitationRequest(invitation_id=mvp_pb2.InvitationId(inviter_depr=mvp_pb2.UserId(username='rando'), nonce='asdf'))),
+    assert not assert_oneof(fs_servicer.CheckInvitation(token=None, request=mvp_pb2.CheckInvitationRequest(invitation_id=mvp_pb2.InvitationId(inviter='rando', nonce='asdf'))),
       'check_invitation_result', 'is_open', bool)
 
   async def test_open(self, fs_servicer: FsBackedServicer):
@@ -688,7 +688,7 @@ class TestAcceptInvitation:
   async def test_no_such_invitation(self, fs_servicer: FsBackedServicer):
     new_user_token(fs_servicer, 'rando')
     accepter_token = new_user_token(fs_servicer, 'accepter')
-    assert 'invitation is non-existent or already used' in assert_oneof(fs_servicer.AcceptInvitation(token=accepter_token, request=mvp_pb2.AcceptInvitationRequest(invitation_id=mvp_pb2.InvitationId(inviter_depr=mvp_pb2.UserId(username='rando'), nonce='asdf'))),
+    assert 'invitation is non-existent or already used' in assert_oneof(fs_servicer.AcceptInvitation(token=accepter_token, request=mvp_pb2.AcceptInvitationRequest(invitation_id=mvp_pb2.InvitationId(inviter='rando', nonce='asdf'))),
       'accept_invitation_result', 'error', mvp_pb2.AcceptInvitationResponse.Error).catchall
 
   async def test_closed_invitation(self, fs_servicer: FsBackedServicer):
@@ -699,5 +699,5 @@ class TestAcceptInvitation:
     assert_oneof(fs_servicer.AcceptInvitation(accepter_token, mvp_pb2.AcceptInvitationRequest(invitation_id=invitation_id)),
       'accept_invitation_result', 'ok', object)
 
-    assert 'invitation is non-existent or already used' in assert_oneof(fs_servicer.AcceptInvitation(token=accepter_token, request=mvp_pb2.AcceptInvitationRequest(invitation_id=mvp_pb2.InvitationId(inviter_depr=mvp_pb2.UserId(username='rando'), nonce='asdf'))),
+    assert 'invitation is non-existent or already used' in assert_oneof(fs_servicer.AcceptInvitation(token=accepter_token, request=mvp_pb2.AcceptInvitationRequest(invitation_id=mvp_pb2.InvitationId(inviter='rando', nonce='asdf'))),
       'accept_invitation_result', 'error', mvp_pb2.AcceptInvitationResponse.Error).catchall

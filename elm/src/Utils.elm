@@ -13,6 +13,8 @@ import Dict exposing (Dict)
 
 import Biatob.Proto.Mvp as Pb
 
+type alias Username = String
+
 formatCents : Int -> String
 formatCents n =
   if n < 0 then "-" ++ formatCents (-n) else
@@ -30,14 +32,9 @@ must errmsg mx =
     Just x -> x
     Nothing -> Debug.todo errmsg
 
-renderUserPlain : Pb.UserId -> String
-renderUserPlain user =
-  case mustUserKind user of
-    Pb.KindUsername username -> username
-
-renderUser : Pb.UserId -> H.Html msg
+renderUser : Username -> H.Html msg
 renderUser user =
-  H.a [HA.href <| pathToUserPage user] [H.text <| renderUserPlain user]
+  H.a [HA.href <| pathToUserPage user] [H.text user]
 
 outlineIfInvalid : Bool -> H.Attribute msg
 outlineIfInvalid isInvalid =
@@ -79,20 +76,6 @@ mustPredictionCreator {creator} = must "all predictions must have creators" crea
 mustPredictionCertainty : Pb.UserPredictionView -> Pb.CertaintyRange
 mustPredictionCertainty {certainty} = must "all predictions must have certainties" certainty
 
-mustTradeBettor : Pb.Trade -> Pb.UserId
-mustTradeBettor {bettorDepr} = must "all trades must have bettors" bettorDepr
-
-mustUserKind : Pb.UserId -> Pb.Kind
-mustUserKind {kind} = must "all UserIds must have kinds" kind
-
-mustTokenOwner : Pb.AuthToken -> Pb.UserId
-mustTokenOwner {ownerDepr} = must "all AuthTokens must have owners" ownerDepr
-
-mustUsername : Pb.UserId -> String
-mustUsername uid = case uid.kind of
-   Just (Pb.KindUsername u) -> u
-   _ -> Debug.todo "users without usernames were a mistaaaake"
-
 mustUsernameGenericInfo : Pb.UsernameInfo -> Pb.GenericUserInfo
 mustUsernameGenericInfo {info} = must "all UserInfos must have GenericUserInfos" info
 
@@ -110,9 +93,6 @@ mustPredictionsById {predictions} = predictions |> Dict.map (\_ v -> must "no nu
 
 mustMapValues : Dict comparable (Maybe v) -> Dict comparable v
 mustMapValues d = d |> Dict.map (\_ v -> must "no null values are allowed in a map" v)
-
-mustInviter : Pb.InvitationId -> Pb.UserId
-mustInviter {inviterDepr} = must "all invitations must have inviters" inviterDepr
 
 mustAuthSuccessToken : Pb.AuthSuccess -> Pb.AuthToken
 mustAuthSuccessToken {token} = must "all AuthSuccesses must have tokens" token
@@ -138,9 +118,7 @@ resolutionIsTerminal res =
 invitationPath : Pb.InvitationId -> String
 invitationPath id =
   "/invitation/"
-  ++ (case mustUserKind <| mustInviter id of
-      Pb.KindUsername username -> username
-     )
+  ++ id.inviter
   ++ "/"
   ++ id.nonce
 
@@ -210,10 +188,9 @@ predictionCreatedTime prediction = unixtimeToTime prediction.createdUnixtime
 predictionClosesTime : Pb.UserPredictionView -> Time.Posix
 predictionClosesTime prediction = unixtimeToTime prediction.closesUnixtime
 
-pathToUserPage : Pb.UserId -> String
+pathToUserPage : Username -> String
 pathToUserPage user =
-  case mustUserKind user of
-    Pb.KindUsername username -> "/username/" ++ username
+  "/username/" ++ user
 
 greenText : String -> Html msg
 greenText s = H.span [HA.style "color" "green"] [H.text s]

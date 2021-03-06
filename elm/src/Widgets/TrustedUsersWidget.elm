@@ -72,17 +72,17 @@ viewInvitation globals nonce invitation =
   case Page.getAuth globals of
     Nothing -> Utils.redText "Hrrm, strange, I'm confused about whether you're logged in. Sorry!"
     Just auth ->
-      case invitation.acceptedByDepr of
-        Just accepter ->
+      case invitation.acceptedBy of
+        "" ->
+          H.li []
+            [ CopyWidget.view Copy (globals.httpOrigin ++ Utils.invitationPath {inviterDepr=auth.ownerDepr, inviter="", nonce=nonce})
+            , H.text <| " (created " ++ Utils.dateStr globals.timeZone (Utils.unixtimeToTime invitation.createdUnixtime) ++ ")"
+            ]
+        accepter ->
           H.li []
             [ H.text "Accepted by "
             , Utils.renderUser accepter
             , H.text <| " on " ++ Utils.dateStr globals.timeZone (Utils.unixtimeToTime invitation.createdUnixtime)
-            , H.text <| " (created " ++ Utils.dateStr globals.timeZone (Utils.unixtimeToTime invitation.createdUnixtime) ++ ")"
-            ]
-        Nothing ->
-          H.li []
-            [ CopyWidget.view Copy (globals.httpOrigin ++ Utils.invitationPath {inviterDepr=auth.ownerDepr, inviter="", nonce=nonce})
             , H.text <| " (created " ++ Utils.dateStr globals.timeZone (Utils.unixtimeToTime invitation.createdUnixtime) ++ ")"
             ]
 
@@ -120,7 +120,7 @@ view globals model =
           else
             H.ul []
             <| List.map (\(u, rel) -> H.li []
-                [ Utils.renderUser <| {kind=Just (Pb.KindUsername u)}
+                [ Utils.renderUser u
                 , H.text ": "
                 , if rel.trusted then
                     H.span []

@@ -35,8 +35,7 @@ type Msg
 authName : Maybe Pb.AuthToken -> String
 authName auth =
   auth
-  |> Maybe.map Utils.mustTokenOwner
-  |> Maybe.map Utils.renderUserPlain
+  |> Maybe.map .owner
   |> Maybe.withDefault "[Creator]"
 
 init : Model
