@@ -118,16 +118,16 @@ def test_get_email_for_resolution_reminder():
 async def test_email_resolution_reminder_if_necessary_sends_email_once(emailer, fs_storage):
   now = datetime.datetime.now()
   fs_storage.put(mvp_pb2.WorldState(
-    username_users={
+    username_users_depr={
       "has_email": mvp_pb2.UsernameInfo(info=mvp_pb2.GenericUserInfo(
         email_reminders_to_resolve=True,
         email=mvp_pb2.EmailFlowState(verified='has_email@example.com'),
       )),
     },
     predictions={
-      123: mvp_pb2.WorldState.Prediction(creator=mvp_pb2.UserId(username='has_email'),
+      123: mvp_pb2.WorldState.Prediction(creator_depr=mvp_pb2.UserId(username='has_email'),
                                          resolves_at_unixtime=now.timestamp() - 100),
-      789: mvp_pb2.WorldState.Prediction(creator=mvp_pb2.UserId(username='has_email'),
+      789: mvp_pb2.WorldState.Prediction(creator_depr=mvp_pb2.UserId(username='has_email'),
                                          resolves_at_unixtime=now.timestamp() + 100),
     },
   ))
@@ -144,14 +144,14 @@ async def test_email_resolution_reminder_if_necessary_sends_email_once(emailer, 
 async def test_email_resolution_reminder_if_necessary_retries_failed_send(emailer, fs_storage):
   now = datetime.datetime.now()
   fs_storage.put(mvp_pb2.WorldState(
-    username_users={
+    username_users_depr={
       "has_email": mvp_pb2.UsernameInfo(info=mvp_pb2.GenericUserInfo(
         email_reminders_to_resolve=True,
         email=mvp_pb2.EmailFlowState(verified='has_email@example.com'),
       )),
     },
     predictions={
-      123: mvp_pb2.WorldState.Prediction(creator=mvp_pb2.UserId(username='has_email'),
+      123: mvp_pb2.WorldState.Prediction(creator_depr=mvp_pb2.UserId(username='has_email'),
                                          resolves_at_unixtime=now.timestamp() - 100),
     },
   ))
@@ -175,14 +175,14 @@ async def test_email_resolution_reminder_if_necessary_retries_failed_send(emaile
 async def test_email_resolution_reminder_if_necessary_respects_email_preferences(emailer, fs_storage):
   now = datetime.datetime.now()
   fs_storage.put(mvp_pb2.WorldState(
-    username_users={
+    username_users_depr={
       "has_email": mvp_pb2.UsernameInfo(info=mvp_pb2.GenericUserInfo(
         email_reminders_to_resolve=False,
         email=mvp_pb2.EmailFlowState(verified='has_email@example.com'),
       )),
     },
     predictions={
-      123: mvp_pb2.WorldState.Prediction(creator=mvp_pb2.UserId(username='has_email'),
+      123: mvp_pb2.WorldState.Prediction(creator_depr=mvp_pb2.UserId(username='has_email'),
                                          resolves_at_unixtime=now.timestamp() - 100),
     },
   ))
@@ -195,14 +195,14 @@ async def test_email_resolution_reminder_if_necessary_respects_email_preferences
 async def test_email_resolution_reminder_if_necessary_does_not_send_for_future_predictions(emailer, fs_storage):
   now = datetime.datetime.now()
   fs_storage.put(mvp_pb2.WorldState(
-    username_users={
+    username_users_depr={
       "has_email": mvp_pb2.UsernameInfo(info=mvp_pb2.GenericUserInfo(
         email_reminders_to_resolve=False,
         email=mvp_pb2.EmailFlowState(verified='has_email@example.com'),
       )),
     },
     predictions={
-      123: mvp_pb2.WorldState.Prediction(creator=mvp_pb2.UserId(username='has_email'),
+      123: mvp_pb2.WorldState.Prediction(creator_depr=mvp_pb2.UserId(username='has_email'),
                                          resolves_at_unixtime=now.timestamp() + 100),
     },
   ))
@@ -215,13 +215,13 @@ async def test_email_resolution_reminder_if_necessary_does_not_send_for_future_p
 async def test_email_resolution_reminder_if_necessary_skips_when_creator_has_no_email(emailer, fs_storage):
   now = datetime.datetime.now()
   fs_storage.put(mvp_pb2.WorldState(
-    username_users={
+    username_users_depr={
       "no_email": mvp_pb2.UsernameInfo(info=mvp_pb2.GenericUserInfo(
         email=mvp_pb2.EmailFlowState(code_sent=mvp_pb2.EmailFlowState.CodeSent(email='no_email@example.com')),
       )),
     },
     predictions={
-      123: mvp_pb2.WorldState.Prediction(creator=mvp_pb2.UserId(username='no_email'),
+      123: mvp_pb2.WorldState.Prediction(creator_depr=mvp_pb2.UserId(username='no_email'),
                                          resolves_at_unixtime=now.timestamp() - 100),
     },
   ))

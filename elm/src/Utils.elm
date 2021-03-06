@@ -80,13 +80,13 @@ mustPredictionCertainty : Pb.UserPredictionView -> Pb.CertaintyRange
 mustPredictionCertainty {certainty} = must "all predictions must have certainties" certainty
 
 mustTradeBettor : Pb.Trade -> Pb.UserId
-mustTradeBettor {bettor} = must "all trades must have bettors" bettor
+mustTradeBettor {bettorDepr} = must "all trades must have bettors" bettorDepr
 
 mustUserKind : Pb.UserId -> Pb.Kind
 mustUserKind {kind} = must "all UserIds must have kinds" kind
 
 mustTokenOwner : Pb.AuthToken -> Pb.UserId
-mustTokenOwner {owner} = must "all AuthTokens must have owners" owner
+mustTokenOwner {ownerDepr} = must "all AuthTokens must have owners" ownerDepr
 
 mustUsername : Pb.UserId -> String
 mustUsername uid = case uid.kind of
@@ -112,7 +112,7 @@ mustMapValues : Dict comparable (Maybe v) -> Dict comparable v
 mustMapValues d = d |> Dict.map (\_ v -> must "no null values are allowed in a map" v)
 
 mustInviter : Pb.InvitationId -> Pb.UserId
-mustInviter {inviter} = must "all invitations must have inviters" inviter
+mustInviter {inviterDepr} = must "all invitations must have inviters" inviterDepr
 
 mustAuthSuccessToken : Pb.AuthSuccess -> Pb.AuthToken
 mustAuthSuccessToken {token} = must "all AuthSuccesses must have tokens" token

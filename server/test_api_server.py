@@ -39,13 +39,13 @@ async def post_proto(client, url: str, request_pb: _Req, response_pb_cls: Type[_
 async def test_Whoami_and_RegisterUsername(aiohttp_client, app):
   cli = await aiohttp_client(app)
   (http_resp, pb_resp) = await post_proto(cli, '/api/Whoami', mvp_pb2.WhoamiRequest(), mvp_pb2.WhoamiResponse)
-  assert pb_resp.auth.owner.WhichOneof('kind') == None, pb_resp
+  assert pb_resp.auth.owner_depr.WhichOneof('kind') == None, pb_resp
 
   (http_resp, pb_resp) = await post_proto(cli, '/api/RegisterUsername', mvp_pb2.RegisterUsernameRequest(username='potato', password='secret'), mvp_pb2.RegisterUsernameResponse)
-  assert pb_resp.ok.token.owner == mvp_pb2.UserId(username='potato'), pb_resp
+  assert pb_resp.ok.token.owner_depr == mvp_pb2.UserId(username='potato'), pb_resp
 
   (http_resp, pb_resp) = await post_proto(cli, '/api/Whoami', mvp_pb2.WhoamiRequest(), mvp_pb2.WhoamiResponse)
-  assert pb_resp.auth.owner == mvp_pb2.UserId(username='potato'), pb_resp
+  assert pb_resp.auth.owner_depr == mvp_pb2.UserId(username='potato'), pb_resp
 
 async def test_CreatePrediction_and_GetPrediction(aiohttp_client, app, clock):
   create_pb_req = mvp_pb2.CreatePredictionRequest(
@@ -102,7 +102,7 @@ async def test_forgotten_token_recovery(aiohttp_client, app, fs_storage, fs_serv
   cli = await aiohttp_client(app)
 
   (http_resp, pb_resp) = await post_proto(cli, '/api/RegisterUsername', mvp_pb2.RegisterUsernameRequest(username='potato', password='secret'), mvp_pb2.RegisterUsernameResponse)
-  assert pb_resp.ok.token.owner == mvp_pb2.UserId(username='potato'), pb_resp
+  assert pb_resp.ok.token.owner_depr == mvp_pb2.UserId(username='potato'), pb_resp
 
   fs_storage.put(mvp_pb2.WorldState())
   http_resp = await cli.post(
@@ -114,7 +114,7 @@ async def test_forgotten_token_recovery(aiohttp_client, app, fs_storage, fs_serv
   assert b'obliterated your entire account' in await http_resp.content.read()
 
   (http_resp, pb_resp) = await post_proto(cli, '/api/Whoami', mvp_pb2.WhoamiRequest(), mvp_pb2.WhoamiResponse)
-  assert pb_resp.auth.owner.WhichOneof('kind') == None, pb_resp
+  assert pb_resp.auth.owner_depr.WhichOneof('kind') == None, pb_resp
 
 
 async def test_smoke(aiohttp_client, app):

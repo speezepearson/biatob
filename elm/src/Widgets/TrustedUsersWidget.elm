@@ -45,7 +45,7 @@ update msg model =
     Copy s -> ( model , Page.CopyCmd s )
     RemoveTrust u ->
       ( { model | working = True, notification = H.text "" }
-      , Page.RequestCmd <| Page.SetTrustedRequest SetTrustedFinished {who=Just {kind=Just (Pb.KindUsername u)}, trusted=False}
+      , Page.RequestCmd <| Page.SetTrustedRequest SetTrustedFinished {whoDepr=Just {kind=Just (Pb.KindUsername u)}, who=u, trusted=False}
       )
     InvitationMsg widgetMsg ->
       let (newWidget, widgetCmd) = SmallInvitationWidget.update widgetMsg model.invitationWidget in
@@ -72,7 +72,7 @@ viewInvitation globals nonce invitation =
   case Page.getAuth globals of
     Nothing -> Utils.redText "Hrrm, strange, I'm confused about whether you're logged in. Sorry!"
     Just auth ->
-      case invitation.acceptedBy of
+      case invitation.acceptedByDepr of
         Just accepter ->
           H.li []
             [ H.text "Accepted by "
@@ -82,7 +82,7 @@ viewInvitation globals nonce invitation =
             ]
         Nothing ->
           H.li []
-            [ CopyWidget.view Copy (globals.httpOrigin ++ Utils.invitationPath {inviter=auth.owner, nonce=nonce})
+            [ CopyWidget.view Copy (globals.httpOrigin ++ Utils.invitationPath {inviterDepr=auth.ownerDepr, inviter="", nonce=nonce})
             , H.text <| " (created " ++ Utils.dateStr globals.timeZone (Utils.unixtimeToTime invitation.createdUnixtime) ++ ")"
             ]
 
@@ -153,6 +153,6 @@ view globals model =
         , H.br [] []
         , H.strong [] [H.text "Invitations: "]
         , SmallInvitationWidget.view globals model.invitationWidget |> H.map InvitationMsg
-        , H.div [] [H.text "Outstanding:", viewInvitations globals (\inv -> inv.acceptedBy == Nothing) ]
-        , H.div [] [H.text "Past:",        viewInvitations globals (\inv -> inv.acceptedBy /= Nothing) ]
+        , H.div [] [H.text "Outstanding:", viewInvitations globals (\inv -> inv.acceptedByDepr == Nothing) ]
+        , H.div [] [H.text "Past:",        viewInvitations globals (\inv -> inv.acceptedByDepr /= Nothing) ]
         ]

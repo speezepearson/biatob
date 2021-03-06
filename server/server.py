@@ -95,7 +95,7 @@ def indent(s: str) -> str:
 
 def get_generic_user_info(wstate: mvp_pb2.WorldState, user: mvp_pb2.UserId) -> Optional[mvp_pb2.GenericUserInfo]:
     if user.WhichOneof('kind') == 'username':
-        username_info = wstate.username_users.get(user.username)
+        username_info = wstate.username_users_depr.get(user.username)
         return username_info.info if (username_info is not None) else None
     else:
         logger.warn('unrecognized UserId kind', user=user)
@@ -134,7 +134,7 @@ def describe_password_problems(password: str) -> Optional[str]:
     return None
 
 def view_prediction(wstate: mvp_pb2.WorldState, viewer: Optional[mvp_pb2.UserId], ws_prediction: mvp_pb2.WorldState.Prediction) -> mvp_pb2.UserPredictionView:
-    creator_is_self = (viewer == ws_prediction.creator)
+    creator_is_self = (viewer == ws_prediction.creator_depr)
     return mvp_pb2.UserPredictionView(
         prediction=ws_prediction.prediction,
         certainty=ws_prediction.certainty,
@@ -146,22 +146,22 @@ def view_prediction(wstate: mvp_pb2.WorldState, viewer: Optional[mvp_pb2.UserId]
         resolves_at_unixtime=ws_prediction.resolves_at_unixtime,
         special_rules=ws_prediction.special_rules,
         creator=mvp_pb2.UserUserView(
-            display_name=ws_prediction.creator.username if ws_prediction.creator.WhichOneof('kind')=='username' else 'TODO',
+            display_name=ws_prediction.creator_depr.username if ws_prediction.creator_depr.WhichOneof('kind')=='username' else 'TODO',
             is_self=creator_is_self,
-            is_trusted=trusts(wstate, viewer, ws_prediction.creator) if (viewer is not None) else False,
-            trusts_you=trusts(wstate, ws_prediction.creator, viewer) if (viewer is not None) else False,
+            is_trusted=trusts(wstate, viewer, ws_prediction.creator_depr) if (viewer is not None) else False,
+            trusts_you=trusts(wstate, ws_prediction.creator_depr, viewer) if (viewer is not None) else False,
         ),
         resolutions=ws_prediction.resolutions,
         your_trades=[
             mvp_pb2.Trade(
-                bettor=t.bettor,
+                bettor_depr=t.bettor_depr,
                 bettor_is_a_skeptic=t.bettor_is_a_skeptic,
                 creator_stake_cents=t.creator_stake_cents,
                 bettor_stake_cents=t.bettor_stake_cents,
                 transacted_unixtime=t.transacted_unixtime,
             )
             for t in ws_prediction.trades
-            if (t.bettor == viewer or creator_is_self)
+            if (t.bettor_depr == viewer or creator_is_self)
         ],
     )
 
@@ -326,7 +326,7 @@ class TokenMint:
     def mint_token(self, owner: mvp_pb2.UserId, ttl_seconds: int) -> mvp_pb2.AuthToken:
         now = int(self._clock())
         token = mvp_pb2.AuthToken(
-            owner=owner,
+            owner_depr=owner,
             minted_unixtime=now,
             expires_unixtime=now + ttl_seconds,
         )
@@ -378,9 +378,9 @@ def checks_token(f):
     @functools.wraps(f)
     def wrapped(self: 'FsBackedServicer', token: Optional[mvp_pb2.AuthToken], *args, **kwargs):
         token = self._token_mint.check_token(token)
-        if (token is not None) and not user_exists(self._storage.get(), token.owner):
+        if (token is not None) and not user_exists(self._storage.get(), token.owner_depr):
             raise ForgottenTokenError(token)
-        structlog.contextvars.bind_contextvars(actor=token.owner if (token is not None) else None)
+        structlog.contextvars.bind_contextvars(actor=token.owner_depr if (token is not None) else None)
         try:
             return f(self, token, *args, **kwargs)
         finally:
@@ -432,12 +432,12 @@ class FsBackedServicer(Servicer):
             return mvp_pb2.RegisterUsernameResponse(error=mvp_pb2.RegisterUsernameResponse.Error(catchall=password_problems))
 
         with self._storage.mutate() as wstate:
-            if request.username in wstate.username_users:
+            if request.username in wstate.username_users_depr:
                 logger.info('username taken', username=request.username)
                 return mvp_pb2.RegisterUsernameResponse(error=mvp_pb2.RegisterUsernameResponse.Error(catchall='username taken'))
 
             logger.info('registering username', username=request.username)
-            info = wstate.username_users[request.username]
+            info = wstate.username_users_depr[request.username]
             info.MergeFrom(mvp_pb2.UsernameInfo(
                 password=new_hashed_password(request.password),
                 info=mvp_pb2.GenericUserInfo(),
@@ -455,7 +455,7 @@ class FsBackedServicer(Servicer):
             return mvp_pb2.LogInUsernameResponse(error=mvp_pb2.LogInUsernameResponse.Error(catchall='already authenticated; first, log out'))
         username_problems = describe_username_problems(request.username)
 
-        info = self._storage.get().username_users.get(request.username)
+        info = self._storage.get().username_users_depr.get(request.username)
         if info is None:
             logger.debug('login attempt for nonexistent user', username=request.username)
             return mvp_pb2.LogInUsernameResponse(error=mvp_pb2.LogInUsernameResponse.Error(catchall='no such user'))
@@ -505,7 +505,7 @@ class FsBackedServicer(Servicer):
                 closes_unixtime=now + request.open_seconds,
                 resolves_at_unixtime=request.resolves_at_unixtime,
                 special_rules=request.special_rules,
-                creator=token.owner,
+                creator_depr=token.owner_depr,
                 trades=[],
                 resolutions=[],
             )
@@ -522,7 +522,7 @@ class FsBackedServicer(Servicer):
             logger.info('trying to get nonexistent prediction', prediction_id=request.prediction_id)
             return mvp_pb2.GetPredictionResponse(error=mvp_pb2.GetPredictionResponse.Error(catchall='no such prediction'))
 
-        return mvp_pb2.GetPredictionResponse(prediction=view_prediction(wstate, (token.owner if token is not None else None), ws_prediction))
+        return mvp_pb2.GetPredictionResponse(prediction=view_prediction(wstate, (token.owner_depr if token is not None else None), ws_prediction))
 
     @checks_token
     @log_action
@@ -533,9 +533,9 @@ class FsBackedServicer(Servicer):
 
         wstate = self._storage.get()
         result = {
-            prediction_id: view_prediction(wstate, (token.owner if token is not None else None), prediction)
+            prediction_id: view_prediction(wstate, (token.owner_depr if token is not None else None), prediction)
             for prediction_id, prediction in wstate.predictions.items()
-            if prediction.creator == token.owner or any(trade.bettor == token.owner for trade in prediction.trades)
+            if prediction.creator_depr == token.owner_depr or any(trade.bettor_depr == token.owner_depr for trade in prediction.trades)
         }
 
         return mvp_pb2.ListMyStakesResponse(ok=mvp_pb2.PredictionsById(predictions=result))
@@ -546,17 +546,17 @@ class FsBackedServicer(Servicer):
         if token is None:
             logger.info('logged-out user trying to list predictions')
             return mvp_pb2.ListPredictionsResponse(ok=mvp_pb2.PredictionsById(predictions={}))
-        creator = request.creator if (request.creator is not None) else token.owner
+        creator = request.creator_depr if (request.creator_depr is not None) else token.owner_depr
 
         wstate = self._storage.get()
-        if not trusts(wstate, creator, token.owner):
+        if not trusts(wstate, creator, token.owner_depr):
             logger.info('trying to get list untrusting creator\'s predictions', creator=creator)
             return mvp_pb2.ListPredictionsResponse(error=mvp_pb2.ListPredictionsResponse.Error(catchall="creator doesn't trust you"))
 
         result = {
-            prediction_id: view_prediction(wstate, (token.owner if token is not None else None), prediction)
+            prediction_id: view_prediction(wstate, (token.owner_depr if token is not None else None), prediction)
             for prediction_id, prediction in wstate.predictions.items()
-            if prediction.creator == creator
+            if prediction.creator_depr == creator
         }
 
         return mvp_pb2.ListPredictionsResponse(ok=mvp_pb2.PredictionsById(predictions=result))
@@ -574,13 +574,13 @@ class FsBackedServicer(Servicer):
             if prediction is None:
                 logger.warn('trying to bet on nonexistent prediction', prediction_id=request.prediction_id)
                 return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall='no such prediction'))
-            if prediction.creator == token.owner:
+            if prediction.creator_depr == token.owner_depr:
                 logger.warn('trying to bet against self', prediction_id=request.prediction_id)
                 return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall="can't bet against yourself"))
-            if not trusts(wstate, prediction.creator, token.owner):
+            if not trusts(wstate, prediction.creator_depr, token.owner_depr):
                 logger.warn('trying to bet against untrusting creator', prediction_id=request.prediction_id, possible_malice=True)
                 return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall="creator doesn't trust you"))
-            if not trusts(wstate, token.owner, prediction.creator):
+            if not trusts(wstate, token.owner_depr, prediction.creator_depr):
                 logger.warn('trying to bet against untrusted creator', prediction_id=request.prediction_id)
                 return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall="you don't trust the creator"))
             if prediction.resolutions and (prediction.resolutions[-1].resolution != mvp_pb2.RESOLUTION_NONE_YET):
@@ -598,20 +598,20 @@ class FsBackedServicer(Servicer):
             if existing_stake + creator_stake_cents > prediction.maximum_stake_cents:
                 logger.warn('trying to make a bet that would exceed creator tolerance', request=request)
                 return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall=f'bet would exceed creator tolerance ({existing_stake} existing + {creator_stake_cents} new stake > {prediction.maximum_stake_cents} max)'))
-            sameside_prior_trades = [t for t in prediction.trades if t.bettor == token.owner and t.bettor_is_a_skeptic == request.bettor_is_a_skeptic]
+            sameside_prior_trades = [t for t in prediction.trades if t.bettor_depr == token.owner_depr and t.bettor_is_a_skeptic == request.bettor_is_a_skeptic]
             existing_bettor_exposure = sum(t.bettor_stake_cents for t in sameside_prior_trades)
             if existing_bettor_exposure + request.bettor_stake_cents > MAX_LEGAL_STAKE_CENTS:
                 logger.warn('trying to make a bet that would exceed per-market stake limit', request=request, sameside_prior_trades=sameside_prior_trades)
                 return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall=f'your existing stake of ~${existing_bettor_exposure//100} plus your new stake ~${request.bettor_stake_cents//100} cents would put you over the limit of ${MAX_LEGAL_STAKE_CENTS//100} staked in a single prediction'))
             prediction.trades.append(mvp_pb2.Trade(
-                bettor=token.owner,
+                bettor_depr=token.owner_depr,
                 bettor_is_a_skeptic=request.bettor_is_a_skeptic,
                 creator_stake_cents=creator_stake_cents,
                 bettor_stake_cents=request.bettor_stake_cents,
                 transacted_unixtime=int(self._clock()),
             ))
             logger.info('trade executed', prediction_id=request.prediction_id, trade=str(prediction.trades[-1]))
-            return mvp_pb2.StakeResponse(ok=view_prediction(wstate, token.owner, prediction))
+            return mvp_pb2.StakeResponse(ok=view_prediction(wstate, token.owner_depr, prediction))
 
     @checks_token
     @log_action
@@ -628,14 +628,14 @@ class FsBackedServicer(Servicer):
             if prediction is None:
                 logger.info('attempt to resolve nonexistent prediction', prediction_id=request.prediction_id)
                 return mvp_pb2.ResolveResponse(error=mvp_pb2.ResolveResponse.Error(catchall='no such prediction'))
-            if token.owner != prediction.creator:
-                logger.warn('non-creator trying to resolve prediction', prediction_id=request.prediction_id, creator=prediction.creator, possible_malice=True)
+            if token.owner_depr != prediction.creator_depr:
+                logger.warn('non-creator trying to resolve prediction', prediction_id=request.prediction_id, creator=prediction.creator_depr, possible_malice=True)
                 return mvp_pb2.ResolveResponse(error=mvp_pb2.ResolveResponse.Error(catchall="you are not the creator"))
             prediction.resolutions.append(mvp_pb2.ResolutionEvent(unixtime=int(self._clock()), resolution=request.resolution, notes=request.notes))
             logger.info('prediction resolved', prediction_id=request.prediction_id, resolution=str(request.resolution))
 
         email_addrs = []
-        for stakeholder in unique_protos([prediction.creator, *(trade.bettor for trade in prediction.trades)]):
+        for stakeholder in unique_protos([prediction.creator_depr, *(trade.bettor_depr for trade in prediction.trades)]):
             info = get_generic_user_info(wstate, stakeholder)
             if info is None:
                 logger.error('prediction references nonexistent user', prediction_id=request.prediction_id, user=stakeholder)
@@ -649,7 +649,7 @@ class FsBackedServicer(Servicer):
             prediction_id=PredictionId(request.prediction_id),
             prediction=prediction,
         ))
-        return mvp_pb2.ResolveResponse(ok=view_prediction(wstate, token.owner, prediction))
+        return mvp_pb2.ResolveResponse(ok=view_prediction(wstate, token.owner_depr, prediction))
 
     @checks_token
     @log_action
@@ -659,33 +659,33 @@ class FsBackedServicer(Servicer):
             return mvp_pb2.SetTrustedResponse(error=mvp_pb2.SetTrustedResponse.Error(catchall='must log in to trust folks'))
 
         with self._storage.mutate() as wstate:
-            requester_info = get_generic_user_info(wstate, token.owner)
+            requester_info = get_generic_user_info(wstate, token.owner_depr)
             if requester_info is None:
                 raise ForgottenTokenError(token)
-            if not user_exists(wstate, request.who):
+            if not user_exists(wstate, request.who_depr):
                 logger.warn('attempting to set trust for nonexistent user')
                 return mvp_pb2.SetTrustedResponse(error=mvp_pb2.SetTrustedResponse.Error(catchall='no such user'))
-            logger.info('setting user trust', who=str(request.who), trusted=request.trusted)
-            assert request.who.WhichOneof('kind') == 'username'
-            requester_info.relationships[request.who.username].trusted = request.trusted
+            logger.info('setting user trust', who=str(request.who_depr), trusted=request.trusted)
+            assert request.who_depr.WhichOneof('kind') == 'username'
+            requester_info.relationships[request.who_depr.username].trusted = request.trusted
             return mvp_pb2.SetTrustedResponse(ok=requester_info)
 
     @checks_token
     @log_action
     def GetUser(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.GetUserRequest) -> mvp_pb2.GetUserResponse:
         wstate = self._storage.get()
-        if not user_exists(wstate, request.who):
-            logger.info('attempting to view nonexistent user', who=request.who)
+        if not user_exists(wstate, request.who_depr):
+            logger.info('attempting to view nonexistent user', who=request.who_depr)
             return mvp_pb2.GetUserResponse(error=mvp_pb2.GetUserResponse.Error(catchall='no such user'))
 
-        assert request.who.WhichOneof('kind') == 'username'  # TODO: add oauth
-        display_name = request.who.username
+        assert request.who_depr.WhichOneof('kind') == 'username'  # TODO: add oauth
+        display_name = request.who_depr.username
 
         return mvp_pb2.GetUserResponse(ok=mvp_pb2.UserUserView(
             display_name=display_name,
-            is_self=(token is not None) and (token.owner == request.who),
-            is_trusted=trusts(wstate, token.owner, request.who) if (token is not None) else False,
-            trusts_you=trusts(wstate, request.who, token.owner) if (token is not None) else False,
+            is_self=(token is not None) and (token.owner_depr == request.who_depr),
+            is_trusted=trusts(wstate, token.owner_depr, request.who_depr) if (token is not None) else False,
+            trusts_you=trusts(wstate, request.who_depr, token.owner_depr) if (token is not None) else False,
         ))
 
     @checks_token
@@ -694,7 +694,7 @@ class FsBackedServicer(Servicer):
         if token is None:
             logger.warn('not logged in')
             return mvp_pb2.ChangePasswordResponse(error=mvp_pb2.ChangePasswordResponse.Error(catchall='must log in to change your password'))
-        if token.owner.WhichOneof('kind') != 'username':
+        if token.owner_depr.WhichOneof('kind') != 'username':
             logger.warn('non-username user attempting to set password')
             return mvp_pb2.ChangePasswordResponse(error=mvp_pb2.ChangePasswordResponse.Error(catchall='only username-authenticated users have passwords'))
         password_problems = describe_password_problems(request.new_password)
@@ -703,7 +703,7 @@ class FsBackedServicer(Servicer):
             return mvp_pb2.ChangePasswordResponse(error=mvp_pb2.ChangePasswordResponse.Error(catchall=password_problems))
 
         with self._storage.mutate() as wstate:
-            info = wstate.username_users.get(token.owner.username)
+            info = wstate.username_users_depr.get(token.owner_depr.username)
             if info is None:
                 raise ForgottenTokenError(token)
 
@@ -713,7 +713,7 @@ class FsBackedServicer(Servicer):
 
             info.password.CopyFrom(new_hashed_password(request.new_password))
 
-            logger.info('changing password', who=str(token.owner))
+            logger.info('changing password', who=str(token.owner_depr))
             return mvp_pb2.ChangePasswordResponse(ok=mvp_pb2.VOID)
 
     @checks_token
@@ -724,7 +724,7 @@ class FsBackedServicer(Servicer):
             return mvp_pb2.SetEmailResponse(error=mvp_pb2.SetEmailResponse.Error(catchall='must log in to set an email'))
 
         with self._storage.mutate() as wstate:
-            requester_info = get_generic_user_info(wstate, token.owner)
+            requester_info = get_generic_user_info(wstate, token.owner_depr)
             if requester_info is None:
                 raise ForgottenTokenError(token)
             if request.email:
@@ -738,11 +738,11 @@ class FsBackedServicer(Servicer):
                     code=code,
                 ))
                 requester_info.email.MergeFrom(mvp_pb2.EmailFlowState(code_sent=mvp_pb2.EmailFlowState.CodeSent(email=request.email, code=new_hashed_password(code))))
-                wstate.username_users[token.owner.username].info.CopyFrom(requester_info) # TODO: hack
-                logger.info('set email address', who=str(token.owner), address=request.email)
+                wstate.username_users_depr[token.owner_depr.username].info.CopyFrom(requester_info) # TODO: hack
+                logger.info('set email address', who=str(token.owner_depr), address=request.email)
             else:
                 requester_info.email.MergeFrom(mvp_pb2.EmailFlowState(unstarted=mvp_pb2.VOID))
-                logger.info('dissociated email address', who=str(token.owner))
+                logger.info('dissociated email address', who=str(token.owner_depr))
             return mvp_pb2.SetEmailResponse(ok=requester_info.email)
 
     @checks_token
@@ -753,7 +753,7 @@ class FsBackedServicer(Servicer):
             return mvp_pb2.VerifyEmailResponse(error=mvp_pb2.VerifyEmailResponse.Error(catchall='must log in to change your password'))
 
         with self._storage.mutate() as wstate:
-            requester_info = get_generic_user_info(wstate, token.owner)
+            requester_info = get_generic_user_info(wstate, token.owner_depr)
             if requester_info is None:
                 raise ForgottenTokenError(token)
             if not (requester_info.email and requester_info.email.WhichOneof('email_flow_state_kind') == 'code_sent'):
@@ -764,7 +764,7 @@ class FsBackedServicer(Servicer):
                 logger.warn('bad email-verification code', address=code_sent_state.email, possible_malice=True)
                 return mvp_pb2.VerifyEmailResponse(error=mvp_pb2.VerifyEmailResponse.Error(catchall='bad code'))
             requester_info.email.CopyFrom(mvp_pb2.EmailFlowState(verified=code_sent_state.email))
-            logger.info('verified email address', who=str(token.owner), address=code_sent_state.email)
+            logger.info('verified email address', who=str(token.owner_depr), address=code_sent_state.email)
             return mvp_pb2.VerifyEmailResponse(ok=requester_info.email)
 
     @checks_token
@@ -775,8 +775,8 @@ class FsBackedServicer(Servicer):
             return mvp_pb2.GetSettingsResponse(error=mvp_pb2.GetSettingsResponse.Error(catchall='must log in to see your settings'))
 
         wstate = self._storage.get()
-        if token.owner.WhichOneof('kind') == 'username':
-            info = wstate.username_users.get(token.owner.username)
+        if token.owner_depr.WhichOneof('kind') == 'username':
+            info = wstate.username_users_depr.get(token.owner_depr.username)
             if info is None:
                 raise ForgottenTokenError(token)
             return mvp_pb2.GetSettingsResponse(ok_username=info)
@@ -792,7 +792,7 @@ class FsBackedServicer(Servicer):
             return mvp_pb2.UpdateSettingsResponse(error=mvp_pb2.UpdateSettingsResponse.Error(catchall='must log in to update your settings'))
 
         with self._storage.mutate() as wstate:
-            info = get_generic_user_info(wstate, token.owner)
+            info = get_generic_user_info(wstate, token.owner_depr)
             if info is None:
                 raise ForgottenTokenError(token)
             if request.HasField('email_reminders_to_resolve'):
@@ -810,7 +810,7 @@ class FsBackedServicer(Servicer):
             return mvp_pb2.CreateInvitationResponse(error=mvp_pb2.CreateInvitationResponse.Error(catchall='must log in to create an invitation'))
 
         with self._storage.mutate() as wstate:
-            info = get_generic_user_info(wstate, token.owner)
+            info = get_generic_user_info(wstate, token.owner_depr)
             if info is None:
                 raise ForgottenTokenError(token)
 
@@ -822,7 +822,7 @@ class FsBackedServicer(Servicer):
             )
             info.invitations[nonce].CopyFrom(invitation)
             return mvp_pb2.CreateInvitationResponse(ok=mvp_pb2.CreateInvitationResponse.Result(
-                id=mvp_pb2.InvitationId(inviter=token.owner, nonce=nonce),
+                id=mvp_pb2.InvitationId(inviter_depr=token.owner_depr, nonce=nonce),
                 invitation=invitation,
                 user_info=info,
             ))
@@ -830,12 +830,12 @@ class FsBackedServicer(Servicer):
     @checks_token
     @log_action
     def CheckInvitation(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.CheckInvitationRequest) -> mvp_pb2.CheckInvitationResponse:
-        if not (request.HasField('invitation_id') and request.invitation_id.HasField('inviter')):
+        if not (request.HasField('invitation_id') and request.invitation_id.HasField('inviter_depr')):
             logger.warn('malformed CheckInvitationRequest')
             return mvp_pb2.CheckInvitationResponse(error=mvp_pb2.CheckInvitationResponse.Error(catchall='malformed invitation'))
         wstate = self._storage.get()
 
-        inviter = request.invitation_id.inviter
+        inviter = request.invitation_id.inviter_depr
         inviter_info = get_generic_user_info(wstate, inviter)
         if inviter_info is None:
             logger.warn('trying to get invitation from nonexistent user')
@@ -846,7 +846,7 @@ class FsBackedServicer(Servicer):
             logger.warn('trying to get nonexistent invitation')
             return mvp_pb2.CheckInvitationResponse(is_open=False)
 
-        return mvp_pb2.CheckInvitationResponse(is_open=not invitation.HasField('accepted_by'))
+        return mvp_pb2.CheckInvitationResponse(is_open=not invitation.HasField('accepted_by_depr'))
 
     @checks_token
     @log_action
@@ -856,32 +856,32 @@ class FsBackedServicer(Servicer):
             return mvp_pb2.AcceptInvitationResponse(error=mvp_pb2.AcceptInvitationResponse.Error(catchall='must log in to create an invitation'))
 
         with self._storage.mutate() as wstate:
-            if (not request.HasField('invitation_id')) or (not request.invitation_id.HasField('inviter')):
+            if (not request.HasField('invitation_id')) or (not request.invitation_id.HasField('inviter_depr')):
                 logger.warn('malformed attempt to accept invitation', possible_malice=True)
                 return mvp_pb2.AcceptInvitationResponse(error=mvp_pb2.AcceptInvitationResponse.Error(catchall='malformed invitation'))
 
-            accepter_info = get_generic_user_info(wstate, token.owner)
+            accepter_info = get_generic_user_info(wstate, token.owner_depr)
             if accepter_info is None:
                 raise ForgottenTokenError(token)
 
-            inviter = request.invitation_id.inviter
+            inviter = request.invitation_id.inviter_depr
             inviter_info = get_generic_user_info(wstate, inviter)
             if inviter_info is None:
                 return mvp_pb2.AcceptInvitationResponse(error=mvp_pb2.AcceptInvitationResponse.Error(catchall='invitation is non-existent or already used'))
 
-            assert token.owner.WhichOneof('kind') == 'username'
+            assert token.owner_depr.WhichOneof('kind') == 'username'
             assert inviter.WhichOneof('kind') == 'username'
 
             for orig_nonce, orig_invitation in inviter_info.invitations.items():
                 # TODO: just index in, dummy
                 if orig_nonce == request.invitation_id.nonce:
-                    if orig_invitation.HasField('accepted_by'):
+                    if orig_invitation.HasField('accepted_by_depr'):
                         logger.info('attempt to re-accept invitation')
                         return mvp_pb2.AcceptInvitationResponse(error=mvp_pb2.AcceptInvitationResponse.Error(catchall='invitation is non-existent or already used'))
-                    orig_invitation.accepted_by.CopyFrom(token.owner)
+                    orig_invitation.accepted_by_depr.CopyFrom(token.owner_depr)
                     orig_invitation.accepted_unixtime = int(self._clock())
                     accepter_info.relationships[inviter.username].trusted = True
-                    inviter_info.relationships[token.owner.username].trusted = True
+                    inviter_info.relationships[token.owner_depr.username].trusted = True
                     logger.info('accepted invitation', whose=inviter)
                     return mvp_pb2.AcceptInvitationResponse(ok=accepter_info)
             logger.warn('attempt to accept nonexistent invitation', possible_malice=True)
@@ -1156,12 +1156,12 @@ class WebServer:
         auth_success = self._get_auth_success(auth)
         username = req.match_info['username']
         user_id = mvp_pb2.UserId(username=username)
-        get_user_resp = self._servicer.GetUser(auth, mvp_pb2.GetUserRequest(who=user_id))
+        get_user_resp = self._servicer.GetUser(auth, mvp_pb2.GetUserRequest(who_depr=user_id))
         if get_user_resp.WhichOneof('get_user_result') == 'error':
             return web.Response(status=400, body=str(get_user_resp.error))
         assert get_user_resp.WhichOneof('get_user_result') == 'ok'
         if get_user_resp.ok.trusts_you:
-            list_predictions_resp = self._servicer.ListPredictions(auth, mvp_pb2.ListPredictionsRequest(creator=mvp_pb2.UserId(username=username)))
+            list_predictions_resp = self._servicer.ListPredictions(auth, mvp_pb2.ListPredictionsRequest(creator_depr=mvp_pb2.UserId(username=username)))
             predictions: Optional[mvp_pb2.PredictionsById] = list_predictions_resp.ok  # TODO: error handling
         else:
             predictions = None
@@ -1193,7 +1193,7 @@ class WebServer:
         auth = self._token_glue.parse_cookie(req)
         auth_success = self._get_auth_success(auth)
         invitation_id = mvp_pb2.InvitationId(
-            inviter=mvp_pb2.UserId(username=req.match_info['username']),
+            inviter_depr=mvp_pb2.UserId(username=req.match_info['username']),
             nonce=req.match_info['nonce'],
         )
         check_invitation_resp = self._servicer.CheckInvitation(auth, mvp_pb2.CheckInvitationRequest(invitation_id=invitation_id))
@@ -1312,9 +1312,9 @@ async def email_resolution_reminder_if_necessary(now: datetime.datetime, emailer
     if not prediction_needs_email_reminder(now=now, prediction=prediction):
         return
 
-    creator_info = get_generic_user_info(immut_wstate, prediction.creator)
+    creator_info = get_generic_user_info(immut_wstate, prediction.creator_depr)
     if creator_info is None:
-        logger.error("prediction has nonexistent creator", prediction_id=prediction_id, creator=prediction.creator)
+        logger.error("prediction has nonexistent creator", prediction_id=prediction_id, creator_depr=prediction.creator_depr)
         return
     email_addr = get_email_for_resolution_reminder(creator_info)
 

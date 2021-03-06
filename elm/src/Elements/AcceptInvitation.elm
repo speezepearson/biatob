@@ -76,7 +76,7 @@ isOwnInvitation : Page.Globals -> Pb.InvitationId -> Bool
 isOwnInvitation globals invitationId =
   Page.getAuth globals
   |> Maybe.map Utils.mustTokenOwner
-  |> (==) invitationId.inviter
+  |> (==) invitationId.inviterDepr
 
 view : Page.Globals -> Model -> Browser.Document Msg
 view globals model =

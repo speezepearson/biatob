@@ -59,7 +59,7 @@ update msg model =
   case msg of
     SetTrusted trusted ->
       ( { model | working = True , notification = H.text "" }
-      , Page.RequestCmd <| Page.SetTrustedRequest SetTrustedFinished {who=Just model.userId, trusted=trusted}
+      , Page.RequestCmd <| Page.SetTrustedRequest SetTrustedFinished {who="", whoDepr=Just model.userId, trusted=trusted}
       )
     SetTrustedFinished res ->
       ( case res of

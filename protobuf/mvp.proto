@@ -12,7 +12,8 @@ message UserId {
 
 message AuthToken {
   bytes hmac_of_rest = 1;
-  UserId owner = 2;
+  UserId owner_depr = 2;
+  string owner = 7;
   double minted_unixtime = 5;
   double expires_unixtime = 6;
 
@@ -31,13 +32,15 @@ message CredentialsConfig {
 }
 
 message InvitationId {
-  UserId inviter = 1;
+  UserId inviter_depr = 1;
+  string inviter = 3;
   string nonce = 2;
 }
 message Invitation {
   double created_unixtime = 6;
   string notes = 3;
-  UserId accepted_by = 4;
+  UserId accepted_by_depr = 4;
+  string accepted_by = 8;
   double accepted_unixtime = 7;
 }
 
@@ -65,6 +68,10 @@ message GenericUserInfo {
   bool email_resolution_notifications = 4;
   map<string, Invitation> invitations = 5;
   map<string, Relationship> relationships = 6;
+
+  oneof login_type {
+    HashedPassword login_password = 7;
+  }
 }
 message Relationship {
   bool trusted = 1;
@@ -90,7 +97,8 @@ message EmailAttempt {
 // TODO(P3): ^ stop doing that
 message WorldState {
 
-  map<string, UsernameInfo> username_users = 1;
+  map<string, UsernameInfo> username_users_depr = 1;
+  map<string, GenericUserInfo> user_settings = 5;
   // map<string, GoogleOauthInfo> google_oauth_users = 5;
   // map<string, FacebookOauthInfo> facebook_oauth_users = 6;
 
@@ -113,7 +121,8 @@ message WorldState {
     double closes_unixtime = 13;
     double resolves_at_unixtime = 14;
     string special_rules = 6;
-    UserId creator = 7;
+    UserId creator_depr = 7;
+    string creator = 15;
 
     // Append-only
     repeated Trade trades = 8;
@@ -135,7 +144,8 @@ message ResolutionEvent {
 }
 
 message Trade {
-  UserId bettor = 1;
+  UserId bettor_depr = 1;
+  string bettor = 7;
   bool bettor_is_a_skeptic = 2;
   uint32 bettor_stake_cents = 3;
   uint32 creator_stake_cents = 4;
@@ -269,7 +279,8 @@ message PredictionsById {
 }
 
 message ListPredictionsRequest {
-  UserId creator = 1;
+  UserId creator_depr = 1;
+  string creator = 2;
 }
 message ListPredictionsResponse {
   oneof list_predictions_result {
@@ -312,7 +323,8 @@ message ResolveResponse {
 }
 
 message SetTrustedRequest {
-  UserId who = 1;
+  UserId who_depr = 1;
+  string who = 3;
   bool trusted = 2;
 }
 message SetTrustedResponse {
@@ -326,7 +338,8 @@ message SetTrustedResponse {
 }
 
 message GetUserRequest {
-  UserId who = 1;
+  UserId who_depr = 1;
+  string who = 2;
 }
 message GetUserResponse {
   oneof get_user_result {
