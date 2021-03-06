@@ -234,7 +234,7 @@ class TestGetPrediction:
       closes_unixtime=create_time + req.open_seconds,
       resolves_at_unixtime=req.resolves_at_unixtime,
       special_rules=req.special_rules,
-      creator=mvp_pb2.UserUserView(display_name='Alice', is_self=False, is_trusted=True, trusts_you=True),
+      creator=mvp_pb2.UserUserView(username='Alice', is_trusted=True, trusts_you=True),
       resolutions=[mvp_pb2.ResolutionEvent(unixtime=resolve_time, resolution=mvp_pb2.RESOLUTION_YES)],
       your_trades=[mvp_pb2.Trade(bettor=bob_token.owner, bettor_is_a_skeptic=True, bettor_stake_cents=1_00, creator_stake_cents=1_00, transacted_unixtime=stake_time)],
     )
@@ -499,26 +499,26 @@ class TestGetUser:
     token = new_user_token(fs_servicer, 'rando')
     resp = assert_oneof(fs_servicer.GetUser(token, mvp_pb2.GetUserRequest(who=token.owner)),
       'get_user_result', 'ok', mvp_pb2.UserUserView)
-    assert resp == mvp_pb2.UserUserView(display_name='rando', is_self=True, is_trusted=True, trusts_you=True)
+    assert resp == mvp_pb2.UserUserView(username='rando', is_trusted=True, trusts_you=True)
 
   async def test_get_other(self, fs_servicer: FsBackedServicer):
     alice_token, bob_token = alice_bob_tokens(fs_servicer)
 
     resp = assert_oneof(fs_servicer.GetUser(alice_token, mvp_pb2.GetUserRequest(who=bob_token.owner)),
       'get_user_result', 'ok', mvp_pb2.UserUserView)
-    assert resp == mvp_pb2.UserUserView(display_name='Bob', is_self=False, is_trusted=True, trusts_you=True)
+    assert resp == mvp_pb2.UserUserView(username='Bob', is_trusted=True, trusts_you=True)
 
     truster_token = new_user_token(fs_servicer, 'truster')
     fs_servicer.SetTrusted(truster_token, mvp_pb2.SetTrustedRequest(who=alice_token.owner, trusted=True))
     resp = assert_oneof(fs_servicer.GetUser(alice_token, mvp_pb2.GetUserRequest(who=truster_token.owner)),
       'get_user_result', 'ok', mvp_pb2.UserUserView)
-    assert resp == mvp_pb2.UserUserView(display_name='truster', is_self=False, is_trusted=False, trusts_you=True)
+    assert resp == mvp_pb2.UserUserView(username='truster', is_trusted=False, trusts_you=True)
 
   async def test_logged_out(self, fs_servicer: FsBackedServicer):
     new_user_token(fs_servicer, 'rando')
     resp = assert_oneof(fs_servicer.GetUser(None, mvp_pb2.GetUserRequest(who='rando')),
       'get_user_result', 'ok', mvp_pb2.UserUserView)
-    assert resp == mvp_pb2.UserUserView(display_name='rando', is_self=False, is_trusted=False, trusts_you=False)
+    assert resp == mvp_pb2.UserUserView(username='rando', is_trusted=False, trusts_you=False)
 
 
 class TestChangePassword:

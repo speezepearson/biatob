@@ -17,8 +17,7 @@ import Page
 import Page.Program
 
 type alias Model =
-  { viewedUsername : String
-  , userView : Pb.UserUserView
+  { userView : Pb.UserUserView
   , predictionsWidget : ViewPredictionsWidget.Model
   , working : Bool
   , notification : Html Never
@@ -41,8 +40,7 @@ init flags =
           ViewPredictionsWidget.init (Utils.mustMapValues preds.predictions)
           |> ViewPredictionsWidget.noFilterByOwner
   in
-  ( { viewedUsername = Utils.mustDecodeFromFlags JD.string "viewedUsername" flags
-    , userView = Utils.mustDecodePbFromFlags Pb.userUserViewDecoder "userViewPbB64" flags
+  ( { userView = Utils.mustDecodePbFromFlags Pb.userUserViewDecoder "userViewPbB64" flags
     , predictionsWidget = predsWidget
     , working = False
     , notification = H.text ""
@@ -56,7 +54,7 @@ update msg model =
   case msg of
     SetTrusted trusted ->
       ( { model | working = True , notification = H.text "" }
-      , Page.RequestCmd <| Page.SetTrustedRequest SetTrustedFinished {who=model.viewedUsername, whoDepr=Nothing, trusted=trusted}
+      , Page.RequestCmd <| Page.SetTrustedRequest SetTrustedFinished {who=model.userView.username, whoDepr=Nothing, trusted=trusted}
       )
     SetTrustedFinished res ->
       ( case res of
@@ -84,10 +82,10 @@ update msg model =
 
 view : Page.Globals -> Model -> Browser.Document Msg
 view globals model =
-  {title=model.viewedUsername, body=[H.main_ []
-    [ H.h2 [] [H.text model.userView.displayName]
+  {title=model.userView.username, body=[H.main_ []
+    [ H.h2 [] [H.text model.userView.username]
     , H.br [] []
-    , if model.userView.isSelf then
+    , if Page.isSelf globals model.userView then
         H.div []
           [ H.text "This is you! You might have meant to visit "
           , H.a [HA.href "/settings"] [H.text "your settings"]
@@ -107,7 +105,7 @@ view globals model =
                   , SmallInvitationWidget.view globals model.invitationWidget |> H.map InvitationMsg
                   ]
             , H.br [] []
-            , if Dict.get model.viewedUsername (Utils.mustMapValues userInfo.relationships) |> Maybe.map .trusted |> Maybe.withDefault False then
+            , if Dict.get model.userView.username (Utils.mustMapValues userInfo.relationships) |> Maybe.map .trusted |> Maybe.withDefault False then
                 H.div []
                   [ H.text "You trust this user. "
                   , H.button [HA.disabled model.working, HE.onClick (SetTrusted False)] [H.text "Mark untrusted"]

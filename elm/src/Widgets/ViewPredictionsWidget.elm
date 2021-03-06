@@ -33,14 +33,14 @@ type alias Filter =
   { own : Maybe Bool
   , phase : Maybe LifecyclePhase
   }
-filterMatches : Time.Posix -> Filter -> Pb.UserPredictionView -> Bool
-filterMatches now filter prediction =
+filterMatches : Page.Globals -> Filter -> Pb.UserPredictionView -> Bool
+filterMatches globals filter prediction =
   List.all identity
     [ filter.own
-      |> Maybe.map ((==) (Utils.mustPredictionCreator prediction).isSelf)
+      |> Maybe.map ((==) (Page.isSelf globals (Utils.mustPredictionCreator prediction)))
       |> Maybe.withDefault True
     , filter.phase
-      |> Maybe.map (\phase -> phaseMatches now phase prediction)
+      |> Maybe.map (\phase -> phaseMatches globals.now phase prediction)
       |> Maybe.withDefault True
     ]
 viewFilterInput : Filter -> Html Msg
@@ -188,7 +188,7 @@ view globals model =
         model.predictions
         |> Dict.toList
         |> sortPredictions (\(_, (pred, _)) -> pred) model.order
-        |> List.filter (\(_, (pred, _)) -> filterMatches globals.now model.filter pred)
+        |> List.filter (\(_, (pred, _)) -> filterMatches globals model.filter pred)
         |> List.map (\(id, (pred, widget)) ->
             H.div [HA.style "margin" "1em", HA.style "padding" "1em", HA.style "border" "1px solid black"]
               [PredictionWidget.view {prediction=pred, predictionId=id, shouldLinkTitle=True} globals widget |> H.map (PredictionMsg id)])

@@ -447,8 +447,7 @@ type alias UserPredictionView =
 {-| `UserUserView` message
 -}
 type alias UserUserView =
-    { displayName : String
-    , isSelf : Bool
+    { username : String
     , isTrusted : Bool
     , trustsYou : Bool
     }
@@ -1344,9 +1343,8 @@ userPredictionViewDecoder =
 -}
 userUserViewDecoder : Decode.Decoder UserUserView
 userUserViewDecoder =
-    Decode.message (UserUserView "" False False False)
-        [ Decode.optional 1 Decode.string setDisplayName
-        , Decode.optional 2 Decode.bool setIsSelf
+    Decode.message (UserUserView "" False False)
+        [ Decode.optional 1 Decode.string setUsername
         , Decode.optional 3 Decode.bool setIsTrusted
         , Decode.optional 4 Decode.bool setTrustsYou
         ]
@@ -2295,8 +2293,7 @@ toUserPredictionViewEncoder model =
 toUserUserViewEncoder : UserUserView -> Encode.Encoder
 toUserUserViewEncoder model =
     Encode.message
-        [ ( 1, Encode.string model.displayName )
-        , ( 2, Encode.bool model.isSelf )
+        [ ( 1, Encode.string model.username )
         , ( 3, Encode.bool model.isTrusted )
         , ( 4, Encode.bool model.trustsYou )
         ]
@@ -3224,16 +3221,6 @@ setRemainingStakeCentsVsSkeptics value model =
 setYourTrades : a -> { b | yourTrades : a } -> { b | yourTrades : a }
 setYourTrades value model =
     { model | yourTrades = value }
-
-
-setDisplayName : a -> { b | displayName : a } -> { b | displayName : a }
-setDisplayName value model =
-    { model | displayName = value }
-
-
-setIsSelf : a -> { b | isSelf : a } -> { b | isSelf : a }
-setIsSelf value model =
-    { model | isSelf = value }
 
 
 setIsTrusted : a -> { b | isTrusted : a } -> { b | isTrusted : a }

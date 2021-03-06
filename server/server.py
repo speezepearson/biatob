@@ -147,8 +147,7 @@ def view_prediction(wstate: mvp_pb2.WorldState, viewer: Optional[Username], ws_p
         resolves_at_unixtime=ws_prediction.resolves_at_unixtime,
         special_rules=ws_prediction.special_rules,
         creator=mvp_pb2.UserUserView(
-            display_name=ws_prediction.creator,
-            is_self=creator_is_self,
+            username=ws_prediction.creator,
             is_trusted=trusts(wstate, viewer, Username(ws_prediction.creator)) if (viewer is not None) else False,
             trusts_you=trusts(wstate, Username(ws_prediction.creator), viewer) if (viewer is not None) else False,
         ),
@@ -681,11 +680,8 @@ class FsBackedServicer(Servicer):
             logger.info('attempting to view nonexistent user', who=request.who)
             return mvp_pb2.GetUserResponse(error=mvp_pb2.GetUserResponse.Error(catchall='no such user'))
 
-        display_name = request.who
-
         return mvp_pb2.GetUserResponse(ok=mvp_pb2.UserUserView(
-            display_name=display_name,
-            is_self=(token is not None) and (token_owner(token) == request.who),
+            username=request.who,
             is_trusted=trusts(wstate, token_owner(token), Username(request.who)) if (token is not None) else False,
             trusts_you=trusts(wstate, Username(request.who), token_owner(token)) if (token is not None) else False,
         ))
@@ -1164,7 +1160,6 @@ class WebServer:
             body=self._jinja.get_template('ViewUserPage.html').render(
                 auth_success_pb_b64=pb_b64(auth_success),
                 user_view_pb_b64=pb_b64(get_user_resp.ok),
-                viewed_username=username,
                 predictions_pb_b64=pb_b64(predictions),
             ))
 

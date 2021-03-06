@@ -1170,15 +1170,13 @@ global___UserPredictionView = UserPredictionView
 
 class UserUserView(google___protobuf___message___Message):
     DESCRIPTOR: google___protobuf___descriptor___Descriptor = ...
-    display_name = ... # type: typing___Text
-    is_self = ... # type: builtin___bool
+    username = ... # type: typing___Text
     is_trusted = ... # type: builtin___bool
     trusts_you = ... # type: builtin___bool
 
     def __init__(self,
         *,
-        display_name : typing___Optional[typing___Text] = None,
-        is_self : typing___Optional[builtin___bool] = None,
+        username : typing___Optional[typing___Text] = None,
         is_trusted : typing___Optional[builtin___bool] = None,
         trusts_you : typing___Optional[builtin___bool] = None,
         ) -> None: ...
@@ -1190,7 +1188,7 @@ class UserUserView(google___protobuf___message___Message):
         def FromString(cls, s: typing___Union[builtin___bytes, builtin___buffer, builtin___unicode]) -> UserUserView: ...
     def MergeFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
     def CopyFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
-    def ClearField(self, field_name: typing_extensions___Literal[u"display_name",b"display_name",u"is_self",b"is_self",u"is_trusted",b"is_trusted",u"trusts_you",b"trusts_you"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions___Literal[u"is_trusted",b"is_trusted",u"trusts_you",b"trusts_you",u"username",b"username"]) -> None: ...
 global___UserUserView = UserUserView
 
 class ListMyStakesRequest(google___protobuf___message___Message):

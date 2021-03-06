@@ -98,7 +98,7 @@ viewStakeWidgetOrExcuse ctx globals model =
       [ H.text "You must be logged in to bet on this prediction!"
       ]
   else
-    if creator.isSelf then
+    if Page.isSelf globals creator then
       H.text ""
     else case (creator.trustsYou, creator.isTrusted) of
       (True, True) ->
@@ -106,7 +106,7 @@ viewStakeWidgetOrExcuse ctx globals model =
       (False, False) ->
         H.div []
           [ H.text "You and "
-          , Utils.renderUser creator.displayName
+          , Utils.renderUser creator.username
           , H.text " don't trust each other! If, in real life, you "
           , H.i [] [H.text "do"]
           , H.text " trust each other to pay your debts, send them an invitation! "
@@ -115,12 +115,12 @@ viewStakeWidgetOrExcuse ctx globals model =
       (True, False) ->
         H.div []
           [ H.text "You don't trust "
-          , Utils.renderUser creator.displayName
+          , Utils.renderUser creator.username
           , H.text "."
           ]
       (False, True) ->
         H.div []
-          [ Utils.renderUser creator.displayName, H.text " hasn't marked you as trusted! If you think that, in real life, they "
+          [ Utils.renderUser creator.username, H.text " hasn't marked you as trusted! If you think that, in real life, they "
           , H.i [] [H.text "do"]
           , H.text " trust you to pay your debts, send them an invitation link: "
           , SmallInvitationWidget.view globals model.invitationWidget |> H.map InvitationMsg
@@ -228,10 +228,10 @@ viewWinnings ctx globals model =
     ifRes res =
       creatorWinningsByBettor res ctx.prediction.yourTrades
         |> let creator = Utils.mustPredictionCreator ctx.prediction in
-            if creator.isSelf then
+            if Page.isSelf globals creator then
               enumerateWinnings
             else
-              (D.values >> List.sum >> (\n -> -n) >> stateWinnings creator.displayName)
+              (D.values >> List.sum >> (\n -> -n) >> stateWinnings creator.username)
   in
   if List.isEmpty ctx.prediction.yourTrades then H.text "" else
   H.div []
@@ -260,7 +260,7 @@ viewCreationParams ctx globals model =
   in
   H.p []
     [ H.text <| "On " ++ Utils.dateStr globals.timeZone openTime ++ ", "
-    , if creator.isSelf then H.strong [] [H.text "you"] else Utils.renderUser creator.displayName
+    , if Page.isSelf globals creator then H.strong [] [H.text "you"] else Utils.renderUser creator.username
     , H.text " assigned this a "
     , certainty.low |> (*) 100 |> round |> String.fromInt |> H.text
     , H.text "-"
@@ -277,7 +277,7 @@ viewCreationParams ctx globals model =
 
 viewResolveButtons : Context -> Page.Globals -> Model -> Html Msg
 viewResolveButtons ctx globals model =
-  if (Utils.mustPredictionCreator ctx.prediction).isSelf then
+  if Page.isSelf globals (Utils.mustPredictionCreator ctx.prediction) then
     H.div []
       [ let
           mistakeDetails =
@@ -344,12 +344,12 @@ view ctx globals model =
               [ H.text "This site is a tool that helps people make friendly wagers, thereby clarifying and concretizing their beliefs and making the world a better, saner place."
               ]
           , H.p []
-              [ Utils.renderUser creator.displayName
+              [ Utils.renderUser creator.username
               , H.text <| " is putting their money where their mouth is: they've staked " ++ Utils.formatCents ctx.prediction.maximumStakeCents ++ " of real-life money on this prediction,"
                   ++ " and they're willing to bet at the above odds against anybody they trust. Good for them!"
               ]
           , H.p []
-              [ H.text "If you know and trust ", Utils.renderUser creator.displayName
+              [ H.text "If you know and trust ", Utils.renderUser creator.username
               , H.text <| ", and they know and trust you, and you want to bet against them on this prediction,"
                   ++ " then message them however you normally do, and ask them for an invitation to this market!"
               ]
@@ -378,7 +378,7 @@ view ctx globals model =
               ]
           , H.p [] [H.text "I made this tool to share that joy with you."]
           ]
-    , if creator.isSelf then
+    , if Page.isSelf globals creator then
         H.div []
           [ H.text "If you want to link to your prediction, here are some snippets of HTML you could copy-paste:"
           , viewEmbedInfo ctx globals model

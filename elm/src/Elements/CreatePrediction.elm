@@ -130,7 +130,7 @@ previewPrediction {request, creatorName, createdAt} =
   , createdUnixtime = Utils.timeToUnixtime createdAt
   , closesUnixtime = Utils.timeToUnixtime createdAt + toFloat request.openSeconds
   , specialRules = request.specialRules
-  , creator = Just {displayName = creatorName, isSelf=False, trustsYou=True, isTrusted=True}
+  , creator = Just {username = creatorName, trustsYou=True, isTrusted=True}
   , resolutions = []
   , yourTrades = []
   , resolvesAtUnixtime = request.resolvesAtUnixtime

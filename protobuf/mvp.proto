@@ -257,8 +257,7 @@ message UserPredictionView {
   double resolves_at_unixtime = 15;
 }
 message UserUserView {
-  string display_name = 1;
-  bool is_self = 2;
+  string username = 1;
   bool is_trusted = 3;
   bool trusts_you = 4;
 }
