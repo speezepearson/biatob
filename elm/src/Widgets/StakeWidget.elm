@@ -142,3 +142,6 @@ init =
   , working = False
   , notification = H.text ""
   }
+
+subscriptions : Model -> Sub Msg
+subscriptions _ = Sub.none

@@ -138,7 +138,7 @@ previewPrediction {request, creatorName, createdAt} =
   }
 
 subscriptions : Model -> Sub Msg
-subscriptions _ = Sub.none
+subscriptions model = Form.subscriptions model.form |> Sub.map FormMsg
 
 pagedef : Page.Element Model Msg
 pagedef = {init=\_ -> (init, Page.NoCmd), view=view, update=update, subscriptions=subscriptions}

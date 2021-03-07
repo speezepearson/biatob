@@ -156,3 +156,6 @@ view globals model =
         , H.div [] [H.text "Outstanding:", viewInvitations globals (\inv -> inv.acceptedBy == Nothing) ]
         , H.div [] [H.text "Past:",        viewInvitations globals (\inv -> inv.acceptedBy /= Nothing) ]
         ]
+
+subscriptions : Model -> Sub Msg
+subscriptions model = SmallInvitationWidget.subscriptions model.invitationWidget |> Sub.map InvitationMsg

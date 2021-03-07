@@ -15,8 +15,6 @@ import Widgets.SmallInvitationWidget as SmallInvitationWidget
 import Widgets.ViewPredictionsWidget as ViewPredictionsWidget
 import Widgets.CopyWidget as CopyWidget
 import Page
-import Page exposing (getUserInfo)
-import Page exposing (getUserInfo)
 import Page.Program
 
 type alias Model =
@@ -133,7 +131,11 @@ view globals model =
   ]]}
 
 subscriptions : Model -> Sub Msg
-subscriptions _ = Sub.none
+subscriptions model =
+  Sub.batch
+    [ ViewPredictionsWidget.subscriptions model.predictionsWidget |> Sub.map PredictionsMsg
+    , SmallInvitationWidget.subscriptions model.invitationWidget |> Sub.map InvitationMsg
+    ]
 
 pagedef : Page.Element Model Msg
 pagedef = {init=init, view=view, update=update, subscriptions=subscriptions}

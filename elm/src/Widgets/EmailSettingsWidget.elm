@@ -217,3 +217,6 @@ view globals model =
               , H.text " Email notifications when predictions you've bet on resolve?"
               ]
           ]
+
+subscriptions : Model -> Sub Msg
+subscriptions _ = Sub.none

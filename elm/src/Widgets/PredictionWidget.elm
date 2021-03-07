@@ -418,3 +418,10 @@ viewEmbedInfo ctx globals model =
         , H.a [HA.href linkUrl] [H.text linkText]
         ]
       ]
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+  Sub.batch
+    [ StakeWidget.subscriptions model.stakeForm |> Sub.map StakeMsg
+    , SmallInvitationWidget.subscriptions model.invitationWidget |> Sub.map InvitationMsg
+    ]

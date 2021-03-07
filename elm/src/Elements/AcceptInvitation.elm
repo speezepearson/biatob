@@ -132,9 +132,9 @@ view globals model =
   ]}
 
 subscriptions : Model -> Sub Msg
-subscriptions _ = Sub.none
+subscriptions model = AuthWidget.subscriptions model.authWidget |> Sub.map AuthWidgetMsg
 
 pagedef : Page.Element Model Msg
-pagedef = {init=init, view=view, update=update, subscriptions=\_ -> Sub.none}
+pagedef = {init=init, view=view, update=update, subscriptions=subscriptions}
 
 main = Page.Program.page pagedef

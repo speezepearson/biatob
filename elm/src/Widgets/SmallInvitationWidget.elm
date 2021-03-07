@@ -94,3 +94,5 @@ view globals model =
     , help
     ]
 
+subscriptions : Model -> Sub Msg
+subscriptions _ = Sub.none

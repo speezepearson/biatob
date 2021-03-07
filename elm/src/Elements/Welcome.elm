@@ -4,18 +4,13 @@ import Browser
 import Html as H exposing (Html)
 import Html.Attributes as HA
 import Json.Decode as JD
-import Http
 import Dict exposing (Dict)
-import Time
-import Task
 
-import Biatob.Proto.Mvp as Pb
 import Utils
 
 import Widgets.AuthWidget as AuthWidget
 import Widgets.SmallInvitationWidget as SmallInvitationWidget
 import Widgets.EmailSettingsWidget as EmailSettingsWidget
-import Widgets.CopyWidget as CopyWidget
 import Page
 import Page.Program
 
@@ -35,7 +30,7 @@ pagedef =
   { init = init
   , view = view
   , update = update
-  , subscriptions = \_ -> Sub.none
+  , subscriptions = subscriptions
   }
 
 init : JD.Value -> (Model, Page.Command Msg)
@@ -166,5 +161,13 @@ view globals model =
         ]
     ]
   ]}
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+  Sub.batch
+    [ AuthWidget.subscriptions model.authWidget |> Sub.map AuthWidgetMsg
+    , SmallInvitationWidget.subscriptions model.invitationWidget |> Sub.map InvitationMsg
+    , EmailSettingsWidget.subscriptions model.emailSettingsWidget |> Sub.map EmailSettingsMsg
+    ]
 
 main = Page.Program.page pagedef

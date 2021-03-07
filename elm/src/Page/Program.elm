@@ -91,6 +91,7 @@ page elem =
       Sub.batch
         [ Time.every 1000 Tick
         , Sub.map Inner (elem.subscriptions model.inner)
+        , Sub.map NavbarMsg (Navbar.subscriptions model.navbar)
         ]
   in
   Browser.document {init=init, view=view, update=update, subscriptions=subscriptions}

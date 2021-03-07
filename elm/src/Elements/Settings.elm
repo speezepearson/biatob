@@ -73,7 +73,15 @@ view globals model =
   ]
   }
 
+subscriptions : Model -> Sub Msg
+subscriptions model =
+  Sub.batch
+    [ EmailSettingsWidget.subscriptions model.emailSettingsWidget |> Sub.map EmailSettingsMsg
+    , TrustedUsersWidget.subscriptions model.trustedUsersWidget |> Sub.map TrustedUsersMsg
+    , ChangePasswordWidget.subscriptions model.changePasswordWidget |> Sub.map ChangePasswordMsg
+    ]
+
 pagedef : Page.Element Model Msg
-pagedef = {init=\_ -> (init, Page.NoCmd), view=view, update=update, subscriptions=\_ -> Sub.none}
+pagedef = {init=\_ -> (init, Page.NoCmd), view=view, update=update, subscriptions=subscriptions}
 
 main = Page.Program.page pagedef

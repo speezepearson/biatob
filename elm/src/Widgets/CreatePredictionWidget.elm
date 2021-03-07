@@ -243,6 +243,9 @@ update msg model =
     SetOpenForSecondsField s -> ( { model | openForSecondsField = model.openForSecondsField |> Field.setStr s } , Page.NoCmd )
     SetSpecialRulesField s -> ( { model | specialRulesField = model.specialRulesField |> Field.setStr s } , Page.NoCmd )
 
+subscriptions : Model -> Sub Msg
+subscriptions _ = Sub.none
+
 init : Model
 init =
   { predictionField = Field.init "" <| \() s -> if String.isEmpty s then Err "must not be empty" else Ok s
