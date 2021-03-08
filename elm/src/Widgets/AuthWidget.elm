@@ -1,4 +1,4 @@
-module Widgets.AuthWidget exposing (..)
+port module Widgets.AuthWidget exposing (..)
 
 import Html as H exposing (Html)
 import Html.Attributes as HA
@@ -15,6 +15,8 @@ import Field
 import Page
 import Field
 import Page
+
+port passwordManagerFilled : ({target:String, value:String} -> msg) -> Sub msg -- for password managers
 
 type Msg
   = SetUsernameField String
@@ -79,6 +81,8 @@ view globals model =
             , HA.type_ "text"
             , HA.placeholder "username"
             , HA.class "username-field"
+            , HA.class "watch-for-password-manager-fill"
+            , HA.attribute "data-password-manager-target" "username"
             ] []
         , Field.inputFor SetPasswordField () model.passwordField
             H.input
@@ -86,6 +90,8 @@ view globals model =
             , HA.style "width" "8em"
             , HA.type_ "password"
             , HA.placeholder "password"
+            , HA.class "watch-for-password-manager-fill"
+            , HA.attribute "data-password-manager-target" "password"
             , Utils.onEnter LogInUsername Ignore
             ] []
         , H.button
@@ -177,4 +183,8 @@ update msg model =
 
 subscriptions : Model -> Sub Msg
 subscriptions _ =
-  Sub.none
+  passwordManagerFilled (\event -> case (Debug.log "event" event).target of
+    "username" -> SetUsernameField event.value
+    "password" -> SetPasswordField event.value
+    _ -> Ignore
+  )

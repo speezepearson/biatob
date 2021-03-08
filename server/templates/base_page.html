@@ -48,6 +48,24 @@
         e.remove();
       })
       app.ports.navigate.subscribe(dest => {if (dest) {window.location=dest} else window.location.reload()});
+
+      // Elm doesn't watch for external DOM modification, so when password managers fill things in,
+      // we need to notify Elm.
+      // https://discourse.elm-lang.org/t/password-manager-and-external-form-filling/6043
+      var oldPasswordManagerFields = new Map();
+      setInterval(
+        () => {
+          Array.from(document.getElementsByClassName('watch-for-password-manager-fill')).forEach(elem => {
+            var oldValue = oldPasswordManagerFields.get(elem);
+            var newValue = elem.value;
+            if (oldValue !== undefined && oldValue !== newValue) {
+              app.ports.passwordManagerFilled.send({target: elem.getAttribute('data-password-manager-target'), value: newValue});
+            }
+            oldPasswordManagerFields.set(elem, newValue);
+          });
+        },
+        500,
+      )
     }
   </script>
   <style>
