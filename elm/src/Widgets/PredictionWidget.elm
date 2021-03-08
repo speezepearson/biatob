@@ -11,7 +11,7 @@ import Dict as D exposing (Dict)
 
 import Iso8601
 import Biatob.Proto.Mvp as Pb
-import Utils
+import Utils exposing (Username)
 
 import Widgets.StakeWidget as StakeWidget
 import Widgets.CopyWidget as CopyWidget
@@ -98,47 +98,55 @@ viewStakeWidgetOrExcuse ctx globals model =
       [ H.text "You must be logged in to bet on this prediction!"
       ]
   else
-    if creator.isSelf then
+    if Page.isSelf globals creator then
       H.text ""
     else case (creator.trustsYou, creator.isTrusted) of
       (True, True) ->
         StakeWidget.view {prediction=ctx.prediction, predictionId=ctx.predictionId, disableCommit=False{- TODO -}} globals model.stakeForm |> H.map StakeMsg
       (False, False) ->
         H.div []
-          [ H.text <| "You and " ++ creator.displayName ++ " don't trust each other! If, in real life, you "
+          [ H.text "You and "
+          , Utils.renderUser creator.username
+          , H.text " don't trust each other! If, in real life, you "
           , H.i [] [H.text "do"]
           , H.text " trust each other to pay your debts, send them an invitation! "
           , SmallInvitationWidget.view globals model.invitationWidget |> H.map InvitationMsg
           ]
       (True, False) ->
         H.div []
-          [ H.text <| "You don't trust " ++ creator.displayName ++ "."
-          -- TODO(P0)
+          [ H.text "You don't trust "
+          , Utils.renderUser creator.username
+          , H.text "."
           ]
       (False, True) ->
         H.div []
-          [ H.text <| creator.displayName ++ " hasn't marked you as trusted! If you think that, in real life, they "
+          [ Utils.renderUser creator.username, H.text " hasn't marked you as trusted! If you think that, in real life, they "
           , H.i [] [H.text "do"]
           , H.text " trust you to pay your debts, send them an invitation link: "
           , SmallInvitationWidget.view globals model.invitationWidget |> H.map InvitationMsg
           ]
 
-creatorWinningsByBettor : Bool -> List Pb.Trade -> Dict String Int -- TODO: avoid key serialization collisions
+creatorWinningsByBettor : Bool -> List Pb.Trade -> Dict Username Int -- TODO: avoid key serialization collisions
 creatorWinningsByBettor resolvedYes trades =
   trades
-  |> List.foldl (\t d -> D.update (Utils.renderUserPlain <| Utils.mustTradeBettor t) (Maybe.withDefault 0 >> ((+) (if xor resolvedYes t.bettorIsASkeptic then -t.creatorStakeCents else t.bettorStakeCents)) >> Just) d) D.empty
+  |> List.foldl (\t d -> D.update t.bettor (Maybe.withDefault 0 >> ((+) (if xor resolvedYes t.bettorIsASkeptic then -t.creatorStakeCents else t.bettorStakeCents)) >> Just) d) D.empty
 
-stateWinnings : String -> Int -> String
+stateWinnings : Username -> Int -> Html a
 stateWinnings counterparty win =
-  (if win > 0 then counterparty ++ " owes you" else "You owe " ++ counterparty) ++ " " ++ Utils.formatCents (abs win) ++ "."
+  H.span [] <|
+    ( if win > 0 then
+        [Utils.renderUser counterparty, H.text " owes you"]
+      else
+        [H.text "You owe ", Utils.renderUser counterparty]
+    ) ++ [H.text <| " " ++ Utils.formatCents (abs win) ++ "."]
 
-enumerateWinnings : Dict String Int -> Html Msg
+enumerateWinnings : Dict Username Int -> Html Msg
 enumerateWinnings winningsByUser =
   H.ul [] <| (
     winningsByUser
     |> D.toList
     |> List.sortBy (\(b, _) -> b)
-    |> List.map (\(b, win) -> H.li [] [H.text <| stateWinnings b win])
+    |> List.map (\(b, win) -> H.li [] [stateWinnings b win])
     )
 
 viewPredictionState : Context -> Page.Globals -> Model -> Html Msg
@@ -212,7 +220,7 @@ viewWinnings ctx globals model =
         [ H.summary [] [H.text "Details"]
         , ctx.prediction.yourTrades
           |> List.map (\t -> H.li [] [ H.text <| "[" ++ Utils.isoStr Time.utc (Utils.unixtimeToTime t.transactedUnixtime) ++ " UTC] "
-                                     , Utils.renderUser (Utils.mustTradeBettor t)
+                                     , Utils.renderUser t.bettor
                                      , H.text <| " bet " ++ (if t.bettorIsASkeptic then "NO" else "YES") ++ " staking " ++ Utils.formatCents t.bettorStakeCents ++ " against " ++ Utils.formatCents t.creatorStakeCents])
           |> H.ul []
         ]
@@ -220,10 +228,10 @@ viewWinnings ctx globals model =
     ifRes res =
       creatorWinningsByBettor res ctx.prediction.yourTrades
         |> let creator = Utils.mustPredictionCreator ctx.prediction in
-            if creator.isSelf then
+            if Page.isSelf globals creator then
               enumerateWinnings
             else
-              (D.values >> List.sum >> (\n -> -n) >> stateWinnings creator.displayName >> H.text)
+              (D.values >> List.sum >> (\n -> -n) >> stateWinnings creator.username)
   in
   if List.isEmpty ctx.prediction.yourTrades then H.text "" else
   H.div []
@@ -252,7 +260,7 @@ viewCreationParams ctx globals model =
   in
   H.p []
     [ H.text <| "On " ++ Utils.dateStr globals.timeZone openTime ++ ", "
-    , H.strong [] [H.text <| if creator.isSelf then "you" else creator.displayName]
+    , if Page.isSelf globals creator then H.strong [] [H.text "you"] else Utils.renderUser creator.username
     , H.text " assigned this a "
     , certainty.low |> (*) 100 |> round |> String.fromInt |> H.text
     , H.text "-"
@@ -269,7 +277,7 @@ viewCreationParams ctx globals model =
 
 viewResolveButtons : Context -> Page.Globals -> Model -> Html Msg
 viewResolveButtons ctx globals model =
-  if (Utils.mustPredictionCreator ctx.prediction).isSelf then
+  if Page.isSelf globals (Utils.mustPredictionCreator ctx.prediction) then
     H.div []
       [ let
           mistakeDetails =
@@ -336,12 +344,12 @@ view ctx globals model =
               [ H.text "This site is a tool that helps people make friendly wagers, thereby clarifying and concretizing their beliefs and making the world a better, saner place."
               ]
           , H.p []
-              [ H.strong [] [H.text <| creator.displayName]
+              [ Utils.renderUser creator.username
               , H.text <| " is putting their money where their mouth is: they've staked " ++ Utils.formatCents ctx.prediction.maximumStakeCents ++ " of real-life money on this prediction,"
                   ++ " and they're willing to bet at the above odds against anybody they trust. Good for them!"
               ]
           , H.p []
-              [ H.text "If you know and trust ", H.strong [] [H.text <| creator.displayName]
+              [ H.text "If you know and trust ", Utils.renderUser creator.username
               , H.text <| ", and they know and trust you, and you want to bet against them on this prediction,"
                   ++ " then message them however you normally do, and ask them for an invitation to this market!"
               ]
@@ -370,7 +378,7 @@ view ctx globals model =
               ]
           , H.p [] [H.text "I made this tool to share that joy with you."]
           ]
-    , if creator.isSelf then
+    , if Page.isSelf globals creator then
         H.div []
           [ H.text "If you want to link to your prediction, here are some snippets of HTML you could copy-paste:"
           , viewEmbedInfo ctx globals model

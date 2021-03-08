@@ -58,7 +58,7 @@ update msg model =
       case resp.acceptInvitationResult of
         Just (Pb.AcceptInvitationResultOk _) ->
           ( model
-          , Page.NavigateCmd <| Just <| Maybe.withDefault (Utils.pathToUserPage <| Utils.mustInviter model.invitationId) model.destination
+          , Page.NavigateCmd <| Just <| Maybe.withDefault (Utils.pathToUserPage model.invitationId.inviter) model.destination
           )
         Just (Pb.AcceptInvitationResultError e) ->
           ( { model | working = False , acceptNotification = Utils.redText (Debug.toString e) }
@@ -74,9 +74,9 @@ update msg model =
 
 isOwnInvitation : Page.Globals -> Pb.InvitationId -> Bool
 isOwnInvitation globals invitationId =
-  Page.getAuth globals
-  |> Maybe.map Utils.mustTokenOwner
-  |> (==) invitationId.inviter
+  case Page.getAuth globals of
+    Nothing -> False
+    Just token -> token.owner == invitationId.inviter
 
 view : Page.Globals -> Model -> Browser.Document Msg
 view globals model =
@@ -88,7 +88,7 @@ view globals model =
     else if not model.invitationIsOpen then
       [H.text "This invitation has been used up already!"]
     else
-      [ H.h2 [] [H.text "Invitation from ", Utils.renderUser <| Utils.mustInviter model.invitationId]
+      [ H.h2 [] [H.text "Invitation from ", Utils.renderUser model.invitationId.inviter]
       , H.p []
         [ H.text <| "The person who sent you this link is interested in betting against you regarding real-world events,"
           ++ " with real money, upheld by the honor system!"
@@ -125,7 +125,7 @@ view globals model =
           , H.text <| " so you don't have to provide a credit card or anything, but you ", H.i [] [H.text "do"]
           , H.text <| " have to tell the site who you trust, so that it knows who's allowed to bet against you."
           ++ " (Honor systems only work where there is honor.)"]
-      , H.p [] [Utils.renderUser <| Utils.mustInviter model.invitationId, H.text <|
+      , H.p [] [Utils.renderUser model.invitationId.inviter, H.text <|
           " thinks you might be interested in gambling against them, and trusts you to pay any debts you incur when you lose;"
           ++ " if you feel likewise, accept their invitation!"]
       ]

@@ -89,7 +89,7 @@ view ctx globals model =
           , HA.disabled disableInputs
           ]
           []
-      , H.text <| " that it won't, against " ++ creator.displayName ++ "'s "
+      , H.text " that it won't, against ", Utils.renderUser creator.username, H.text "'s "
       , H.strong [] [Field.parse {max=maxSkepticStakeCents} model.skepticStakeField |> Result.map (toFloat >> (*) creatorStakeFactorVsSkeptics >> round >> Utils.formatCents) |> Result.withDefault "???" |> H.text]
       , H.text ". "
       , H.button
@@ -111,7 +111,7 @@ view ctx globals model =
           , HA.disabled disableInputs
           ]
           []
-      , H.text <| " that it will, against " ++ creator.displayName ++ "'s "
+      , H.text " that it will, against ", Utils.renderUser creator.username, H.text "'s "
       , H.strong [] [Field.parse {max=maxBelieverStakeCents} model.believerStakeField |> Result.map (toFloat >> (*) creatorStakeFactorVsBelievers >> round >> Utils.formatCents) |> Result.withDefault "???" |> H.text]
       , H.text ". "
       , H.button

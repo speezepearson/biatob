@@ -7,6 +7,7 @@ module Page exposing
   , getUserInfo
   , isLoggedIn
   , mapCmd
+  , isSelf
   )
 
 import Browser
@@ -100,3 +101,9 @@ mapCmd f cmd =
     CopyCmd s -> CopyCmd s
     NavigateCmd dest -> NavigateCmd dest
 
+
+isSelf : Globals -> Pb.UserUserView -> Bool
+isSelf globals who =
+  case getAuth globals of
+    Nothing -> False
+    Just token -> token.owner == who.username
