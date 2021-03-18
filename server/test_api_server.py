@@ -6,8 +6,9 @@ from aiohttp import web
 import pytest
 from google.protobuf.message import Message as PbMessage
 
+from .api_server import _Req, _Resp
 from .protobuf import mvp_pb2
-from .server import ApiServer, _Req, _Resp, HttpTokenGlue
+from .server import ApiServer, HttpTokenGlue
 from .test_utils import *
 
 SECRET_KEY = b'secret for testing'
