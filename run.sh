@@ -16,7 +16,7 @@ fi
 source /home/protected/venv/bin/activate
 
 pip install -r server/requirements.txt
-python -m server.server \
+python -m server.main \
   --host=0.0.0.0 \
   --port=8080 \
   --state-path=/home/protected/server.WorldState.pb \

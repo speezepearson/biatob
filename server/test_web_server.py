@@ -7,7 +7,8 @@ import pytest
 from google.protobuf.message import Message as PbMessage
 
 from .protobuf import mvp_pb2
-from .server import WebServer, _Req, _Resp, HttpTokenGlue
+from .web_server import WebServer
+from .http import HttpTokenGlue
 from .test_utils import *
 from .test_api_server import post_proto, api_server
 from .test_fs_servicer import new_user_token, some_create_prediction_request

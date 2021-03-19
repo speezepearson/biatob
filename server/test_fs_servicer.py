@@ -8,7 +8,8 @@ from unittest.mock import ANY
 import pytest
 
 from .protobuf import mvp_pb2
-from .server import FsBackedServicer, Emailer
+from .emailer import Emailer
+from .fs_servicer import FsBackedServicer
 from .test_utils import *
 
 def new_user_token(fs_servicer: FsBackedServicer, username: str) -> mvp_pb2.AuthToken:

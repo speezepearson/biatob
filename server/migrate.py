@@ -6,7 +6,7 @@ from typing import Callable, Iterator, Mapping, Sequence, Tuple
 from google.protobuf.message import Message
 
 from .protobuf.mvp_pb2 import WorldState, GenericUserInfo, Relationship, GenericUserInfo
-from .server import FsStorage, walk
+from .fs_servicer import FsStorage, walk
 
 def change_uint32_times_to_doubles(obj: object) -> None:
   if not isinstance(obj, Message):

@@ -8,7 +8,8 @@ from typing import Type, TypeVar, Iterator
 
 from google.protobuf.message import Message
 
-from .server import TokenMint, FsBackedServicer, FsStorage
+from .core import TokenMint
+from .fs_servicer import FsBackedServicer, FsStorage
 
 
 class MockClock:

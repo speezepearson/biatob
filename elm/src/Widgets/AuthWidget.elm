@@ -83,6 +83,7 @@ view globals model =
             , HA.class "username-field"
             , HA.class "watch-for-password-manager-fill"
             , HA.attribute "data-password-manager-target" "username"
+            , HA.attribute "data-elm-value" model.usernameField.string
             ] []
         , Field.inputFor SetPasswordField () model.passwordField
             H.input
@@ -92,6 +93,7 @@ view globals model =
             , HA.placeholder "password"
             , HA.class "watch-for-password-manager-fill"
             , HA.attribute "data-password-manager-target" "password"
+            , HA.attribute "data-elm-value" model.usernameField.string
             , Utils.onEnter LogInUsername Ignore
             ] []
         , H.button
@@ -183,7 +185,7 @@ update msg model =
 
 subscriptions : Model -> Sub Msg
 subscriptions _ =
-  passwordManagerFilled (\event -> case (Debug.log "event" event).target of
+  passwordManagerFilled (\event -> case (Debug.log "Password manager or something changed auth fields" event).target of
     "username" -> SetUsernameField event.value
     "password" -> SetPasswordField event.value
     _ -> Ignore
