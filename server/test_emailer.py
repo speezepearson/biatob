@@ -4,13 +4,9 @@ from unittest.mock import Mock, ANY
 
 import pytest
 
-from .server import (
-  Emailer,
-  PredictionId,
-  prediction_needs_email_reminder,
-  get_email_for_resolution_reminder,
-  email_resolution_reminder_if_necessary,
-)
+from .emailer import Emailer
+from .core import PredictionId
+from .fs_servicer import prediction_needs_email_reminder, get_email_for_resolution_reminder, email_resolution_reminder_if_necessary
 from .protobuf import mvp_pb2
 from .test_utils import emailer, fs_storage
 
