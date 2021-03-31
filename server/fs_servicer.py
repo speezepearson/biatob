@@ -98,7 +98,7 @@ class FsStorage:
 
     @property
     def _lock(self) -> filelock.FileLock:
-        return filelock.FileLock(self._state_path.with_suffix(self._state_path.suffix + '.lock'))
+        return filelock.FileLock(str(self._state_path.with_suffix(self._state_path.suffix + '.lock')))
     def _get_nolock(self) -> mvp_pb2.WorldState:
         result = mvp_pb2.WorldState()
         if self._state_path.exists():
