@@ -327,6 +327,18 @@ class TestStake:
       assert 'prediction has already resolved' in assert_oneof(fs_servicer.Stake(token=bob_token, request=mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_stake_cents=1_00)),
         'stake_result', 'error', mvp_pb2.StakeResponse.Error).catchall
 
+  async def test_error_if_closed(self, clock: MockClock, fs_storage: FsStorage, fs_servicer: FsBackedServicer):
+    alice_token, bob_token = alice_bob_tokens(fs_servicer)
+    prediction_id = assert_oneof(fs_servicer.CreatePrediction(
+      token=alice_token,
+      request=some_create_prediction_request(open_seconds=86400, resolves_at_unixtime=int(clock.now() + 2*86400)),
+    ), 'create_prediction_result', 'new_prediction_id', int)
+
+    clock.tick(86401)
+    with assert_unchanged(fs_storage):
+      assert 's' in assert_oneof(fs_servicer.Stake(token=bob_token, request=mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_stake_cents=1_00)),
+        'stake_result', 'error', mvp_pb2.StakeResponse.Error).catchall
+
   async def test_happy_path(self, fs_servicer: FsBackedServicer, clock: MockClock):
     alice_token, bob_token = alice_bob_tokens(fs_servicer)
     prediction_id = assert_oneof(fs_servicer.CreatePrediction(
@@ -469,6 +481,16 @@ class TestResolve:
       'resolve_result', 'ok', mvp_pb2.UserPredictionView).resolutions) == planned_events[:3]
     assert list(assert_oneof(fs_servicer.GetPrediction(rando_token, mvp_pb2.GetPredictionRequest(prediction_id=prediction_id)),
       'get_prediction_result', 'prediction', mvp_pb2.UserPredictionView).resolutions) == planned_events
+
+  async def test_validation(self, fs_servicer: FsBackedServicer):
+    rando_token = new_user_token(fs_servicer, 'rando')
+    prediction_id = assert_oneof(fs_servicer.CreatePrediction(
+      token=rando_token,
+      request=some_create_prediction_request(),
+    ), 'create_prediction_result', 'new_prediction_id', int)
+
+    assert 'unreasonably long notes' in str(assert_oneof(fs_servicer.Resolve(rando_token, mvp_pb2.ResolveRequest(prediction_id=prediction_id, resolution=mvp_pb2.RESOLUTION_YES, notes=99999*'foo')),
+      'resolve_result', 'error', mvp_pb2.ResolveResponse.Error))
 
 
   async def test_ensures_creator(self, fs_storage: FsStorage, fs_servicer: FsBackedServicer):

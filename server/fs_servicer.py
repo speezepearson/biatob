@@ -321,6 +321,9 @@ class FsBackedServicer(Servicer):
             if not trusts(wstate, token_owner(token), Username(prediction.creator)):
                 logger.warn('trying to bet against untrusted creator', prediction_id=request.prediction_id)
                 return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall="you don't trust the creator"))
+            now = self._clock()
+            if not (prediction.created_unixtime <= now <= prediction.closes_unixtime):
+                return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall="prediction is no longer open for betting"))
             if prediction.resolutions and (prediction.resolutions[-1].resolution != mvp_pb2.RESOLUTION_NONE_YET):
                 logger.warn('trying to bet on a resolved prediction', prediction_id=request.prediction_id)
                 return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall="prediction has already resolved"))
@@ -360,6 +363,10 @@ class FsBackedServicer(Servicer):
         if request.resolution not in {mvp_pb2.RESOLUTION_YES, mvp_pb2.RESOLUTION_NO, mvp_pb2.RESOLUTION_INVALID, mvp_pb2.RESOLUTION_NONE_YET}:
             logger.warn('user sent unrecognized resolution', resolution=request.resolution)
             return mvp_pb2.ResolveResponse(error=mvp_pb2.ResolveResponse.Error(catchall='unrecognized resolution'))
+        if len(request.notes) > 1024:
+            logger.warn('unreasonably long notes', snipped_notes=request.notes[:256] + '  <snip>  ' + request.notes[-256:])
+            return mvp_pb2.ResolveResponse(error=mvp_pb2.ResolveResponse.Error(catchall='unreasonably long notes'))
+
 
         with self._storage.mutate() as wstate:
             prediction = wstate.predictions.get(request.prediction_id)
