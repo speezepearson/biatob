@@ -3,6 +3,7 @@ import copy
 import hashlib
 import hmac
 import random
+import re
 import secrets
 import time
 from typing import overload, Optional, Container, NewType, Callable
@@ -41,20 +42,51 @@ def indent(s: str) -> str:
     return '\n'.join('  '+line for line in s.splitlines())
 
 def describe_username_problems(username: str) -> Optional[str]:
+    problems = []
     if not username:
-        return 'username must be non-empty'
+        problems.append('username must be non-empty')
     if len(username) > 64:
-        return 'username must be no more than 64 characters'
+        problems.append('username must be no more than 64 characters')
     if not username.isalnum():
-        return 'username must be alphanumeric'
-    return None
+        problems.append('username must be alphanumeric')
+    return '; '.join(problems) if problems else None
 
 def describe_password_problems(password: str) -> Optional[str]:
+    problems = []
     if not password:
-        return 'password must be non-empty'
+        problems.append('password must be non-empty')
     if len(password) > 256:
-        return 'password must not exceed 256 characters, good lord'
-    return None
+        problems.append('password must not exceed 256 characters, good lord')
+    return '; '.join(problems) if problems else None
+
+def describe_CreatePredictionRequest_problems(request: mvp_pb2.CreatePredictionRequest, now: float) -> Optional[str]:
+    problems = []
+    if not request.prediction:
+        problems.append('must have a prediction field')
+    if not request.certainty:
+        problems.append('must have a certainty')
+    if not (request.certainty.low <= request.certainty.high):
+        problems.append('certainty must have low <= high')
+    if not (request.maximum_stake_cents <= MAX_LEGAL_STAKE_CENTS):
+        problems.append(f'stake must not exceed ${MAX_LEGAL_STAKE_CENTS//100}')
+    if not (request.open_seconds > 0):
+        problems.append(f'prediction must be open for a positive number of seconds')
+    if not (request.resolves_at_unixtime > now):
+        problems.append(f'prediction must resolve in the future')
+    return '; '.join(problems) if problems else None
+
+def describe_SetEmailRequest_problems(request: mvp_pb2.SetEmailRequest) -> Optional[str]:
+    problems = []
+    if request.email and not re.match('^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9_.-]+$', request.email):
+        problems.append('invalid-looking email address')
+    return '; '.join(problems) if problems else None
+
+def describe_AcceptInvitationRequest_problems(request: mvp_pb2.AcceptInvitationRequest) -> Optional[str]:
+    problems = []
+    if not request.HasField('invitation_id'):
+        problems.append('no invitation id given')
+    return '; '.join(problems) if problems else None
+
 
 @overload
 def token_owner(token: mvp_pb2.AuthToken) -> Username: pass

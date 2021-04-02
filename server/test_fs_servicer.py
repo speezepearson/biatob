@@ -585,7 +585,7 @@ class TestSetEmail:
         'set_email_result', 'ok', mvp_pb2.EmailFlowState).code_sent.email == good_email_address
     for bad_email_address in ['bad email', 'bad@example.com  ', 'good@example.com, evil@example.com']:
       with assert_unchanged(fs_storage):
-        assert 'bad email' in assert_oneof(fs_servicer.SetEmail(token=token, request=mvp_pb2.SetEmailRequest(email=bad_email_address)), 'set_email_result', 'error', mvp_pb2.SetEmailResponse.Error).catchall
+        assert 'invalid-looking email' in assert_oneof(fs_servicer.SetEmail(token=token, request=mvp_pb2.SetEmailRequest(email=bad_email_address)), 'set_email_result', 'error', mvp_pb2.SetEmailResponse.Error).catchall
 
 
 class TestVerifyEmail:
@@ -676,6 +676,11 @@ class TestAcceptInvitation:
       'create_invitation_result', 'ok', mvp_pb2.CreateInvitationResponse.Result).id
     with assert_unchanged(fs_storage):
       assert 'must log in' in assert_oneof(fs_servicer.AcceptInvitation(token=None, request=mvp_pb2.AcceptInvitationRequest(invitation_id=invitation_id)), 'accept_invitation_result', 'error', mvp_pb2.AcceptInvitationResponse.Error).catchall
+
+  async def test_error_if_invalid(self, fs_storage: FsStorage, fs_servicer: FsBackedServicer):
+    accepter_token = new_user_token(fs_servicer, 'accepter')
+    with assert_unchanged(fs_storage):
+      assert 'no invitation id given' in assert_oneof(fs_servicer.AcceptInvitation(token=accepter_token, request=mvp_pb2.AcceptInvitationRequest(invitation_id=None)), 'accept_invitation_result', 'error', mvp_pb2.AcceptInvitationResponse.Error).catchall
 
   async def test_happy_path(self, fs_storage: FsStorage, fs_servicer: FsBackedServicer):
     invitation_id = assert_oneof(fs_servicer.CreateInvitation(token=new_user_token(fs_servicer, 'inviter'), request=mvp_pb2.CreateInvitationRequest()),

@@ -205,7 +205,6 @@ class FsBackedServicer(Servicer):
         if token is not None:
             logger.warn('logged-in user trying to log in again', new_username=request.username)
             return mvp_pb2.LogInUsernameResponse(error=mvp_pb2.LogInUsernameResponse.Error(catchall='already authenticated; first, log out'))
-        username_problems = describe_username_problems(request.username)
 
         info = self._storage.get().user_settings.get(request.username)
         if info is None:
@@ -230,24 +229,9 @@ class FsBackedServicer(Servicer):
 
         now = int(self._clock())
 
-        if not request.prediction:
-            logger.warn('invalid CreatePredictionRequest', request=request)
-            return mvp_pb2.CreatePredictionResponse(error=mvp_pb2.CreatePredictionResponse.Error(catchall='must have a prediction field'))
-        if not request.certainty:
-            logger.warn('invalid CreatePredictionRequest', request=request)
-            return mvp_pb2.CreatePredictionResponse(error=mvp_pb2.CreatePredictionResponse.Error(catchall='must have a certainty'))
-        if not (request.certainty.low <= request.certainty.high):
-            logger.warn('invalid CreatePredictionRequest', request=request)
-            return mvp_pb2.CreatePredictionResponse(error=mvp_pb2.CreatePredictionResponse.Error(catchall='certainty must have low <= high'))
-        if not (request.maximum_stake_cents <= MAX_LEGAL_STAKE_CENTS):
-            logger.warn('invalid CreatePredictionRequest', request=request)
-            return mvp_pb2.CreatePredictionResponse(error=mvp_pb2.CreatePredictionResponse.Error(catchall=f'stake must not exceed ${MAX_LEGAL_STAKE_CENTS//100}'))
-        if not (request.open_seconds > 0):
-            logger.warn('invalid CreatePredictionRequest', request=request)
-            return mvp_pb2.CreatePredictionResponse(error=mvp_pb2.CreatePredictionResponse.Error(catchall=f'prediction must be open for a positive number of seconds'))
-        if not (request.resolves_at_unixtime > now):
-            logger.warn('invalid CreatePredictionRequest', request=request)
-            return mvp_pb2.CreatePredictionResponse(error=mvp_pb2.CreatePredictionResponse.Error(catchall=f'prediction must resolve in the future'))
+        problems = describe_CreatePredictionRequest_problems(request, now=now)
+        if problems is not None:
+            return mvp_pb2.CreatePredictionResponse(error=mvp_pb2.CreatePredictionResponse.Error(catchall=problems))
 
         with self._storage.mutate() as wstate:
             mid = PredictionId(weak_rand_not_in(self._rng, limit=2**32, xs=wstate.predictions.keys()))
@@ -471,15 +455,16 @@ class FsBackedServicer(Servicer):
         if token is None:
             logger.warn('not logged in')
             return mvp_pb2.SetEmailResponse(error=mvp_pb2.SetEmailResponse.Error(catchall='must log in to set an email'))
+        problems = describe_SetEmailRequest_problems(request)
+        if problems is not None:
+            logger.warn('attempting to set invalid email', problems=problems)
+            return mvp_pb2.SetEmailResponse(error=mvp_pb2.SetEmailResponse.Error(catchall=problems))
 
         with self._storage.mutate() as wstate:
             requester_info = get_generic_user_info(wstate, token_owner(token))
             if requester_info is None:
                 raise ForgottenTokenError(token)
             if request.email:
-                if not re.match('^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9_.-]+$', request.email):
-                    return mvp_pb2.SetEmailResponse(error=mvp_pb2.SetEmailResponse.Error(catchall='bad email'))
-
                 # TODO: prevent an email address from getting "too many" emails if somebody abuses us
                 code = secrets.token_urlsafe(nbytes=16)
                 asyncio.create_task(self._emailer.send_email_verification(
@@ -599,6 +584,10 @@ class FsBackedServicer(Servicer):
         if token is None:
             logger.warn('not logged in')
             return mvp_pb2.AcceptInvitationResponse(error=mvp_pb2.AcceptInvitationResponse.Error(catchall='must log in to create an invitation'))
+        problems = describe_AcceptInvitationRequest_problems(request)
+        if problems is not None:
+            logger.warn('invalid AcceptInvitationRequest', problems=problems)
+            return mvp_pb2.AcceptInvitationResponse(error=mvp_pb2.AcceptInvitationResponse.Error(catchall=problems))
 
         with self._storage.mutate() as wstate:
             if (not request.HasField('invitation_id')) or (not request.invitation_id.inviter):
