@@ -11,7 +11,6 @@ from .web_server import WebServer
 from .http import HttpTokenGlue
 from .test_utils import *
 from .test_api_server import post_proto, api_server
-from .test_fs_servicer import new_user_token, some_create_prediction_request
 
 @pytest.fixture
 def web_server(fs_servicer, token_mint, clock):

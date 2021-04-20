@@ -4,12 +4,13 @@ import copy
 import random
 import pytest
 import unittest.mock
-from typing import Type, TypeVar, Iterator
+from typing import Tuple, Type, TypeVar, Iterator
 
 from google.protobuf.message import Message
 
-from .core import TokenMint
+from .core import PredictionId, Servicer, TokenMint
 from .fs_servicer import FsBackedServicer, FsStorage
+from .protobuf import mvp_pb2
 
 
 class MockClock:
@@ -51,6 +52,18 @@ def fs_servicer(fs_storage, clock, token_mint, emailer):
     token_mint=token_mint,
   )
 
+@pytest.fixture(params=['fs'])
+def any_servicer(request, fs_storage, clock, token_mint, emailer):
+  assert request.param == 'fs'
+  return FsBackedServicer(
+    storage=fs_storage,
+    emailer=emailer,
+    random_seed=0,
+    clock=clock.now,
+    token_mint=token_mint,
+  )
+
+
 
 _T = TypeVar('_T')
 def assert_oneof(pb: Message, oneof: str, case: str, typ: Type[_T]) -> _T:
@@ -61,7 +74,47 @@ def assert_oneof(pb: Message, oneof: str, case: str, typ: Type[_T]) -> _T:
 
 
 @contextlib.contextmanager
-def assert_unchanged(fs_storage: FsStorage) -> Iterator[None]:
-  original = copy.deepcopy(fs_storage.get())
+def assert_user_unchanged(servicer: Servicer, token: mvp_pb2.AuthToken, password: str) -> Iterator[None]:
+  assert_oneof(servicer.LogInUsername(None, mvp_pb2.LogInUsernameRequest(username=token.owner, password=password)), 'log_in_username_result', 'ok', mvp_pb2.AuthSuccess)
+  old_settings = assert_oneof(servicer.GetSettings(token, mvp_pb2.GetSettingsRequest()), 'get_settings_result', 'ok', mvp_pb2.GenericUserInfo)
   yield
-  assert fs_storage.get() == original
+  new_settings = assert_oneof(servicer.GetSettings(token, mvp_pb2.GetSettingsRequest()), 'get_settings_result', 'ok', mvp_pb2.GenericUserInfo)
+  assert old_settings == new_settings
+  assert_oneof(servicer.LogInUsername(None, mvp_pb2.LogInUsernameRequest(username=token.owner, password=password)), 'log_in_username_result', 'ok', mvp_pb2.AuthSuccess)
+
+
+@contextlib.contextmanager
+def assert_prediction_unchanged(servicer: Servicer, prediction_id: PredictionId, creator_token: mvp_pb2.AuthToken) -> Iterator[None]:
+  old = assert_oneof(servicer.GetPrediction(creator_token, mvp_pb2.GetPredictionRequest(prediction_id=prediction_id)), 'get_prediction_result', 'prediction', mvp_pb2.UserPredictionView)
+  assert old.creator.username == creator_token.owner
+  yield
+  new = assert_oneof(servicer.GetPrediction(creator_token, mvp_pb2.GetPredictionRequest(prediction_id=prediction_id)), 'get_prediction_result', 'prediction', mvp_pb2.UserPredictionView)
+  assert old == new
+
+
+def new_user_token(servicer: Servicer, username: str) -> mvp_pb2.AuthToken:
+  resp = servicer.RegisterUsername(token=None, request=mvp_pb2.RegisterUsernameRequest(username=username, password=f'{username} password'))
+  assert resp.WhichOneof('register_username_result') == 'ok', resp
+  return resp.ok.token
+
+
+def alice_bob_tokens(servicer: Servicer) -> Tuple[mvp_pb2.AuthToken, mvp_pb2.AuthToken]:
+  token_a = new_user_token(servicer, 'Alice')
+  token_b = new_user_token(servicer, 'Bob')
+
+  servicer.SetTrusted(token_a, mvp_pb2.SetTrustedRequest(who=token_b.owner, trusted=True))
+  servicer.SetTrusted(token_b, mvp_pb2.SetTrustedRequest(who=token_a.owner, trusted=True))
+
+  return (token_a, token_b)
+
+def some_create_prediction_request(**kwargs) -> mvp_pb2.CreatePredictionRequest:
+  init_kwargs = dict(
+    prediction='prediction!',
+    certainty=mvp_pb2.CertaintyRange(low=0.80, high=0.90),
+    maximum_stake_cents=100_00,
+    open_seconds=123,
+    resolves_at_unixtime=int(2e9),
+    special_rules='rules!',
+  )
+  init_kwargs.update(kwargs)
+  return mvp_pb2.CreatePredictionRequest(**init_kwargs)  # type: ignore
