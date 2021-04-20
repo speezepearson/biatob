@@ -141,17 +141,17 @@ class TestRegisterUsername:
     assert assert_oneof(fs_servicer.RegisterUsername(token=None, request=mvp_pb2.RegisterUsernameRequest(username='alice', password='secret')),
       'register_username_result', 'ok', mvp_pb2.AuthSuccess).token.owner == 'alice'
 
-  async def test_error_when_already_exists(self, fs_storage: FsStorage, fs_servicer: FsBackedServicer):
-    new_user_token(fs_servicer, 'rando')
+  async def test_error_when_already_exists(self, fs_servicer: FsBackedServicer):
+    orig_token = new_user_token(fs_servicer, 'rando')
 
     for password in ['rando password', 'some other password']:
-      with assert_unchanged(fs_storage):
+      with assert_user_unchanged(fs_servicer, orig_token, 'rando password'):
         assert 'username taken' in assert_oneof(fs_servicer.RegisterUsername(token=None, request=mvp_pb2.RegisterUsernameRequest(username='rando', password=password)),
           'register_username_result', 'error', mvp_pb2.RegisterUsernameResponse.Error).catchall
 
-  async def test_error_if_already_logged_in(self, fs_storage: FsStorage, fs_servicer: FsBackedServicer):
+  async def test_error_if_already_logged_in(self, fs_servicer: FsBackedServicer):
     token = new_user_token(fs_servicer, 'rando')
-    with assert_unchanged(fs_storage):
+    with assert_user_unchanged(fs_servicer, token, 'rando password'):
       assert 'first, log out' in str(assert_oneof(fs_servicer.RegisterUsername(token=token, request=mvp_pb2.RegisterUsernameRequest(username='alice', password='secret')),
         'register_username_result', 'error', mvp_pb2.RegisterUsernameResponse.Error))
 
@@ -179,22 +179,24 @@ class TestLogInUsername:
 
 class TestCreatePrediction:
 
-  async def test_error_if_logged_out(self, fs_storage: FsStorage, fs_servicer: FsBackedServicer):
-    with assert_unchanged(fs_storage):
-      assert 'must log in to create predictions' in assert_oneof(fs_servicer.CreatePrediction(token=None, request=some_create_prediction_request()),
-        'create_prediction_result', 'error', mvp_pb2.CreatePredictionResponse.Error).catchall
+  async def test_error_if_logged_out(self, fs_servicer: FsBackedServicer):
+    assert 'must log in to create predictions' in assert_oneof(fs_servicer.CreatePrediction(token=None, request=some_create_prediction_request()),
+      'create_prediction_result', 'error', mvp_pb2.CreatePredictionResponse.Error).catchall
 
-  async def test_smoke_logged_in(self, fs_storage: FsStorage, fs_servicer: FsBackedServicer):
+  async def test_smoke_logged_in(self, fs_servicer: FsBackedServicer):
     token = new_user_token(fs_servicer, 'rando')
     prediction_id = assert_oneof(fs_servicer.CreatePrediction(token=token, request=some_create_prediction_request()),
       'create_prediction_result', 'new_prediction_id', int)
-    assert prediction_id in fs_storage.get().predictions
+    assert_oneof(fs_servicer.GetPrediction(token, mvp_pb2.GetPredictionRequest(prediction_id=prediction_id)),
+      'get_prediction_result', 'prediction', mvp_pb2.UserPredictionView)
 
-  async def test_returns_distinct_ids(self, fs_storage: FsStorage, fs_servicer: FsBackedServicer):
+  async def test_returns_distinct_ids(self, fs_servicer: FsBackedServicer):
     token = new_user_token(fs_servicer, 'rando')
     ids = {fs_servicer.CreatePrediction(token, some_create_prediction_request()).new_prediction_id for _ in range(30)}
     assert len(ids) == 30
-    assert len(fs_storage.get().predictions) == 30
+    for prediction_id in ids:
+      assert_oneof(fs_servicer.GetPrediction(token, mvp_pb2.GetPredictionRequest(prediction_id=prediction_id)),
+        'get_prediction_result', 'prediction', mvp_pb2.UserPredictionView)
 
 
 class TestGetPrediction:
@@ -314,7 +316,7 @@ class TestListPredictions:
 
 class TestStake:
 
-  async def test_error_if_resolved(self, fs_storage: FsStorage, fs_servicer: FsBackedServicer):
+  async def test_error_if_resolved(self, fs_servicer: FsBackedServicer):
     alice_token, bob_token = alice_bob_tokens(fs_servicer)
     prediction_id = assert_oneof(fs_servicer.CreatePrediction(
       token=alice_token,
@@ -323,11 +325,11 @@ class TestStake:
     assert_oneof(fs_servicer.Resolve(alice_token, mvp_pb2.ResolveRequest(prediction_id=prediction_id, resolution=mvp_pb2.RESOLUTION_YES)),
       'resolve_result', 'ok', mvp_pb2.UserPredictionView)
 
-    with assert_unchanged(fs_storage):
+    with assert_prediction_unchanged(fs_servicer, prediction_id=prediction_id, creator_token=alice_token):
       assert 'prediction has already resolved' in assert_oneof(fs_servicer.Stake(token=bob_token, request=mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_stake_cents=1_00)),
         'stake_result', 'error', mvp_pb2.StakeResponse.Error).catchall
 
-  async def test_error_if_closed(self, clock: MockClock, fs_storage: FsStorage, fs_servicer: FsBackedServicer):
+  async def test_error_if_closed(self, clock: MockClock, fs_servicer: FsBackedServicer):
     alice_token, bob_token = alice_bob_tokens(fs_servicer)
     prediction_id = assert_oneof(fs_servicer.CreatePrediction(
       token=alice_token,
@@ -335,8 +337,8 @@ class TestStake:
     ), 'create_prediction_result', 'new_prediction_id', int)
 
     clock.tick(86401)
-    with assert_unchanged(fs_storage):
-      assert 's' in assert_oneof(fs_servicer.Stake(token=bob_token, request=mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_stake_cents=1_00)),
+    with assert_prediction_unchanged(fs_servicer, prediction_id=prediction_id, creator_token=alice_token):
+      assert 'prediction is no longer open for betting' in assert_oneof(fs_servicer.Stake(token=bob_token, request=mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_stake_cents=1_00)),
         'stake_result', 'error', mvp_pb2.StakeResponse.Error).catchall
 
   async def test_happy_path(self, fs_servicer: FsBackedServicer, clock: MockClock):
@@ -376,7 +378,7 @@ class TestStake:
       ),
     ]
 
-  async def test_prevents_overpromising(self, fs_storage: FsStorage, fs_servicer: FsBackedServicer):
+  async def test_prevents_overpromising(self, fs_servicer: FsBackedServicer):
     alice_token, bob_token = alice_bob_tokens(fs_servicer)
     prediction_id = assert_oneof(fs_servicer.CreatePrediction(
       token=alice_token,
@@ -391,7 +393,7 @@ class TestStake:
       bettor_is_a_skeptic=True,
       bettor_stake_cents=25_00,
     )), 'stake_result', 'ok', mvp_pb2.UserPredictionView)
-    with assert_unchanged(fs_storage):
+    with assert_prediction_unchanged(fs_servicer, prediction_id=prediction_id, creator_token=alice_token):
       assert 'bet would exceed creator tolerance' in assert_oneof(fs_servicer.Stake(bob_token, mvp_pb2.StakeRequest(
         prediction_id=prediction_id,
         bettor_is_a_skeptic=True,
@@ -403,21 +405,22 @@ class TestStake:
       bettor_is_a_skeptic=False,
       bettor_stake_cents=900_00,
     )), 'stake_result', 'ok', mvp_pb2.UserPredictionView)
-    with assert_unchanged(fs_storage):
+    with assert_prediction_unchanged(fs_servicer, prediction_id=prediction_id, creator_token=alice_token):
       assert 'bet would exceed creator tolerance' in assert_oneof(fs_servicer.Stake(bob_token, mvp_pb2.StakeRequest(
         prediction_id=prediction_id,
         bettor_is_a_skeptic=False,
         bettor_stake_cents=9,
       )), 'stake_result', 'error', mvp_pb2.StakeResponse.Error).catchall
 
-  async def test_error_if_logged_out(self, fs_storage: FsStorage, fs_servicer: FsBackedServicer):
-    prediction_id = assert_oneof(fs_servicer.CreatePrediction(new_user_token(fs_servicer, 'rando'), some_create_prediction_request()),
+  async def test_error_if_logged_out(self, fs_servicer: FsBackedServicer):
+    token = new_user_token(fs_servicer, 'rando')
+    prediction_id = assert_oneof(fs_servicer.CreatePrediction(token, some_create_prediction_request()),
       'create_prediction_result', 'new_prediction_id', int)
-    with assert_unchanged(fs_storage):
+    with assert_prediction_unchanged(fs_servicer, prediction_id=prediction_id, creator_token=token):
       assert 'must log in to bet' in assert_oneof(fs_servicer.Stake(None, mvp_pb2.StakeRequest(prediction_id=prediction_id)),
         'stake_result', 'error', mvp_pb2.StakeResponse.Error).catchall
 
-  async def test_error_if_no_mutual_trust(self, fs_storage: FsStorage, fs_servicer: FsBackedServicer):
+  async def test_error_if_no_mutual_trust(self, fs_servicer: FsBackedServicer):
     creator_token = new_user_token(fs_servicer, 'creator')
     prediction_id = assert_oneof(fs_servicer.CreatePrediction(creator_token, some_create_prediction_request()),
       'create_prediction_result', 'new_prediction_id', int)
@@ -430,16 +433,16 @@ class TestStake:
 
     truster_token = new_user_token(fs_servicer, 'truster')
     assert fs_servicer.SetTrusted(truster_token, mvp_pb2.SetTrustedRequest(who=creator_token.owner, trusted=True)).HasField('ok')
-    with assert_unchanged(fs_storage):
+    with assert_prediction_unchanged(fs_servicer, prediction_id=prediction_id, creator_token=creator_token):
       assert "creator doesn't trust you" in assert_oneof(fs_servicer.Stake(truster_token, stake_req), 'stake_result', 'error', mvp_pb2.StakeResponse.Error).catchall
 
     trustee_token = new_user_token(fs_servicer, 'trustee')
     fs_servicer.SetTrusted(creator_token, mvp_pb2.SetTrustedRequest(who=trustee_token.owner, trusted=True))
-    with assert_unchanged(fs_storage):
+    with assert_prediction_unchanged(fs_servicer, prediction_id=prediction_id, creator_token=creator_token):
       assert "you don't trust the creator" in assert_oneof(fs_servicer.Stake(trustee_token, stake_req), 'stake_result', 'error', mvp_pb2.StakeResponse.Error).catchall
 
     rando_token = new_user_token(fs_servicer, 'rando')
-    with assert_unchanged(fs_storage):
+    with assert_prediction_unchanged(fs_servicer, prediction_id=prediction_id, creator_token=creator_token):
       assert "creator doesn't trust you" in assert_oneof(fs_servicer.Stake(rando_token, stake_req), 'stake_result', 'error', mvp_pb2.StakeResponse.Error).catchall
 
   async def test_smoke_logged_in(self, fs_servicer: FsBackedServicer):
@@ -493,7 +496,7 @@ class TestResolve:
       'resolve_result', 'error', mvp_pb2.ResolveResponse.Error))
 
 
-  async def test_ensures_creator(self, fs_storage: FsStorage, fs_servicer: FsBackedServicer):
+  async def test_ensures_creator(self, fs_servicer: FsBackedServicer):
     alice_token, bob_token = alice_bob_tokens(fs_servicer)
     prediction_id = assert_oneof(fs_servicer.CreatePrediction(
       token=alice_token,
@@ -501,7 +504,7 @@ class TestResolve:
     ), 'create_prediction_result', 'new_prediction_id', int)
 
     for token in [bob_token, new_user_token(fs_servicer, 'rando')]:
-      with assert_unchanged(fs_storage):
+      with assert_prediction_unchanged(fs_servicer, prediction_id=prediction_id, creator_token=alice_token):
         assert 'not the creator' in assert_oneof(fs_servicer.Resolve(token, mvp_pb2.ResolveRequest(prediction_id=prediction_id, resolution=mvp_pb2.RESOLUTION_NO)),
           'resolve_result', 'error', mvp_pb2.ResolveResponse.Error).catchall
 
@@ -546,47 +549,53 @@ class TestGetUser:
 
 class TestChangePassword:
 
-  async def test_error_if_logged_out(self, fs_storage: FsStorage, fs_servicer: FsBackedServicer):
-    new_user_token(fs_servicer, 'rando')
-    with assert_unchanged(fs_storage):
+  async def test_error_if_logged_out(self, fs_servicer: FsBackedServicer):
+    real_token = new_user_token(fs_servicer, 'rando')
+    with assert_user_unchanged(fs_servicer, real_token, 'rando password'):
       assert 'must log in' in assert_oneof(fs_servicer.ChangePassword(None, mvp_pb2.ChangePasswordRequest(old_password='rando password', new_password='new rando password')),
         'change_password_result', 'error', mvp_pb2.ChangePasswordResponse.Error).catchall
 
-  async def test_happy_path(self, fs_storage: FsStorage, fs_servicer: FsBackedServicer):
+  async def test_happy_path(self, fs_servicer: FsBackedServicer):
     token = new_user_token(fs_servicer, 'rando')
     assert_oneof(fs_servicer.ChangePassword(token, mvp_pb2.ChangePasswordRequest(old_password='rando password', new_password='new rando password')),
       'change_password_result', 'ok', object)
 
-  async def test_wrong_old_password(self, fs_storage: FsStorage, fs_servicer: FsBackedServicer):
+  async def test_wrong_old_password(self, fs_servicer: FsBackedServicer):
     token = new_user_token(fs_servicer, 'rando')
-    with assert_unchanged(fs_storage):
+    with assert_user_unchanged(fs_servicer, token, 'rando password'):
       assert 'wrong old password' in assert_oneof(fs_servicer.ChangePassword(token, mvp_pb2.ChangePasswordRequest(old_password='WRONG', new_password='new rando password')),
         'change_password_result', 'error', mvp_pb2.ChangePasswordResponse.Error).catchall
 
 
 class TestSetEmail:
 
-  async def test_happy_path(self, fs_storage: FsStorage, emailer: Emailer, fs_servicer: FsBackedServicer):
+  async def test_happy_path(self, emailer: Emailer, fs_servicer: FsBackedServicer):
     token = new_user_token(fs_servicer, 'rando')
     assert assert_oneof(fs_servicer.SetEmail(token=token, request=mvp_pb2.SetEmailRequest(email='nobody@example.com')),
       'set_email_result', 'ok', mvp_pb2.EmailFlowState).code_sent.email == 'nobody@example.com'
     emailer.send_email_verification.assert_called_once_with(to='nobody@example.com', code=ANY)  # type: ignore
-    assert fs_storage.get().user_settings['rando'].email.code_sent.email == 'nobody@example.com'
+    assert assert_oneof(fs_servicer.GetSettings(token, mvp_pb2.GetSettingsRequest()),
+      'get_settings_result', 'ok', mvp_pb2.GenericUserInfo).email.code_sent.email == 'nobody@example.com'
 
-  async def test_works_in_all_stages(self, fs_storage: FsStorage, emailer: Emailer, fs_servicer: FsBackedServicer):
+  async def test_works_in_all_stages(self, emailer: Emailer, fs_servicer: FsBackedServicer):
     token = new_user_token(fs_servicer, 'rando')
-    for (name, flow_state) in [('null', mvp_pb2.EmailFlowState()),
-                               ('unstarted', mvp_pb2.EmailFlowState(unstarted=mvp_pb2.VOID)),
-                               ('code_sent', mvp_pb2.EmailFlowState(code_sent=mvp_pb2.EmailFlowState.CodeSent(email='old@example.com'))),
-                               ('verified', mvp_pb2.EmailFlowState(verified='old@example.com')),
-                              ]:
-      with fs_storage.mutate() as wstate:
-        wstate.user_settings['rando'].email.CopyFrom(flow_state)
-      assert assert_oneof(fs_servicer.SetEmail(token=token, request=mvp_pb2.SetEmailRequest(email='new@example.com')),
-        'set_email_result', 'ok', mvp_pb2.EmailFlowState).code_sent.email == 'new@example.com'
-      emailer.send_email_verification.assert_called_with(to='new@example.com', code=ANY)  # type: ignore
 
-  async def test_clear(self, fs_storage: FsStorage, emailer: Emailer, fs_servicer: FsBackedServicer):
+    # starting from scratch
+    assert assert_oneof(fs_servicer.SetEmail(token=token, request=mvp_pb2.SetEmailRequest(email='a@example.com')),
+      'set_email_result', 'ok', mvp_pb2.EmailFlowState).code_sent.email == 'a@example.com'
+
+    # starting from CodeSent
+    assert assert_oneof(fs_servicer.SetEmail(token=token, request=mvp_pb2.SetEmailRequest(email='b@example.com')),
+      'set_email_result', 'ok', mvp_pb2.EmailFlowState).code_sent.email == 'b@example.com'
+    code: str = emailer.send_email_verification.call_args[1]['code']  # type: ignore
+    assert assert_oneof(fs_servicer.VerifyEmail(token=token, request=mvp_pb2.VerifyEmailRequest(code=code)),
+      'verify_email_result', 'ok', mvp_pb2.EmailFlowState).verified == 'b@example.com'
+
+    # starting from Verified
+    assert assert_oneof(fs_servicer.SetEmail(token=token, request=mvp_pb2.SetEmailRequest(email='c@example.com')),
+      'set_email_result', 'ok', mvp_pb2.EmailFlowState).code_sent.email == 'c@example.com'
+
+  async def test_clear(self, emailer: Emailer, fs_servicer: FsBackedServicer):
     token = new_user_token(fs_servicer, 'rando')
     assert_oneof(fs_servicer.SetEmail(token=token, request=mvp_pb2.SetEmailRequest(email='nobody@example.com')),
       'set_email_result', 'ok', mvp_pb2.EmailFlowState).code_sent.email
@@ -596,48 +605,45 @@ class TestSetEmail:
       'email_flow_state_kind', 'unstarted', object)
     emailer.send_email_verification.assert_not_called()  # type: ignore
 
-  async def test_error_if_logged_out(self, fs_storage: FsStorage, fs_servicer: FsBackedServicer):
-    with assert_unchanged(fs_storage):
-      assert 'must log in' in assert_oneof(fs_servicer.SetEmail(token=None, request=mvp_pb2.SetEmailRequest(email='nobody@example.com')), 'set_email_result', 'error', mvp_pb2.SetEmailResponse.Error).catchall
+  async def test_error_if_logged_out(self, fs_servicer: FsBackedServicer):
+    assert 'must log in' in assert_oneof(fs_servicer.SetEmail(token=None, request=mvp_pb2.SetEmailRequest(email='nobody@example.com')), 'set_email_result', 'error', mvp_pb2.SetEmailResponse.Error).catchall
 
-  async def test_email_validation(self, fs_storage: FsStorage, fs_servicer: FsBackedServicer):
+  async def test_email_validation(self, fs_servicer: FsBackedServicer):
     token = new_user_token(fs_servicer, 'rando')
     for good_email_address in ['a@b', 'b@c.com', 'a.b-c_d+tag@example.com']:
       assert assert_oneof(fs_servicer.SetEmail(token=token, request=mvp_pb2.SetEmailRequest(email=good_email_address)),
         'set_email_result', 'ok', mvp_pb2.EmailFlowState).code_sent.email == good_email_address
     for bad_email_address in ['bad email', 'bad@example.com  ', 'good@example.com, evil@example.com']:
-      with assert_unchanged(fs_storage):
+      with assert_user_unchanged(fs_servicer, token, 'rando password'):
         assert 'invalid-looking email' in assert_oneof(fs_servicer.SetEmail(token=token, request=mvp_pb2.SetEmailRequest(email=bad_email_address)), 'set_email_result', 'error', mvp_pb2.SetEmailResponse.Error).catchall
 
 
 class TestVerifyEmail:
 
-  async def test_happy_path(self, fs_storage: FsStorage, emailer: Emailer, fs_servicer: FsBackedServicer):
+  async def test_happy_path(self, emailer: Emailer, fs_servicer: FsBackedServicer):
     token = new_user_token(fs_servicer, 'rando')
     assert_oneof(fs_servicer.SetEmail(token=token, request=mvp_pb2.SetEmailRequest(email='nobody@example.com')), 'set_email_result', 'ok', object)
     code = emailer.send_email_verification.call_args[1]['code']  # type: ignore
     assert assert_oneof(fs_servicer.VerifyEmail(token=token, request=mvp_pb2.VerifyEmailRequest(code=code)),
       'verify_email_result', 'ok', mvp_pb2.EmailFlowState).verified == 'nobody@example.com'
 
-  async def test_error_if_wrong_code(self, fs_storage: FsStorage, emailer: Emailer, fs_servicer: FsBackedServicer):
+  async def test_error_if_wrong_code(self, emailer: Emailer, fs_servicer: FsBackedServicer):
     token = new_user_token(fs_servicer, 'rando')
     assert_oneof(fs_servicer.SetEmail(token=token, request=mvp_pb2.SetEmailRequest(email='nobody@example.com')), 'set_email_result', 'ok', object)
     code = emailer.send_email_verification.call_args[1]['code']  # type: ignore
     assert 'bad code' in assert_oneof(fs_servicer.VerifyEmail(token=token, request=mvp_pb2.VerifyEmailRequest(code='not ' + code)),
       'verify_email_result', 'error', mvp_pb2.VerifyEmailResponse.Error).catchall
 
-  async def test_error_if_logged_out(self, fs_storage: FsStorage, fs_servicer: FsBackedServicer):
-    with assert_unchanged(fs_storage):
-      assert 'must log in' in assert_oneof(fs_servicer.VerifyEmail(token=None, request=mvp_pb2.VerifyEmailRequest(code='foo')), 'verify_email_result', 'error', mvp_pb2.VerifyEmailResponse.Error).catchall
+  async def test_error_if_logged_out(self, fs_servicer: FsBackedServicer):
+    assert 'must log in' in assert_oneof(fs_servicer.VerifyEmail(token=None, request=mvp_pb2.VerifyEmailRequest(code='foo')), 'verify_email_result', 'error', mvp_pb2.VerifyEmailResponse.Error).catchall
 
 
 class TestGetSettings:
 
-  async def test_error_if_logged_out(self, fs_storage: FsStorage, fs_servicer: FsBackedServicer):
-    with assert_unchanged(fs_storage):
-      assert 'must log in' in assert_oneof(fs_servicer.GetSettings(token=None, request=mvp_pb2.GetSettingsRequest()), 'get_settings_result', 'error', mvp_pb2.GetSettingsResponse.Error).catchall
+  async def test_error_if_logged_out(self, fs_servicer: FsBackedServicer):
+    assert 'must log in' in assert_oneof(fs_servicer.GetSettings(token=None, request=mvp_pb2.GetSettingsRequest()), 'get_settings_result', 'error', mvp_pb2.GetSettingsResponse.Error).catchall
 
-  async def test_happy_path(self, fs_storage: FsStorage, emailer: Emailer, fs_servicer: FsBackedServicer):
+  async def test_happy_path(self, emailer: Emailer, fs_servicer: FsBackedServicer):
     alice_token, bob_token = alice_bob_tokens(fs_servicer)
     geninfo = assert_oneof(fs_servicer.GetSettings(token=alice_token, request=mvp_pb2.GetSettingsRequest()),
       'get_settings_result', 'ok', mvp_pb2.GenericUserInfo)
@@ -646,24 +652,23 @@ class TestGetSettings:
 
 class TestUpdateSettings:
 
-  async def test_error_if_logged_out(self, fs_storage: FsStorage, fs_servicer: FsBackedServicer):
-    with assert_unchanged(fs_storage):
-      assert 'must log in' in assert_oneof(fs_servicer.UpdateSettings(token=None, request=mvp_pb2.UpdateSettingsRequest()), 'update_settings_result', 'error', mvp_pb2.UpdateSettingsResponse.Error).catchall
+  async def test_error_if_logged_out(self, fs_servicer: FsBackedServicer):
+    assert 'must log in' in assert_oneof(fs_servicer.UpdateSettings(token=None, request=mvp_pb2.UpdateSettingsRequest()), 'update_settings_result', 'error', mvp_pb2.UpdateSettingsResponse.Error).catchall
 
-  async def test_happy_path(self, fs_storage: FsStorage, emailer: Emailer, fs_servicer: FsBackedServicer):
+  async def test_happy_path(self, emailer: Emailer, fs_servicer: FsBackedServicer):
     alice_token, bob_token = alice_bob_tokens(fs_servicer)
     assert assert_oneof(fs_servicer.UpdateSettings(token=alice_token, request=mvp_pb2.UpdateSettingsRequest(email_reminders_to_resolve=mvp_pb2.MaybeBool(value=True))),
       'update_settings_result', 'ok', mvp_pb2.GenericUserInfo).email_reminders_to_resolve
-    assert fs_storage.get().user_settings['Alice'].email_reminders_to_resolve
+    assert assert_oneof(fs_servicer.GetSettings(alice_token, mvp_pb2.GetSettingsRequest()),
+      'get_settings_result', 'ok', mvp_pb2.GenericUserInfo).email_reminders_to_resolve
 
 
 class TestCreateInvitation:
 
-  async def test_error_if_logged_out(self, fs_storage: FsStorage, fs_servicer: FsBackedServicer):
-    with assert_unchanged(fs_storage):
-      assert 'must log in' in assert_oneof(fs_servicer.CreateInvitation(token=None, request=mvp_pb2.CreateInvitationRequest()), 'create_invitation_result', 'error', mvp_pb2.CreateInvitationResponse.Error).catchall
+  async def test_error_if_logged_out(self, fs_servicer: FsBackedServicer):
+    assert 'must log in' in assert_oneof(fs_servicer.CreateInvitation(token=None, request=mvp_pb2.CreateInvitationRequest()), 'create_invitation_result', 'error', mvp_pb2.CreateInvitationResponse.Error).catchall
 
-  async def test_success_if_logged_in(self, fs_storage: FsStorage, fs_servicer: FsBackedServicer):
+  async def test_success_if_logged_in(self, fs_servicer: FsBackedServicer):
     token = new_user_token(fs_servicer, 'rando')
     assert_oneof(fs_servicer.CreateInvitation(token=token, request=mvp_pb2.CreateInvitationRequest()), 'create_invitation_result', 'ok', object)
 
@@ -693,18 +698,19 @@ class TestCheckInvitation:
 
 class TestAcceptInvitation:
 
-  async def test_error_if_logged_out(self, fs_storage: FsStorage, fs_servicer: FsBackedServicer):
-    invitation_id = assert_oneof(fs_servicer.CreateInvitation(token=new_user_token(fs_servicer, 'inviter'), request=mvp_pb2.CreateInvitationRequest()),
+  async def test_error_if_logged_out(self, fs_servicer: FsBackedServicer):
+    token = new_user_token(fs_servicer, 'inviter')
+    invitation_id = assert_oneof(fs_servicer.CreateInvitation(token=token, request=mvp_pb2.CreateInvitationRequest()),
       'create_invitation_result', 'ok', mvp_pb2.CreateInvitationResponse.Result).id
-    with assert_unchanged(fs_storage):
-      assert 'must log in' in assert_oneof(fs_servicer.AcceptInvitation(token=None, request=mvp_pb2.AcceptInvitationRequest(invitation_id=invitation_id)), 'accept_invitation_result', 'error', mvp_pb2.AcceptInvitationResponse.Error).catchall
+    assert 'must log in' in assert_oneof(fs_servicer.AcceptInvitation(token=None, request=mvp_pb2.AcceptInvitationRequest(invitation_id=invitation_id)), 'accept_invitation_result', 'error', mvp_pb2.AcceptInvitationResponse.Error).catchall
+    assert assert_oneof(fs_servicer.CheckInvitation(token=None, request=mvp_pb2.CheckInvitationRequest(invitation_id=invitation_id)),
+      'check_invitation_result', 'is_open', bool)
 
-  async def test_error_if_invalid(self, fs_storage: FsStorage, fs_servicer: FsBackedServicer):
+  async def test_error_if_invalid(self, fs_servicer: FsBackedServicer):
     accepter_token = new_user_token(fs_servicer, 'accepter')
-    with assert_unchanged(fs_storage):
-      assert 'no invitation id given' in assert_oneof(fs_servicer.AcceptInvitation(token=accepter_token, request=mvp_pb2.AcceptInvitationRequest(invitation_id=None)), 'accept_invitation_result', 'error', mvp_pb2.AcceptInvitationResponse.Error).catchall
+    assert 'no invitation id given' in assert_oneof(fs_servicer.AcceptInvitation(token=accepter_token, request=mvp_pb2.AcceptInvitationRequest(invitation_id=None)), 'accept_invitation_result', 'error', mvp_pb2.AcceptInvitationResponse.Error).catchall
 
-  async def test_happy_path(self, fs_storage: FsStorage, fs_servicer: FsBackedServicer):
+  async def test_happy_path(self, fs_servicer: FsBackedServicer):
     invitation_id = assert_oneof(fs_servicer.CreateInvitation(token=new_user_token(fs_servicer, 'inviter'), request=mvp_pb2.CreateInvitationRequest()),
       'create_invitation_result', 'ok', mvp_pb2.CreateInvitationResponse.Result).id
     accepter_token = new_user_token(fs_servicer, 'accepter')
@@ -714,18 +720,21 @@ class TestAcceptInvitation:
       'check_invitation_result', 'is_open', bool)
 
   async def test_no_such_invitation(self, fs_servicer: FsBackedServicer):
-    new_user_token(fs_servicer, 'rando')
+    non_inviter_token = new_user_token(fs_servicer, 'rando')
     accepter_token = new_user_token(fs_servicer, 'accepter')
-    assert 'invitation is non-existent or already used' in assert_oneof(fs_servicer.AcceptInvitation(token=accepter_token, request=mvp_pb2.AcceptInvitationRequest(invitation_id=mvp_pb2.InvitationId(inviter='rando', nonce='asdf'))),
-      'accept_invitation_result', 'error', mvp_pb2.AcceptInvitationResponse.Error).catchall
+    with assert_user_unchanged(fs_servicer, non_inviter_token, 'rando password'):
+      assert 'invitation is non-existent or already used' in assert_oneof(fs_servicer.AcceptInvitation(token=accepter_token, request=mvp_pb2.AcceptInvitationRequest(invitation_id=mvp_pb2.InvitationId(inviter='rando', nonce='asdf'))),
+        'accept_invitation_result', 'error', mvp_pb2.AcceptInvitationResponse.Error).catchall
 
   async def test_closed_invitation(self, fs_servicer: FsBackedServicer):
-    invitation_id = assert_oneof(fs_servicer.CreateInvitation(token=new_user_token(fs_servicer, 'inviter'), request=mvp_pb2.CreateInvitationRequest()),
+    inviter_token = new_user_token(fs_servicer, 'inviter')
+    invitation_id = assert_oneof(fs_servicer.CreateInvitation(token=inviter_token, request=mvp_pb2.CreateInvitationRequest()),
       'create_invitation_result', 'ok', mvp_pb2.CreateInvitationResponse.Result).id
 
     accepter_token = new_user_token(fs_servicer, 'accepter')
     assert_oneof(fs_servicer.AcceptInvitation(accepter_token, mvp_pb2.AcceptInvitationRequest(invitation_id=invitation_id)),
       'accept_invitation_result', 'ok', object)
 
-    assert 'invitation is non-existent or already used' in assert_oneof(fs_servicer.AcceptInvitation(token=accepter_token, request=mvp_pb2.AcceptInvitationRequest(invitation_id=mvp_pb2.InvitationId(inviter='rando', nonce='asdf'))),
-      'accept_invitation_result', 'error', mvp_pb2.AcceptInvitationResponse.Error).catchall
+    with assert_user_unchanged(fs_servicer, inviter_token, 'inviter password'):
+      assert 'invitation is non-existent or already used' in assert_oneof(fs_servicer.AcceptInvitation(token=accepter_token, request=mvp_pb2.AcceptInvitationRequest(invitation_id=mvp_pb2.InvitationId(inviter='rando', nonce='asdf'))),
+        'accept_invitation_result', 'error', mvp_pb2.AcceptInvitationResponse.Error).catchall

@@ -8,8 +8,9 @@ from typing import Type, TypeVar, Iterator
 
 from google.protobuf.message import Message
 
-from .core import TokenMint
+from .core import PredictionId, Servicer, TokenMint
 from .fs_servicer import FsBackedServicer, FsStorage
+from .protobuf import mvp_pb2
 
 
 class MockClock:
@@ -61,7 +62,19 @@ def assert_oneof(pb: Message, oneof: str, case: str, typ: Type[_T]) -> _T:
 
 
 @contextlib.contextmanager
-def assert_unchanged(fs_storage: FsStorage) -> Iterator[None]:
-  original = copy.deepcopy(fs_storage.get())
+def assert_user_unchanged(servicer: Servicer, token: mvp_pb2.AuthToken, password: str) -> Iterator[None]:
+  assert_oneof(servicer.LogInUsername(None, mvp_pb2.LogInUsernameRequest(username=token.owner, password=password)), 'log_in_username_result', 'ok', mvp_pb2.AuthSuccess)
+  old_settings = assert_oneof(servicer.GetSettings(token, mvp_pb2.GetSettingsRequest()), 'get_settings_result', 'ok', mvp_pb2.GenericUserInfo)
   yield
-  assert fs_storage.get() == original
+  new_settings = assert_oneof(servicer.GetSettings(token, mvp_pb2.GetSettingsRequest()), 'get_settings_result', 'ok', mvp_pb2.GenericUserInfo)
+  assert old_settings == new_settings
+  assert_oneof(servicer.LogInUsername(None, mvp_pb2.LogInUsernameRequest(username=token.owner, password=password)), 'log_in_username_result', 'ok', mvp_pb2.AuthSuccess)
+
+
+@contextlib.contextmanager
+def assert_prediction_unchanged(servicer: Servicer, prediction_id: PredictionId, creator_token: mvp_pb2.AuthToken) -> Iterator[None]:
+  old = assert_oneof(servicer.GetPrediction(creator_token, mvp_pb2.GetPredictionRequest(prediction_id=prediction_id)), 'get_prediction_result', 'prediction', mvp_pb2.UserPredictionView)
+  assert old.creator.username == creator_token.owner
+  yield
+  new = assert_oneof(servicer.GetPrediction(creator_token, mvp_pb2.GetPredictionRequest(prediction_id=prediction_id)), 'get_prediction_result', 'prediction', mvp_pb2.UserPredictionView)
+  assert old == new
