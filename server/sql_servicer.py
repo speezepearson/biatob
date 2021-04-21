@@ -289,40 +289,54 @@ class SqlServicer(Servicer):
     @checks_token
     @log_action
     def ListMyStakes(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.ListMyStakesRequest) -> mvp_pb2.ListMyStakesResponse:
-        if token is None:
-            logger.info('logged-out user trying to list their predictions')
-            return mvp_pb2.ListMyStakesResponse(ok=mvp_pb2.PredictionsById(predictions={}))
+      if token is None:
+        logger.info('logged-out user trying to list their predictions')
+        return mvp_pb2.ListMyStakesResponse(ok=mvp_pb2.PredictionsById(predictions={}))
 
-        wstate = self._storage.get()
-        result = {
-            prediction_id: view_prediction(wstate, token_owner(token), prediction)
-            for prediction_id, prediction in wstate.predictions.items()
-            if prediction.creator == token.owner or any(trade.bettor == token.owner for trade in prediction.trades)
-        }
+      prediction_ids = {
+        *[row['prediction_id']
+          for row in self._conn.execute(
+            sqlalchemy.select(schema.predictions.c.prediction_id)
+            .where(schema.predictions.c.creator == token.owner)
+          ).fetchall()],
+        *[row['prediction_id']
+          for row in self._conn.execute(
+            sqlalchemy.select(schema.trades.c.prediction_id.distinct())
+            .where(schema.trades.c.bettor == token.owner)
+          ).fetchall()],
+      }
 
-        return mvp_pb2.ListMyStakesResponse(ok=mvp_pb2.PredictionsById(predictions=result))
+      predictions_by_id = mvp_pb2.PredictionsById(predictions={
+        prediction_id: view_prediction(self._conn, token_owner(token), prediction_id)
+        for prediction_id in prediction_ids
+      })
+      return mvp_pb2.ListMyStakesResponse(ok=predictions_by_id)
 
     @transactional
     @checks_token
     @log_action
     def ListPredictions(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.ListPredictionsRequest) -> mvp_pb2.ListPredictionsResponse:
-        if token is None:
-            logger.info('logged-out user trying to list predictions')
-            return mvp_pb2.ListPredictionsResponse(ok=mvp_pb2.PredictionsById(predictions={}))
-        creator = Username(request.creator) if request.creator else token_owner(token)
+      if token is None:
+        logger.info('logged-out user trying to list predictions')
+        return mvp_pb2.ListPredictionsResponse(ok=mvp_pb2.PredictionsById(predictions={}))
+      creator = Username(request.creator) if request.creator else token_owner(token)
+      if not trusts(self._conn, creator, token_owner(token)):
+        logger.info('trying to get list untrusting creator\'s predictions', creator=creator)
+        return mvp_pb2.ListPredictionsResponse(error=mvp_pb2.ListPredictionsResponse.Error(catchall="creator doesn't trust you"))
 
-        wstate = self._storage.get()
-        if not trusts(wstate, creator, token_owner(token)):
-            logger.info('trying to get list untrusting creator\'s predictions', creator=creator)
-            return mvp_pb2.ListPredictionsResponse(error=mvp_pb2.ListPredictionsResponse.Error(catchall="creator doesn't trust you"))
+      prediction_ids = {
+        row['prediction_id']
+        for row in self._conn.execute(
+          sqlalchemy.select(schema.predictions.c.prediction_id)
+          .where(schema.predictions.c.creator == creator)
+        ).fetchall()
+      }
 
-        result = {
-            prediction_id: view_prediction(wstate, token_owner(token), prediction)
-            for prediction_id, prediction in wstate.predictions.items()
-            if prediction.creator == creator
-        }
-
-        return mvp_pb2.ListPredictionsResponse(ok=mvp_pb2.PredictionsById(predictions=result))
+      predictions_by_id = mvp_pb2.PredictionsById(predictions={
+        prediction_id: view_prediction(self._conn, token_owner(token), prediction_id)
+        for prediction_id in prediction_ids
+      })
+      return mvp_pb2.ListPredictionsResponse(ok=predictions_by_id)
 
     @transactional
     @checks_token
