@@ -469,6 +469,33 @@ class SqlServicer(Servicer):
       # ))
       return mvp_pb2.ResolveResponse(ok=view_prediction(self._conn, token_owner(token), request.prediction_id))
 
+
+    def _unsafe_SetTrusted(self, subject_username: Username, object_username: Username, trusted: bool) -> None:
+      if self._conn.execute(
+            sqlalchemy.select(schema.relationships)
+            .where(sqlalchemy.and_(
+              schema.relationships.c.subject_username == subject_username,
+              schema.relationships.c.object_username == object_username,
+            ))).fetchone() is None:
+        logger.info('creating relationship between users', who=object_username, trusted=trusted)
+        self._conn.execute(
+          sqlalchemy.insert(schema.relationships).values(
+            subject_username=subject_username,
+            object_username=object_username,
+            trusted=trusted,
+          )
+        )
+      else:
+        logger.info('setting user trust in existing relationship', who=object_username, trusted=trusted)
+        self._conn.execute(
+          sqlalchemy.update(schema.relationships)
+          .values(trusted=trusted)
+          .where(sqlalchemy.and_(
+            schema.relationships.c.subject_username == subject_username,
+            schema.relationships.c.object_username == object_username,
+          ))
+        )
+
     @transactional
     @checks_token
     @log_action
@@ -477,34 +504,15 @@ class SqlServicer(Servicer):
         logger.warn('not logged in')
         return mvp_pb2.SetTrustedResponse(error=mvp_pb2.SetTrustedResponse.Error(catchall='must log in to trust folks'))
 
+      if request.who == token.owner:
+        logger.warn('attempting to set trust for self')
+        return mvp_pb2.SetTrustedResponse(error=mvp_pb2.SetTrustedResponse.Error(catchall='cannot set trust for self'))
+
       if not user_exists(self._conn, Username(request.who)):
         logger.warn('attempting to set trust for nonexistent user')
         return mvp_pb2.SetTrustedResponse(error=mvp_pb2.SetTrustedResponse.Error(catchall='no such user'))
 
-      if self._conn.execute(
-            sqlalchemy.select(schema.relationships)
-            .where(sqlalchemy.and_(
-              schema.relationships.c.subject_username == token.owner,
-              schema.relationships.c.object_username == request.who,
-            ))).fetchone() is None:
-        logger.info('creating relationship between users', who=request.who, trusted=request.trusted)
-        self._conn.execute(
-          sqlalchemy.insert(schema.relationships).values(
-            subject_username=token.owner,
-            object_username=request.who,
-            trusted=request.trusted,
-          )
-        )
-      else:
-        logger.info('setting user trust in existing relationship', who=request.who, trusted=request.trusted)
-        self._conn.execute(
-          sqlalchemy.update(schema.relationships)
-          .values(trusted=request.trusted)
-          .where(sqlalchemy.and_(
-            schema.relationships.c.subject_username == token.owner,
-            schema.relationships.c.object_username == request.who,
-          ))
-        )
+      self._unsafe_SetTrusted(token.owner, request.who, request.trusted)
 
       return mvp_pb2.SetTrustedResponse(ok=self.GetSettings(token, mvp_pb2.GetSettingsRequest()).ok)
 
@@ -651,109 +659,123 @@ class SqlServicer(Servicer):
     @checks_token
     @log_action
     def UpdateSettings(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.UpdateSettingsRequest) -> mvp_pb2.UpdateSettingsResponse:
-        if token is None:
-            logger.warn('not logged in')
-            return mvp_pb2.UpdateSettingsResponse(error=mvp_pb2.UpdateSettingsResponse.Error(catchall='must log in to update your settings'))
+      if token is None:
+        logger.warn('not logged in')
+        return mvp_pb2.UpdateSettingsResponse(error=mvp_pb2.UpdateSettingsResponse.Error(catchall='must log in to update your settings'))
 
-        with self._storage.mutate() as wstate:
-            info = get_generic_user_info(wstate, token_owner(token))
-            if info is None:
-                raise ForgottenTokenError(token)
-            if request.HasField('email_reminders_to_resolve'):
-                info.email_reminders_to_resolve = request.email_reminders_to_resolve.value
-            if request.HasField('email_resolution_notifications'):
-                info.email_resolution_notifications = request.email_resolution_notifications.value
-            logger.info('updated settings', request=request)
-            return mvp_pb2.UpdateSettingsResponse(ok=info)
+      update_kwargs = {}
+      if request.HasField('email_reminders_to_resolve'):
+        update_kwargs['email_reminders_to_resolve'] = request.email_reminders_to_resolve.value
+      if request.HasField('email_resolution_notifications'):
+        update_kwargs['email_resolution_notifications'] = request.email_resolution_notifications.value
+
+      self._conn.execute(
+        sqlalchemy.update(schema.users)
+        .values(**update_kwargs)
+        .where(schema.users.c.username == token.owner)
+      )
+      logger.info('updated settings', request=request)
+      return mvp_pb2.UpdateSettingsResponse(ok=self.GetSettings(token, mvp_pb2.GetSettingsRequest()).ok)
 
     @transactional
     @checks_token
     @log_action
     def CreateInvitation(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.CreateInvitationRequest) -> mvp_pb2.CreateInvitationResponse:
-        if token is None:
-            logger.warn('not logged in')
-            return mvp_pb2.CreateInvitationResponse(error=mvp_pb2.CreateInvitationResponse.Error(catchall='must log in to create an invitation'))
+      if token is None:
+        logger.warn('not logged in')
+        return mvp_pb2.CreateInvitationResponse(error=mvp_pb2.CreateInvitationResponse.Error(catchall='must log in to create an invitation'))
 
-        with self._storage.mutate() as wstate:
-            info = get_generic_user_info(wstate, token_owner(token))
-            if info is None:
-                raise ForgottenTokenError(token)
+      nonce = secrets.token_urlsafe(16)
+      now = self._clock()
 
-            nonce = secrets.token_urlsafe(16)
-            invitation = mvp_pb2.Invitation(
-                created_unixtime=int(self._clock()),
-                notes=request.notes,
-                accepted_by=None,
-            )
-            info.invitations[nonce].CopyFrom(invitation)
-            return mvp_pb2.CreateInvitationResponse(ok=mvp_pb2.CreateInvitationResponse.Result(
-                id=mvp_pb2.InvitationId(inviter=token_owner(token), nonce=nonce),
-                invitation=invitation,
-                user_info=info,
-            ))
+      self._conn.execute(
+        sqlalchemy.insert(schema.invitations)
+        .values(
+          nonce=nonce,
+          inviter=token.owner,
+          created_at_unixtime=now,
+          notes=request.notes,
+        )
+      )
+
+      invitation = mvp_pb2.Invitation(
+        created_unixtime=int(now),
+        notes=request.notes,
+        accepted_by=None,
+      )
+      return mvp_pb2.CreateInvitationResponse(ok=mvp_pb2.CreateInvitationResponse.Result(
+          id=mvp_pb2.InvitationId(inviter=token_owner(token), nonce=nonce),
+          invitation=invitation,
+          user_info=self.GetSettings(token, mvp_pb2.GetSettingsRequest()).ok,
+      ))
 
     @transactional
     @checks_token
     @log_action
     def CheckInvitation(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.CheckInvitationRequest) -> mvp_pb2.CheckInvitationResponse:
-        if not (request.HasField('invitation_id') and request.invitation_id.inviter):
-            logger.warn('malformed CheckInvitationRequest')
-            return mvp_pb2.CheckInvitationResponse(error=mvp_pb2.CheckInvitationResponse.Error(catchall='malformed invitation'))
-        wstate = self._storage.get()
+      if not (request.HasField('invitation_id') and request.invitation_id.inviter):
+        logger.warn('malformed CheckInvitationRequest')
+        return mvp_pb2.CheckInvitationResponse(error=mvp_pb2.CheckInvitationResponse.Error(catchall='malformed invitation'))
 
-        inviter = Username(request.invitation_id.inviter)
-        inviter_info = get_generic_user_info(wstate, inviter)
-        if inviter_info is None:
-            logger.warn('trying to get invitation from nonexistent user')
-            return mvp_pb2.CheckInvitationResponse(is_open=False)
+      invitation_row = self._conn.execute(
+        sqlalchemy.select(schema.invitations)
+        .where(schema.invitations.c.nonce == request.invitation_id.nonce)
+      ).fetchone()
+      if invitation_row is None:
+        logger.warn('trying to get nonexistent invitation')
+        return mvp_pb2.CheckInvitationResponse(is_open=False)
 
-        invitation = inviter_info.invitations.get(request.invitation_id.nonce)
-        if invitation is None:
-            logger.warn('trying to get nonexistent invitation')
-            return mvp_pb2.CheckInvitationResponse(is_open=False)
-
-        return mvp_pb2.CheckInvitationResponse(is_open=not invitation.accepted_by)
+      acceptance_row = self._conn.execute(
+        sqlalchemy.select(schema.invitation_acceptances)
+        .where(schema.invitation_acceptances.c.invitation_nonce == request.invitation_id.nonce)
+      ).fetchone()
+      return mvp_pb2.CheckInvitationResponse(is_open=(acceptance_row is None))
 
     @transactional
     @checks_token
     @log_action
     def AcceptInvitation(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.AcceptInvitationRequest) -> mvp_pb2.AcceptInvitationResponse:
-        if token is None:
-            logger.warn('not logged in')
-            return mvp_pb2.AcceptInvitationResponse(error=mvp_pb2.AcceptInvitationResponse.Error(catchall='must log in to create an invitation'))
-        problems = describe_AcceptInvitationRequest_problems(request)
-        if problems is not None:
-            logger.warn('invalid AcceptInvitationRequest', problems=problems)
-            return mvp_pb2.AcceptInvitationResponse(error=mvp_pb2.AcceptInvitationResponse.Error(catchall=problems))
+      if token is None:
+        logger.warn('not logged in')
+        return mvp_pb2.AcceptInvitationResponse(error=mvp_pb2.AcceptInvitationResponse.Error(catchall='must log in to create an invitation'))
+      problems = describe_AcceptInvitationRequest_problems(request)
+      if problems is not None:
+        logger.warn('invalid AcceptInvitationRequest', problems=problems)
+        return mvp_pb2.AcceptInvitationResponse(error=mvp_pb2.AcceptInvitationResponse.Error(catchall=problems))
 
-        with self._storage.mutate() as wstate:
-            if (not request.HasField('invitation_id')) or (not request.invitation_id.inviter):
-                logger.warn('malformed attempt to accept invitation', possible_malice=True)
-                return mvp_pb2.AcceptInvitationResponse(error=mvp_pb2.AcceptInvitationResponse.Error(catchall='malformed invitation'))
+      if (not request.HasField('invitation_id')) or (not request.invitation_id.inviter):
+        logger.warn('malformed attempt to accept invitation', possible_malice=True)
+        return mvp_pb2.AcceptInvitationResponse(error=mvp_pb2.AcceptInvitationResponse.Error(catchall='malformed invitation'))
 
-            accepter_info = get_generic_user_info(wstate, token_owner(token))
-            if accepter_info is None:
-                raise ForgottenTokenError(token)
+      invitation_row = self._conn.execute(
+        sqlalchemy.select(schema.invitations)
+        .where(schema.invitations.c.nonce == request.invitation_id.nonce)
+      ).fetchone()
+      if invitation_row is None:
+        logger.warn('attempt to accept nonexistent invitation', possible_malice=True)
+        return mvp_pb2.AcceptInvitationResponse(error=mvp_pb2.AcceptInvitationResponse.Error(catchall='invitation is non-existent or already used'))
+      inviter = Username(invitation_row['inviter'])
 
-            inviter = Username(request.invitation_id.inviter)
-            inviter_info = get_generic_user_info(wstate, inviter)
-            if inviter_info is None:
-                return mvp_pb2.AcceptInvitationResponse(error=mvp_pb2.AcceptInvitationResponse.Error(catchall='invitation is non-existent or already used'))
+      acceptance_row = self._conn.execute(
+        sqlalchemy.select(schema.invitation_acceptances)
+        .where(schema.invitation_acceptances.c.invitation_nonce == request.invitation_id.nonce)
+      ).fetchone()
+      if acceptance_row is not None:
+        logger.info('attempt to re-accept invitation')
+        return mvp_pb2.AcceptInvitationResponse(error=mvp_pb2.AcceptInvitationResponse.Error(catchall='invitation is non-existent or already used'))
 
-            for orig_nonce, orig_invitation in inviter_info.invitations.items():
-                # TODO: just index in, dummy
-                if orig_nonce == request.invitation_id.nonce:
-                    if orig_invitation.accepted_by:
-                        logger.info('attempt to re-accept invitation')
-                        return mvp_pb2.AcceptInvitationResponse(error=mvp_pb2.AcceptInvitationResponse.Error(catchall='invitation is non-existent or already used'))
-                    orig_invitation.accepted_by = token.owner
-                    orig_invitation.accepted_unixtime = int(self._clock())
-                    accepter_info.relationships[inviter].trusted = True
-                    inviter_info.relationships[token.owner].trusted = True
-                    logger.info('accepted invitation', whose=inviter)
-                    return mvp_pb2.AcceptInvitationResponse(ok=accepter_info)
-            logger.warn('attempt to accept nonexistent invitation', possible_malice=True)
-            return mvp_pb2.AcceptInvitationResponse(error=mvp_pb2.AcceptInvitationResponse.Error(catchall='invitation is non-existent or already used'))
+      self._conn.execute(
+        sqlalchemy.insert(schema.invitation_acceptances)
+        .values(
+          invitation_nonce=request.invitation_id.nonce,
+          accepted_at_unixtime=self._clock(),
+          accepted_by=token.owner,
+        )
+      )
+      self._unsafe_SetTrusted(token.owner, inviter, True)
+      self._unsafe_SetTrusted(inviter, token.owner, True)
+      logger.info('accepted invitation', whose=inviter)
+      return mvp_pb2.AcceptInvitationResponse(ok=self.GetSettings(token, mvp_pb2.GetSettingsRequest()).ok)
 
 
 
