@@ -650,8 +650,34 @@ class SqlServicer(Servicer):
           email_reminders_to_resolve=row['email_reminders_to_resolve'],
           email_resolution_notifications=row['email_resolution_notifications'],
           email=mvp_pb2.EmailFlowState.FromString(row['email_flow_state']),
-          # TODO(P0): relationships
-          # TODO(P0): invitations
+          relationships={
+            row['object_username']: mvp_pb2.Relationship(
+              trusted=row['trusted'],
+              # TODO(P2): side payments
+            )
+            for row in self._conn.execute(
+              sqlalchemy.select(schema.relationships)
+              .where(schema.relationships.c.subject_username == token.owner)
+            )
+          },
+          invitations={
+            row['nonce']: mvp_pb2.Invitation(
+              created_unixtime=row['created_at_unixtime'],
+              notes=row['notes'],
+              accepted_by=row['accepted_by'],
+              accepted_unixtime=row['accepted_at_unixtime'],
+            )
+            for row in self._conn.execute(
+              sqlalchemy.select(
+                schema.invitations.c.nonce,
+                schema.invitations.c.created_at_unixtime,
+                schema.invitations.c.notes,
+                schema.invitation_acceptances.c.accepted_by,
+                schema.invitation_acceptances.c.accepted_at_unixtime,
+              ).select_from(schema.invitations.join(schema.invitation_acceptances, isouter=True))
+              .where(schema.invitations.c.inviter == token.owner)
+            )
+          },
         )
         return mvp_pb2.GetSettingsResponse(ok=info)
 
