@@ -511,45 +511,53 @@ class SqlServicer(Servicer):
     @checks_token
     @log_action
     def GetUser(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.GetUserRequest) -> mvp_pb2.GetUserResponse:
-        wstate = self._storage.get()
-        if not user_exists(wstate, Username(request.who)):
-            logger.info('attempting to view nonexistent user', who=request.who)
-            return mvp_pb2.GetUserResponse(error=mvp_pb2.GetUserResponse.Error(catchall='no such user'))
+      if not user_exists(self._conn, Username(request.who)):
+        logger.info('attempting to view nonexistent user', who=request.who)
+        return mvp_pb2.GetUserResponse(error=mvp_pb2.GetUserResponse.Error(catchall='no such user'))
 
-        return mvp_pb2.GetUserResponse(ok=mvp_pb2.UserUserView(
-            username=request.who,
-            is_trusted=trusts(wstate, token_owner(token), Username(request.who)) if (token is not None) else False,
-            trusts_you=trusts(wstate, Username(request.who), token_owner(token)) if (token is not None) else False,
-        ))
+      return mvp_pb2.GetUserResponse(ok=mvp_pb2.UserUserView(
+        username=request.who,
+        is_trusted=trusts(self._conn, token_owner(token), Username(request.who)) if (token is not None) else False,
+        trusts_you=trusts(self._conn, Username(request.who), token_owner(token)) if (token is not None) else False,
+      ))
 
     @transactional
     @checks_token
     @log_action
     def ChangePassword(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.ChangePasswordRequest) -> mvp_pb2.ChangePasswordResponse:
-        if token is None:
-            logger.warn('not logged in')
-            return mvp_pb2.ChangePasswordResponse(error=mvp_pb2.ChangePasswordResponse.Error(catchall='must log in to change your password'))
-        password_problems = describe_password_problems(request.new_password)
-        if password_problems is not None:
-            logger.warn('attempting to set bad password')
-            return mvp_pb2.ChangePasswordResponse(error=mvp_pb2.ChangePasswordResponse.Error(catchall=password_problems))
+      if token is None:
+        logger.warn('not logged in')
+        return mvp_pb2.ChangePasswordResponse(error=mvp_pb2.ChangePasswordResponse.Error(catchall='must log in to change your password'))
+      password_problems = describe_password_problems(request.new_password)
+      if password_problems is not None:
+        logger.warn('attempting to set bad password')
+        return mvp_pb2.ChangePasswordResponse(error=mvp_pb2.ChangePasswordResponse.Error(catchall=password_problems))
 
-        with self._storage.mutate() as wstate:
-            info = wstate.user_settings.get(token.owner)
-            if info is None:
-                raise ForgottenTokenError(token)
-            if info.WhichOneof('login_type') != 'login_password':
-                logger.warn('password-change request for non-password user', possible_malice=True)
-                return mvp_pb2.ChangePasswordResponse(error=mvp_pb2.ChangePasswordResponse.Error(catchall="you don't use a password to log in"))
+      row = self._conn.execute(
+        sqlalchemy.select(schema.passwords)
+        .where(sqlalchemy.and_(
+          schema.users.c.username == token.owner,
+          schema.users.c.login_password_id == schema.passwords.c.password_id,
+        ))
+      ).fetchone()
+      if row is None:
+        logger.warn('password-change request for non-password user', possible_malice=True)
+        return mvp_pb2.ChangePasswordResponse(error=mvp_pb2.ChangePasswordResponse.Error(catchall="you don't use a password to log in"))
 
-            if not check_password(request.old_password, info.login_password):
-                logger.warn('password-change request has wrong password', possible_malice=True)
-                return mvp_pb2.ChangePasswordResponse(error=mvp_pb2.ChangePasswordResponse.Error(catchall='wrong old password'))
+      old_hashed_password = mvp_pb2.HashedPassword(salt=row['salt'], scrypt=row['scrypt'])
+      if not check_password(request.old_password, old_hashed_password):
+        logger.warn('password-change request has wrong password', possible_malice=True)
+        return mvp_pb2.ChangePasswordResponse(error=mvp_pb2.ChangePasswordResponse.Error(catchall='wrong old password'))
 
-            info.login_password.CopyFrom(new_hashed_password(request.new_password))
+      new = new_hashed_password(request.new_password)
+      logger.info('changing password', who=token.owner)
+      self._conn.execute(
+        sqlalchemy.update(schema.passwords)
+        .values(salt=new.salt, scrypt=new.scrypt)
+        .where(schema.passwords.c.password_id == row['password_id'])
+      )
 
-            logger.info('changing password', who=token.owner)
-            return mvp_pb2.ChangePasswordResponse(ok=mvp_pb2.VOID)
+      return mvp_pb2.ChangePasswordResponse(ok=mvp_pb2.VOID)
 
     @transactional
     @checks_token
