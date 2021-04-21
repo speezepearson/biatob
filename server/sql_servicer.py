@@ -842,17 +842,28 @@ async def email_invariant_violations_forever(conn: sqlalchemy.engine.base.Connec
 ###################################################################################
 ## Below this line are email-related very-nice-to-haves (TODO(P1)) that are hard to port from the Protobuf world.
 
-# async def email_daily_backups_forever(storage: 'FsStorage', emailer: Emailer, recipient_email: str):
-#     while True:
-#         now = datetime.datetime.now()
-#         next_day = datetime.datetime.fromtimestamp(86400 * (1 + now.timestamp()//86400))
-#         await asyncio.sleep((next_day - now).total_seconds())
-#         logger.info('emailing backups')
-#         await emailer.send_backup(
-#             to=recipient_email,
-#             now=next_day,
-#             wstate=storage.get(),
-#         )
+def _backup_text(conn: sqlalchemy.engine.Connection) -> str:
+  return json.dumps(
+    {
+      table.name: [dict(row) for row in conn.execute(sqlalchemy.select(table.c))]
+      for table in schema.metadata.tables.values()
+    },
+    indent=2,
+    sort_keys=True,
+    default=lambda x: {'__type__': str(type(x)), '__repr__': repr(x)},
+  )
+
+async def email_daily_backups_forever(conn: sqlalchemy.engine.Connection, emailer: Emailer, recipient_email: str):
+  while True:
+    now = datetime.datetime.now()
+    next_day = datetime.datetime.fromtimestamp(86400 * (1 + now.timestamp()//86400))
+    await asyncio.sleep((next_day - now).total_seconds())
+    logger.info('emailing backups')
+    await emailer.send_backup(
+      to=recipient_email,
+      now=next_day,
+      body=_backup_text(conn),
+    )
 
 # def prediction_needs_email_reminder(now: datetime.datetime, prediction: mvp_pb2.WorldState.Prediction) -> bool:
 #     history = prediction.resolution_reminder_history
