@@ -484,12 +484,36 @@ class TestResolve:
 
 class TestSetTrusted:
 
-  async def test_smoke_logged_out(self, any_servicer: Servicer):
-    resp = any_servicer.SetTrusted(token=None, request=mvp_pb2.SetTrustedRequest())
+  async def test_error_when_logged_out(self, any_servicer: Servicer):
+    new_user_token(any_servicer, 'rando')
+    assert 'must log in to trust folks' in assert_oneof(any_servicer.SetTrusted(token=None, request=mvp_pb2.SetTrustedRequest(who='rando', trusted=True)),
+      'set_trusted_result', 'error', mvp_pb2.SetTrustedResponse.Error).catchall
 
-  async def test_smoke_logged_in(self, any_servicer: Servicer):
+  async def test_error_if_nonexistent(self, any_servicer: Servicer):
     token = new_user_token(any_servicer, 'rando')
-    resp = any_servicer.SetTrusted(token=token, request=mvp_pb2.SetTrustedRequest())
+    assert 'no such user' in assert_oneof(any_servicer.SetTrusted(token=token, request=mvp_pb2.SetTrustedRequest(who='nonexistent', trusted=True)),
+      'set_trusted_result', 'error', mvp_pb2.SetTrustedResponse.Error).catchall
+
+  async def test_error_if_self(self, any_servicer: Servicer):
+    token = new_user_token(any_servicer, 'rando')
+    assert 'cannot set trust for self' in assert_oneof(any_servicer.SetTrusted(token=token, request=mvp_pb2.SetTrustedRequest(who='rando', trusted=True)),
+      'set_trusted_result', 'error', mvp_pb2.SetTrustedResponse.Error).catchall
+
+  async def test_happy_path(self, any_servicer: Servicer):
+    alice_token, bob_token = alice_bob_tokens(any_servicer)
+    new_user_token(any_servicer, 'other')
+
+    alice_view_of_bob = assert_oneof(any_servicer.GetUser(token=alice_token, request=mvp_pb2.GetUserRequest(who='Bob')),
+      'get_user_result', 'ok', mvp_pb2.UserUserView)
+    assert alice_view_of_bob.is_trusted
+
+    assert_oneof(any_servicer.SetTrusted(token=alice_token, request=mvp_pb2.SetTrustedRequest(who='Bob', trusted=False)),
+      'set_trusted_result', 'ok', mvp_pb2.GenericUserInfo)
+
+    alice_view_of_bob = assert_oneof(any_servicer.GetUser(token=alice_token, request=mvp_pb2.GetUserRequest(who='Bob')),
+      'get_user_result', 'ok', mvp_pb2.UserUserView)
+    assert not alice_view_of_bob.is_trusted
+
 
 
 class TestGetUser:

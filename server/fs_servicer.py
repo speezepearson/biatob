@@ -403,6 +403,10 @@ class FsBackedServicer(Servicer):
             logger.warn('not logged in')
             return mvp_pb2.SetTrustedResponse(error=mvp_pb2.SetTrustedResponse.Error(catchall='must log in to trust folks'))
 
+        if request.who == token_owner(token):
+            logger.warn('attempting to set trust for self')
+            return mvp_pb2.SetTrustedResponse(error=mvp_pb2.SetTrustedResponse.Error(catchall='cannot set trust for self'))
+
         with self._storage.mutate() as wstate:
             requester_info = get_generic_user_info(wstate, token_owner(token))
             if requester_info is None:
