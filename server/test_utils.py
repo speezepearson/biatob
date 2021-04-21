@@ -13,7 +13,7 @@ from .core import PredictionId, Servicer, TokenMint
 from .fs_servicer import FsBackedServicer, FsStorage
 from .protobuf import mvp_pb2
 from .sql_servicer import SqlServicer
-from .sql_schema import metadata
+from .sql_schema import create_sqlite_engine
 
 class MockClock:
   def __init__(self):
@@ -66,8 +66,7 @@ def any_servicer(request, fs_storage, clock, token_mint, emailer):
     )
   else:
     assert request.param == 'sql'
-    engine = sqlalchemy.create_engine('sqlite+pysqlite:///:memory:')
-    metadata.create_all(engine)
+    engine = create_sqlite_engine(':memory:')
     with engine.connect() as conn:
       yield SqlServicer(
         conn=conn,

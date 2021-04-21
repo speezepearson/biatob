@@ -109,7 +109,7 @@ def test_get_email_for_resolution_reminder():
     email_reminders_to_resolve=True,
     email=mvp_pb2.EmailFlowState(code_sent=mvp_pb2.EmailFlowState.CodeSent(email='addr'))
   )) is None
-  
+
 
 async def test_email_resolution_reminder_if_necessary_sends_email_once(emailer, fs_storage):
   now = datetime.datetime.now()

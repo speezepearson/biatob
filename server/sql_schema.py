@@ -1,4 +1,5 @@
-from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String, BOOLEAN, ForeignKey, BINARY, select, insert, values, Index, REAL, CheckConstraint
+from sqlalchemy import event
+from sqlalchemy import MetaData, Table, Column, Integer, String, BOOLEAN, ForeignKey, BINARY, Index, REAL, CheckConstraint
 import sqlalchemy
 
 metadata = MetaData()
@@ -112,56 +113,15 @@ invitation_acceptances = Table(
 )
 
 
-
-if __name__ == '__main__':
-  
-  # Adapted from https://docs.sqlalchemy.org/en/14/dialects/sqlite.html#foreign-key-support
-  from sqlalchemy.engine import Engine
-  from sqlalchemy import event
-  @event.listens_for(Engine, "connect")
-  def set_sqlite_pragma(dbapi_connection, connection_record):
-      cursor = dbapi_connection.cursor()
-      cursor.execute("PRAGMA foreign_keys=ON")
-      cursor.close()
-
-  import autopsy; autopsy.activate()
-  from .sql_servicer import *
-  from unittest.mock import Mock
-  from .protobuf import mvp_pb2
-  engine = create_engine('sqlite+pysqlite:///:memory:')
+def create_sqlite_engine(database: str) -> sqlalchemy.engine.Engine:
+  engine = sqlalchemy.create_engine(f'sqlite+pysqlite:///{database}')
   metadata.create_all(engine)
-  with engine.connect() as conn:
-    mint = TokenMint(secret_key=b'123')
-    servicer = SqlServicer(
-      conn=conn,
-      token_mint=mint,
-      emailer=Mock(),
-      random_seed=0,
-    )
-    print('invalid login')
-    servicer.LogInUsername(None, mvp_pb2.LogInUsernameRequest(username='foo', password='bar'))
-    print('registering user')
-    token = servicer.RegisterUsername(None, mvp_pb2.RegisterUsernameRequest(username='foo', password='bar')).ok.token
-    print('creating prediction')
-    prediction_id = servicer.CreatePrediction(token, mvp_pb2.CreatePredictionRequest(
-      prediction='a thing will happen',
-      certainty=mvp_pb2.CertaintyRange(low=0.4, high=0.6),
-      maximum_stake_cents=123,
-      open_seconds=456,
-      special_rules='my special rules',
-      resolves_at_unixtime=int(2e9),
-    )).new_prediction_id
-    print('getting as creator')
-    print(servicer.GetPrediction(token, mvp_pb2.GetPredictionRequest(prediction_id=prediction_id)))
-    print('getting as nobody')
-    print(servicer.GetPrediction(None, mvp_pb2.GetPredictionRequest(prediction_id=prediction_id)))
 
-    other_token = servicer.RegisterUsername(None, mvp_pb2.RegisterUsernameRequest(username='bob', password='bob')).ok.token
-    print(servicer.Stake(other_token, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_is_a_skeptic=True, bettor_stake_cents=30)))
-    
-    assert servicer.SetTrusted(token, mvp_pb2.SetTrustedRequest(who=other_token.owner, trusted=True)).WhichOneof('set_trusted_result') == 'ok'
-    assert servicer.SetTrusted(other_token, mvp_pb2.SetTrustedRequest(who=token.owner, trusted=True)).WhichOneof('set_trusted_result') == 'ok'
+  # Adapted from https://docs.sqlalchemy.org/en/14/dialects/sqlite.html#foreign-key-support
+  @event.listens_for(engine, "connect")
+  def set_sqlite_pragma(dbapi_connection, connection_record):
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.close()
 
-    print(servicer.Stake(other_token, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_is_a_skeptic=True, bettor_stake_cents=30)))
-
-    print(servicer.Stake(other_token, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_is_a_skeptic=True, bettor_stake_cents=3000)))
+  return engine
