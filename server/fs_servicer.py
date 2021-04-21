@@ -392,7 +392,8 @@ class FsBackedServicer(Servicer):
         asyncio.create_task(self._emailer.send_resolution_notifications(
             bccs=email_addrs,
             prediction_id=PredictionId(request.prediction_id),
-            prediction=prediction,
+            prediction_text=prediction.prediction,
+            resolution=request.resolution,
         ))
         return mvp_pb2.ResolveResponse(ok=view_prediction(wstate, token_owner(token), prediction))
 
@@ -676,7 +677,7 @@ async def email_daily_backups_forever(storage: FsStorage, emailer: Emailer, reci
         await emailer.send_backup(
             to=recipient_email,
             now=next_day,
-            wstate=storage.get(),
+            body=google.protobuf.text_format.MessageToString(storage.get()),
         )
 
 def prediction_needs_email_reminder(now: datetime.datetime, prediction: mvp_pb2.WorldState.Prediction) -> bool:
@@ -719,7 +720,7 @@ async def email_resolution_reminder_if_necessary(now: datetime.datetime, emailer
             await emailer.send_resolution_reminder(
                 to=email_addr,
                 prediction_id=PredictionId(prediction_id),
-                prediction=prediction,
+                prediction_text=prediction.prediction,
             )
             succeeded = True
         except Exception as e:
