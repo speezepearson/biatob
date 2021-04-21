@@ -208,6 +208,7 @@ class SqlServicer(Servicer):
       self._conn.execute(sqlalchemy.insert(schema.users).values(
         username=request.username,
         login_password_id=password_id,
+        email_flow_state=mvp_pb2.EmailFlowState(unstarted=mvp_pb2.VOID).SerializeToString(),
       ))
 
       login_response = self.LogInUsername(None, mvp_pb2.LogInUsernameRequest(username=request.username, password=request.password))
@@ -283,7 +284,7 @@ class SqlServicer(Servicer):
         logger.info('trying to get nonexistent prediction', prediction_id=request.prediction_id)
         return mvp_pb2.GetPredictionResponse(error=mvp_pb2.GetPredictionResponse.Error(catchall='no such prediction'))
       return mvp_pb2.GetPredictionResponse(prediction=view)
-      
+
 
     @transactional
     @checks_token
@@ -563,55 +564,65 @@ class SqlServicer(Servicer):
     @checks_token
     @log_action
     def SetEmail(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.SetEmailRequest) -> mvp_pb2.SetEmailResponse:
-        if token is None:
-            logger.warn('not logged in')
-            return mvp_pb2.SetEmailResponse(error=mvp_pb2.SetEmailResponse.Error(catchall='must log in to set an email'))
-        problems = describe_SetEmailRequest_problems(request)
-        if problems is not None:
-            logger.warn('attempting to set invalid email', problems=problems)
-            return mvp_pb2.SetEmailResponse(error=mvp_pb2.SetEmailResponse.Error(catchall=problems))
+      if token is None:
+        logger.warn('not logged in')
+        return mvp_pb2.SetEmailResponse(error=mvp_pb2.SetEmailResponse.Error(catchall='must log in to set an email'))
+      problems = describe_SetEmailRequest_problems(request)
+      if problems is not None:
+        logger.warn('attempting to set invalid email', problems=problems)
+        return mvp_pb2.SetEmailResponse(error=mvp_pb2.SetEmailResponse.Error(catchall=problems))
 
-        with self._storage.mutate() as wstate:
-            requester_info = get_generic_user_info(wstate, token_owner(token))
-            if requester_info is None:
-                raise ForgottenTokenError(token)
-            if request.email:
-                # TODO: prevent an email address from getting "too many" emails if somebody abuses us
-                code = secrets.token_urlsafe(nbytes=16)
-                asyncio.create_task(self._emailer.send_email_verification(
-                    to=request.email,
-                    code=code,
-                ))
-                requester_info.email.MergeFrom(mvp_pb2.EmailFlowState(code_sent=mvp_pb2.EmailFlowState.CodeSent(email=request.email, code=new_hashed_password(code))))
-                wstate.user_settings[token.owner].CopyFrom(requester_info) # TODO: hack
-                logger.info('set email address', who=token.owner, address=request.email)
-            else:
-                requester_info.email.MergeFrom(mvp_pb2.EmailFlowState(unstarted=mvp_pb2.VOID))
-                logger.info('dissociated email address', who=token.owner)
-            return mvp_pb2.SetEmailResponse(ok=requester_info.email)
+      if request.email:
+        # TODO: prevent an email address from getting "too many" emails if somebody abuses us
+        code = secrets.token_urlsafe(nbytes=16)
+        asyncio.create_task(self._emailer.send_email_verification(
+            to=request.email,
+            code=code,
+        ))
+        new_efs = mvp_pb2.EmailFlowState(code_sent=mvp_pb2.EmailFlowState.CodeSent(email=request.email, code=new_hashed_password(code)))
+      else:
+        new_efs = mvp_pb2.EmailFlowState(unstarted=mvp_pb2.VOID)
+
+      logger.info('setting email address', who=token.owner, address=request.email)
+      self._conn.execute(
+        sqlalchemy.update(schema.users)
+        .values(email_flow_state=new_efs.SerializeToString())
+        .where(schema.users.c.username == token.owner)
+      )
+      return mvp_pb2.SetEmailResponse(ok=new_efs)
 
     @transactional
     @checks_token
     @log_action
     def VerifyEmail(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.VerifyEmailRequest) -> mvp_pb2.VerifyEmailResponse:
-        if token is None:
-            logger.warn('not logged in')
-            return mvp_pb2.VerifyEmailResponse(error=mvp_pb2.VerifyEmailResponse.Error(catchall='must log in to change your password'))
+      if token is None:
+        logger.warn('not logged in')
+        return mvp_pb2.VerifyEmailResponse(error=mvp_pb2.VerifyEmailResponse.Error(catchall='must log in to change your password'))
 
-        with self._storage.mutate() as wstate:
-            requester_info = get_generic_user_info(wstate, token_owner(token))
-            if requester_info is None:
-                raise ForgottenTokenError(token)
-            if not (requester_info.email and requester_info.email.WhichOneof('email_flow_state_kind') == 'code_sent'):
-                logger.warn('attempting to verify email, but no email outstanding', possible_malice=True)
-                return mvp_pb2.VerifyEmailResponse(error=mvp_pb2.VerifyEmailResponse.Error(catchall='you have no pending email-verification flow'))
-            code_sent_state = requester_info.email.code_sent
-            if not check_password(request.code, code_sent_state.code):
-                logger.warn('bad email-verification code', address=code_sent_state.email, possible_malice=True)
-                return mvp_pb2.VerifyEmailResponse(error=mvp_pb2.VerifyEmailResponse.Error(catchall='bad code'))
-            requester_info.email.CopyFrom(mvp_pb2.EmailFlowState(verified=code_sent_state.email))
-            logger.info('verified email address', who=token.owner, address=code_sent_state.email)
-            return mvp_pb2.VerifyEmailResponse(ok=requester_info.email)
+      old_efs_binary = self._conn.execute(
+        sqlalchemy.select(schema.users.c.email_flow_state)
+        .where(schema.users.c.username == token.owner)
+      ).scalar()
+      if old_efs_binary is None:
+        raise ForgottenTokenError(token)
+
+      old_efs = mvp_pb2.EmailFlowState.FromString(old_efs_binary)
+      if old_efs.WhichOneof('email_flow_state_kind') != 'code_sent':
+        logger.warn('attempting to verify email, but no email outstanding', possible_malice=True)
+        return mvp_pb2.VerifyEmailResponse(error=mvp_pb2.VerifyEmailResponse.Error(catchall='you have no pending email-verification flow'))
+      code_sent_state = old_efs.code_sent
+      if not check_password(request.code, code_sent_state.code):
+        logger.warn('bad email-verification code', address=code_sent_state.email, possible_malice=True)
+        return mvp_pb2.VerifyEmailResponse(error=mvp_pb2.VerifyEmailResponse.Error(catchall='bad code'))
+
+      new_efs = mvp_pb2.EmailFlowState(verified=code_sent_state.email)
+      self._conn.execute(
+        sqlalchemy.update(schema.users)
+        .values(email_flow_state=new_efs.SerializeToString())
+        .where(schema.users.c.username == token.owner)
+      )
+      logger.info('verified email address', who=token.owner, address=code_sent_state.email)
+      return mvp_pb2.VerifyEmailResponse(ok=new_efs)
 
     @transactional
     @checks_token
@@ -621,16 +632,16 @@ class SqlServicer(Servicer):
           logger.info('not logged in')
           return mvp_pb2.GetSettingsResponse(error=mvp_pb2.GetSettingsResponse.Error(catchall='must log in to see your settings'))
 
-        row = self._conn.execute(sqlalchemy.select(
-          schema.users.c.email_reminders_to_resolve,
-          schema.users.c.email_resolution_notifications,
-        ).where(schema.users.c.username == token.owner)).first()
+        row = self._conn.execute(
+          sqlalchemy.select(schema.users)
+          .where(schema.users.c.username == token.owner)
+        ).first()
         if row is None:
           raise ForgottenTokenError(token)
         info = mvp_pb2.GenericUserInfo(
           email_reminders_to_resolve=row['email_reminders_to_resolve'],
           email_resolution_notifications=row['email_resolution_notifications'],
-          # TODO(P0): email
+          email=mvp_pb2.EmailFlowState.FromString(row['email_flow_state']),
           # TODO(P0): relationships
           # TODO(P0): invitations
         )

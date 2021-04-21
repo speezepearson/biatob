@@ -10,6 +10,7 @@ users = Table(
   Column('email_reminders_to_resolve', BOOLEAN(), nullable=False, default=False),
   Column('email_resolution_notifications', BOOLEAN(), nullable=False, default=False),
   Column('login_password_id', ForeignKey('passwords.password_id'), nullable=False),  # will be nullable someday, if we add OAuth or something
+  Column('email_flow_state', BINARY(), nullable=False),
 )
 
 passwords = Table(
