@@ -665,9 +665,13 @@ class TestCreateInvitation:
   async def test_error_if_logged_out(self, any_servicer: Servicer):
     assert 'must log in' in assert_oneof(any_servicer.CreateInvitation(token=None, request=mvp_pb2.CreateInvitationRequest()), 'create_invitation_result', 'error', mvp_pb2.CreateInvitationResponse.Error).catchall
 
-  async def test_success_if_logged_in(self, any_servicer: Servicer):
+  async def test_success_if_logged_in(self, any_servicer: Servicer, clock: MockClock):
     token = new_user_token(any_servicer, 'rando')
-    assert_oneof(any_servicer.CreateInvitation(token=token, request=mvp_pb2.CreateInvitationRequest()), 'create_invitation_result', 'ok', object)
+    invitation_id = assert_oneof(any_servicer.CreateInvitation(token=token, request=mvp_pb2.CreateInvitationRequest()), 'create_invitation_result', 'ok', mvp_pb2.CreateInvitationResponse.Result).id
+    assert assert_oneof(any_servicer.GetSettings(token=token, request=mvp_pb2.GetSettingsRequest()),
+      'get_settings_result', 'ok', mvp_pb2.GenericUserInfo).invitations[invitation_id.nonce] == mvp_pb2.Invitation(
+        created_unixtime=clock.now(),
+      )
 
 
 class TestCheckInvitation:
@@ -707,14 +711,28 @@ class TestAcceptInvitation:
     accepter_token = new_user_token(any_servicer, 'accepter')
     assert 'no invitation id given' in assert_oneof(any_servicer.AcceptInvitation(token=accepter_token, request=mvp_pb2.AcceptInvitationRequest(invitation_id=None)), 'accept_invitation_result', 'error', mvp_pb2.AcceptInvitationResponse.Error).catchall
 
-  async def test_happy_path(self, any_servicer: Servicer):
-    invitation_id = assert_oneof(any_servicer.CreateInvitation(token=new_user_token(any_servicer, 'inviter'), request=mvp_pb2.CreateInvitationRequest()),
+  async def test_happy_path(self, any_servicer: Servicer, clock: MockClock):
+    inviter_token = new_user_token(any_servicer, 'inviter')
+    invitation_id = assert_oneof(any_servicer.CreateInvitation(token=inviter_token, request=mvp_pb2.CreateInvitationRequest()),
       'create_invitation_result', 'ok', mvp_pb2.CreateInvitationResponse.Result).id
+    invited_at = clock.now()
+
+    clock.tick()
+
     accepter_token = new_user_token(any_servicer, 'accepter')
     assert_oneof(any_servicer.AcceptInvitation(accepter_token, mvp_pb2.AcceptInvitationRequest(invitation_id=invitation_id)),
       'accept_invitation_result', 'ok', object)
+    accepted_at = clock.now()
+
     assert not assert_oneof(any_servicer.CheckInvitation(token=None, request=mvp_pb2.CheckInvitationRequest(invitation_id=invitation_id)),
       'check_invitation_result', 'is_open', bool)
+
+    assert assert_oneof(any_servicer.GetSettings(token=inviter_token, request=mvp_pb2.GetSettingsRequest()),
+      'get_settings_result', 'ok', mvp_pb2.GenericUserInfo).invitations[invitation_id.nonce] == mvp_pb2.Invitation(
+        created_unixtime=invited_at,
+        accepted_by='accepter',
+        accepted_unixtime=accepted_at,
+      )
 
   async def test_no_such_invitation(self, any_servicer: Servicer):
     non_inviter_token = new_user_token(any_servicer, 'rando')
