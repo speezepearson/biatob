@@ -9,13 +9,13 @@ users = Table(
   Column('username', String(64), primary_key=True, nullable=False),
   Column('email_reminders_to_resolve', BOOLEAN(), nullable=False, default=False),
   Column('email_resolution_notifications', BOOLEAN(), nullable=False, default=False),
-  Column('login_password_id', ForeignKey('passwords.login_password_id'), nullable=False),  # will be nullable someday, if we add OAuth or something
+  Column('login_password_id', ForeignKey('passwords.password_id'), nullable=False),  # will be nullable someday, if we add OAuth or something
 )
 
 passwords = Table(
   "passwords",
   metadata,
-  Column('login_password_id', String(64), primary_key=True, nullable=False),
+  Column('password_id', String(64), primary_key=True, nullable=False),
   Column('salt', BINARY(), nullable=False),
   Column('scrypt', BINARY(), nullable=False),
 )

@@ -198,10 +198,10 @@ class SqlServicer(Servicer):
         return mvp_pb2.RegisterUsernameResponse(error=mvp_pb2.RegisterUsernameResponse.Error(catchall='username taken'))
 
       logger.info('registering username', username=request.username)
-      password_id = 'TODO(P0)' + str(time.time())
+      password_id = ''.join(self._rng.choices('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234567879_', k=16))
       hashed_password = new_hashed_password(request.password)
       self._conn.execute(sqlalchemy.insert(schema.passwords).values(
-        login_password_id=password_id,
+        password_id=password_id,
         salt=hashed_password.salt,
         scrypt=hashed_password.scrypt,
       ))
@@ -224,7 +224,7 @@ class SqlServicer(Servicer):
             logger.warn('logged-in user trying to log in again', new_username=request.username)
             return mvp_pb2.LogInUsernameResponse(error=mvp_pb2.LogInUsernameResponse.Error(catchall='already authenticated; first, log out'))
 
-        login_password_info = self._conn.execute(sqlalchemy.select(schema.passwords.c.salt, schema.passwords.c.scrypt).where(sqlalchemy.and_(schema.users.c.username == request.username, schema.users.c.login_password_id == schema.passwords.c.login_password_id))).first()
+        login_password_info = self._conn.execute(sqlalchemy.select(schema.passwords.c.salt, schema.passwords.c.scrypt).where(sqlalchemy.and_(schema.users.c.username == request.username, schema.users.c.login_password_id == schema.passwords.c.password_id))).first()
         if login_password_info is None:
             logger.debug('login attempt for nonexistent user', username=request.username)
             return mvp_pb2.LogInUsernameResponse(error=mvp_pb2.LogInUsernameResponse.Error(catchall='no such user'))
@@ -258,7 +258,7 @@ class SqlServicer(Servicer):
       if problems is not None:
         return mvp_pb2.CreatePredictionResponse(error=mvp_pb2.CreatePredictionResponse.Error(catchall=problems))
 
-      prediction_id = int(time.time() * 100000000) % (2**32) # TODO(P0)
+      prediction_id = self._rng.randrange(2**32)  # TODO(P0): make this a string
       logger.debug('creating prediction', prediction_id=prediction_id, request=request)
       self._conn.execute(sqlalchemy.insert(schema.predictions).values(
         prediction_id=prediction_id,
