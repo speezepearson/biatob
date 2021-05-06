@@ -12,7 +12,7 @@ from google.protobuf.message import Message
 from .core import PredictionId, Servicer, TokenMint
 from .fs_servicer import FsBackedServicer, FsStorage
 from .protobuf import mvp_pb2
-from .sql_servicer import SqlServicer
+from .sql_servicer import SqlServicer, SqlConn
 from .sql_schema import create_sqlite_engine
 
 class MockClock:
@@ -69,7 +69,7 @@ def any_servicer(request, fs_storage, clock, token_mint, emailer):
     engine = create_sqlite_engine(':memory:')
     with engine.connect() as conn:
       yield SqlServicer(
-        conn=conn,
+        conn=SqlConn(conn),
         emailer=emailer,
         random_seed=0,
         clock=clock.now,

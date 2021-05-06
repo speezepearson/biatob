@@ -22,6 +22,7 @@ import sys
 import tempfile
 import time
 from typing import overload, Any, Mapping, Iterator, Optional, Container, MutableMapping, MutableSequence, NewType, Callable, NoReturn, Tuple, Iterable, Sequence, TypeVar, MutableSequence
+from typing_extensions import TypedDict
 import argparse
 import logging
 import os
@@ -41,102 +42,462 @@ import structlog
 logger = structlog.get_logger()
 
 
-def user_exists(conn: sqlalchemy.engine.base.Connection, user: Username) -> bool:
- return conn.execute(sqlalchemy.select(schema.users.c).where(schema.users.c.username == user)).first() is not None
 
-def trusts(conn: sqlalchemy.engine.base.Connection, a: Username, b: Username) -> bool:
-  if a == b:
-    return True
+class SqlConn:
+  def  __init__(self, conn: sqlalchemy.engine.base.Connection):
+    self._conn = conn
 
-  row = conn.execute(sqlalchemy.select([schema.relationships.c.trusted]).where(sqlalchemy.and_(schema.relationships.c.subject_username == a, schema.relationships.c.object_username == b))).first()
-  if row is None:
-    return False
+  @contextlib.contextmanager
+  def transaction(self):
+    with self._conn.begin():
+      yield
 
-  return bool(row['trusted'])
+  def register_username(self, username: Username, password: str, password_id: str) -> None:
+      hashed_password = new_hashed_password(password)
+      self._conn.execute(sqlalchemy.insert(schema.passwords).values(
+        password_id=password_id,
+        salt=hashed_password.salt,
+        scrypt=hashed_password.scrypt,
+      ))
+      self._conn.execute(sqlalchemy.insert(schema.users).values(
+        username=username,
+        login_password_id=password_id,
+        email_flow_state=mvp_pb2.EmailFlowState(unstarted=mvp_pb2.VOID).SerializeToString(),
+      ))
 
-def view_prediction(conn: sqlalchemy.engine.base.Connection, viewer: Optional[Username], prediction_id: PredictionId) -> Optional[mvp_pb2.UserPredictionView]:
-  row = conn.execute(sqlalchemy.select(schema.predictions.c).where(schema.predictions.c.prediction_id == prediction_id)).first()
-  if row is None:
-    return None
+  def get_username_password_info(self, username: Username) -> Optional[mvp_pb2.HashedPassword]:
+    row = self._conn.execute(
+      sqlalchemy.select([schema.passwords.c.salt, schema.passwords.c.scrypt])
+      .where(sqlalchemy.and_(
+        schema.users.c.username == username,
+        schema.users.c.login_password_id == schema.passwords.c.password_id,
+      ))
+    ).first()
+    if row is None:
+      return None
+    return mvp_pb2.HashedPassword(salt=row['salt'], scrypt=row['scrypt'])
 
-  creator_is_viewer = (viewer == row['creator'])
-
-  resolution_rows = conn.execute(
-    sqlalchemy.select(schema.resolutions.c)
-    .where(schema.resolutions.c.prediction_id == prediction_id)
-    .order_by(schema.resolutions.c.resolved_at_unixtime)
-  ).fetchall()
-
-  trade_rows = conn.execute(
-    sqlalchemy.select(schema.trades.c)
-    .where(sqlalchemy.and_(
-      schema.trades.c.prediction_id == prediction_id,
-      True if creator_is_viewer else (schema.trades.c.bettor == viewer)
+  def create_prediction(
+    self,
+    now: float,
+    prediction_id: PredictionId,
+    creator: Username,
+    request: mvp_pb2.CreatePredictionRequest,
+  ) -> None:
+    self._conn.execute(sqlalchemy.insert(schema.predictions).values(
+      prediction_id=prediction_id,
+      prediction=request.prediction,
+      certainty_low_p=request.certainty.low,
+      certainty_high_p=request.certainty.high,
+      maximum_stake_cents=request.maximum_stake_cents,
+      created_at_unixtime=now,
+      closes_at_unixtime=now + request.open_seconds,
+      resolves_at_unixtime=request.resolves_at_unixtime,
+      special_rules=request.special_rules,
+      creator=creator,
     ))
-    .order_by(schema.trades.c.transacted_at_unixtime)
-  ).fetchall()
 
-  remaining_stake_cents_vs_believers = row['maximum_stake_cents'] - conn.execute(
-    sqlalchemy.select([sqlalchemy.sql.func.coalesce(sqlalchemy.sql.func.sum(schema.trades.c.creator_stake_cents), 0)])
-    .where(sqlalchemy.and_(
-      schema.trades.c.prediction_id == prediction_id,
-      sqlalchemy.not_(schema.trades.c.bettor_is_a_skeptic)
-    ))
-  ).scalar()
-  remaining_stake_cents_vs_skeptics = row['maximum_stake_cents'] - conn.execute(
-    sqlalchemy.select([sqlalchemy.sql.func.coalesce(sqlalchemy.sql.func.sum(schema.trades.c.creator_stake_cents), 0)])
-    .where(sqlalchemy.and_(
-      schema.trades.c.prediction_id == prediction_id,
-      schema.trades.c.bettor_is_a_skeptic
-    ))
-  ).scalar()
+  def user_exists(self, user: Username) -> bool:
+    return self._conn.execute(sqlalchemy.select(schema.users.c).where(schema.users.c.username == user)).first() is not None
 
-  return mvp_pb2.UserPredictionView(
-    prediction=row['prediction'],
-    certainty=mvp_pb2.CertaintyRange(low=row['certainty_low_p'], high=row['certainty_high_p']),
-    maximum_stake_cents=row['maximum_stake_cents'],
-    remaining_stake_cents_vs_believers=remaining_stake_cents_vs_believers,
-    remaining_stake_cents_vs_skeptics=remaining_stake_cents_vs_skeptics,
-    created_unixtime=row['created_at_unixtime'],
-    closes_unixtime=row['closes_at_unixtime'],
-    resolves_at_unixtime=row['resolves_at_unixtime'],
-    special_rules=row['special_rules'],
-    creator=mvp_pb2.UserUserView(
-      username=row['creator'],
-      is_trusted=trusts(conn, viewer, Username(row['creator'])) if (viewer is not None) else False,
-      trusts_you=trusts(conn, Username(row['creator']), viewer) if (viewer is not None) else False,
-    ),
-    resolutions=[
-      mvp_pb2.ResolutionEvent(
-        unixtime=r['resolved_at_unixtime'],
-        resolution=mvp_pb2.Resolution.Value(r['resolution'])
-      )
-      for r in resolution_rows
-    ],
-    your_trades=[
+  def trusts(self, a: Username, b: Username) -> bool:
+    if a == b:
+      return True
+
+    row = self._conn.execute(sqlalchemy.select([schema.relationships.c.trusted]).where(sqlalchemy.and_(schema.relationships.c.subject_username == a, schema.relationships.c.object_username == b))).first()
+    if row is None:
+      return False
+
+    return bool(row['trusted'])
+
+  def view_prediction(self, viewer: Optional[Username], prediction_id: PredictionId) -> Optional[mvp_pb2.UserPredictionView]:
+    row = self._conn.execute(sqlalchemy.select(schema.predictions.c).where(schema.predictions.c.prediction_id == prediction_id)).first()
+    if row is None:
+      return None
+
+    creator_is_viewer = (viewer == row['creator'])
+
+    resolution_rows = self._conn.execute(
+      sqlalchemy.select(schema.resolutions.c)
+      .where(schema.resolutions.c.prediction_id == prediction_id)
+      .order_by(schema.resolutions.c.resolved_at_unixtime)
+    ).fetchall()
+
+    trade_rows = self._conn.execute(
+      sqlalchemy.select(schema.trades.c)
+      .where(sqlalchemy.and_(
+        schema.trades.c.prediction_id == prediction_id,
+        True if creator_is_viewer else (schema.trades.c.bettor == viewer)
+      ))
+      .order_by(schema.trades.c.transacted_at_unixtime)
+    ).fetchall()
+
+    remaining_stake_cents_vs_believers = row['maximum_stake_cents'] - self._conn.execute(
+      sqlalchemy.select([sqlalchemy.sql.func.coalesce(sqlalchemy.sql.func.sum(schema.trades.c.creator_stake_cents), 0)])
+      .where(sqlalchemy.and_(
+        schema.trades.c.prediction_id == prediction_id,
+        sqlalchemy.not_(schema.trades.c.bettor_is_a_skeptic)
+      ))
+    ).scalar()
+    remaining_stake_cents_vs_skeptics = row['maximum_stake_cents'] - self._conn.execute(
+      sqlalchemy.select([sqlalchemy.sql.func.coalesce(sqlalchemy.sql.func.sum(schema.trades.c.creator_stake_cents), 0)])
+      .where(sqlalchemy.and_(
+        schema.trades.c.prediction_id == prediction_id,
+        schema.trades.c.bettor_is_a_skeptic
+      ))
+    ).scalar()
+
+    return mvp_pb2.UserPredictionView(
+      prediction=row['prediction'],
+      certainty=mvp_pb2.CertaintyRange(low=row['certainty_low_p'], high=row['certainty_high_p']),
+      maximum_stake_cents=row['maximum_stake_cents'],
+      remaining_stake_cents_vs_believers=remaining_stake_cents_vs_believers,
+      remaining_stake_cents_vs_skeptics=remaining_stake_cents_vs_skeptics,
+      created_unixtime=row['created_at_unixtime'],
+      closes_unixtime=row['closes_at_unixtime'],
+      resolves_at_unixtime=row['resolves_at_unixtime'],
+      special_rules=row['special_rules'],
+      creator=mvp_pb2.UserUserView(
+        username=row['creator'],
+        is_trusted=self.trusts(viewer, Username(row['creator'])) if (viewer is not None) else False,
+        trusts_you=self.trusts(Username(row['creator']), viewer) if (viewer is not None) else False,
+      ),
+      resolutions=[
+        mvp_pb2.ResolutionEvent(
+          unixtime=r['resolved_at_unixtime'],
+          resolution=mvp_pb2.Resolution.Value(r['resolution'])
+        )
+        for r in resolution_rows
+      ],
+      your_trades=[
+        mvp_pb2.Trade(
+          bettor=t['bettor'],
+          bettor_is_a_skeptic=t['bettor_is_a_skeptic'],
+          creator_stake_cents=t['creator_stake_cents'],
+          bettor_stake_cents=t['bettor_stake_cents'],
+          transacted_unixtime=t['transacted_at_unixtime'],
+        )
+        for t in trade_rows
+      ],
+    )
+
+  def list_stakes(self, user: Username) -> Iterable[PredictionId]:
+    return {
+      *[PredictionId(row['prediction_id'])
+        for row in self._conn.execute(
+          sqlalchemy.select([schema.predictions.c.prediction_id])
+          .where(schema.predictions.c.creator == user)
+        ).fetchall()],
+      *[PredictionId(row['prediction_id'])
+        for row in self._conn.execute(
+          sqlalchemy.select([schema.trades.c.prediction_id.distinct()])
+          .where(schema.trades.c.bettor == user)
+        ).fetchall()],
+    }
+
+  def list_predictions_created(self, creator: Username) -> Iterable[PredictionId]:
+    return {
+      PredictionId(row['prediction_id'])
+      for row in self._conn.execute(
+        sqlalchemy.select([schema.predictions.c.prediction_id])
+        .where(schema.predictions.c.creator == creator)
+      ).fetchall()
+    }
+
+  PredictionInfo = TypedDict('PredictionInfo',
+                 {'creator': Username,
+                  'created_at_unixtime': int,
+                  'closes_at_unixtime': int,
+                  'certainty_low_p': float,
+                  'certainty_high_p': float,
+                  'maximum_stake_cents': int,
+                 })
+  def get_prediction_info(
+    self,
+    prediction_id: PredictionId,
+  ) -> Optional[PredictionInfo]:
+    row = self._conn.execute(
+      sqlalchemy.select(schema.predictions.c)
+      .where(schema.predictions.c.prediction_id == prediction_id)
+    ).fetchone()
+    if row is None:
+      return None
+    return {
+      'creator': Username(row['creator']),
+      'created_at_unixtime': int(row['created_at_unixtime']),
+      'closes_at_unixtime': int(row['closes_at_unixtime']),
+      'certainty_low_p': float(row['certainty_low_p']),
+      'certainty_high_p': float(row['certainty_high_p']),
+      'maximum_stake_cents': int(row['maximum_stake_cents']),
+    }
+
+  def get_trades(
+    self,
+    prediction_id: PredictionId,
+  ) -> Iterable[mvp_pb2.Trade]:
+    rows = self._conn.execute(
+      sqlalchemy.select(schema.trades.c)
+      .where(schema.trades.c.prediction_id == prediction_id)
+    ).fetchall()
+    return [
       mvp_pb2.Trade(
-        bettor=t['bettor'],
-        bettor_is_a_skeptic=t['bettor_is_a_skeptic'],
-        creator_stake_cents=t['creator_stake_cents'],
-        bettor_stake_cents=t['bettor_stake_cents'],
-        transacted_unixtime=t['transacted_at_unixtime'],
+        bettor=row['bettor'],
+        bettor_is_a_skeptic=row['bettor_is_a_skeptic'],
+        bettor_stake_cents=row['bettor_stake_cents'],
+        creator_stake_cents=row['creator_stake_cents'],
+        transacted_unixtime=row['transacted_at_unixtime'],
       )
-      for t in trade_rows
-    ],
-  )
+      for row in rows
+    ]
+
+  def get_resolutions(
+    self,
+    prediction_id: PredictionId,
+  ) -> Iterable[mvp_pb2.ResolutionEvent]:
+    rows = self._conn.execute(
+      sqlalchemy.select(schema.resolutions.c)
+      .where(schema.resolutions.c.prediction_id == prediction_id)
+    ).fetchall()
+    return [
+      mvp_pb2.ResolutionEvent(
+        unixtime=row['resolved_at_unixtime'],
+        resolution=mvp_pb2.Resolution.Value(row['resolution']),
+        notes=row['notes'],
+      )
+      for row in rows
+    ]
+
+  def get_creator_exposure_cents(
+    self,
+    prediction_id: PredictionId,
+    against_skeptics: bool,
+  ) -> int:
+    return self._conn.execute(
+      sqlalchemy.select([
+        sqlalchemy.sql.func.sum(schema.trades.c.creator_stake_cents).label('exposure'),
+      ])
+      .select_from(schema.predictions.join(schema.trades))
+      .where(sqlalchemy.and_(
+        schema.predictions.c.prediction_id == prediction_id,
+        schema.trades.c.bettor_is_a_skeptic if against_skeptics else sqlalchemy.not_(schema.trades.c.bettor_is_a_skeptic),
+      ))
+    ).scalar() or 0
+
+  def get_bettor_exposure_cents(
+    self,
+    prediction_id: PredictionId,
+    bettor: Username,
+    bettor_is_a_skeptic: bool
+  ) -> int:
+    return self._conn.execute(
+      sqlalchemy.select([
+        sqlalchemy.sql.func.sum(schema.trades.c.bettor_stake_cents).label('exposure'),
+      ])
+      .select_from(schema.predictions.join(schema.trades))
+      .where(sqlalchemy.and_(
+        schema.trades.c.bettor == bettor,
+        schema.predictions.c.prediction_id == prediction_id,
+        schema.trades.c.bettor_is_a_skeptic if bettor_is_a_skeptic else sqlalchemy.not_(schema.trades.c.bettor_is_a_skeptic),
+      ))
+    ).scalar() or 0
+
+  def stake(
+    self,
+    prediction_id: PredictionId,
+    bettor: Username,
+    bettor_is_a_skeptic: bool,
+    bettor_stake_cents: int,
+    creator_stake_cents: int,
+    now: float,
+  ) -> None:
+    self._conn.execute(sqlalchemy.insert(schema.trades).values(
+      prediction_id=prediction_id,
+      bettor=bettor,
+      bettor_is_a_skeptic=bettor_is_a_skeptic,
+      bettor_stake_cents=bettor_stake_cents,
+      creator_stake_cents=creator_stake_cents,
+      transacted_at_unixtime=now,
+    ))
+
+  def resolve(
+    self,
+    request: mvp_pb2.ResolveRequest,
+    now: float,
+  ) -> None:
+    self._conn.execute(sqlalchemy.insert(schema.resolutions).values(
+      prediction_id=request.prediction_id,
+      resolution=mvp_pb2.Resolution.Name(request.resolution),
+      resolved_at_unixtime=now,
+      notes=request.notes,
+    ))
+
+  def set_trusted(self, subject_username: Username, object_username: Username, trusted: bool) -> None:
+    if self._conn.execute(
+          sqlalchemy.select(schema.relationships.c)
+          .where(sqlalchemy.and_(
+            schema.relationships.c.subject_username == subject_username,
+            schema.relationships.c.object_username == object_username,
+          ))).fetchone() is None:
+      logger.info('creating relationship between users', who=object_username, trusted=trusted)
+      self._conn.execute(
+        sqlalchemy.insert(schema.relationships).values(
+          subject_username=subject_username,
+          object_username=object_username,
+          trusted=trusted,
+        )
+      )
+    else:
+      logger.info('setting user trust in existing relationship', who=object_username, trusted=trusted)
+      self._conn.execute(
+        sqlalchemy.update(schema.relationships)
+        .values(trusted=trusted)
+        .where(sqlalchemy.and_(
+          schema.relationships.c.subject_username == subject_username,
+          schema.relationships.c.object_username == object_username,
+        ))
+      )
+
+  def change_password(self, user: Username, new_password: str) -> None:
+    pwid = self._conn.execute(
+      sqlalchemy.select([schema.users.c.login_password_id])
+      .where(schema.users.c.username == user)
+    ).scalar()
+    if pwid is None:
+      raise ValueError('no such user', user)
+    new = new_hashed_password(new_password)
+    self._conn.execute(
+      sqlalchemy.update(schema.passwords)
+      .values(salt=new.salt, scrypt=new.scrypt)
+      .where(schema.passwords.c.password_id == pwid)
+    )
+
+  def set_email(self, user: Username, new_efs: mvp_pb2.EmailFlowState) -> None:
+    self._conn.execute(
+      sqlalchemy.update(schema.users)
+      .values(email_flow_state=new_efs.SerializeToString())
+      .where(schema.users.c.username == user)
+    )
+
+  def get_email(self, user: Username) -> Optional[mvp_pb2.EmailFlowState]:
+    old_efs_binary = self._conn.execute(
+      sqlalchemy.select([schema.users.c.email_flow_state])
+      .where(schema.users.c.username == user)
+    ).scalar()
+    if old_efs_binary is None:
+      return None
+    return mvp_pb2.EmailFlowState.FromString(old_efs_binary)
+
+  def get_settings(self, user: Username) -> Optional[mvp_pb2.GenericUserInfo]:
+    row = self._conn.execute(
+      sqlalchemy.select(schema.users.c)
+      .where(schema.users.c.username == user)
+    ).first()
+    if row is None:
+      return None
+    return mvp_pb2.GenericUserInfo(
+      email_reminders_to_resolve=row['email_reminders_to_resolve'],
+      email_resolution_notifications=row['email_resolution_notifications'],
+      email=mvp_pb2.EmailFlowState.FromString(row['email_flow_state']),
+      relationships={
+        row['object_username']: mvp_pb2.Relationship(
+          trusted=row['trusted'],
+          # TODO(P2): side payments
+        )
+        for row in self._conn.execute(
+          sqlalchemy.select(schema.relationships.c)
+          .where(schema.relationships.c.subject_username == user)
+        )
+      },
+      invitations={
+        row['nonce']: mvp_pb2.Invitation(
+          created_unixtime=row['created_at_unixtime'],
+          notes=row['notes'],
+          accepted_by=row['accepted_by'],
+          accepted_unixtime=row['accepted_at_unixtime'],
+        )
+        for row in self._conn.execute(
+          sqlalchemy.select([
+            *schema.invitations.c,
+            *schema.invitation_acceptances.c,
+          ]).select_from(schema.invitations.join(schema.invitation_acceptances, isouter=True))
+          .where(schema.invitations.c.inviter == user)
+        )
+      },
+    )
+
+  def update_settings(self, user: Username, request: mvp_pb2.UpdateSettingsRequest) -> None:
+    update_kwargs = {}
+    if request.HasField('email_reminders_to_resolve'):
+      update_kwargs['email_reminders_to_resolve'] = request.email_reminders_to_resolve.value
+    if request.HasField('email_resolution_notifications'):
+      update_kwargs['email_resolution_notifications'] = request.email_resolution_notifications.value
+
+    self._conn.execute(
+      sqlalchemy.update(schema.users)
+      .values(**update_kwargs)
+      .where(schema.users.c.username == user)
+    )
+
+  def create_invitation(self, nonce: str, inviter: Username, now: float, notes: str) -> None:
+    self._conn.execute(
+      sqlalchemy.insert(schema.invitations)
+      .values(
+        nonce=nonce,
+        inviter=inviter,
+        created_at_unixtime=now,
+        notes=notes,
+      )
+    )
+
+  def is_invitation_open(self, nonce: str) -> bool:
+    # TODO: make a newtype Nonce < str
+    # TODO: add a newtype AuthorizingUsername < Username
+    # TODO: use datetimes instead of floats for time
+    return (
+      self._conn.execute(
+        sqlalchemy.select([schema.invitations.c.inviter])
+        .where(schema.invitations.c.nonce == nonce)
+      ).fetchone() is not None
+      and
+      self._conn.execute(
+        sqlalchemy.select(schema.invitation_acceptances.c)
+        .where(schema.invitation_acceptances.c.invitation_nonce == nonce)
+      ).fetchone() is None
+    )
+
+  def accept_invitation(self, nonce: str, accepter: Username, now: float) -> None:
+    inviter_maybe = self._conn.execute(
+      sqlalchemy.select([schema.invitations.c.inviter])
+      .where(schema.invitations.c.nonce == nonce)
+    ).scalar()
+    if inviter_maybe is None:
+      raise ValueError('no such invitation')
+    inviter = Username(inviter_maybe)
+
+    self._conn.execute(
+      sqlalchemy.insert(schema.invitation_acceptances)
+      .values(
+        invitation_nonce=nonce,
+        accepted_at_unixtime=now,
+        accepted_by=accepter,
+      )
+    )
+    self.set_trusted(inviter, accepter, True)
+    self.set_trusted(accepter, inviter, True)
+
 
 
 def transactional(f):
   @functools.wraps(f)
   def wrapped(self: 'SqlServicer', *args, **kwargs):
-    with self._conn.begin():
+    with self._conn.transaction():
       return f(self, *args, **kwargs)
   return wrapped
 def checks_token(f):
   @functools.wraps(f)
   def wrapped(self: 'SqlServicer', token: Optional[mvp_pb2.AuthToken], *args, **kwargs):
     token = self._token_mint.check_token(token)
-    if (token is not None) and not user_exists(self._conn, token_owner(token)):
+    if (token is not None) and not self._conn.user_exists(token_owner(token)):
       raise ForgottenTokenError(token)
     structlog.contextvars.bind_contextvars(actor=token_owner(token))
     try:
@@ -154,8 +515,9 @@ def log_action(f):
       structlog.contextvars.unbind_contextvars('servicer_action')
   return wrapped
 
+
 class SqlServicer(Servicer):
-    def __init__(self, conn: sqlalchemy.engine.base.Connection, token_mint: TokenMint, emailer: Emailer, random_seed: Optional[int] = None, clock: Callable[[], float] = time.time) -> None:
+    def __init__(self, conn: SqlConn, token_mint: TokenMint, emailer: Emailer, random_seed: Optional[int] = None, clock: Callable[[], float] = time.time) -> None:
         self._conn = conn
         self._token_mint = token_mint
         self._emailer = emailer
@@ -192,23 +554,13 @@ class SqlServicer(Servicer):
         logger.debug('trying to register with a bad password', username=request.username)
         return mvp_pb2.RegisterUsernameResponse(error=mvp_pb2.RegisterUsernameResponse.Error(catchall=password_problems))
 
-      if self._conn.execute(sqlalchemy.select([schema.users.c.username]).where(schema.users.c.username == request.username)).first() is not None:
+      if self._conn.user_exists(Username(request.username)):
         logger.info('username taken', username=request.username)
         return mvp_pb2.RegisterUsernameResponse(error=mvp_pb2.RegisterUsernameResponse.Error(catchall='username taken'))
 
       logger.info('registering username', username=request.username)
       password_id = ''.join(self._rng.choices('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234567879_', k=16))
-      hashed_password = new_hashed_password(request.password)
-      self._conn.execute(sqlalchemy.insert(schema.passwords).values(
-        password_id=password_id,
-        salt=hashed_password.salt,
-        scrypt=hashed_password.scrypt,
-      ))
-      self._conn.execute(sqlalchemy.insert(schema.users).values(
-        username=request.username,
-        login_password_id=password_id,
-        email_flow_state=mvp_pb2.EmailFlowState(unstarted=mvp_pb2.VOID).SerializeToString(),
-      ))
+      self._conn.register_username(Username(request.username), request.password, password_id=password_id)
 
       login_response = self.LogInUsername(None, mvp_pb2.LogInUsernameRequest(username=request.username, password=request.password))
       if login_response.WhichOneof('log_in_username_result') != 'ok':
@@ -224,11 +576,11 @@ class SqlServicer(Servicer):
             logger.warn('logged-in user trying to log in again', new_username=request.username)
             return mvp_pb2.LogInUsernameResponse(error=mvp_pb2.LogInUsernameResponse.Error(catchall='already authenticated; first, log out'))
 
-        login_password_info = self._conn.execute(sqlalchemy.select([schema.passwords.c.salt, schema.passwords.c.scrypt]).where(sqlalchemy.and_(schema.users.c.username == request.username, schema.users.c.login_password_id == schema.passwords.c.password_id))).first()
-        if login_password_info is None:
+        hashed_password = self._conn.get_username_password_info(Username(request.username))
+        if hashed_password is None:
             logger.debug('login attempt for nonexistent user', username=request.username)
             return mvp_pb2.LogInUsernameResponse(error=mvp_pb2.LogInUsernameResponse.Error(catchall='no such user'))
-        if not check_password(request.password, mvp_pb2.HashedPassword(salt=login_password_info['salt'], scrypt=login_password_info['scrypt'])):
+        if not check_password(request.password, hashed_password):
             logger.info('login attempt has bad password', possible_malice=True)
             return mvp_pb2.LogInUsernameResponse(error=mvp_pb2.LogInUsernameResponse.Error(catchall='bad password'))
 
@@ -236,7 +588,7 @@ class SqlServicer(Servicer):
         token = self._token_mint.mint_token(owner=Username(request.username), ttl_seconds=60*60*24*365)
         return mvp_pb2.LogInUsernameResponse(ok=mvp_pb2.AuthSuccess(
           token=token,
-          user_info=self.GetSettings(token, request=mvp_pb2.GetSettingsRequest()).ok,
+          user_info=self._conn.get_settings(token_owner(token)),
         ))
 
     @transactional
@@ -253,27 +605,21 @@ class SqlServicer(Servicer):
       if problems is not None:
         return mvp_pb2.CreatePredictionResponse(error=mvp_pb2.CreatePredictionResponse.Error(catchall=problems))
 
-      prediction_id = self._rng.randrange(2**32)  # TODO(P0): make this a string
+      prediction_id = PredictionId(self._rng.randrange(2**32)) # TODO(P0): make this a string
       logger.debug('creating prediction', prediction_id=prediction_id, request=request)
-      self._conn.execute(sqlalchemy.insert(schema.predictions).values(
+      self._conn.create_prediction(
+        now=now,
         prediction_id=prediction_id,
-        prediction=request.prediction,
-        certainty_low_p=request.certainty.low,
-        certainty_high_p=request.certainty.high,
-        maximum_stake_cents=request.maximum_stake_cents,
-        created_at_unixtime=now,
-        closes_at_unixtime=now + request.open_seconds,
-        resolves_at_unixtime=request.resolves_at_unixtime,
-        special_rules=request.special_rules,
-        creator=token.owner,
-      ))
+        creator=token_owner(token),
+        request=request,
+      )
       return mvp_pb2.CreatePredictionResponse(new_prediction_id=prediction_id)
 
     @transactional
     @checks_token
     @log_action
     def GetPrediction(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.GetPredictionRequest) -> mvp_pb2.GetPredictionResponse:
-      view = view_prediction(self._conn, token_owner(token), PredictionId(request.prediction_id))
+      view = self._conn.view_prediction(token_owner(token), PredictionId(request.prediction_id))
       if view is None:
         logger.info('trying to get nonexistent prediction', prediction_id=request.prediction_id)
         return mvp_pb2.GetPredictionResponse(error=mvp_pb2.GetPredictionResponse.Error(catchall='no such prediction'))
@@ -288,22 +634,11 @@ class SqlServicer(Servicer):
         logger.info('logged-out user trying to list their predictions')
         return mvp_pb2.ListMyStakesResponse(ok=mvp_pb2.PredictionsById(predictions={}))
 
-      prediction_ids = {
-        *[PredictionId(row['prediction_id'])
-          for row in self._conn.execute(
-            sqlalchemy.select([schema.predictions.c.prediction_id])
-            .where(schema.predictions.c.creator == token.owner)
-          ).fetchall()],
-        *[PredictionId(row['prediction_id'])
-          for row in self._conn.execute(
-            sqlalchemy.select([schema.trades.c.prediction_id.distinct()])
-            .where(schema.trades.c.bettor == token.owner)
-          ).fetchall()],
-      }
+      prediction_ids = self._conn.list_stakes(token_owner(token))
 
       predictions_by_id: MutableMapping[int, mvp_pb2.UserPredictionView] = {}
       for prediction_id in prediction_ids:
-        view = view_prediction(self._conn, token_owner(token), prediction_id)
+        view = self._conn.view_prediction(token_owner(token), prediction_id)
         assert view is not None
         predictions_by_id[prediction_id] = view
       return mvp_pb2.ListMyStakesResponse(ok=mvp_pb2.PredictionsById(predictions=predictions_by_id))
@@ -316,21 +651,15 @@ class SqlServicer(Servicer):
         logger.info('logged-out user trying to list predictions')
         return mvp_pb2.ListPredictionsResponse(ok=mvp_pb2.PredictionsById(predictions={}))
       creator = Username(request.creator) if request.creator else token_owner(token)
-      if not trusts(self._conn, creator, token_owner(token)):
+      if not self._conn.trusts(creator, token_owner(token)):
         logger.info('trying to get list untrusting creator\'s predictions', creator=creator)
         return mvp_pb2.ListPredictionsResponse(error=mvp_pb2.ListPredictionsResponse.Error(catchall="creator doesn't trust you"))
 
-      prediction_ids = {
-        PredictionId(row['prediction_id'])
-        for row in self._conn.execute(
-          sqlalchemy.select([schema.predictions.c.prediction_id])
-          .where(schema.predictions.c.creator == creator)
-        ).fetchall()
-      }
+      prediction_ids = self._conn.list_predictions_created(creator)
 
       predictions_by_id: MutableMapping[int, mvp_pb2.UserPredictionView] = {}
       for prediction_id in prediction_ids:
-        view = view_prediction(self._conn, token_owner(token), prediction_id)
+        view = self._conn.view_prediction(token_owner(token), prediction_id)
         assert view is not None
         predictions_by_id[prediction_id] = view
       return mvp_pb2.ListPredictionsResponse(ok=mvp_pb2.PredictionsById(predictions=predictions_by_id))
@@ -344,71 +673,55 @@ class SqlServicer(Servicer):
         return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall='must log in to bet'))
       assert request.bettor_stake_cents >= 0, 'protobuf should enforce this being a uint, but just in case...'
 
-      row = self._conn.execute(sqlalchemy.select(schema.predictions.c).where(schema.predictions.c.prediction_id == request.prediction_id)).fetchone()
-      if row is None:
+      predinfo = self._conn.get_prediction_info(PredictionId(request.prediction_id))
+      if predinfo is None:
         logger.warn('trying to bet on nonexistent prediction', prediction_id=request.prediction_id)
         return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall='no such prediction'))
-      if row['creator'] == token.owner:
+      if predinfo['creator'] == token.owner:
         logger.warn('trying to bet against self', prediction_id=request.prediction_id)
         return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall="can't bet against yourself"))
-      if not trusts(self._conn, Username(row['creator']), token_owner(token)):
+      if not self._conn.trusts(Username(predinfo['creator']), token_owner(token)):
         logger.warn('trying to bet against untrusting creator', prediction_id=request.prediction_id, possible_malice=True)
         return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall="creator doesn't trust you"))
-      if not trusts(self._conn, token_owner(token), Username(row['creator'])):
+      if not self._conn.trusts(token_owner(token), Username(predinfo['creator'])):
         logger.warn('trying to bet against untrusted creator', prediction_id=request.prediction_id)
         return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall="you don't trust the creator"))
       now = self._clock()
-      if not (row['created_at_unixtime'] <= now <= row['closes_at_unixtime']):
+      if not (predinfo['created_at_unixtime'] <= now <= predinfo['closes_at_unixtime']):
         return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall="prediction is no longer open for betting"))
-      last_resolution = self._conn.execute(
-        sqlalchemy.select([schema.resolutions.c.resolution])
-        .where(schema.resolutions.c.prediction_id == request.prediction_id)
-        .order_by(schema.resolutions.c.resolved_at_unixtime.desc())
-        .limit(1)
-      ).scalar()
 
-      if (last_resolution is not None) and (mvp_pb2.Resolution.Value(last_resolution) != mvp_pb2.RESOLUTION_NONE_YET):
+      resolutions = self._conn.get_resolutions(PredictionId(request.prediction_id))
+      if resolutions and max(resolutions, key=lambda r: r.unixtime).resolution != mvp_pb2.RESOLUTION_NONE_YET:
         logger.warn('trying to bet on a resolved prediction', prediction_id=request.prediction_id)
         return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall="prediction has already resolved"))
 
       if request.bettor_is_a_skeptic:
-        lowP = row['certainty_low_p']
+        lowP = predinfo['certainty_low_p']
         creator_stake_cents = int(request.bettor_stake_cents * lowP/(1-lowP))
       else:
-        highP = row['certainty_high_p']
+        highP = predinfo['certainty_high_p']
         creator_stake_cents = int(request.bettor_stake_cents * (1-highP)/highP)
-      existing_stake = self._conn.execute(
-        sqlalchemy.select(sqlalchemy.sql.func.coalesce(sqlalchemy.sql.func.sum(schema.trades.c.creator_stake_cents), 0))
-        .where(sqlalchemy.and_(
-          schema.trades.c.prediction_id == request.prediction_id,
-          schema.trades.c.bettor_is_a_skeptic if request.bettor_is_a_skeptic else sqlalchemy.not_(schema.trades.c.bettor_is_a_skeptic),
-        ))
-      ).scalar()
-      logger.info('existing stake', existing_stake=existing_stake, trades=[dict(r) for r in self._conn.execute(sqlalchemy.select(schema.trades.c).where(schema.trades.c.prediction_id == request.prediction_id))])
-      if existing_stake + creator_stake_cents > row['maximum_stake_cents']:
+
+      existing_creator_exposure = self._conn.get_creator_exposure_cents(PredictionId(request.prediction_id), against_skeptics=request.bettor_is_a_skeptic)
+      if existing_creator_exposure + creator_stake_cents > predinfo['maximum_stake_cents']:
           logger.warn('trying to make a bet that would exceed creator tolerance', request=request)
-          return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall=f'bet would exceed creator tolerance ({existing_stake} existing + {creator_stake_cents} new stake > {row["maximum_stake_cents"]} max)'))
-      existing_bettor_exposure = self._conn.execute(
-        sqlalchemy.select(sqlalchemy.sql.func.coalesce(sqlalchemy.sql.func.sum(schema.trades.c.bettor_stake_cents), 0))
-        .where(sqlalchemy.and_(
-          schema.trades.c.prediction_id == request.prediction_id,
-          schema.trades.c.bettor_is_a_skeptic == request.bettor_is_a_skeptic,
-          schema.trades.c.bettor == token.owner,
-        ))
-      ).scalar()
+          return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall=f'bet would exceed creator tolerance ({existing_creator_exposure} existing + {creator_stake_cents} new stake > {predinfo["maximum_stake_cents"]} max)'))
+
+      existing_bettor_exposure = self._conn.get_bettor_exposure_cents(PredictionId(request.prediction_id), token_owner(token), bettor_is_a_skeptic=request.bettor_is_a_skeptic)
       if existing_bettor_exposure + request.bettor_stake_cents > MAX_LEGAL_STAKE_CENTS:
         logger.warn('trying to make a bet that would exceed per-market stake limit', request=request)
         return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall=f'your existing stake of ~${existing_bettor_exposure//100} plus your new stake ~${request.bettor_stake_cents//100} cents would put you over the limit of ${MAX_LEGAL_STAKE_CENTS//100} staked in a single prediction'))
-      self._conn.execute(sqlalchemy.insert(schema.trades).values(
-        prediction_id=request.prediction_id,
-        bettor=token.owner,
+
+      self._conn.stake(
+        prediction_id=PredictionId(request.prediction_id),
+        bettor=token_owner(token),
         bettor_is_a_skeptic=request.bettor_is_a_skeptic,
         bettor_stake_cents=request.bettor_stake_cents,
         creator_stake_cents=creator_stake_cents,
-        transacted_at_unixtime=now,
-      ))
+        now=now,
+      )
       logger.info('trade executed', prediction_id=request.prediction_id, request=request)
-      return mvp_pb2.StakeResponse(ok=view_prediction(self._conn, token_owner(token), PredictionId(request.prediction_id)))
+      return mvp_pb2.StakeResponse(ok=self._conn.view_prediction(token_owner(token), PredictionId(request.prediction_id)))
 
     @transactional
     @checks_token
@@ -424,28 +737,20 @@ class SqlServicer(Servicer):
         logger.warn('unreasonably long notes', snipped_notes=request.notes[:256] + '  <snip>  ' + request.notes[-256:])
         return mvp_pb2.ResolveResponse(error=mvp_pb2.ResolveResponse.Error(catchall='unreasonably long notes'))
 
-      row = self._conn.execute(sqlalchemy.select(schema.predictions.c).where(schema.predictions.c.prediction_id == request.prediction_id)).fetchone()
-      if row is None:
+      predinfo = self._conn.get_prediction_info(PredictionId(request.prediction_id))
+      if predinfo is None:
         logger.info('attempt to resolve nonexistent prediction', prediction_id=request.prediction_id)
         return mvp_pb2.ResolveResponse(error=mvp_pb2.ResolveResponse.Error(catchall='no such prediction'))
-      if token_owner(token) != row['creator']:
-        logger.warn('non-creator trying to resolve prediction', prediction_id=request.prediction_id, creator=row['creator'], possible_malice=True)
+      if token_owner(token) != predinfo['creator']:
+        logger.warn('non-creator trying to resolve prediction', prediction_id=request.prediction_id, creator=predinfo['creator'], possible_malice=True)
         return mvp_pb2.ResolveResponse(error=mvp_pb2.ResolveResponse.Error(catchall="you are not the creator"))
-      self._conn.execute(sqlalchemy.insert(schema.resolutions).values(
-        prediction_id=request.prediction_id,
-        resolution=mvp_pb2.Resolution.Name(request.resolution),
-        resolved_at_unixtime=int(self._clock()),
-        notes=request.notes,
-      ))
+      self._conn.resolve(request, now=self._clock())
 
       email_addrs: MutableSequence[str] = []
       stakeholders = {
-        row['creator'],
-        *(row['bettor']
-          for row in self._conn.execute(
-            sqlalchemy.select([schema.trades.c.bettor.distinct()])
-            .where(schema.trades.c.prediction_id == request.prediction_id)
-          ).fetchall()
+        predinfo['creator'],
+        *(tradeinfo.bettor
+          for tradeinfo in self._conn.get_trades(PredictionId(request.prediction_id))
         )}
       for stakeholder in stakeholders:
         pass
@@ -463,34 +768,7 @@ class SqlServicer(Servicer):
       #     prediction_id=PredictionId(request.prediction_id),
       #     prediction=prediction,
       # ))
-      return mvp_pb2.ResolveResponse(ok=view_prediction(self._conn, token_owner(token), PredictionId(request.prediction_id)))
-
-
-    def _unsafe_SetTrusted(self, subject_username: Username, object_username: Username, trusted: bool) -> None:
-      if self._conn.execute(
-            sqlalchemy.select(schema.relationships.c)
-            .where(sqlalchemy.and_(
-              schema.relationships.c.subject_username == subject_username,
-              schema.relationships.c.object_username == object_username,
-            ))).fetchone() is None:
-        logger.info('creating relationship between users', who=object_username, trusted=trusted)
-        self._conn.execute(
-          sqlalchemy.insert(schema.relationships).values(
-            subject_username=subject_username,
-            object_username=object_username,
-            trusted=trusted,
-          )
-        )
-      else:
-        logger.info('setting user trust in existing relationship', who=object_username, trusted=trusted)
-        self._conn.execute(
-          sqlalchemy.update(schema.relationships)
-          .values(trusted=trusted)
-          .where(sqlalchemy.and_(
-            schema.relationships.c.subject_username == subject_username,
-            schema.relationships.c.object_username == object_username,
-          ))
-        )
+      return mvp_pb2.ResolveResponse(ok=self._conn.view_prediction(token_owner(token), PredictionId(request.prediction_id)))
 
     @transactional
     @checks_token
@@ -504,26 +782,26 @@ class SqlServicer(Servicer):
         logger.warn('attempting to set trust for self')
         return mvp_pb2.SetTrustedResponse(error=mvp_pb2.SetTrustedResponse.Error(catchall='cannot set trust for self'))
 
-      if not user_exists(self._conn, Username(request.who)):
+      if not self._conn.user_exists(Username(request.who)):
         logger.warn('attempting to set trust for nonexistent user')
         return mvp_pb2.SetTrustedResponse(error=mvp_pb2.SetTrustedResponse.Error(catchall='no such user'))
 
-      self._unsafe_SetTrusted(token_owner(token), Username(request.who), request.trusted)
+      self._conn.set_trusted(token_owner(token), Username(request.who), request.trusted)
 
-      return mvp_pb2.SetTrustedResponse(ok=self.GetSettings(token, mvp_pb2.GetSettingsRequest()).ok)
+      return mvp_pb2.SetTrustedResponse(ok=self._conn.get_settings(token_owner(token)))
 
     @transactional
     @checks_token
     @log_action
     def GetUser(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.GetUserRequest) -> mvp_pb2.GetUserResponse:
-      if not user_exists(self._conn, Username(request.who)):
+      if not self._conn.user_exists(Username(request.who)):
         logger.info('attempting to view nonexistent user', who=request.who)
         return mvp_pb2.GetUserResponse(error=mvp_pb2.GetUserResponse.Error(catchall='no such user'))
 
       return mvp_pb2.GetUserResponse(ok=mvp_pb2.UserUserView(
         username=request.who,
-        is_trusted=trusts(self._conn, token_owner(token), Username(request.who)) if (token is not None) else False,
-        trusts_you=trusts(self._conn, Username(request.who), token_owner(token)) if (token is not None) else False,
+        is_trusted=self._conn.trusts(token_owner(token), Username(request.who)) if (token is not None) else False,
+        trusts_you=self._conn.trusts(Username(request.who), token_owner(token)) if (token is not None) else False,
       ))
 
     @transactional
@@ -538,29 +816,17 @@ class SqlServicer(Servicer):
         logger.warn('attempting to set bad password')
         return mvp_pb2.ChangePasswordResponse(error=mvp_pb2.ChangePasswordResponse.Error(catchall=password_problems))
 
-      row = self._conn.execute(
-        sqlalchemy.select(schema.passwords.c)
-        .where(sqlalchemy.and_(
-          schema.users.c.username == token.owner,
-          schema.users.c.login_password_id == schema.passwords.c.password_id,
-        ))
-      ).fetchone()
-      if row is None:
+      old_hashed_password = self._conn.get_username_password_info(token_owner(token))
+      if old_hashed_password is None:
         logger.warn('password-change request for non-password user', possible_malice=True)
         return mvp_pb2.ChangePasswordResponse(error=mvp_pb2.ChangePasswordResponse.Error(catchall="you don't use a password to log in"))
 
-      old_hashed_password = mvp_pb2.HashedPassword(salt=row['salt'], scrypt=row['scrypt'])
       if not check_password(request.old_password, old_hashed_password):
         logger.warn('password-change request has wrong password', possible_malice=True)
         return mvp_pb2.ChangePasswordResponse(error=mvp_pb2.ChangePasswordResponse.Error(catchall='wrong old password'))
 
-      new = new_hashed_password(request.new_password)
       logger.info('changing password', who=token.owner)
-      self._conn.execute(
-        sqlalchemy.update(schema.passwords)
-        .values(salt=new.salt, scrypt=new.scrypt)
-        .where(schema.passwords.c.password_id == row['password_id'])
-      )
+      self._conn.change_password(token_owner(token), request.old_password)
 
       return mvp_pb2.ChangePasswordResponse(ok=mvp_pb2.VOID)
 
@@ -588,11 +854,7 @@ class SqlServicer(Servicer):
         new_efs = mvp_pb2.EmailFlowState(unstarted=mvp_pb2.VOID)
 
       logger.info('setting email address', who=token.owner, address=request.email)
-      self._conn.execute(
-        sqlalchemy.update(schema.users)
-        .values(email_flow_state=new_efs.SerializeToString())
-        .where(schema.users.c.username == token.owner)
-      )
+      self._conn.set_email(token_owner(token), new_efs)
       return mvp_pb2.SetEmailResponse(ok=new_efs)
 
     @transactional
@@ -603,14 +865,10 @@ class SqlServicer(Servicer):
         logger.warn('not logged in')
         return mvp_pb2.VerifyEmailResponse(error=mvp_pb2.VerifyEmailResponse.Error(catchall='must log in to change your password'))
 
-      old_efs_binary = self._conn.execute(
-        sqlalchemy.select([schema.users.c.email_flow_state])
-        .where(schema.users.c.username == token.owner)
-      ).scalar()
-      if old_efs_binary is None:
+      old_efs = self._conn.get_email(token_owner(token))
+      if old_efs is None:
         raise ForgottenTokenError(token)
 
-      old_efs = mvp_pb2.EmailFlowState.FromString(old_efs_binary)
       if old_efs.WhichOneof('email_flow_state_kind') != 'code_sent':
         logger.warn('attempting to verify email, but no email outstanding', possible_malice=True)
         return mvp_pb2.VerifyEmailResponse(error=mvp_pb2.VerifyEmailResponse.Error(catchall='you have no pending email-verification flow'))
@@ -620,11 +878,7 @@ class SqlServicer(Servicer):
         return mvp_pb2.VerifyEmailResponse(error=mvp_pb2.VerifyEmailResponse.Error(catchall='bad code'))
 
       new_efs = mvp_pb2.EmailFlowState(verified=code_sent_state.email)
-      self._conn.execute(
-        sqlalchemy.update(schema.users)
-        .values(email_flow_state=new_efs.SerializeToString())
-        .where(schema.users.c.username == token.owner)
-      )
+      self._conn.set_email(token_owner(token), new_efs)
       logger.info('verified email address', who=token.owner, address=code_sent_state.email)
       return mvp_pb2.VerifyEmailResponse(ok=new_efs)
 
@@ -632,47 +886,14 @@ class SqlServicer(Servicer):
     @checks_token
     @log_action
     def GetSettings(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.GetSettingsRequest) -> mvp_pb2.GetSettingsResponse:
-        if token is None:
-          logger.info('not logged in')
-          return mvp_pb2.GetSettingsResponse(error=mvp_pb2.GetSettingsResponse.Error(catchall='must log in to see your settings'))
+      if token is None:
+        logger.info('not logged in')
+        return mvp_pb2.GetSettingsResponse(error=mvp_pb2.GetSettingsResponse.Error(catchall='must log in to see your settings'))
 
-        row = self._conn.execute(
-          sqlalchemy.select(schema.users.c)
-          .where(schema.users.c.username == token.owner)
-        ).first()
-        if row is None:
-          raise ForgottenTokenError(token)
-        info = mvp_pb2.GenericUserInfo(
-          email_reminders_to_resolve=row['email_reminders_to_resolve'],
-          email_resolution_notifications=row['email_resolution_notifications'],
-          email=mvp_pb2.EmailFlowState.FromString(row['email_flow_state']),
-          relationships={
-            row['object_username']: mvp_pb2.Relationship(
-              trusted=row['trusted'],
-              # TODO(P2): side payments
-            )
-            for row in self._conn.execute(
-              sqlalchemy.select(schema.relationships.c)
-              .where(schema.relationships.c.subject_username == token.owner)
-            )
-          },
-          invitations={
-            row['nonce']: mvp_pb2.Invitation(
-              created_unixtime=row['created_at_unixtime'],
-              notes=row['notes'],
-              accepted_by=row['accepted_by'],
-              accepted_unixtime=row['accepted_at_unixtime'],
-            )
-            for row in self._conn.execute(
-              sqlalchemy.select([
-                *schema.invitations.c,
-                *schema.invitation_acceptances.c,
-              ]).select_from(schema.invitations.join(schema.invitation_acceptances, isouter=True))
-              .where(schema.invitations.c.inviter == token.owner)
-            )
-          },
-        )
-        return mvp_pb2.GetSettingsResponse(ok=info)
+      info = self._conn.get_settings(token_owner(token))
+      if info is None:
+        raise ForgottenTokenError(token)
+      return mvp_pb2.GetSettingsResponse(ok=info)
 
     @transactional
     @checks_token
@@ -682,19 +903,9 @@ class SqlServicer(Servicer):
         logger.warn('not logged in')
         return mvp_pb2.UpdateSettingsResponse(error=mvp_pb2.UpdateSettingsResponse.Error(catchall='must log in to update your settings'))
 
-      update_kwargs = {}
-      if request.HasField('email_reminders_to_resolve'):
-        update_kwargs['email_reminders_to_resolve'] = request.email_reminders_to_resolve.value
-      if request.HasField('email_resolution_notifications'):
-        update_kwargs['email_resolution_notifications'] = request.email_resolution_notifications.value
-
-      self._conn.execute(
-        sqlalchemy.update(schema.users)
-        .values(**update_kwargs)
-        .where(schema.users.c.username == token.owner)
-      )
+      self._conn.update_settings(token_owner(token), request)
       logger.info('updated settings', request=request)
-      return mvp_pb2.UpdateSettingsResponse(ok=self.GetSettings(token, mvp_pb2.GetSettingsRequest()).ok)
+      return mvp_pb2.UpdateSettingsResponse(ok=self._conn.get_settings(token_owner(token)))
 
     @transactional
     @checks_token
@@ -704,18 +915,10 @@ class SqlServicer(Servicer):
         logger.warn('not logged in')
         return mvp_pb2.CreateInvitationResponse(error=mvp_pb2.CreateInvitationResponse.Error(catchall='must log in to create an invitation'))
 
-      nonce = secrets.token_urlsafe(16)
       now = self._clock()
+      nonce = secrets.token_urlsafe(16)
 
-      self._conn.execute(
-        sqlalchemy.insert(schema.invitations)
-        .values(
-          nonce=nonce,
-          inviter=token.owner,
-          created_at_unixtime=now,
-          notes=request.notes,
-        )
-      )
+      self._conn.create_invitation(nonce=nonce, inviter=token_owner(token), now=now, notes=request.notes)
 
       invitation = mvp_pb2.Invitation(
         created_unixtime=int(now),
@@ -725,7 +928,7 @@ class SqlServicer(Servicer):
       return mvp_pb2.CreateInvitationResponse(ok=mvp_pb2.CreateInvitationResponse.Result(
           id=mvp_pb2.InvitationId(inviter=token_owner(token), nonce=nonce),
           invitation=invitation,
-          user_info=self.GetSettings(token, mvp_pb2.GetSettingsRequest()).ok,
+          user_info=self._conn.get_settings(token_owner(token)),
       ))
 
     @transactional
@@ -736,19 +939,7 @@ class SqlServicer(Servicer):
         logger.warn('malformed CheckInvitationRequest')
         return mvp_pb2.CheckInvitationResponse(error=mvp_pb2.CheckInvitationResponse.Error(catchall='malformed invitation'))
 
-      invitation_row = self._conn.execute(
-        sqlalchemy.select(schema.invitations.c)
-        .where(schema.invitations.c.nonce == request.invitation_id.nonce)
-      ).fetchone()
-      if invitation_row is None:
-        logger.warn('trying to get nonexistent invitation')
-        return mvp_pb2.CheckInvitationResponse(is_open=False)
-
-      acceptance_row = self._conn.execute(
-        sqlalchemy.select(schema.invitation_acceptances.c)
-        .where(schema.invitation_acceptances.c.invitation_nonce == request.invitation_id.nonce)
-      ).fetchone()
-      return mvp_pb2.CheckInvitationResponse(is_open=(acceptance_row is None))
+      return mvp_pb2.CheckInvitationResponse(is_open=self._conn.is_invitation_open(nonce=request.invitation_id.nonce))
 
     @transactional
     @checks_token
@@ -766,35 +957,13 @@ class SqlServicer(Servicer):
         logger.warn('malformed attempt to accept invitation', possible_malice=True)
         return mvp_pb2.AcceptInvitationResponse(error=mvp_pb2.AcceptInvitationResponse.Error(catchall='malformed invitation'))
 
-      invitation_row = self._conn.execute(
-        sqlalchemy.select(schema.invitations.c)
-        .where(schema.invitations.c.nonce == request.invitation_id.nonce)
-      ).fetchone()
-      if invitation_row is None:
-        logger.warn('attempt to accept nonexistent invitation', possible_malice=True)
-        return mvp_pb2.AcceptInvitationResponse(error=mvp_pb2.AcceptInvitationResponse.Error(catchall='invitation is non-existent or already used'))
-      inviter = Username(invitation_row['inviter'])
-
-      acceptance_row = self._conn.execute(
-        sqlalchemy.select(schema.invitation_acceptances.c)
-        .where(schema.invitation_acceptances.c.invitation_nonce == request.invitation_id.nonce)
-      ).fetchone()
-      if acceptance_row is not None:
-        logger.info('attempt to re-accept invitation')
+      if not self._conn.is_invitation_open(request.invitation_id.nonce):
+        logger.info('attempt to accept non-open invitation')
         return mvp_pb2.AcceptInvitationResponse(error=mvp_pb2.AcceptInvitationResponse.Error(catchall='invitation is non-existent or already used'))
 
-      self._conn.execute(
-        sqlalchemy.insert(schema.invitation_acceptances)
-        .values(
-          invitation_nonce=request.invitation_id.nonce,
-          accepted_at_unixtime=self._clock(),
-          accepted_by=token.owner,
-        )
-      )
-      self._unsafe_SetTrusted(token_owner(token), inviter, True)
-      self._unsafe_SetTrusted(inviter, token_owner(token), True)
-      logger.info('accepted invitation', whose=inviter)
-      return mvp_pb2.AcceptInvitationResponse(ok=self.GetSettings(token, mvp_pb2.GetSettingsRequest()).ok)
+      self._conn.accept_invitation(request.invitation_id.nonce, token_owner(token), self._clock())
+      logger.info('accepted invitation')
+      return mvp_pb2.AcceptInvitationResponse(ok=self._conn.get_settings(token_owner(token)))
 
 
 
