@@ -53,6 +53,8 @@ class SqlConn:
       yield
 
   def register_username(self, username: Username, password: str, password_id: str) -> None:
+      if self.user_exists(username):
+        raise UsernameAlreadyRegisteredError(username)
       hashed_password = new_hashed_password(password)
       self._conn.execute(sqlalchemy.insert(schema.passwords).values(
         password_id=password_id,
