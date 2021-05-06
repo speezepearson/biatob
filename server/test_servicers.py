@@ -751,5 +751,5 @@ class TestAcceptInvitation:
       'accept_invitation_result', 'ok', object)
 
     with assert_user_unchanged(any_servicer, inviter_token, 'inviter password'):
-      assert 'invitation is non-existent or already used' in assert_oneof(any_servicer.AcceptInvitation(token=accepter_token, request=mvp_pb2.AcceptInvitationRequest(invitation_id=mvp_pb2.InvitationId(inviter='rando', nonce='asdf'))),
+      assert 'invitation is non-existent or already used' in assert_oneof(any_servicer.AcceptInvitation(token=accepter_token, request=mvp_pb2.AcceptInvitationRequest(invitation_id=mvp_pb2.InvitationId(inviter='rando', nonce=invitation_id.nonce))),
         'accept_invitation_result', 'error', mvp_pb2.AcceptInvitationResponse.Error).catchall

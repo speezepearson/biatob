@@ -49,15 +49,12 @@ async def test_smoke():
     aiosmtplib_for_testing=mock_smtp,
   )
 
-  await emailer.send_backup(to='a@a', now=datetime.datetime.now(), wstate=mvp_pb2.WorldState())
+  await emailer.send_backup(to='a@a', now=datetime.datetime.now(), body='body')
   await emailer.send_email_verification(to='a@a', code='b')
-  await emailer.send_resolution_notifications(bccs=['a','b'], prediction_id=12345, prediction=mvp_pb2.WorldState.Prediction(resolutions=[mvp_pb2.ResolutionEvent(resolution=mvp_pb2.RESOLUTION_YES)]))
-  await emailer.send_resolution_reminder(to='a', prediction_id=12345, prediction=mvp_pb2.WorldState.Prediction())
+  await emailer.send_resolution_notifications(bccs=['a','b'], prediction_id=12345, prediction_text='a thing will happen', resolution=mvp_pb2.RESOLUTION_YES)
+  await emailer.send_resolution_reminder(to='a', prediction_id=12345, prediction_text='a thing will happen')
   await emailer.send_invariant_violations(to='a', now=datetime.datetime.now(), violations=[{'foo':'some violation string'}])
   assert 'some violation string' in mock_smtp.send.call_args[1]['message'].as_string()
-
-  with pytest.raises(ValueError):
-    await emailer.send_resolution_notifications(bccs=['a','b'], prediction_id=12345, prediction=mvp_pb2.WorldState.Prediction(resolutions=[]))
 
 def test_prediction_needs_email_reminder():
   now = datetime.datetime.now()
