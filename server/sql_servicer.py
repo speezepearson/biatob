@@ -468,14 +468,6 @@ class SqlConn:
     )
 
   def accept_invitation(self, nonce: str, accepter: Username, now: float) -> None:
-    inviter_maybe = self._conn.execute(
-      sqlalchemy.select([schema.invitations.c.inviter])
-      .where(schema.invitations.c.nonce == nonce)
-    ).scalar()
-    if inviter_maybe is None:
-      raise ValueError('no such invitation')
-    inviter = Username(inviter_maybe)
-
     self._conn.execute(
       sqlalchemy.insert(schema.invitation_acceptances)
       .values(
@@ -484,6 +476,11 @@ class SqlConn:
         accepted_by=accepter,
       )
     )
+    inviter = self._conn.execute(
+      sqlalchemy.select([schema.invitations.c.inviter])
+      .where(schema.invitations.c.nonce == nonce)
+    ).scalar()
+    assert inviter is not None  # else the INSERT should have raised an IntegrityError, referencing a nonexistent invitation
     self.set_trusted(inviter, accepter, True)
     self.set_trusted(accepter, inviter, True)
 
