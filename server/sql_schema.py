@@ -113,15 +113,15 @@ invitation_acceptances = Table(
 )
 
 
+# Adapted from https://docs.sqlalchemy.org/en/14/dialects/sqlite.html#foreign-key-support
+def set_sqlite_pragma(dbapi_connection, connection_record):
+  cursor = dbapi_connection.cursor()
+  cursor.execute("PRAGMA foreign_keys=ON")
+  cursor.close()
+
+
 def create_sqlite_engine(database: str) -> sqlalchemy.engine.Engine:
   engine = sqlalchemy.create_engine(f'sqlite+pysqlite:///{database}')
+  event.listen(engine, "connect", set_sqlite_pragma)
   metadata.create_all(engine)
-
-  # Adapted from https://docs.sqlalchemy.org/en/14/dialects/sqlite.html#foreign-key-support
-  @event.listens_for(engine, "connect")
-  def set_sqlite_pragma(dbapi_connection, connection_record):
-    cursor = dbapi_connection.cursor()
-    cursor.execute("PRAGMA foreign_keys=ON")
-    cursor.close()
-
   return engine
