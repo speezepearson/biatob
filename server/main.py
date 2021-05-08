@@ -38,7 +38,8 @@ from .emailer import *
 from .http import *
 from .web_server import *
 from .protobuf import mvp_pb2
-from .fs_servicer import *
+from .sql_servicer import *
+from .sql_schema import create_sqlite_engine
 
 # adapted from https://www.structlog.org/en/stable/examples.html?highlight=json#processors
 # and https://www.structlog.org/en/stable/contextvars.html
@@ -75,7 +76,6 @@ async def main(args):
 
     credentials = google.protobuf.text_format.Parse(args.credentials_path.read_text(), mvp_pb2.CredentialsConfig())
 
-    storage = FsStorage(state_path=args.state_path)
     # from unittest.mock import Mock
     emailer = Emailer(
         hostname=credentials.smtp.hostname,
@@ -87,7 +87,9 @@ async def main(args):
     )
     token_mint = TokenMint(secret_key=credentials.token_signing_secret)
     token_glue = HttpTokenGlue(token_mint=token_mint)
-    servicer = FsBackedServicer(storage=storage, token_mint=token_mint, emailer=emailer)
+    raw_conn = create_sqlite_engine(args.state_path).connect()
+    conn = SqlConn(raw_conn)
+    servicer = SqlServicer(conn=conn, token_mint=token_mint, emailer=emailer)
 
     token_glue.add_to_app(app)
     WebServer(
@@ -100,11 +102,11 @@ async def main(args):
         servicer=servicer,
     ).add_to_app(app)
 
-    asyncio.get_running_loop().create_task(email_resolution_reminders_forever(storage=storage, emailer=emailer))
+    # asyncio.get_running_loop().create_task(email_resolution_reminders_forever(storage=storage, emailer=emailer))
     if args.email_daily_backups_to is not None:
-        asyncio.get_running_loop().create_task(email_daily_backups_forever(storage=storage, emailer=emailer, recipient_email=args.email_daily_backups_to))
-    if args.email_invariant_violations_to is not None:
-        asyncio.get_running_loop().create_task(email_invariant_violations_forever(storage=storage, emailer=emailer, recipient_email=args.email_daily_backups_to))
+        asyncio.get_running_loop().create_task(email_daily_backups_forever(conn=conn, emailer=emailer, recipient_email=args.email_daily_backups_to))
+    # if args.email_invariant_violations_to is not None:
+    #     asyncio.get_running_loop().create_task(email_invariant_violations_forever(storage=storage, emailer=emailer, recipient_email=args.email_daily_backups_to))
 
     # adapted from https://docs.aiohttp.org/en/stable/web_advanced.html#application-runners
     runner = web.AppRunner(app)
