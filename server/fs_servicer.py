@@ -390,7 +390,7 @@ class FsBackedServicer(Servicer):
 
         logger.info('sending resolution emails', prediction_id=request.prediction_id, email_addrs=email_addrs)
         asyncio.create_task(self._emailer.send_resolution_notifications(
-            bccs=email_addrs,
+            bccs=set(email_addrs),
             prediction_id=PredictionId(request.prediction_id),
             prediction_text=prediction.prediction,
             resolution=request.resolution,

@@ -208,6 +208,7 @@ class SqlConn:
 
   PredictionInfo = TypedDict('PredictionInfo',
                  {'creator': Username,
+                  'prediction': str,
                   'created_at_unixtime': int,
                   'closes_at_unixtime': int,
                   'certainty_low_p': float,
@@ -226,6 +227,7 @@ class SqlConn:
       return None
     return {
       'creator': Username(row['creator']),
+      'prediction': str(row['prediction']),
       'created_at_unixtime': int(row['created_at_unixtime']),
       'closes_at_unixtime': int(row['closes_at_unixtime']),
       'certainty_low_p': float(row['certainty_low_p']),
@@ -388,6 +390,36 @@ class SqlConn:
     if old_efs_binary is None:
       return None
     return mvp_pb2.EmailFlowState.FromString(old_efs_binary)
+
+  def get_resolution_notification_addrs(self, prediction_id: PredictionId) -> Iterable[str]:
+    result = set()
+    creator_efs_bin = self._conn.execute(
+      sqlalchemy.select([schema.users.c.email_flow_state])
+      .where(sqlalchemy.and_(
+        schema.predictions.c.prediction_id == prediction_id,
+        schema.predictions.c.creator == schema.users.c.username,
+        schema.users.c.email_resolution_notifications,
+      ))
+    ).scalar()
+    if creator_efs_bin is not None:
+      creator_efs = mvp_pb2.EmailFlowState.FromString(creator_efs_bin)
+      if creator_efs.WhichOneof('email_flow_state_kind') == 'verified':
+        result.add(creator_efs.verified)
+
+    bettor_efs_rows = self._conn.execute(
+      sqlalchemy.select([schema.users.c.email_flow_state])
+      .where(sqlalchemy.and_(
+        schema.trades.c.prediction_id == prediction_id,
+        schema.trades.c.bettor == schema.users.c.username,
+        schema.users.c.email_resolution_notifications,
+      ))
+    ).fetchall()
+    for row in bettor_efs_rows:
+      bettor_efs = mvp_pb2.EmailFlowState.FromString(row['email_flow_state'])
+      if bettor_efs.WhichOneof('email_flow_state_kind') == 'verified':
+        result.add(bettor_efs.verified)
+
+    return result
 
   def get_settings(self, user: Username) -> Optional[mvp_pb2.GenericUserInfo]:
     row = self._conn.execute(
@@ -736,7 +768,8 @@ class SqlServicer(Servicer):
         logger.warn('unreasonably long notes', snipped_notes=request.notes[:256] + '  <snip>  ' + request.notes[-256:])
         return mvp_pb2.ResolveResponse(error=mvp_pb2.ResolveResponse.Error(catchall='unreasonably long notes'))
 
-      predinfo = self._conn.get_prediction_info(PredictionId(request.prediction_id))
+      predid = PredictionId(request.prediction_id)
+      predinfo = self._conn.get_prediction_info(predid)
       if predinfo is None:
         logger.info('attempt to resolve nonexistent prediction', prediction_id=request.prediction_id)
         return mvp_pb2.ResolveResponse(error=mvp_pb2.ResolveResponse.Error(catchall='no such prediction'))
@@ -745,29 +778,16 @@ class SqlServicer(Servicer):
         return mvp_pb2.ResolveResponse(error=mvp_pb2.ResolveResponse.Error(catchall="you are not the creator"))
       self._conn.resolve(request, now=self._clock())
 
-      email_addrs: MutableSequence[str] = []
-      stakeholders = {
-        predinfo['creator'],
-        *(tradeinfo.bettor
-          for tradeinfo in self._conn.get_trades(PredictionId(request.prediction_id))
-        )}
-      for stakeholder in stakeholders:
-        pass
-        # TODO(P1)
-        # info = something something
-        # if info is None:
-        #     logger.error('prediction references nonexistent user', prediction_id=request.prediction_id, user=stakeholder)
-        #     continue
-        # elif info.email_resolution_notifications and info.email.WhichOneof('email_flow_state_kind') == 'verified':
-        #     email_addrs.append(info.email.verified)
-
-      # logger.info('sending resolution emails', prediction_id=request.prediction_id, email_addrs=email_addrs)
-      # asyncio.create_task(self._emailer.send_resolution_notifications(
-      #     bccs=email_addrs,
-      #     prediction_id=PredictionId(request.prediction_id),
-      #     prediction=prediction,
-      # ))
-      return mvp_pb2.ResolveResponse(ok=self._conn.view_prediction(token_owner(token), PredictionId(request.prediction_id)))
+      email_addrs = set(self._conn.get_resolution_notification_addrs(predid))
+      if email_addrs:
+        logger.info('sending resolution emails', prediction_id=request.prediction_id, email_addrs=email_addrs)
+        asyncio.create_task(self._emailer.send_resolution_notifications(
+            bccs=email_addrs,
+            prediction_id=predid,
+            prediction_text=predinfo['prediction'],
+            resolution=request.resolution,
+        ))
+      return mvp_pb2.ResolveResponse(ok=self._conn.view_prediction(token_owner(token), predid))
 
     @transactional
     @checks_token

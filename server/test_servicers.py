@@ -481,6 +481,28 @@ class TestResolve:
         assert 'not the creator' in assert_oneof(any_servicer.Resolve(token, mvp_pb2.ResolveRequest(prediction_id=prediction_id, resolution=mvp_pb2.RESOLUTION_NO)),
           'resolve_result', 'error', mvp_pb2.ResolveResponse.Error).catchall
 
+  async def test_sends_notifications(self, emailer: Emailer, any_servicer: Servicer):
+    token = new_user_token(any_servicer, 'rando')
+    assert_oneof(any_servicer.SetEmail(token=token, request=mvp_pb2.SetEmailRequest(email='nobody@example.com')), 'set_email_result', 'ok', object)
+    code = emailer.send_email_verification.call_args[1]['code']  # type: ignore
+    assert_oneof(any_servicer.VerifyEmail(token=token, request=mvp_pb2.VerifyEmailRequest(code=code)),
+      'verify_email_result', 'ok', mvp_pb2.EmailFlowState)
+    assert_oneof(any_servicer.UpdateSettings(token=token, request=mvp_pb2.UpdateSettingsRequest(email_resolution_notifications=mvp_pb2.MaybeBool(value=True))),
+      'update_settings_result', 'ok', mvp_pb2.GenericUserInfo)
+
+    prediction_id = PredictionId(assert_oneof(any_servicer.CreatePrediction(
+      token=token,
+      request=some_create_prediction_request(prediction='a thing will happen'),
+    ), 'create_prediction_result', 'new_prediction_id', int))
+    assert_oneof(any_servicer.Resolve(token, mvp_pb2.ResolveRequest(prediction_id=prediction_id, resolution=mvp_pb2.RESOLUTION_YES)),
+      'resolve_result', 'ok', mvp_pb2.UserPredictionView)
+    emailer.send_resolution_notifications.assert_called_once_with(  # type: ignore
+      bccs={'nobody@example.com'},
+      prediction_id=prediction_id,
+      prediction_text='a thing will happen',
+      resolution=mvp_pb2.RESOLUTION_YES,
+    )
+
 
 class TestSetTrusted:
 

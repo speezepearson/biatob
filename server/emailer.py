@@ -2,7 +2,7 @@ import datetime
 from email.message import EmailMessage
 import json
 from pathlib import Path
-from typing import Any, Mapping, Sequence #overload, Any, Mapping, Iterator, Optional, Container, NewType, Callable, NoReturn, Tuple, Iterable, Sequence, TypeVar, MutableSequence
+from typing import Any, Iterable, Mapping, Sequence
 
 import aiosmtplib
 import google.protobuf.text_format  # type: ignore
@@ -65,7 +65,8 @@ class Emailer:
         )
         logger.info('sent email', subject=subject, to=to)
 
-    async def _send_bccs(self, *, bccs: Sequence[str], subject: str, body: str) -> None:
+    async def _send_bccs(self, *, bccs: Iterable[str], subject: str, body: str) -> None:
+        bccs = list(set(bccs))
         for i in range(0, len(bccs), 32):
             bccs_chunk = bccs[i:i+32]
             await self._send(
@@ -77,7 +78,7 @@ class Emailer:
 
     async def send_resolution_notifications(
         self,
-        bccs: Sequence[str],
+        bccs: Iterable[str],
         prediction_id: PredictionId,
         prediction_text: str,
         resolution: mvp_pb2.Resolution,
