@@ -18,6 +18,11 @@ This project uses the `doit` build system: https://pydoit.org/tutorial_1.html
 TODO
 --------------
 
+Schema changes I'm considering:
+- Lump email preferences into EmailFlowState(verified), since they are only ever needed together.
+- Extract email from `Users` into a `TABLE EmailLinks (username FOREIGN KEY, address TEXT, password_id FOREIGN KEY, verified BOOLEAN, ...prefs...)`
+- Add more newtypes: `Nonce`, `Password`, `AuthorizingUsername`
+
 ### P1: make this something _I_ want to use
 Done!
 
