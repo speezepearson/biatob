@@ -81,19 +81,20 @@ class SqlConn:
 
   def create_prediction(
     self,
-    now: float,
+    now: datetime.datetime,
     prediction_id: PredictionId,
     creator: Username,
     request: mvp_pb2.CreatePredictionRequest,
   ) -> None:
+    now_unixtime = round(now.timestamp())
     self._conn.execute(sqlalchemy.insert(schema.predictions).values(
       prediction_id=prediction_id,
       prediction=request.prediction,
       certainty_low_p=request.certainty.low,
       certainty_high_p=request.certainty.high,
       maximum_stake_cents=request.maximum_stake_cents,
-      created_at_unixtime=now,
-      closes_at_unixtime=now + request.open_seconds,
+      created_at_unixtime=now_unixtime,
+      closes_at_unixtime=now_unixtime + request.open_seconds,
       resolves_at_unixtime=request.resolves_at_unixtime,
       special_rules=request.special_rules,
       creator=creator,
@@ -312,7 +313,7 @@ class SqlConn:
     bettor_is_a_skeptic: bool,
     bettor_stake_cents: int,
     creator_stake_cents: int,
-    now: float,
+    now: datetime.datetime,
   ) -> None:
     self._conn.execute(sqlalchemy.insert(schema.trades).values(
       prediction_id=prediction_id,
@@ -320,18 +321,18 @@ class SqlConn:
       bettor_is_a_skeptic=bettor_is_a_skeptic,
       bettor_stake_cents=bettor_stake_cents,
       creator_stake_cents=creator_stake_cents,
-      transacted_at_unixtime=now,
+      transacted_at_unixtime=now.timestamp(),
     ))
 
   def resolve(
     self,
     request: mvp_pb2.ResolveRequest,
-    now: float,
+    now: datetime.datetime,
   ) -> None:
     self._conn.execute(sqlalchemy.insert(schema.resolutions).values(
       prediction_id=request.prediction_id,
       resolution=mvp_pb2.Resolution.Name(request.resolution),
-      resolved_at_unixtime=now,
+      resolved_at_unixtime=round(now.timestamp()),
       notes=request.notes,
     ))
 
@@ -472,13 +473,13 @@ class SqlConn:
       .where(schema.users.c.username == user)
     )
 
-  def create_invitation(self, nonce: str, inviter: Username, now: float, notes: str) -> None:
+  def create_invitation(self, nonce: str, inviter: Username, now: datetime.datetime, notes: str) -> None:
     self._conn.execute(
       sqlalchemy.insert(schema.invitations)
       .values(
         nonce=nonce,
         inviter=inviter,
-        created_at_unixtime=now,
+        created_at_unixtime=round(now.timestamp()),
         notes=notes,
       )
     )
@@ -499,12 +500,12 @@ class SqlConn:
       ).fetchone() is None
     )
 
-  def accept_invitation(self, nonce: str, accepter: Username, now: float) -> None:
+  def accept_invitation(self, nonce: str, accepter: Username, now: datetime.datetime) -> None:
     self._conn.execute(
       sqlalchemy.insert(schema.invitation_acceptances)
       .values(
         invitation_nonce=nonce,
-        accepted_at_unixtime=now,
+        accepted_at_unixtime=round(now.timestamp()),
         accepted_by=accepter,
       )
     )
@@ -602,7 +603,7 @@ def log_action(f):
 
 
 class SqlServicer(Servicer):
-    def __init__(self, conn: SqlConn, token_mint: TokenMint, emailer: Emailer, random_seed: Optional[int] = None, clock: Callable[[], float] = time.time) -> None:
+    def __init__(self, conn: SqlConn, token_mint: TokenMint, emailer: Emailer, random_seed: Optional[int] = None, clock: Callable[[], datetime.datetime] = datetime.datetime.now) -> None:
         self._conn = conn
         self._token_mint = token_mint
         self._emailer = emailer
@@ -684,9 +685,9 @@ class SqlServicer(Servicer):
         logger.warn('not logged in')
         return mvp_pb2.CreatePredictionResponse(error=mvp_pb2.CreatePredictionResponse.Error(catchall='must log in to create predictions'))
 
-      now = int(self._clock())
+      now = self._clock()
 
-      problems = describe_CreatePredictionRequest_problems(request, now=now)
+      problems = describe_CreatePredictionRequest_problems(request, now=now.timestamp())
       if problems is not None:
         return mvp_pb2.CreatePredictionResponse(error=mvp_pb2.CreatePredictionResponse.Error(catchall=problems))
 
@@ -772,7 +773,7 @@ class SqlServicer(Servicer):
         logger.warn('trying to bet against untrusted creator', prediction_id=request.prediction_id)
         return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall="you don't trust the creator"))
       now = self._clock()
-      if not (predinfo['created_at_unixtime'] <= now <= predinfo['closes_at_unixtime']):
+      if not (predinfo['created_at_unixtime'] <= now.timestamp() <= predinfo['closes_at_unixtime']):
         return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall="prediction is no longer open for betting"))
 
       resolutions = self._conn.get_resolutions(PredictionId(request.prediction_id))
@@ -994,7 +995,7 @@ class SqlServicer(Servicer):
       self._conn.create_invitation(nonce=nonce, inviter=token_owner(token), now=now, notes=request.notes)
 
       invitation = mvp_pb2.Invitation(
-        created_unixtime=int(now),
+        created_unixtime=round(now.timestamp()),
         notes=request.notes,
         accepted_by=None,
       )

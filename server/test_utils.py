@@ -1,9 +1,7 @@
 import asyncio
 import contextlib
-import copy
-import random
+import datetime
 import pytest
-import sqlalchemy
 import unittest.mock
 from typing import Tuple, Type, TypeVar, Iterator
 
@@ -18,8 +16,8 @@ from .sql_schema import create_sqlite_engine
 class MockClock:
   def __init__(self):
     self._unixtime = 1000000000
-  def now(self) -> int:
-    return self._unixtime
+  def now(self) -> datetime.datetime:
+    return datetime.datetime.fromtimestamp(self._unixtime)
   def tick(self, seconds=1) -> None:
     self._unixtime += seconds
 
@@ -45,36 +43,16 @@ def emailer():
   )
 
 @pytest.fixture
-def fs_servicer(fs_storage, clock, token_mint, emailer):
-  return FsBackedServicer(
-    storage=fs_storage,
-    emailer=emailer,
-    random_seed=0,
-    clock=clock.now,
-    token_mint=token_mint,
-  )
-
-@pytest.fixture(params=['fs', 'sql'])
-def any_servicer(request, fs_storage, clock, token_mint, emailer):
-  if request.param == 'fs':
-    yield FsBackedServicer(
-      storage=fs_storage,
+def any_servicer(clock, token_mint, emailer):
+  engine = create_sqlite_engine(':memory:')
+  with engine.connect() as conn:
+    yield SqlServicer(
+      conn=SqlConn(conn),
       emailer=emailer,
       random_seed=0,
       clock=clock.now,
       token_mint=token_mint,
     )
-  else:
-    assert request.param == 'sql'
-    engine = create_sqlite_engine(':memory:')
-    with engine.connect() as conn:
-      yield SqlServicer(
-        conn=SqlConn(conn),
-        emailer=emailer,
-        random_seed=0,
-        clock=clock.now,
-        token_mint=token_mint,
-      )
 
 
 

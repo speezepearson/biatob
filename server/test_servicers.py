@@ -22,7 +22,7 @@ class TestCUJs:
     prediction_id = PredictionId(assert_oneof(
       any_servicer.CreatePrediction(creator_token, mvp_pb2.CreatePredictionRequest(
         prediction='a thing will happen',
-        resolves_at_unixtime=clock.now() + 86400,
+        resolves_at_unixtime=clock.now().timestamp() + 86400,
         certainty=mvp_pb2.CertaintyRange(low=0.40, high=0.60),
         maximum_stake_cents=100_00,
         open_seconds=3600,
@@ -54,13 +54,13 @@ class TestCUJs:
       bettor_is_a_skeptic=True,
       bettor_stake_cents=6_00,
       creator_stake_cents=4_00,
-      transacted_unixtime=clock.now(),
+      transacted_unixtime=clock.now().timestamp(),
     )]
 
     prediction = assert_oneof(
       any_servicer.Resolve(creator_token, mvp_pb2.ResolveRequest(prediction_id=prediction_id, resolution=mvp_pb2.RESOLUTION_YES)),
       'resolve_result', 'ok', mvp_pb2.UserPredictionView)
-    assert list(prediction.resolutions) ==[mvp_pb2.ResolutionEvent(unixtime=clock.now(), resolution=mvp_pb2.RESOLUTION_YES)]
+    assert list(prediction.resolutions) ==[mvp_pb2.ResolutionEvent(unixtime=clock.now().timestamp(), resolution=mvp_pb2.RESOLUTION_YES)]
 
 
   async def test_cuj___set_email__verify_email__update_settings(self, any_servicer: Servicer, emailer: Emailer):
@@ -183,19 +183,19 @@ class TestGetPrediction:
     )
     alice_token, bob_token = alice_bob_tokens(any_servicer)
 
-    create_time = clock.now()
+    create_time = clock.now().timestamp()
     prediction_id = PredictionId(assert_oneof(any_servicer.CreatePrediction(
       token=alice_token,
       request=copy.deepcopy(req),
     ), 'create_prediction_result', 'new_prediction_id', int))
 
     clock.tick()
-    stake_time = clock.now()
+    stake_time = clock.now().timestamp()
     assert_oneof(any_servicer.Stake(bob_token, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_is_a_skeptic=True, bettor_stake_cents=1_00)),
       'stake_result', 'ok', mvp_pb2.UserPredictionView)
 
     clock.tick()
-    resolve_time = clock.now()
+    resolve_time = clock.now().timestamp()
     assert_oneof(any_servicer.Resolve(alice_token, mvp_pb2.ResolveRequest(prediction_id=prediction_id, resolution=mvp_pb2.RESOLUTION_YES)),
       'resolve_result', 'ok', mvp_pb2.UserPredictionView)
 
@@ -306,7 +306,7 @@ class TestStake:
     alice_token, bob_token = alice_bob_tokens(any_servicer)
     prediction_id = PredictionId(assert_oneof(any_servicer.CreatePrediction(
       token=alice_token,
-      request=some_create_prediction_request(open_seconds=86400, resolves_at_unixtime=int(clock.now() + 2*86400)),
+      request=some_create_prediction_request(open_seconds=86400, resolves_at_unixtime=int(clock.now().timestamp() + 2*86400)),
     ), 'create_prediction_result', 'new_prediction_id', int))
 
     clock.tick(86401)
@@ -340,14 +340,14 @@ class TestStake:
         bettor_is_a_skeptic=True,
         bettor_stake_cents=20_00,
         creator_stake_cents=80_00,
-        transacted_unixtime=clock.now(),
+        transacted_unixtime=clock.now().timestamp(),
       ),
       mvp_pb2.Trade(
         bettor=bob_token.owner,
         bettor_is_a_skeptic=False,
         bettor_stake_cents=90_00,
         creator_stake_cents=10_00,
-        transacted_unixtime=clock.now(),
+        transacted_unixtime=clock.now().timestamp(),
       ),
     ]
 
@@ -432,7 +432,7 @@ class TestResolve:
       request=some_create_prediction_request(),
     ), 'create_prediction_result', 'new_prediction_id', int))
 
-    t0 = clock.now()
+    t0 = clock.now().timestamp()
     planned_events = [
       mvp_pb2.ResolutionEvent(unixtime=t0+0, resolution=mvp_pb2.RESOLUTION_YES),
       mvp_pb2.ResolutionEvent(unixtime=t0+1, resolution=mvp_pb2.RESOLUTION_NONE_YET),
@@ -445,14 +445,14 @@ class TestResolve:
       'get_prediction_result', 'prediction', mvp_pb2.UserPredictionView).resolutions) == planned_events[:1]
 
     clock.tick()
-    t1 = clock.now()
+    t1 = clock.now().timestamp()
     assert list(assert_oneof(any_servicer.Resolve(rando_token, mvp_pb2.ResolveRequest(prediction_id=prediction_id, resolution=planned_events[1].resolution)),
       'resolve_result', 'ok', mvp_pb2.UserPredictionView).resolutions) == planned_events[:2]
     assert list(assert_oneof(any_servicer.GetPrediction(rando_token, mvp_pb2.GetPredictionRequest(prediction_id=prediction_id)),
       'get_prediction_result', 'prediction', mvp_pb2.UserPredictionView).resolutions) == planned_events[:2]
 
     clock.tick()
-    t2 = clock.now()
+    t2 = clock.now().timestamp()
     assert list(assert_oneof(any_servicer.Resolve(rando_token, mvp_pb2.ResolveRequest(prediction_id=prediction_id, resolution=planned_events[2].resolution)),
       'resolve_result', 'ok', mvp_pb2.UserPredictionView).resolutions) == planned_events[:3]
     assert list(assert_oneof(any_servicer.GetPrediction(rando_token, mvp_pb2.GetPredictionRequest(prediction_id=prediction_id)),
@@ -692,7 +692,7 @@ class TestCreateInvitation:
     invitation_id = assert_oneof(any_servicer.CreateInvitation(token=token, request=mvp_pb2.CreateInvitationRequest()), 'create_invitation_result', 'ok', mvp_pb2.CreateInvitationResponse.Result).id
     assert assert_oneof(any_servicer.GetSettings(token=token, request=mvp_pb2.GetSettingsRequest()),
       'get_settings_result', 'ok', mvp_pb2.GenericUserInfo).invitations[invitation_id.nonce] == mvp_pb2.Invitation(
-        created_unixtime=clock.now(),
+        created_unixtime=clock.now().timestamp(),
       )
 
 
@@ -737,14 +737,14 @@ class TestAcceptInvitation:
     inviter_token = new_user_token(any_servicer, 'inviter')
     invitation_id = assert_oneof(any_servicer.CreateInvitation(token=inviter_token, request=mvp_pb2.CreateInvitationRequest()),
       'create_invitation_result', 'ok', mvp_pb2.CreateInvitationResponse.Result).id
-    invited_at = clock.now()
+    invited_at = clock.now().timestamp()
 
     clock.tick()
 
     accepter_token = new_user_token(any_servicer, 'accepter')
     assert_oneof(any_servicer.AcceptInvitation(accepter_token, mvp_pb2.AcceptInvitationRequest(invitation_id=invitation_id)),
       'accept_invitation_result', 'ok', object)
-    accepted_at = clock.now()
+    accepted_at = clock.now().timestamp()
 
     assert not assert_oneof(any_servicer.CheckInvitation(token=None, request=mvp_pb2.CheckInvitationRequest(invitation_id=invitation_id)),
       'check_invitation_result', 'is_open', bool)

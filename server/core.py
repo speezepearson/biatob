@@ -1,5 +1,6 @@
 import abc
 import copy
+import datetime
 import hashlib
 import hmac
 import random
@@ -121,7 +122,7 @@ class Servicer(abc.ABC):
 
 class TokenMint:
 
-    def __init__(self, secret_key: bytes, clock: Callable[[], float] = time.time) -> None:
+    def __init__(self, secret_key: bytes, clock: Callable[[], datetime.datetime] = datetime.datetime.now) -> None:
         self._secret_key = secret_key
         self._clock = clock
 
@@ -134,7 +135,7 @@ class TokenMint:
         token.hmac_of_rest = self._compute_token_hmac(token=token)
 
     def mint_token(self, owner: Username, ttl_seconds: int) -> mvp_pb2.AuthToken:
-        now = int(self._clock())
+        now = int(self._clock().timestamp())
         token = mvp_pb2.AuthToken(
             owner=owner,
             minted_unixtime=now,
@@ -148,7 +149,7 @@ class TokenMint:
             return None
         if token.HasField('owner_depr') and not token.owner:
             return None  # token was issued before the UserId -> Username switch
-        now = int(self._clock())
+        now = int(self._clock().timestamp())
         if not (token.minted_unixtime <= now < token.expires_unixtime):
             return None
 
