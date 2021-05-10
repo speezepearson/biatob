@@ -1,10 +1,14 @@
+import datetime
 import json
+from unittest import mock
 from unittest.mock import Mock
 
 import sqlalchemy
 
-from .sql_servicer import find_invariant_violations, _backup_text, SqlServicer, TokenMint
+from .emailer import Emailer
+from .sql_servicer import SqlConn, find_invariant_violations, _backup_text, SqlServicer, TokenMint, email_resolution_reminders
 from . import sql_schema as schema
+from .test_utils import emailer
 
 # TODO: update this function to take a SqlConn instead
 #def test_find_invariant_violations():
@@ -45,3 +49,15 @@ def test_backup_text():
       and row['email_flow_state'] == {'__type__': str(bytes), '__repr__': repr(b'\x00foo\xffbar')}
       for row in j['users']
     )
+
+async def test_email_resolution_reminders_sends_all_emails(emailer: Emailer):
+  conn = mock.Mock()
+  conn.get_predictions_needing_resolution_reminders.return_value = [
+    {'prediction_id': 12, 'prediction_text': 'prediction 12', 'email_address': 'pred12@example.com'},
+    {'prediction_id': 34, 'prediction_text': 'prediction 34', 'email_address': 'pred34@example.com'},
+  ]
+  await email_resolution_reminders(conn=conn, emailer=emailer, now=datetime.datetime.now())
+  emailer.send_resolution_reminder.assert_has_calls([  # type: ignore
+    mock.call(prediction_id=12, prediction_text='prediction 12', to='pred12@example.com'),
+    mock.call(prediction_id=34, prediction_text='prediction 34', to='pred34@example.com'),
+  ])

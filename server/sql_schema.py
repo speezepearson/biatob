@@ -59,6 +59,7 @@ predictions = Table(
   Column('resolves_at_unixtime', REAL(), nullable=False),
   Column('special_rules', String(65535), nullable=False),
   Column('creator', ForeignKey('users.username'), nullable=False),
+  Column('resolution_reminder_sent', BOOLEAN(), nullable=False, default=False),
 )
 
 trades = Table(
@@ -77,9 +78,9 @@ Index('trades_by_bettor', trades.c.bettor)
 resolutions = Table(
   'resolutions',
   metadata,
-  Column('prediction_id', ForeignKey('predictions.prediction_id'), nullable=False),
+  Column('prediction_id', ForeignKey('predictions.prediction_id'), primary_key=True, nullable=False),
+  Column('resolved_at_unixtime', REAL(), primary_key=True, nullable=False),
   Column('resolution', String(64), CheckConstraint("resolution IN ('RESOLUTION_NONE_YET', 'RESOLUTION_YES', 'RESOLUTION_NO', 'RESOLUTION_INVALID')"), nullable=False),
-  Column('resolved_at_unixtime', REAL(), nullable=False),
   Column('notes', String(65535), nullable=False, default=''),
 )
 Index('resolutions_by_prediction_id', resolutions.c.prediction_id)

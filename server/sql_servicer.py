@@ -21,7 +21,7 @@ import string
 import sys
 import tempfile
 import time
-from typing import overload, Any, Mapping, Iterator, Optional, Container, MutableMapping, MutableSequence, NewType, Callable, NoReturn, Tuple, Iterable, Sequence, TypeVar, MutableSequence
+from typing import overload, Any, Awaitable, Mapping, Iterator, Optional, Container, MutableMapping, MutableSequence, NewType, NoReturn, Callable, NoReturn, Tuple, Iterable, Sequence, TypeVar, MutableSequence
 from typing_extensions import TypedDict
 import argparse
 import logging
@@ -516,6 +516,60 @@ class SqlConn:
     self.set_trusted(inviter, accepter, True)
     self.set_trusted(accepter, inviter, True)
 
+  ResolutionReminderInfo = TypedDict('ResolutionReminderInfo', {'prediction_id': PredictionId,
+                                                                'prediction_text': str,
+                                                                'email_address': str})
+  def get_predictions_needing_resolution_reminders(self, now: datetime.datetime) -> Iterable[ResolutionReminderInfo]:
+    latest_time_per_prediction_q = sqlalchemy.select([
+      schema.resolutions.c.prediction_id,
+      sqlalchemy.sql.func.max(schema.resolutions.c.resolved_at_unixtime).label('resolved_at_unixtime'),
+    ]).group_by(
+      schema.resolutions.c.prediction_id,
+    )
+    latest_time_per_prediction_q = latest_time_per_prediction_q.subquery()  # type: ignore # https://github.com/dropbox/sqlalchemy-stubs/pull/218
+
+    resolved_prediction_ids_q = sqlalchemy.select([
+      schema.resolutions.c.prediction_id,
+    ]).select_from(schema.resolutions.join(
+      latest_time_per_prediction_q,
+      onclause=sqlalchemy.and_(
+        latest_time_per_prediction_q.c.prediction_id == schema.resolutions.c.prediction_id,
+        latest_time_per_prediction_q.c.resolved_at_unixtime == schema.resolutions.c.resolved_at_unixtime,
+        schema.resolutions.c.resolution != 'RESOLUTION_NONE_YET'
+      ),
+    ))
+    resolved_prediction_ids_q = resolved_prediction_ids_q.subquery()  # type: ignore # https://github.com/dropbox/sqlalchemy-stubs/pull/218
+
+    rows = self._conn.execute(
+      sqlalchemy.select([
+        schema.predictions.c.prediction_id,
+        schema.predictions.c.prediction,
+        schema.users.c.email_flow_state,
+      ])
+      .where(sqlalchemy.and_(
+        schema.predictions.c.resolves_at_unixtime < now.timestamp(),
+        sqlalchemy.not_(schema.predictions.c.resolution_reminder_sent),
+        schema.predictions.c.creator == schema.users.c.username,
+        schema.users.c.email_reminders_to_resolve,
+        sqlalchemy.not_(schema.predictions.c.prediction_id.in_(sqlalchemy.select(resolved_prediction_ids_q.c)))
+      ))
+    ).fetchall()
+
+    for row in rows:
+      efs = mvp_pb2.EmailFlowState.FromString(row['email_flow_state'])
+      if efs.WhichOneof('email_flow_state_kind') == 'verified':
+        yield {
+          'prediction_id': row['prediction_id'],
+          'prediction_text': row['prediction'],
+          'email_address': efs.verified,
+        }
+
+  def mark_resolution_reminder_sent(self, prediction_id: PredictionId) -> None:
+    self._conn.execute(
+      sqlalchemy.update(schema.predictions)
+      .values(resolution_reminder_sent=True)
+      .where(schema.predictions.c.prediction_id == prediction_id)
+    )
 
 
 def transactional(f):
@@ -1105,23 +1159,32 @@ async def email_daily_backups_forever(conn: sqlalchemy.engine.Connection, emaile
 #                 mvp_pb2.EmailAttempt(unixtime=now.timestamp(), succeeded=succeeded)
 #             )
 
-# async def email_resolution_reminders_forever(storage: 'FsStorage', emailer: Emailer, interval: datetime.timedelta = datetime.timedelta(hours=1)):
-#     interval_secs = interval.total_seconds()
-#     while True:
-#         logger.info('waking up to email resolution reminders')
-#         cycle_start_time = int(time.time())
-#         wstate = storage.get()
+async def forever(
+  interval: datetime.timedelta,
+  f: Callable[[datetime.datetime], Awaitable[Any]],
+) -> NoReturn:
+  interval_secs = interval.total_seconds()
+  while True:
+    cycle_start_time = time.time()
 
-#         for prediction_id, prediction in wstate.predictions.items():
-#             await email_resolution_reminder_if_necessary(
-#                 now=datetime.datetime.now(),
-#                 emailer=emailer,
-#                 storage=storage,
-#                 prediction_id=PredictionId(prediction_id),
-#             )
+    await f(datetime.datetime.now())
 
-#         next_cycle_time = cycle_start_time + interval_secs
-#         time_to_next_cycle = next_cycle_time - time.time()
-#         if time_to_next_cycle < interval_secs / 2:
-#             logger.warn('sending resolution-reminders took dangerously long', interval_secs=interval_secs, time_remaining=time.time() - cycle_start_time)
-#         await asyncio.sleep(time_to_next_cycle)
+    next_cycle_time = cycle_start_time + interval_secs
+    time_to_next_cycle = next_cycle_time - time.time()
+    if time_to_next_cycle < interval_secs / 2:
+        logger.warn('sending resolution-reminders took dangerously long', interval_secs=interval_secs, time_remaining=time.time() - cycle_start_time)
+    await asyncio.sleep(time_to_next_cycle)
+
+async def email_resolution_reminders(
+  conn: SqlConn,
+  emailer: Emailer,
+  now: datetime.datetime,
+):
+  logger.info('sending email resolution reminders')
+  for info in conn.get_predictions_needing_resolution_reminders(now):
+    await emailer.send_resolution_reminder(
+        to=info['email_address'],
+        prediction_id=info['prediction_id'],
+        prediction_text=info['prediction_text'],
+    )
+    conn.mark_resolution_reminder_sent(info['prediction_id'])
