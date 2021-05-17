@@ -484,7 +484,8 @@ class TestResolve:
   async def test_error_if_invalid_resolution(self, any_servicer: Servicer):
     rando_token = new_user_token(any_servicer, 'rando')
     prediction_id = CreatePredictionOk(any_servicer, rando_token, {})
-    assert 'unrecognized resolution' in str(ResolveErr(any_servicer, rando_token, prediction_id, 99))
+    bad_resolution_value: mvp_pb2.Resolution = 99  # type: ignore
+    assert 'unrecognized resolution' in str(ResolveErr(any_servicer, rando_token, prediction_id, bad_resolution_value))
 
   async def test_error_if_not_creator(self, any_servicer: Servicer):
     alice_token, bob_token = alice_bob_tokens(any_servicer)
