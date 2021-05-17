@@ -63,7 +63,7 @@ async def main(args):
         username=credentials.smtp.username,
         password=credentials.smtp.password,
         from_addr=credentials.smtp.from_addr,
-        # aiosmtplib_for_testing=Mock(send=lambda *args, **kwargs: (print(args, kwargs), asyncio.sleep(0))[1])
+        # aiosmtplib_for_testing=Mock(send=lambda message, *args, **kwargs: (print(message.as_string(), args, kwargs), asyncio.sleep(0))[1])
     )
     token_mint = TokenMint(secret_key=credentials.token_signing_secret)
     token_glue = HttpTokenGlue(token_mint=token_mint)
@@ -82,7 +82,10 @@ async def main(args):
         servicer=servicer,
     ).add_to_app(app)
 
-    # asyncio.get_running_loop().create_task(email_resolution_reminders_forever(storage=storage, emailer=emailer))
+    asyncio.get_running_loop().create_task(forever(
+        datetime.timedelta(seconds=13),
+        lambda now: email_resolution_reminders(conn, emailer, now),
+    ))
     if args.email_daily_backups_to is not None:
         asyncio.get_running_loop().create_task(email_daily_backups_forever(conn=conn, emailer=emailer, recipient_email=args.email_daily_backups_to))
     # if args.email_invariant_violations_to is not None:
