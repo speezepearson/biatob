@@ -1,5 +1,4 @@
 #! /usr/bin/env python3
-# TODO: flock over the database file
 
 import argparse
 import asyncio
@@ -485,9 +484,6 @@ class SqlConn:
     )
 
   def is_invitation_open(self, nonce: str) -> bool:
-    # TODO: make a newtype Nonce < str
-    # TODO: add a newtype AuthorizingUsername < Username
-    # TODO: use datetimes instead of floats for time
     return (
       self._conn.execute(
         sqlalchemy.select([schema.invitations.c.inviter])

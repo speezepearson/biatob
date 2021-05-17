@@ -8,7 +8,6 @@ from typing import Tuple, Type, TypeVar, Iterator
 from google.protobuf.message import Message
 
 from .core import PredictionId, Servicer, TokenMint
-from .fs_servicer import FsBackedServicer, FsStorage
 from .protobuf import mvp_pb2
 from .sql_servicer import SqlServicer, SqlConn
 from .sql_schema import create_sqlite_engine
@@ -28,10 +27,6 @@ def clock():
 @pytest.fixture
 def token_mint(clock):
   return TokenMint(secret_key=b'test secret', clock=clock.now)
-
-@pytest.fixture
-def fs_storage(tmp_path):
-  return FsStorage(tmp_path / 'state.WorldState.pb')
 
 @pytest.fixture
 def emailer():

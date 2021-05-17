@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
 import aiosmtplib
-import google.protobuf.text_format  # type: ignore
 import jinja2
 import structlog
 

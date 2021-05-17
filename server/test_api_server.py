@@ -1,6 +1,7 @@
 from pathlib import Path
-from typing import TypeVar, Type, Tuple
-from unittest.mock import Mock
+from server.core import ForgottenTokenError
+from typing import AnyStr, TypeVar, Type, Tuple
+from unittest.mock import Mock, patch
 
 from aiohttp import web
 import pytest
@@ -100,23 +101,20 @@ async def test_CreatePrediction_enforces_future_resolution(aiohttp_client, app, 
 
 
 
-# async def test_forgotten_token_recovery(aiohttp_client, app, fs_storage, fs_servicer):
-#   cli = await aiohttp_client(app)
-#
-#   (http_resp, pb_resp) = await post_proto(cli, '/api/RegisterUsername', mvp_pb2.RegisterUsernameRequest(username='potato', password='secret'), mvp_pb2.RegisterUsernameResponse)
-#   assert pb_resp.ok.token.owner == 'potato', pb_resp
-#
-#   fs_storage.put(mvp_pb2.WorldState())
-#   http_resp = await cli.post(
-#     '/api/Whoami',
-#     headers={'Content-Type': 'application/octet-stream'},
-#     data=mvp_pb2.WhoamiRequest().SerializeToString(),
-#   )
-#   assert http_resp.status == 500
-#   assert b'obliterated your entire account' in await http_resp.content.read()
-#
-#   (http_resp, pb_resp) = await post_proto(cli, '/api/Whoami', mvp_pb2.WhoamiRequest(), mvp_pb2.WhoamiResponse)
-#   assert not pb_resp.auth.owner, pb_resp
+async def test_forgotten_token_recovery(aiohttp_client, app, any_servicer: Servicer):
+  cli = await aiohttp_client(app)
+
+  with patch.object(any_servicer, 'Whoami', side_effect=ForgottenTokenError()):
+    http_resp = await cli.post(
+      '/api/Whoami',
+      headers={'Content-Type': 'application/octet-stream'},
+      data=mvp_pb2.WhoamiRequest().SerializeToString(),
+    )
+  assert http_resp.status == 500
+  assert b'obliterated your entire account' in await http_resp.content.read()
+
+  (http_resp, pb_resp) = await post_proto(cli, '/api/Whoami', mvp_pb2.WhoamiRequest(), mvp_pb2.WhoamiResponse)
+  assert not pb_resp.auth.owner, pb_resp
 
 
 async def test_smoke(aiohttp_client, app):

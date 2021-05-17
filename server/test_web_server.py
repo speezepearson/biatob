@@ -1,10 +1,6 @@
 from pathlib import Path
-from typing import TypeVar, Type, Tuple
-from unittest.mock import Mock
-
 from aiohttp import web
 import pytest
-from google.protobuf.message import Message as PbMessage
 
 from .protobuf import mvp_pb2
 from .web_server import WebServer
