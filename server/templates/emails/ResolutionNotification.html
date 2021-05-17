@@ -1,10 +1,1 @@
-https://biatob.com/p/{{prediction_id}} has
-{% if resolution == mvp_pb2.RESOLUTION_YES %}
-  resolved YES
-{% elif resolution == mvp_pb2.RESOLUTION_NO %}
-  resolved NO
-{% elif resolution == mvp_pb2.RESOLUTION_INVALID %}
-  resolved INVALID
-{% else %}
-  UN-resolved
-{% endif %}
+<a href="https://biatob.com/p/{{prediction_id}}">{{prediction_text}}</a> has {{ verbed }}

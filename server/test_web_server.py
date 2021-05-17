@@ -1,10 +1,6 @@
 from pathlib import Path
-from typing import TypeVar, Type, Tuple
-from unittest.mock import Mock
-
 from aiohttp import web
 import pytest
-from google.protobuf.message import Message as PbMessage
 
 from .protobuf import mvp_pb2
 from .web_server import WebServer
@@ -13,8 +9,8 @@ from .test_utils import *
 from .test_api_server import post_proto, api_server
 
 @pytest.fixture
-def web_server(fs_servicer, token_mint, clock):
-  return WebServer(servicer=fs_servicer, token_glue=HttpTokenGlue(token_mint), elm_dist=Path(__file__)/'elm'/'dist')
+def web_server(any_servicer, token_mint, clock):
+  return WebServer(servicer=any_servicer, token_glue=HttpTokenGlue(token_mint), elm_dist=Path(__file__)/'elm'/'dist')
 
 @pytest.fixture
 def app(loop, web_server):
@@ -23,9 +19,9 @@ def app(loop, web_server):
   web_server.add_to_app(app)
   return app
 
-async def test_smoke(aiohttp_client, app, api_server, fs_servicer):
+async def test_smoke(aiohttp_client, app, api_server, any_servicer):
   api_server.add_to_app(app)
-  prediction_id = fs_servicer.CreatePrediction(new_user_token(fs_servicer, 'rando'), some_create_prediction_request()).new_prediction_id
+  prediction_id = any_servicer.CreatePrediction(new_user_token(any_servicer, 'rando'), some_create_prediction_request()).new_prediction_id
   assert prediction_id > 0
   logged_in_cli = await aiohttp_client(app)
   await post_proto(logged_in_cli, '/api/RegisterUsername', mvp_pb2.RegisterUsernameRequest(username='alice', password='alice'), mvp_pb2.RegisterUsernameResponse)

@@ -2,10 +2,9 @@ import datetime
 from email.message import EmailMessage
 import json
 from pathlib import Path
-from typing import Any, Mapping, Sequence #overload, Any, Mapping, Iterator, Optional, Container, NewType, Callable, NoReturn, Tuple, Iterable, Sequence, TypeVar, MutableSequence
+from typing import Any, Iterable, Mapping, Sequence
 
 import aiosmtplib
-import google.protobuf.text_format  # type: ignore
 import jinja2
 import structlog
 
@@ -65,7 +64,8 @@ class Emailer:
         )
         logger.info('sent email', subject=subject, to=to)
 
-    async def _send_bccs(self, *, bccs: Sequence[str], subject: str, body: str) -> None:
+    async def _send_bccs(self, *, bccs: Iterable[str], subject: str, body: str) -> None:
+        bccs = list(set(bccs))
         for i in range(0, len(bccs), 32):
             bccs_chunk = bccs[i:i+32]
             await self._send(
@@ -75,21 +75,41 @@ class Emailer:
                 body=body,
             )
 
-    async def send_resolution_notifications(self, bccs: Sequence[str], prediction_id: PredictionId, prediction: mvp_pb2.WorldState.Prediction) -> None:
-        if not prediction.resolutions:
-            raise ValueError(f'trying to email resolution-notifications for prediction {prediction_id}, but it has never resolved')
-        resolution = prediction.resolutions[-1].resolution
+    async def send_resolution_notifications(
+        self,
+        bccs: Iterable[str],
+        prediction_id: PredictionId,
+        prediction_text: str,
+        resolution: mvp_pb2.Resolution,
+    ) -> None:
         await self._send_bccs(
             bccs=bccs,
-            subject=f'Prediction resolved: {json.dumps(prediction.prediction)}',
-            body=self._ResolutionNotification_template.render(prediction_id=prediction_id, resolution=resolution, mvp_pb2=mvp_pb2),
+            subject=f'Prediction resolved: {json.dumps(prediction_text)}',
+            body=self._ResolutionNotification_template.render(
+                prediction_id=prediction_id,
+                prediction_text=prediction_text,
+                verbed=(
+                    'resolved YES' if resolution == mvp_pb2.RESOLUTION_YES else
+                    'resolved NO' if resolution == mvp_pb2.RESOLUTION_NO else
+                    'resolved INVALID' if resolution == mvp_pb2.RESOLUTION_INVALID else
+                    'UN-resolved'
+                ),
+            ),
         )
 
-    async def send_resolution_reminder(self, to: str, prediction_id: PredictionId, prediction: mvp_pb2.WorldState.Prediction) -> None:
+    async def send_resolution_reminder(
+        self,
+        to: str,
+        prediction_id: PredictionId,
+        prediction_text: str,
+    ) -> None:
         await self._send(
             to=to,
-            subject=f'Resolve your prediction: {json.dumps(prediction.prediction)}',
-            body=self._ResolutionReminder_template.render(prediction_id=prediction_id, prediction=prediction),
+            subject=f'Resolve your prediction: {json.dumps(prediction_text)}',
+            body=self._ResolutionReminder_template.render(
+                prediction_id=prediction_id,
+                prediction_text=prediction_text,
+            ),
         )
 
     async def send_email_verification(self, to: str, code: str) -> None:
@@ -99,11 +119,11 @@ class Emailer:
             body=self._EmailVerification_template.render(code=code),
         )
 
-    async def send_backup(self, to: str, now: datetime.datetime, wstate: mvp_pb2.WorldState) -> None:
+    async def send_backup(self, to: str, now: datetime.datetime, body: str) -> None:
         await self._send(
             to=to,
             subject=f'Biatob backup for {now:%Y-%m-%d}',
-            body=self._Backup_template.render(wstate_textproto=google.protobuf.text_format.MessageToString(wstate)),
+            body=self._Backup_template.render(body=body),
         )
 
     async def send_invariant_violations(self, to: str, now: datetime.datetime, violations: Sequence[Mapping[str, Any]]) -> None:

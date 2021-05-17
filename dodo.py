@@ -155,25 +155,6 @@ def task_pprint():
     'verbosity': 2,
   }
 
-def task_migrate():
-  def ensure_state_path_given(state_path):
-    if not state_path:
-      raise RuntimeError('--state_path must be given')
-  return {
-    'setup': ['proto:python', 'test:pytest', 'test:mypy'],
-    'params': [
-      {'name': 'state_path',
-       'short': 'p',
-       'long': 'state_path',
-       'default': '',
-       'help': f'path to state file to migrate'},
-    ],
-    'actions': [
-      (ensure_state_path_given,),
-      'python -m server.migrate %(state_path)s',
-    ],
-  }
-
 def task_nfsdeploy():
   def ensure_nfsuser_given(nfsuser):
     if not nfsuser:
@@ -197,6 +178,6 @@ def task_nfsdeploy():
 DOIT_CONFIG = {
   'default_tasks': list(
     {name[5:] for name, obj in locals().items() if name.startswith('task_') and callable(obj)}
-    - {'nfsdeploy', 'devsetup', 'pprint', 'migrate'}
+    - {'nfsdeploy', 'devsetup', 'pprint'}
   ),
 }

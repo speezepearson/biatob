@@ -6,6 +6,7 @@ Jinja2
 filelock
 aiosmtplib
 structlog
+sqlalchemy
 
 # testing
 pytest-aiohttp
