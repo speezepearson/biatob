@@ -111,7 +111,7 @@ class WebServer:
             body=self._jinja.get_template('ViewPredictionPage.html').render(
                 title=f'Biatob - Prediction: by {datetime.datetime.fromtimestamp(get_prediction_resp.prediction.resolves_at_unixtime).strftime("%Y-%m-%d")}, {get_prediction_resp.prediction.prediction}',
                 auth_success_pb_b64=pb_b64(auth_success),
-                prediction_pb_b64=pb_b64(get_prediction_resp.prediction),
+                predictions_pb_b64=pb_b64(mvp_pb2.PredictionsById(predictions={prediction_id: get_prediction_resp.prediction})),
                 prediction_id=prediction_id,
             ))
 

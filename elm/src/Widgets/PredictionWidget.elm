@@ -10,7 +10,7 @@ import Dict as D exposing (Dict)
 
 import Iso8601
 import Biatob.Proto.Mvp as Pb
-import Utils exposing (Username)
+import Utils exposing (PredictionId, Username)
 
 import Widgets.StakeWidget as StakeWidget
 import Widgets.CopyWidget as CopyWidget
@@ -80,7 +80,7 @@ update msg model =
 viewStakeWidgetOrExcuse : Context -> Page.Globals -> Model -> Html Msg
 viewStakeWidgetOrExcuse ctx globals model =
   let
-    prediction = Utils.must "TODO" <| D.get ctx.predictionId globals.serverState.predictions
+    prediction = mustHaveLoadedPrediction ctx.predictionId globals
     creator = prediction.creator
   in
   if Utils.resolutionIsTerminal (Utils.currentResolution prediction) then
@@ -143,10 +143,14 @@ enumerateWinnings winningsByUser =
     |> List.map (\(b, win) -> H.li [] [stateWinnings b win])
     )
 
+mustHaveLoadedPrediction : PredictionId -> Page.Globals -> Pb.UserPredictionView
+mustHaveLoadedPrediction predictionId globals =
+  Utils.must "prediction is not loaded in ServerState" <| D.get predictionId globals.serverState.predictions
+
 viewPredictionState : Context -> Page.Globals -> Model -> Html Msg
 viewPredictionState ctx globals model =
   let
-    prediction = Utils.must "TODO" <| D.get ctx.predictionId globals.serverState.predictions
+    prediction = mustHaveLoadedPrediction ctx.predictionId globals
     auditLog : Html Msg
     auditLog =
       if List.isEmpty prediction.resolutions then H.text "" else
@@ -208,7 +212,7 @@ viewPredictionState ctx globals model =
 viewWinnings : Context -> Page.Globals -> Model -> Html Msg
 viewWinnings ctx globals model =
   let
-    prediction = Utils.must "TODO" <| D.get ctx.predictionId globals.serverState.predictions
+    prediction = mustHaveLoadedPrediction ctx.predictionId globals
     auditLog : Html Msg
     auditLog =
       if List.isEmpty prediction.yourTrades then H.text "" else
@@ -249,7 +253,7 @@ viewWinnings ctx globals model =
 viewCreationParams : Context -> Page.Globals -> Model -> Html Msg
 viewCreationParams ctx globals model =
   let
-    prediction = Utils.must "TODO" <| D.get ctx.predictionId globals.serverState.predictions
+    prediction = mustHaveLoadedPrediction ctx.predictionId globals
     creator = prediction.creator
     openTime = Utils.unixtimeToTime prediction.createdUnixtime
     certainty = Utils.mustPredictionCertainty prediction
@@ -274,7 +278,7 @@ viewCreationParams ctx globals model =
 viewResolveButtons : Context -> Page.Globals -> Model -> Html Msg
 viewResolveButtons ctx globals model =
   let
-    prediction = Utils.must "TODO" <| D.get ctx.predictionId globals.serverState.predictions
+    prediction = mustHaveLoadedPrediction ctx.predictionId globals
   in
   if Page.isSelf globals prediction.creator then
     H.div []
@@ -308,7 +312,7 @@ viewResolveButtons ctx globals model =
 view : Context -> Page.Globals -> Model -> Html Msg
 view ctx globals model =
   let
-    prediction = Utils.must "TODO" <| D.get ctx.predictionId globals.serverState.predictions
+    prediction = mustHaveLoadedPrediction ctx.predictionId globals
     creator = prediction.creator
   in
   H.div []
@@ -392,7 +396,7 @@ view ctx globals model =
 viewEmbedInfo : Context -> Page.Globals -> Model -> Html Msg
 viewEmbedInfo ctx globals model =
   let
-    prediction = Utils.must "TODO" <| D.get ctx.predictionId globals.serverState.predictions
+    prediction = mustHaveLoadedPrediction ctx.predictionId globals
     linkUrl = globals.httpOrigin ++ "/p/" ++ String.fromInt ctx.predictionId  -- TODO(P0): needs origin to get stuck in text field
     imgUrl = globals.httpOrigin ++ "/p/" ++ String.fromInt ctx.predictionId ++ "/embed.png"
     imgStyles = [("max-height","1.5ex"), ("border-bottom","1px solid #008800")]
