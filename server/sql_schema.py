@@ -52,11 +52,11 @@ predictions = Table(
   Column('prediction_id', Integer(), primary_key=True, nullable=False),
   Column('prediction', String(1024), CheckConstraint('LENGTH(prediction) > 0'), nullable=False),
   Column('certainty_low_p', REAL(), nullable=False),
-  Column('certainty_high_p', REAL(), nullable=False),
-  Column('maximum_stake_cents', Integer(), nullable=False),
+  Column('certainty_high_p', REAL(), CheckConstraint('certainty_high_p >= certainty_low_p'), nullable=False),
+  Column('maximum_stake_cents', Integer(), CheckConstraint('maximum_stake_cents > 0'), nullable=False),
   Column('created_at_unixtime', REAL(), nullable=False),
-  Column('closes_at_unixtime', REAL(), nullable=False),
-  Column('resolves_at_unixtime', REAL(), nullable=False),
+  Column('closes_at_unixtime', REAL(), CheckConstraint('closes_at_unixtime > created_at_unixtime'), nullable=False),
+  Column('resolves_at_unixtime', REAL(), CheckConstraint('resolves_at_unixtime > created_at_unixtime'), nullable=False),
   Column('special_rules', String(65535), nullable=False),
   Column('creator', ForeignKey('users.username'), nullable=False),
   Column('resolution_reminder_sent', BOOLEAN(), nullable=False, default=False),
@@ -68,8 +68,8 @@ trades = Table(
   Column('prediction_id', ForeignKey('predictions.prediction_id'), nullable=False),
   Column('bettor', ForeignKey('users.username'), nullable=False),
   Column('bettor_is_a_skeptic', BOOLEAN(), nullable=False),
-  Column('bettor_stake_cents', Integer(), nullable=False),
-  Column('creator_stake_cents', Integer(), nullable=False),
+  Column('bettor_stake_cents', Integer(), CheckConstraint('bettor_stake_cents > 0'), nullable=False),
+  Column('creator_stake_cents', Integer(), CheckConstraint('creator_stake_cents > 0'), nullable=False),
   Column('transacted_at_unixtime', REAL(), nullable=False)
 )
 Index('trades_by_prediction_id', trades.c.prediction_id)

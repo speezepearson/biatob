@@ -125,7 +125,7 @@ class TestPredictions:
       maximum_stake_cents=100,
       open_seconds=86400,
       special_rules='my rules',
-      resolves_at_unixtime=100000,
+      resolves_at_unixtime=T1.timestamp(),
     ))
     assert conn.view_prediction(viewer=ALICE, prediction_id=predid) == mvp_pb2.UserPredictionView(
       prediction='a thing will happen',
@@ -137,7 +137,7 @@ class TestPredictions:
       closes_unixtime=T0.timestamp() + 86400,
       special_rules='my rules',
       creator=mvp_pb2.UserUserView(username=ALICE, is_trusted=True, trusts_you=True),
-      resolves_at_unixtime=100000,
+      resolves_at_unixtime=T1.timestamp(),
     )
 
   def test_stake_errors_on_nonexistent_prediction(self, conn: SqlConn):
@@ -199,10 +199,10 @@ class TestResolutionReminders:
 
   def test_requires_preferences(self, conn: SqlConn):
     create_user(conn, ALICE, email_address='alice@example.com')
-    conn.create_prediction(now=T0, prediction_id=PredictionId(456), creator=ALICE, request=some_create_prediction_request(resolves_at_unixtime=1))
-    assert [r['prediction_id'] for r in conn.get_predictions_needing_resolution_reminders(now=T1)] == []
+    conn.create_prediction(now=T0, prediction_id=PredictionId(456), creator=ALICE, request=some_create_prediction_request(resolves_at_unixtime=T1.timestamp()))
+    assert [r['prediction_id'] for r in conn.get_predictions_needing_resolution_reminders(now=T2)] == []
     conn.update_settings(ALICE, mvp_pb2.UpdateSettingsRequest(email_reminders_to_resolve=mvp_pb2.MaybeBool(value=True)))
-    assert [r['prediction_id'] for r in conn.get_predictions_needing_resolution_reminders(now=T1)] == [456]
+    assert [r['prediction_id'] for r in conn.get_predictions_needing_resolution_reminders(now=T2)] == [456]
 
   def test_requires_resolves_at_is_in_past(self, conn: SqlConn):
     create_user(conn, ALICE, email_address='alice@example.com', email_reminders_to_resolve=True)
