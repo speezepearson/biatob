@@ -14,6 +14,9 @@
     gtag('config', 'G-9CYYH7HZ13');
   </script>
 
+<script type="text/javascript" src="/elm/LogInWidget.js"></script>
+<script type="text/javascript" src="/elm/SignOutButton.js"></script>
+
   <script type="text/javascript">
     window.elmGlobalFlags = {
       authSuccessPbB64: {% if auth_success_pb_b64 is defined %} {{ auth_success_pb_b64 | tojson }} {% else %} null {% endif %},

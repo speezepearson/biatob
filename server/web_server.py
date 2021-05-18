@@ -44,6 +44,7 @@ class WebServer:
             autoescape=jinja2.select_autoescape(['html', 'xml']),
         )
         self._jinja.undefined = jinja2.StrictUndefined  # raise exception if a template uses an undefined variable; adapted from https://stackoverflow.com/a/39127941/8877656
+        self._jinja.filters['render_user'] = lambda username: f'<a href="/u/{username}">{username}</a>'
 
     def _get_auth_success(self, auth: Optional[mvp_pb2.AuthToken]) -> Optional[mvp_pb2.AuthSuccess]:
         if auth is None:
@@ -190,7 +191,6 @@ class WebServer:
 
     async def get_invitation(self, req: web.Request) -> web.Response:
         auth = self._token_glue.parse_cookie(req)
-        auth_success = self._get_auth_success(auth)
         invitation_id = mvp_pb2.InvitationId(
             inviter=req.match_info['username'],
             nonce=req.match_info['nonce'],
@@ -199,11 +199,18 @@ class WebServer:
         if check_invitation_resp.WhichOneof('check_invitation_result') == 'error':
             return web.HTTPBadRequest(reason=str(check_invitation_resp.error))
         assert check_invitation_resp.WhichOneof('check_invitation_result') == 'is_open'
+
+        get_user_resp = self._servicer.GetUser(auth, mvp_pb2.GetUserRequest(who=invitation_id.inviter))
+        assert get_user_resp.WhichOneof('get_user_result') == 'ok'
+
         return web.Response(
             content_type='text/html',
             body=self._jinja.get_template('AcceptInvitationPage.html').render(
-                auth_success_pb_b64=pb_b64(auth_success),
+                inviter=invitation_id.inviter,
+                is_logged_in=(auth is not None),
+                already_mutual_trust=get_user_resp.ok.is_trusted and get_user_resp.ok.trusts_you,
                 invitation_is_open=check_invitation_resp.is_open,
+                is_own_invitation=(auth is not None and invitation_id.inviter == auth.owner),
                 invitation_id_pb_b64=pb_b64(invitation_id),
             ))
 

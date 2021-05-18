@@ -1,14 +1,88 @@
 {% extends 'base_page.html' %}
-{% block title %} Invitation {% endblock %}
+{% block title %} Accept Invitation {% endblock %}
 {% block page_body %}
-  <script type="text/javascript" src="/elm/AcceptInvitation.js"></script>
-  <script type="text/javascript">
 
-    var invitationIdPbB64 = {{ invitation_id_pb_b64 | tojson }};
-    var invitationIsOpen = {{ invitation_is_open | tojson }};
-    var destination = (() => { var m = (/[?&]dest=([^&]+)/).exec(window.location.search); return m ? m[1] : null})();
-    console.log({invitationIsOpen});
+{% include 'Navbar.html' %}
 
-    main({elmApp: Elm.Elements.AcceptInvitation, flags: {invitationIsOpen, invitationIdPbB64, destination}});
-  </script>
+<script type="text/javascript" src="/elm/AcceptInvitationButton.js"></script>
+<script type="text/javascript">
+</script>
+
+<main style="text-align: justify">
+
+  <h2>Invitation from <a href="/username/{{inviter}}">{{inviter}}</a></h2>
+
+  {% if is_own_invitation %}
+    This is your own invitation!
+  {% elif not invitation_is_open %}
+    This invitation has been used up already!
+  {% elif already_mutual_trust %}
+    You and <a href="/username/{{inviter}}">{{inviter}}</a> already trust each other!
+  {% else %}
+    <p>
+      The person who sent you this link is interested in betting against you regarding real-world events,
+      with real money, upheld by the honor system!
+      They trust you to behave honorably and pay your debts, and hope that you trust them back.
+    </p>
+    <p>
+      If you trust them back, and you're interested in betting against them:
+
+      {% if is_logged_in %}
+        click
+        <button id="accept-invitation-button"></button>
+        <script>
+          var invitationIdPbB64 = {{ invitation_id_pb_b64 | tojson }};
+          var destination = (() => {
+            var m = (/[?&]dest=([^&]+)/).exec(window.location.search);
+            return m ? m[1] : null;
+          })();
+          var app = Elm.Elements.AcceptInvitationButton.init({
+            node: document.getElementById('accept-invitation-button'),
+            flags: {invitationIdPbB64},
+          });
+          app.ports.invitationAccepted.subscribe(() => {window.location = destination ? destination : '/username/{{inviter}}';})
+        </script>
+        ; otherwise, just close this tab.
+      {% else %}
+        <ul>
+          <li>
+            Authenticate yourself:
+            <div id="authenticate-yourself-for-invitation"></div>
+            <script>
+              var app = Elm.Elements.LogInWidget.init({
+                node: document.getElementById('authenticate-yourself-for-invitation'),
+              });
+              app.ports.authChanged.subscribe(() => window.location.reload());
+            </script>
+          </li>
+          <li>
+            ...then click
+            <button disabled>I trust the person who sent me this link</button> <!-- disabled because logging in triggers page- reload -->
+            .
+          </li>
+        </ul>
+      {% endif %}
+    </p>
+  {% endif %}
+
+  <hr />
+  <h3> Huh? What? What is this? </h3>
+  <p>
+    This site is a tool that helps people make concrete predictions and bet on them, thereby clarifying their beliefs and making the world a better, saner place.
+  </p>
+  <p>
+    Users can make predictions and say how confident they are;
+    then other people can bet real money against them.
+    <strong>Everything is purely honor-system,</strong>
+    so you don't have to provide a credit card or anything, but you <i>do</i>
+    have to tell the site who you trust, so that it knows who's allowed to bet against you.
+    (Honor systems only work where there is honor.)
+  </p>
+  <p>
+    <a href="/username/{{inviter}}">{{inviter}}</a>
+    thinks you might be interested in gambling against them, and trusts you to pay any debts you incur when you lose;
+    if you feel the same way, accept their invitation!
+  </p>
+
+</main>
 {% endblock %}
