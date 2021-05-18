@@ -1,18 +1,16 @@
 module Widgets.TrustedUsersWidget exposing (..)
-import Biatob.Proto.Mvp exposing (SetTrustedRequest)
 import Page
 
 import Html as H exposing (Html)
 import Html.Attributes as HA
 import Html.Events as HE
 import Http
-import Dict as D exposing (Dict)
+import Dict as D
 
 import Biatob.Proto.Mvp as Pb
 import Utils
 
 import Field exposing (Field)
-import Time
 import Utils
 
 import Widgets.SmallInvitationWidget as SmallInvitationWidget

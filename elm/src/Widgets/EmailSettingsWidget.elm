@@ -1,18 +1,16 @@
 module Widgets.EmailSettingsWidget exposing (..)
 
-import Browser
 import Html as H exposing (Html)
 import Html.Attributes as HA
 import Html.Events as HE
 import Http
-import Json.Decode as JD
 
 import Biatob.Proto.Mvp as Pb
 import Utils
 
 import Field exposing (Field)
 import Page
-import Parser exposing (Parser, (|.), (|=))
+import Parser exposing ((|.), (|=))
 import Set
 
 type Msg

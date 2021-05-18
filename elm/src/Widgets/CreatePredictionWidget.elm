@@ -1,11 +1,9 @@
 module Widgets.CreatePredictionWidget exposing (..)
 
-import Browser
 import Html as H exposing (Html)
 import Html.Attributes as HA
 import Utils exposing (i)
 import Time
-import Task
 
 import Field exposing (Field)
 import Biatob.Proto.Mvp as Pb

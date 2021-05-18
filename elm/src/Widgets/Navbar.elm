@@ -2,11 +2,9 @@ module Widgets.Navbar exposing (..)
 
 import Html as H exposing (Html)
 import Html.Attributes as HA
-import Http
 
 import Widgets.AuthWidget as AuthWidget
 import Page
-import Biatob.Proto.Mvp as Pb
 
 type alias Model = { authWidget : AuthWidget.Model }
 type Msg
@@ -27,8 +25,8 @@ view globals model =
   in
   H.nav [HA.class "navbar-wrapper"]
     [ H.ul [] <|
-        [H.li [] [H.a [HA.href "/"] [H.text "Home"]]]
-        ++ (if Page.isLoggedIn globals then loggedInItems else [])
+        H.li [] [H.a [HA.href "/"] [H.text "Home"]]
+        :: (if Page.isLoggedIn globals then loggedInItems else [])
         ++ [H.li [] [AuthWidget.view globals model.authWidget |> H.map AuthWidgetMsg]]
     ]
 

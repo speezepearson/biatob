@@ -1,10 +1,9 @@
 module Elements.Welcome exposing (main)
 
 import Browser
-import Html as H exposing (Html)
+import Html as H
 import Html.Attributes as HA
 import Json.Decode as JD
-import Dict exposing (Dict)
 
 import Utils
 

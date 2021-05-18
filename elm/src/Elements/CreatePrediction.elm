@@ -1,15 +1,11 @@
 module Elements.CreatePrediction exposing (main)
 
 import Browser
-import Html as H exposing (Html)
+import Html as H
 import Html.Attributes as HA
 import Html.Events as HE
 import Http
-import Json.Decode as JD
 import Time
-import Bytes.Encode
-import Time
-import Task
 
 import Biatob.Proto.Mvp as Pb
 import Widgets.CreatePredictionWidget as Form

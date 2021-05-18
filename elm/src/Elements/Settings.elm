@@ -1,14 +1,8 @@
 module Elements.Settings exposing (main)
 
 import Browser
-import Html as H exposing (Html)
-import Html.Attributes as HA
-import Json.Decode as JD
-import Http
-import Dict exposing (Dict)
+import Html as H
 
-import Biatob.Proto.Mvp as Pb
-import Utils
 
 import Widgets.ChangePasswordWidget as ChangePasswordWidget
 import Widgets.EmailSettingsWidget as EmailSettingsWidget

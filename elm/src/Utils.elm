@@ -8,7 +8,6 @@ import Time
 
 import Base64
 import Protobuf.Decode as PD
-import Protobuf.Encode as PE
 import Dict exposing (Dict)
 
 import Biatob.Proto.Mvp as Pb
