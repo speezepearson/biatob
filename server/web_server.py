@@ -156,11 +156,8 @@ class WebServer:
         auth = self._token_glue.parse_cookie(req)
         auth_success = self._get_auth_success(auth)
         username = req.match_info['username']
-        get_user_resp = self._servicer.GetUser(auth, mvp_pb2.GetUserRequest(who=username))
-        if get_user_resp.WhichOneof('get_user_result') == 'error':
-            return web.Response(status=400, body=str(get_user_resp.error))
-        assert get_user_resp.WhichOneof('get_user_result') == 'ok'
-        if get_user_resp.ok.trusts_you:
+        relationship = None if (auth_success is None) else auth_success.user_info.relationships.get(username)
+        if (relationship is not None) and relationship.trusting:
             list_predictions_resp = self._servicer.ListPredictions(auth, mvp_pb2.ListPredictionsRequest(creator=username))
             predictions: Optional[mvp_pb2.PredictionsById] = list_predictions_resp.ok  # TODO: error handling
         else:
@@ -169,7 +166,7 @@ class WebServer:
             content_type='text/html',
             body=self._jinja.get_template('ViewUserPage.html').render(
                 auth_success_pb_b64=pb_b64(auth_success),
-                user_view_pb_b64=pb_b64(get_user_resp.ok),
+                who=username,
                 predictions_pb_b64=pb_b64(predictions),
             ))
 

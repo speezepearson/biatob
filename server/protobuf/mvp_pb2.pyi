@@ -402,14 +402,12 @@ global___GenericUserInfo = GenericUserInfo
 class Relationship(google___protobuf___message___Message):
     DESCRIPTOR: google___protobuf___descriptor___Descriptor = ...
     trusted = ... # type: builtin___bool
-
-    @property
-    def side_payments(self) -> google___protobuf___internal___containers___RepeatedCompositeFieldContainer[global___SidePayment]: ...
+    trusting = ... # type: builtin___bool
 
     def __init__(self,
         *,
         trusted : typing___Optional[builtin___bool] = None,
-        side_payments : typing___Optional[typing___Iterable[global___SidePayment]] = None,
+        trusting : typing___Optional[builtin___bool] = None,
         ) -> None: ...
     if sys.version_info >= (3,):
         @classmethod
@@ -419,31 +417,8 @@ class Relationship(google___protobuf___message___Message):
         def FromString(cls, s: typing___Union[builtin___bytes, builtin___buffer, builtin___unicode]) -> Relationship: ...
     def MergeFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
     def CopyFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
-    def ClearField(self, field_name: typing_extensions___Literal[u"side_payments",b"side_payments",u"trusted",b"trusted"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions___Literal[u"trusted",b"trusted",u"trusting",b"trusting"]) -> None: ...
 global___Relationship = Relationship
-
-class SidePayment(google___protobuf___message___Message):
-    DESCRIPTOR: google___protobuf___descriptor___Descriptor = ...
-    unixtime = ... # type: builtin___float
-    received_cents = ... # type: builtin___int
-    notes = ... # type: typing___Text
-
-    def __init__(self,
-        *,
-        unixtime : typing___Optional[builtin___float] = None,
-        received_cents : typing___Optional[builtin___int] = None,
-        notes : typing___Optional[typing___Text] = None,
-        ) -> None: ...
-    if sys.version_info >= (3,):
-        @classmethod
-        def FromString(cls, s: builtin___bytes) -> SidePayment: ...
-    else:
-        @classmethod
-        def FromString(cls, s: typing___Union[builtin___bytes, builtin___buffer, builtin___unicode]) -> SidePayment: ...
-    def MergeFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
-    def CopyFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
-    def ClearField(self, field_name: typing_extensions___Literal[u"notes",b"notes",u"received_cents",b"received_cents",u"unixtime",b"unixtime"]) -> None: ...
-global___SidePayment = SidePayment
 
 class UsernameInfo(google___protobuf___message___Message):
     DESCRIPTOR: google___protobuf___descriptor___Descriptor = ...
@@ -1127,13 +1102,11 @@ class UserPredictionView(google___protobuf___message___Message):
     created_unixtime = ... # type: builtin___float
     closes_unixtime = ... # type: builtin___float
     special_rules = ... # type: typing___Text
+    creator = ... # type: typing___Text
     resolves_at_unixtime = ... # type: builtin___float
 
     @property
     def certainty(self) -> global___CertaintyRange: ...
-
-    @property
-    def creator(self) -> global___UserUserView: ...
 
     @property
     def resolutions(self) -> google___protobuf___internal___containers___RepeatedCompositeFieldContainer[global___ResolutionEvent]: ...
@@ -1151,7 +1124,7 @@ class UserPredictionView(google___protobuf___message___Message):
         created_unixtime : typing___Optional[builtin___float] = None,
         closes_unixtime : typing___Optional[builtin___float] = None,
         special_rules : typing___Optional[typing___Text] = None,
-        creator : typing___Optional[global___UserUserView] = None,
+        creator : typing___Optional[typing___Text] = None,
         resolutions : typing___Optional[typing___Iterable[global___ResolutionEvent]] = None,
         your_trades : typing___Optional[typing___Iterable[global___Trade]] = None,
         resolves_at_unixtime : typing___Optional[builtin___float] = None,
@@ -1164,32 +1137,9 @@ class UserPredictionView(google___protobuf___message___Message):
         def FromString(cls, s: typing___Union[builtin___bytes, builtin___buffer, builtin___unicode]) -> UserPredictionView: ...
     def MergeFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
     def CopyFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
-    def HasField(self, field_name: typing_extensions___Literal[u"certainty",b"certainty",u"creator",b"creator"]) -> builtin___bool: ...
+    def HasField(self, field_name: typing_extensions___Literal[u"certainty",b"certainty"]) -> builtin___bool: ...
     def ClearField(self, field_name: typing_extensions___Literal[u"certainty",b"certainty",u"closes_unixtime",b"closes_unixtime",u"created_unixtime",b"created_unixtime",u"creator",b"creator",u"maximum_stake_cents",b"maximum_stake_cents",u"prediction",b"prediction",u"remaining_stake_cents_vs_believers",b"remaining_stake_cents_vs_believers",u"remaining_stake_cents_vs_skeptics",b"remaining_stake_cents_vs_skeptics",u"resolutions",b"resolutions",u"resolves_at_unixtime",b"resolves_at_unixtime",u"special_rules",b"special_rules",u"your_trades",b"your_trades"]) -> None: ...
 global___UserPredictionView = UserPredictionView
-
-class UserUserView(google___protobuf___message___Message):
-    DESCRIPTOR: google___protobuf___descriptor___Descriptor = ...
-    username = ... # type: typing___Text
-    is_trusted = ... # type: builtin___bool
-    trusts_you = ... # type: builtin___bool
-
-    def __init__(self,
-        *,
-        username : typing___Optional[typing___Text] = None,
-        is_trusted : typing___Optional[builtin___bool] = None,
-        trusts_you : typing___Optional[builtin___bool] = None,
-        ) -> None: ...
-    if sys.version_info >= (3,):
-        @classmethod
-        def FromString(cls, s: builtin___bytes) -> UserUserView: ...
-    else:
-        @classmethod
-        def FromString(cls, s: typing___Union[builtin___bytes, builtin___buffer, builtin___unicode]) -> UserUserView: ...
-    def MergeFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
-    def CopyFrom(self, other_msg: google___protobuf___message___Message) -> None: ...
-    def ClearField(self, field_name: typing_extensions___Literal[u"is_trusted",b"is_trusted",u"trusts_you",b"trusts_you",u"username",b"username"]) -> None: ...
-global___UserUserView = UserUserView
 
 class ListMyStakesRequest(google___protobuf___message___Message):
     DESCRIPTOR: google___protobuf___descriptor___Descriptor = ...
@@ -1624,14 +1574,14 @@ class GetUserResponse(google___protobuf___message___Message):
 
 
     @property
-    def ok(self) -> global___UserUserView: ...
+    def ok(self) -> global___Relationship: ...
 
     @property
     def error(self) -> global___GetUserResponse.Error: ...
 
     def __init__(self,
         *,
-        ok : typing___Optional[global___UserUserView] = None,
+        ok : typing___Optional[global___Relationship] = None,
         error : typing___Optional[global___GetUserResponse.Error] = None,
         ) -> None: ...
     if sys.version_info >= (3,):

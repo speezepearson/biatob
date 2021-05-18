@@ -60,8 +60,8 @@ def SetTrustedOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], who: st
 def SetTrustedErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], who: str, trusted: bool) -> mvp_pb2.SetTrustedResponse.Error:
   return assert_oneof(servicer.SetTrusted(token, mvp_pb2.SetTrustedRequest(who=who, trusted=trusted)), 'set_trusted_result', 'error', mvp_pb2.SetTrustedResponse.Error)
 
-def GetUserOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], who: str) -> mvp_pb2.UserUserView:
-  return assert_oneof(servicer.GetUser(token, mvp_pb2.GetUserRequest(who=who)), 'get_user_result', 'ok', mvp_pb2.UserUserView)
+def GetUserOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], who: str) -> mvp_pb2.Relationship:
+  return assert_oneof(servicer.GetUser(token, mvp_pb2.GetUserRequest(who=who)), 'get_user_result', 'ok', mvp_pb2.Relationship)
 def GetUserErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], who: str) -> mvp_pb2.GetUserResponse.Error:
   return assert_oneof(servicer.GetUser(token, mvp_pb2.GetUserRequest(who=who)), 'get_user_result', 'error', mvp_pb2.GetUserResponse.Error)
 
@@ -279,7 +279,7 @@ class TestGetPrediction:
       closes_unixtime=create_time + req.open_seconds,
       resolves_at_unixtime=req.resolves_at_unixtime,
       special_rules=req.special_rules,
-      creator=mvp_pb2.UserUserView(username='Alice', is_trusted=True, trusts_you=True),
+      creator='Alice',
       resolutions=[mvp_pb2.ResolutionEvent(unixtime=resolve_time, resolution=mvp_pb2.RESOLUTION_YES)],
       your_trades=[mvp_pb2.Trade(bettor=bob_token.owner, bettor_is_a_skeptic=True, bettor_stake_cents=1_00, creator_stake_cents=1_00, transacted_unixtime=stake_time)],
     )
@@ -532,12 +532,12 @@ class TestSetTrusted:
     new_user_token(any_servicer, 'other')
 
     alice_view_of_bob = GetUserOk(any_servicer, alice_token, 'Bob')
-    assert alice_view_of_bob.is_trusted
+    assert alice_view_of_bob.trusted
 
     SetTrustedOk(any_servicer, alice_token, 'Bob', False)
 
     alice_view_of_bob = GetUserOk(any_servicer, alice_token, 'Bob')
-    assert not alice_view_of_bob.is_trusted
+    assert not alice_view_of_bob.trusted
 
 
 
@@ -550,12 +550,12 @@ class TestGetUser:
   async def test_success_when_self(self, any_servicer: Servicer):
     token = new_user_token(any_servicer, 'rando')
     resp = GetUserOk(any_servicer, token, token.owner)
-    assert resp == mvp_pb2.UserUserView(username='rando', is_trusted=True, trusts_you=True)
+    assert resp == mvp_pb2.Relationship(trusted=True, trusting=True)
 
   async def test_success_when_friend(self, any_servicer: Servicer):
     alice_token, bob_token = alice_bob_tokens(any_servicer)
     resp = GetUserOk(any_servicer, alice_token, bob_token.owner)
-    assert resp == mvp_pb2.UserUserView(username='Bob', is_trusted=True, trusts_you=True)
+    assert resp == mvp_pb2.Relationship(trusted=True, trusting=True)
 
   async def test_shows_trust_correctly_when_logged_in(self, any_servicer: Servicer):
     token = new_user_token(any_servicer, 'rando')
@@ -564,14 +564,14 @@ class TestGetUser:
     trusted_token = new_user_token(any_servicer, 'trusted')
     SetTrustedOk(any_servicer, token, trusted_token.owner, True)
     resp = GetUserOk(any_servicer, token, truster_token.owner)
-    assert resp == mvp_pb2.UserUserView(username='truster', is_trusted=False, trusts_you=True)
+    assert resp == mvp_pb2.Relationship(trusted=False, trusting=True)
     resp = GetUserOk(any_servicer, token, trusted_token.owner)
-    assert resp == mvp_pb2.UserUserView(username='trusted', is_trusted=True, trusts_you=False)
+    assert resp == mvp_pb2.Relationship(trusted=True, trusting=False)
 
   async def test_no_trust_when_logged_out(self, any_servicer: Servicer):
     new_user_token(any_servicer, 'rando')
     resp = GetUserOk(any_servicer, None, 'rando')
-    assert resp == mvp_pb2.UserUserView(username='rando', is_trusted=False, trusts_you=False)
+    assert resp == mvp_pb2.Relationship(trusted=False, trusting=False)
 
 
 class TestChangePassword:
@@ -687,7 +687,7 @@ class TestGetSettings:
   async def test_happy_path(self, emailer: Emailer, any_servicer: Servicer):
     alice_token, bob_token = alice_bob_tokens(any_servicer)
     geninfo = GetSettingsOk(any_servicer, alice_token)
-    assert dict(geninfo.relationships) == {'Bob': mvp_pb2.Relationship(trusted=True)}
+    assert dict(geninfo.relationships) == {'Bob': mvp_pb2.Relationship(trusted=True, trusting=True)}
 
 
 class TestUpdateSettings:

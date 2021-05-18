@@ -8,15 +8,17 @@ module Page exposing
   , isLoggedIn
   , mapCmd
   , isSelf
+  , getRelationship
   )
 
 import Browser
+import Dict exposing (Dict)
 import Json.Decode as JD
 import Time
 import Http
 
 import Biatob.Proto.Mvp as Pb
-import Utils
+import Utils exposing (Username, PredictionId, InvitationNonce)
 
 type Command msg
   = NoCmd
@@ -34,10 +36,16 @@ type alias Element model msg =
   }
 
 type alias Globals =
-  { authState : Maybe Pb.AuthSuccess
+  { authToken : Maybe Pb.AuthToken
+  , serverState : ServerState
   , now : Time.Posix
   , timeZone : Time.Zone
   , httpOrigin : String
+  }
+
+type alias ServerState =
+  { settings : Maybe Pb.GenericUserInfo
+  , predictions : Dict PredictionId Pb.UserPredictionView
   }
 
 type Request msg
@@ -63,14 +71,14 @@ type Request msg
 
 getUserInfo : Globals -> Maybe Pb.GenericUserInfo
 getUserInfo globals =
-  globals.authState |> Maybe.map Utils.mustAuthSuccessUserInfo
+  globals.serverState.settings
 
 getAuth : Globals -> Maybe Pb.AuthToken
 getAuth globals =
-  globals.authState |> Maybe.map Utils.mustAuthSuccessToken
+  globals.authToken
 
 isLoggedIn : Globals -> Bool
-isLoggedIn globals = globals.authState /= Nothing
+isLoggedIn globals = globals.authToken /= Nothing
 
 mapCmd : (a -> b) -> Command a -> Command b
 mapCmd f cmd =
@@ -102,8 +110,16 @@ mapCmd f cmd =
     NavigateCmd dest -> NavigateCmd dest
 
 
-isSelf : Globals -> Pb.UserUserView -> Bool
+isSelf : Globals -> Username -> Bool
 isSelf globals who =
   case getAuth globals of
     Nothing -> False
-    Just token -> token.owner == who.username
+    Just token -> token.owner == who
+
+getRelationship : Globals -> Username -> Maybe Pb.Relationship
+getRelationship globals who =
+  globals.serverState.settings
+  |> Maybe.map .relationships
+  |> Maybe.andThen (Dict.get who)
+  |> Maybe.andThen identity
+

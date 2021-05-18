@@ -75,12 +75,7 @@ message GenericUserInfo {
 }
 message Relationship {
   bool trusted = 1;
-  repeated SidePayment side_payments = 2;
-}
-message SidePayment {
-  double unixtime = 1;
-  uint32 received_cents = 2;
-  string notes = 3;
+  bool trusting = 2;
 }
 
 message UsernameInfo {
@@ -251,15 +246,10 @@ message UserPredictionView {
   double created_unixtime = 13;
   double closes_unixtime = 14;
   string special_rules = 8;
-  UserUserView creator = 9;
+  string creator = 9;
   repeated ResolutionEvent resolutions = 10;
   repeated Trade your_trades = 11;
   double resolves_at_unixtime = 15;
-}
-message UserUserView {
-  string username = 1;
-  bool is_trusted = 3;
-  bool trusts_you = 4;
 }
 
 message ListMyStakesRequest {
@@ -342,7 +332,7 @@ message GetUserRequest {
 }
 message GetUserResponse {
   oneof get_user_result {
-    UserUserView ok = 1;
+    Relationship ok = 1;
     Error error = 2;
   }
   message Error {

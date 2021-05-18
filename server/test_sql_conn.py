@@ -1,5 +1,5 @@
 import datetime
-from typing import Iterable, Optional
+from typing import Iterable, Optional, TypeVar
 
 import pytest
 import sqlalchemy
@@ -90,6 +90,62 @@ class TestTrust:
     assert conn.trusts(ALICE, ALICE)
 
 
+_T = TypeVar('_T')
+def must(x: Optional[_T]) -> _T:
+  assert x
+  return x
+
+class TestSettings:
+  def test_get_settings_includes_trusted_users(self, conn: SqlConn):
+    conn.register_username(ALICE, 'password', password_id='alicepwid')
+    conn.register_username(BOB, 'password', password_id='bobpwid')
+    conn.set_trusted(ALICE, BOB, True)
+    assert must(conn.get_settings(ALICE)).relationships == {BOB: mvp_pb2.Relationship(trusted=True)}
+
+  def test_get_settings_includes_mutually_trusting_users(self, conn: SqlConn):
+    conn.register_username(ALICE, 'password', password_id='alicepwid')
+    conn.register_username(BOB, 'password', password_id='bobpwid')
+    conn.set_trusted(ALICE, BOB, True)
+    conn.set_trusted(BOB, ALICE, True)
+    assert must(conn.get_settings(ALICE)).relationships == {BOB: mvp_pb2.Relationship(trusted=True, trusting=True)}
+
+  def test_get_settings_includes_explicitly_untrusted_users(self, conn: SqlConn):
+    conn.register_username(ALICE, 'password', password_id='alicepwid')
+    conn.register_username(BOB, 'password', password_id='bobpwid')
+    conn.set_trusted(ALICE, BOB, False)
+    assert must(conn.get_settings(ALICE)).relationships == {BOB: mvp_pb2.Relationship(trusted=False)}
+
+  def test_get_settings_excludes_unrequitedly_trusting_users(self, conn: SqlConn):
+    conn.register_username(ALICE, 'password', password_id='alicepwid')
+    conn.register_username(BOB, 'password', password_id='bobpwid')
+    conn.set_trusted(BOB, ALICE, True)
+    assert must(conn.get_settings(ALICE)).relationships == {}
+
+  def test_get_settings_includes_open_invitations(self, conn: SqlConn):
+    conn.register_username(ALICE, 'password', password_id='alicepwid')
+    conn.create_invitation('nonce', ALICE, T0, 'notes')
+    assert must(conn.get_settings(ALICE)).invitations == {'nonce': mvp_pb2.Invitation(created_unixtime=T0.timestamp(), notes='notes')}
+
+  def test_get_settings_includes_closed_invitations(self, conn: SqlConn):
+    conn.register_username(ALICE, 'password', password_id='alicepwid')
+    conn.register_username(BOB, 'password', password_id='bobpwid')
+    conn.create_invitation('nonce', ALICE, T0, 'notes')
+    conn.accept_invitation('nonce', BOB, T1)
+    assert must(conn.get_settings(ALICE)).invitations == {'nonce': mvp_pb2.Invitation(created_unixtime=T0.timestamp(), notes='notes', accepted_by=BOB, accepted_unixtime=T1.timestamp())}
+
+  def test_persists_updated_settings(self, conn: SqlConn):
+    conn.register_username(ALICE, 'password', password_id='alicepwid')
+    conn.update_settings(ALICE, mvp_pb2.UpdateSettingsRequest(email_resolution_notifications=mvp_pb2.MaybeBool(value=True)))
+    assert must(conn.get_settings(ALICE)).email_resolution_notifications
+
+  def test_persists_set_email(self, conn: SqlConn):
+    conn.register_username(ALICE, 'password', password_id='alicepwid')
+    efs = mvp_pb2.EmailFlowState(verified='a@a')
+    conn.set_email(ALICE, efs)
+    assert must(conn.get_settings(ALICE)).email == efs
+
+
+
 class TestInvitations:
   def test_invitation_is_open_between_create_and_accept(self, conn: SqlConn):
     conn.register_username(ALICE, 'password', password_id='alicepwid')
@@ -136,7 +192,7 @@ class TestPredictions:
       created_unixtime=T0.timestamp(),
       closes_unixtime=T0.timestamp() + 86400,
       special_rules='my rules',
-      creator=mvp_pb2.UserUserView(username=ALICE, is_trusted=True, trusts_you=True),
+      creator=ALICE,
       resolves_at_unixtime=T1.timestamp(),
     )
 

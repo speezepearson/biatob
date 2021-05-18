@@ -24,8 +24,7 @@ type Msg
 init : JD.Value -> Model
 init flags =
   let predictionId = Utils.mustDecodeFromFlags JD.int "predictionId" flags in
-  ( { prediction = Utils.mustDecodePbFromFlags Pb.userPredictionViewDecoder "predictionPbB64" flags
-    , predictionId = predictionId
+  ( { predictionId = predictionId
     , shouldLinkTitle = False
     }
   , Widget.init predictionId
@@ -36,12 +35,9 @@ update msg (ctx, widget) =
   case msg of
     WidgetMsg widgetMsg ->
       let
-        (newWidget, innerCmd, event) = Widget.update widgetMsg widget
-        newCtx = case event of
-          Nothing -> ctx
-          Just (Widget.SetPrediction newPrediction) -> { ctx | prediction = newPrediction }
+        (newWidget, innerCmd) = Widget.update widgetMsg widget
       in
-      ( ( newCtx , newWidget )
+      ( ( ctx , newWidget )
       , Page.mapCmd WidgetMsg innerCmd
       )
 

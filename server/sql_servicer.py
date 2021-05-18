@@ -159,11 +159,7 @@ class SqlConn:
       closes_unixtime=row['closes_at_unixtime'],
       resolves_at_unixtime=row['resolves_at_unixtime'],
       special_rules=row['special_rules'],
-      creator=mvp_pb2.UserUserView(
-        username=row['creator'],
-        is_trusted=self.trusts(viewer, Username(row['creator'])) if (viewer is not None) else False,
-        trusts_you=self.trusts(Username(row['creator']), viewer) if (viewer is not None) else False,
-      ),
+      creator=row['creator'],
       resolutions=[
         mvp_pb2.ResolutionEvent(
           unixtime=r['resolved_at_unixtime'],
@@ -428,6 +424,17 @@ class SqlConn:
     ).first()
     if row is None:
       return None
+    outgoing_relationships = self._conn.execute(
+      sqlalchemy.select(schema.relationships.c)
+      .where(schema.relationships.c.subject_username == user)
+    ).fetchall()
+    trusting_users = {row['subject_username'] for row in self._conn.execute(
+      sqlalchemy.select(schema.relationships.c)
+      .where(sqlalchemy.and_(
+        schema.relationships.c.subject_username.in_({row['object_username'] for row in outgoing_relationships}),
+        schema.relationships.c.object_username == user,
+      ))
+    )}
     return mvp_pb2.GenericUserInfo(
       email_reminders_to_resolve=row['email_reminders_to_resolve'],
       email_resolution_notifications=row['email_resolution_notifications'],
@@ -435,12 +442,9 @@ class SqlConn:
       relationships={
         row['object_username']: mvp_pb2.Relationship(
           trusted=row['trusted'],
-          # TODO(P2): side payments
+          trusting=row['object_username'] in trusting_users,
         )
-        for row in self._conn.execute(
-          sqlalchemy.select(schema.relationships.c)
-          .where(schema.relationships.c.subject_username == user)
-        )
+        for row in outgoing_relationships
       },
       invitations={
         row['nonce']: mvp_pb2.Invitation(
@@ -868,10 +872,9 @@ class SqlServicer(Servicer):
         logger.info('attempting to view nonexistent user', who=request.who)
         return mvp_pb2.GetUserResponse(error=mvp_pb2.GetUserResponse.Error(catchall='no such user'))
 
-      return mvp_pb2.GetUserResponse(ok=mvp_pb2.UserUserView(
-        username=request.who,
-        is_trusted=self._conn.trusts(token_owner(token), Username(request.who)) if (token is not None) else False,
-        trusts_you=self._conn.trusts(Username(request.who), token_owner(token)) if (token is not None) else False,
+      return mvp_pb2.GetUserResponse(ok=mvp_pb2.Relationship(
+        trusted=self._conn.trusts(token_owner(token), Username(request.who)) if (token is not None) else False,
+        trusting=self._conn.trusts(Username(request.who), token_owner(token)) if (token is not None) else False,
       ))
 
     @transactional

@@ -17,7 +17,7 @@ import Page
 import Page.Program
 
 type alias Model =
-  { userView : Pb.UserUserView
+  { username : String
   , predictionsWidget : ViewPredictionsWidget.Model
   , working : Bool
   , notification : Html Never
@@ -40,7 +40,7 @@ init flags =
           ViewPredictionsWidget.init (Utils.mustMapValues preds.predictions)
           |> ViewPredictionsWidget.noFilterByOwner
   in
-  ( { userView = Utils.mustDecodePbFromFlags Pb.userUserViewDecoder "userViewPbB64" flags
+  ( { username = Utils.mustDecodeFromFlags JD.string "who" flags
     , predictionsWidget = predsWidget
     , working = False
     , notification = H.text ""
@@ -54,7 +54,7 @@ update msg model =
   case msg of
     SetTrusted trusted ->
       ( { model | working = True , notification = H.text "" }
-      , Page.RequestCmd <| Page.SetTrustedRequest SetTrustedFinished {who=model.userView.username, whoDepr=Nothing, trusted=trusted}
+      , Page.RequestCmd <| Page.SetTrustedRequest SetTrustedFinished {who=model.username, whoDepr=Nothing, trusted=trusted}
       )
     SetTrustedFinished res ->
       ( case res of
@@ -82,20 +82,20 @@ update msg model =
 
 view : Page.Globals -> Model -> Browser.Document Msg
 view globals model =
-  {title=model.userView.username, body=[H.main_ []
-    [ H.h2 [] [H.text model.userView.username]
+  {title=model.username, body=[H.main_ []
+    [ H.h2 [] [H.text model.username]
     , H.br [] []
-    , if Page.isSelf globals model.userView then
+    , if Page.isSelf globals model.username then
         H.div []
           [ H.text "This is you! You might have meant to visit "
           , H.a [HA.href "/settings"] [H.text "your settings"]
           , H.text "?"
           ]
-      else case globals.authState of
+      else case globals.serverState.settings of
         Nothing -> H.text "Log in to see your relationship with this user."
-        Just auth -> let userInfo = Utils.mustAuthSuccessUserInfo auth in
+        Just userInfo ->
           H.div []
-            [ if model.userView.trustsYou then
+            [ if Page.getRelationship globals model.username |> Maybe.map .trusting |> Maybe.withDefault False then
                 H.text "This user trusts you! :)"
               else
                 H.div []
@@ -105,7 +105,7 @@ view globals model =
                   , SmallInvitationWidget.view globals model.invitationWidget |> H.map InvitationMsg
                   ]
             , H.br [] []
-            , if Dict.get model.userView.username (Utils.mustMapValues userInfo.relationships) |> Maybe.map .trusted |> Maybe.withDefault False then
+            , if Page.getRelationship globals model.username |> Maybe.map .trusted |> Maybe.withDefault False then
                 H.div []
                   [ H.text "You trust this user. "
                   , H.button [HA.disabled model.working, HE.onClick (SetTrusted False)] [H.text "Mark untrusted"]
@@ -117,7 +117,7 @@ view globals model =
                   ]
             , model.notification |> H.map never
             , H.br [] []
-            , if model.userView.trustsYou then
+            , if Page.getRelationship globals model.username |> Maybe.map .trusting |> Maybe.withDefault False then
                 H.div []
                   [ H.h3 [] [H.text "Predictions"]
                   , ViewPredictionsWidget.view globals model.predictionsWidget |> H.map PredictionsMsg

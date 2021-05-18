@@ -47,7 +47,7 @@ view : Page.Globals -> Model -> Browser.Document Msg
 view globals model =
   { title = "Settings"
   , body = [
-    H.main_ [] <| List.singleton <| case globals.authState of
+    H.main_ [] <| List.singleton <| case globals.authToken of
       Nothing -> H.text "You have to log in to view your settings!"
       Just _ ->
         H.div []

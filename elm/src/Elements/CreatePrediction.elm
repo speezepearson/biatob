@@ -1,6 +1,7 @@
 module Elements.CreatePrediction exposing (main)
 
 import Browser
+import Dict as D
 import Html as H
 import Html.Attributes as HA
 import Html.Events as HE
@@ -107,8 +108,8 @@ view globals model =
             Just req ->
               previewPrediction {request=req, creatorName=Page.getAuth globals |> authName, createdAt=globals.now}
               |> (\prediction -> PredictionWidget.view
-                    {prediction=prediction, predictionId=12345, shouldLinkTitle = False}
-                    globals
+                    {predictionId=12345, shouldLinkTitle = False}
+                    { globals | serverState = globals.serverState |> \s -> { s | predictions = s.predictions |> D.insert 12345 prediction} }
                     (PredictionWidget.init 12345)
                     |> H.map (always Ignore))
             Nothing ->
@@ -126,7 +127,7 @@ previewPrediction {request, creatorName, createdAt} =
   , createdUnixtime = Utils.timeToUnixtime createdAt
   , closesUnixtime = Utils.timeToUnixtime createdAt + toFloat request.openSeconds
   , specialRules = request.specialRules
-  , creator = Just {username = creatorName, trustsYou=True, isTrusted=True}
+  , creator = creatorName
   , resolutions = []
   , yourTrades = []
   , resolvesAtUnixtime = request.resolvesAtUnixtime

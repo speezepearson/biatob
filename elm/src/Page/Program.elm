@@ -1,11 +1,11 @@
 port module Page.Program exposing (page)
 
 import Browser
+import Dict
 import Http
 import Time
 import Json.Decode as JD
-import Html as H exposing (Html)
-import Html.Attributes as HA
+import Html as H
 import Task
 
 import Biatob.Proto.Mvp as Pb
@@ -167,16 +167,16 @@ updateGlobalsFromResponse resp globals =
   case resp of
     WhoamiResponse _ -> globals
     SignOutResponse res -> case res of
-      Ok _ -> { globals | authState = Nothing }
+      Ok _ -> { globals | authToken = Nothing , serverState = globals.serverState |> \s -> { s | settings = Nothing } }
       Err _ -> globals
     RegisterUsernameResponse res -> case res of
       Ok {registerUsernameResult} -> case registerUsernameResult of
-        Just (Pb.RegisterUsernameResultOk authSuccess) -> { globals | authState = Just authSuccess }
+        Just (Pb.RegisterUsernameResultOk authSuccess) -> { globals | authToken = Just (authSuccess |> Utils.mustAuthSuccessToken) , serverState = globals.serverState |> \s -> { s | settings = Just (Utils.mustAuthSuccessUserInfo authSuccess)} }
         _ -> globals
       Err _ -> globals
     LogInUsernameResponse res -> case res of
       Ok {logInUsernameResult} -> case logInUsernameResult of
-        Just (Pb.LogInUsernameResultOk authSuccess) -> { globals | authState = Just authSuccess }
+        Just (Pb.LogInUsernameResultOk authSuccess) -> { globals | authToken = Just (authSuccess |> Utils.mustAuthSuccessToken) , serverState = globals.serverState |> \s -> { s | settings = Just (Utils.mustAuthSuccessUserInfo authSuccess)} }
         _ -> globals
       Err _ -> globals
     CreatePredictionResponse _ -> globals
@@ -225,12 +225,24 @@ updateGlobalsFromResponse resp globals =
 
 globalsDecoder : JD.Decoder Globals
 globalsDecoder =
-  JD.map4 Globals
-    (JD.field "authSuccessPbB64" <| JD.nullable <| Utils.pbB64Decoder Pb.authSuccessDecoder)
-    (JD.field "initUnixtime" JD.float |> JD.map Utils.unixtimeToTime)
-    (JD.field "timeZoneOffsetMinutes" JD.int |> JD.map (\n -> Time.customZone n []))
-    (JD.field "httpOrigin" JD.string)
+  (JD.field "authSuccessPbB64" <| JD.nullable <| Utils.pbB64Decoder Pb.authSuccessDecoder) |> JD.andThen (\authSuccess ->
+  (JD.field "userInfoPbB64" <| JD.nullable <| Utils.pbB64Decoder Pb.genericUserInfoDecoder) |> JD.andThen (\userInfo ->
+  (JD.field "predictionsPbB64" <| JD.maybe <| Utils.pbB64Decoder Pb.predictionsByIdDecoder) |> JD.map (Maybe.map .predictions >> Maybe.withDefault Dict.empty) |> JD.andThen (\predictions ->
+  (JD.field "initUnixtime" JD.float |> JD.map Utils.unixtimeToTime) |> JD.andThen (\now ->
+  (JD.field "timeZoneOffsetMinutes" JD.int |> JD.map (\n -> Time.customZone n [])) |> JD.andThen (\timeZone ->
+  (JD.field "httpOrigin" JD.string) |> JD.andThen (\httpOrigin ->
+    JD.succeed
+      { authToken = Maybe.map Utils.mustAuthSuccessToken authSuccess
+      , serverState =
+          { settings = userInfo
+          , predictions = predictions |> Utils.mustMapValues
+          }
+      , now = now
+      , timeZone = timeZone
+      , httpOrigin = httpOrigin
+      }
+  ))))))
 
 updateUserInfo : (Pb.GenericUserInfo -> Pb.GenericUserInfo) -> Globals -> Globals
 updateUserInfo f globals =
-  { globals | authState = globals.authState |> Maybe.map (\u -> { u | userInfo = u.userInfo |> Maybe.map f }) }
+  { globals | serverState = globals.serverState |> \s -> {s | settings = s.settings |> Maybe.map f } }

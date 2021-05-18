@@ -26,7 +26,6 @@ type alias Context =
   , prediction : Pb.UserPredictionView
   , predictionId : Int
   }
-type ContextEvent = SetPrediction Pb.UserPredictionView
 type alias Model =
   { believerStakeField : Field {max : Int} Int
   , skepticStakeField : Field {max : Int} Int
@@ -34,20 +33,19 @@ type alias Model =
   , notification : Html Never
   }
 
-update : Msg -> Model -> ( Model , Page.Command Msg , Maybe ContextEvent )
+update : Msg -> Model -> ( Model , Page.Command Msg )
 update msg model =
   case msg of
-    SetBelieverStakeField s -> ( { model | believerStakeField = model.believerStakeField |> Field.setStr s } , Page.NoCmd , Nothing)
-    SetSkepticStakeField s -> ( { model | skepticStakeField = model.skepticStakeField |> Field.setStr s } , Page.NoCmd , Nothing)
+    SetBelieverStakeField s -> ( { model | believerStakeField = model.believerStakeField |> Field.setStr s } , Page.NoCmd)
+    SetSkepticStakeField s -> ( { model | skepticStakeField = model.skepticStakeField |> Field.setStr s } , Page.NoCmd)
     Stake {predictionId, bettorIsASkeptic, stakeCents} ->
       ( { model | working = True , notification = H.text "" }
       , Page.RequestCmd <| Page.StakeRequest StakeFinished {predictionId=predictionId, bettorIsASkeptic=bettorIsASkeptic, bettorStakeCents=stakeCents}
-      , Nothing
       )
     StakeFinished res ->
       case res of
         Err e ->
-          ( { model | working = False , notification = Utils.redText (Debug.toString e) } , Page.NoCmd , Nothing )
+          ( { model | working = False , notification = Utils.redText (Debug.toString e) } , Page.NoCmd )
         Ok resp ->
           case resp.stakeResult of
             Just (Pb.StakeResultOk newPrediction) ->
@@ -57,18 +55,17 @@ update msg model =
                         , skepticStakeField = model.skepticStakeField |> Field.setStr "0"
                         }
               , Page.NoCmd
-              , Just (SetPrediction newPrediction)
               )
             Just (Pb.StakeResultError e) ->
-              ( { model | working = False , notification = Utils.redText (Debug.toString e) } , Page.NoCmd , Nothing )
+              ( { model | working = False , notification = Utils.redText (Debug.toString e) } , Page.NoCmd )
             Nothing ->
-              ( { model | working = False , notification = Utils.redText "Invalid server response (neither Ok nor Error in protobuf)" } , Page.NoCmd , Nothing )
+              ( { model | working = False , notification = Utils.redText "Invalid server response (neither Ok nor Error in protobuf)" } , Page.NoCmd )
 
 
 view : Context -> Page.Globals -> Model -> Html Msg
 view ctx globals model =
   let
-    creator = Utils.mustPredictionCreator ctx.prediction
+    creator = ctx.prediction.creator
     certainty = Utils.mustPredictionCertainty ctx.prediction
 
     isClosed = Utils.timeToUnixtime globals.now > ctx.prediction.closesUnixtime
@@ -89,7 +86,7 @@ view ctx globals model =
           , HA.disabled disableInputs
           ]
           []
-      , H.text " that it won't, against ", Utils.renderUser creator.username, H.text "'s "
+      , H.text " that it won't, against ", Utils.renderUser creator, H.text "'s "
       , H.strong [] [Field.parse {max=maxSkepticStakeCents} model.skepticStakeField |> Result.map (toFloat >> (*) creatorStakeFactorVsSkeptics >> round >> Utils.formatCents) |> Result.withDefault "???" |> H.text]
       , H.text ". "
       , H.button
@@ -111,7 +108,7 @@ view ctx globals model =
           , HA.disabled disableInputs
           ]
           []
-      , H.text " that it will, against ", Utils.renderUser creator.username, H.text "'s "
+      , H.text " that it will, against ", Utils.renderUser creator, H.text "'s "
       , H.strong [] [Field.parse {max=maxBelieverStakeCents} model.believerStakeField |> Result.map (toFloat >> (*) creatorStakeFactorVsBelievers >> round >> Utils.formatCents) |> Result.withDefault "???" |> H.text]
       , H.text ". "
       , H.button

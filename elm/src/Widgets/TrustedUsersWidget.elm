@@ -106,13 +106,13 @@ viewInvitations globals filter =
 
 view : Page.Globals -> Model -> Html Msg
 view globals model =
-  case globals.authState of
+  case globals.serverState.settings of
     Nothing -> H.text "(Log in to see who you trust!)"
-    Just auth ->
+    Just userInfo ->
       H.div []
         [ model.notification |> H.map never
         , H.strong [] [H.text "Your relationships: "]
-        , let relationships = Utils.mustAuthSuccessUserInfo auth |> .relationships |> Utils.mustMapValues in
+        , let relationships = userInfo |> .relationships |> Utils.mustMapValues in
           if D.isEmpty relationships then
             H.text "nobody yet!"
           else
@@ -130,22 +130,6 @@ view globals model =
                       ]
                   else
                     H.text " untrusted"
-                , if List.isEmpty rel.sidePayments then H.text "" else
-                  H.div []
-                  [ H.text "Payments from them to you:"
-                  , H.ul []
-                    <| List.map (\payment -> H.li []
-                        [ H.text <| Utils.dateStr globals.timeZone <| Utils.unixtimeToTime payment.unixtime
-                        , H.text " - "
-                        , if payment.receivedCents > 0 then
-                            H.text <| "paid you " ++ Utils.formatCents (abs payment.receivedCents)
-                          else
-                            H.text <| "you paid " ++ Utils.formatCents (abs payment.receivedCents)
-                        , H.text <| " - " ++ payment.notes
-                        ]
-                        )
-                    <| rel.sidePayments
-                  ]
                 ])
             <| D.toList relationships
         , H.br [] []

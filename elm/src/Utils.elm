@@ -13,6 +13,8 @@ import Dict exposing (Dict)
 import Biatob.Proto.Mvp as Pb
 
 type alias Username = String
+type alias PredictionId = Int
+type alias InvitationNonce = String
 
 formatCents : Int -> String
 formatCents n =
@@ -68,9 +70,6 @@ mustDecodeFromFlags : JD.Decoder a -> String -> JD.Value -> a
 mustDecodeFromFlags dec field val =
   JD.decodeValue (JD.field field dec) val
   |> mustResult field
-
-mustPredictionCreator : Pb.UserPredictionView -> Pb.UserUserView
-mustPredictionCreator {creator} = must "all predictions must have creators" creator
 
 mustPredictionCertainty : Pb.UserPredictionView -> Pb.CertaintyRange
 mustPredictionCertainty {certainty} = must "all predictions must have certainties" certainty

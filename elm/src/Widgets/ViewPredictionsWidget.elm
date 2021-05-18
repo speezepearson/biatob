@@ -37,7 +37,7 @@ filterMatches : Page.Globals -> Filter -> Pb.UserPredictionView -> Bool
 filterMatches globals filter prediction =
   List.all identity
     [ filter.own
-      |> Maybe.map ((==) (Page.isSelf globals (Utils.mustPredictionCreator prediction)))
+      |> Maybe.map ((==) (Page.isSelf globals prediction.creator))
       |> Maybe.withDefault True
     , filter.phase
       |> Maybe.map (\phase -> phaseMatches globals.now phase prediction)
@@ -120,7 +120,7 @@ sortPredictions toPrediction order predictions =
       List.sortBy (toPrediction >> \p -> p.createdUnixtime * sortKeySign dir) predictions
 
 type alias Model =
-  { predictions : Dict Int (Pb.UserPredictionView, PredictionWidget.Model)
+  { predictions : Dict Int PredictionWidget.Model
   , filter : Filter
   , order : SortOrder
   , allowFilterByOwner : Bool
@@ -134,7 +134,7 @@ type Msg
 
 init : Dict Int Pb.UserPredictionView -> Model
 init predictions =
-  { predictions = predictions |> Dict.map (\id p -> (p, PredictionWidget.init id))
+  { predictions = predictions |> Dict.map (\id p -> PredictionWidget.init id)
   , filter = { own = Nothing , phase = Nothing }
   , order = CreatedDate Desc
   , allowFilterByOwner = True
@@ -149,14 +149,11 @@ update msg model =
     PredictionMsg id widgetMsg ->
       case Dict.get id model.predictions of
         Nothing -> Debug.todo "got message for unknown prediction"
-        Just (pred, widget) ->
+        Just widget ->
           let
-            (newWidget, widgetCmd, event) = PredictionWidget.update widgetMsg widget
-            newPrediction = case event of
-              Just (PredictionWidget.SetPrediction newPred) -> newPred
-              Nothing -> pred
+            (newWidget, widgetCmd) = PredictionWidget.update widgetMsg widget
           in
-          ( { model | predictions = model.predictions |> Dict.insert id (newPrediction, newWidget) }
+          ( { model | predictions = model.predictions |> Dict.insert id newWidget }
           , Page.mapCmd (PredictionMsg id) widgetCmd
           )
 
@@ -187,11 +184,11 @@ view globals model =
       else
         model.predictions
         |> Dict.toList
-        |> sortPredictions (\(_, (pred, _)) -> pred) model.order
-        |> List.filter (\(_, (pred, _)) -> filterMatches globals model.filter pred)
-        |> List.map (\(id, (pred, widget)) ->
+        |> sortPredictions (\(id, _) -> Utils.must "TODO" (Dict.get id globals.serverState.predictions)) model.order
+        |> List.filter (\(id, _) -> filterMatches globals model.filter (Utils.must "TODO" (Dict.get id globals.serverState.predictions)))
+        |> List.map (\(id, widget) ->
             H.div [HA.style "margin" "1em", HA.style "padding" "1em", HA.style "border" "1px solid black"]
-              [PredictionWidget.view {prediction=pred, predictionId=id, shouldLinkTitle=True} globals widget |> H.map (PredictionMsg id)])
+              [PredictionWidget.view {predictionId=id, shouldLinkTitle=True} globals widget |> H.map (PredictionMsg id)])
         |> List.intersperse (H.hr [] [])
         |> H.div []
     ]
