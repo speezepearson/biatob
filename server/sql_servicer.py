@@ -1039,21 +1039,23 @@ class SqlServicer(Servicer):
 
 def find_invariant_violations(conn: sqlalchemy.engine.base.Connection) -> Sequence[Mapping[str, Any]]:
   violations: MutableSequence[Mapping[str, Any]] = []
-  rows = conn.execute(
+  overstaked_rows = conn.execute(
     sqlalchemy.select([
-      schema.predictions.c.prediction_id,
-      schema.predictions.c.maximum_stake_cents,
+      schema.trades.c.prediction_id,
       schema.trades.c.bettor_is_a_skeptic,
+      schema.predictions.c.maximum_stake_cents,
       sqlalchemy.sql.func.sum(schema.trades.c.creator_stake_cents).label('exposure'),
     ])
-    .select_from(schema.predictions.join(schema.trades))
+    .select_from(schema.trades.join(
+      schema.predictions,
+      onclause=(schema.trades.c.prediction_id == schema.predictions.c.prediction_id),
+    ))
     .group_by(
-      schema.predictions.c.prediction_id,
-      schema.predictions.c.maximum_stake_cents,
+      schema.trades.c.prediction_id,
       schema.trades.c.bettor_is_a_skeptic,
     )
-  ).fetchall()
-  for row in rows:
+  )
+  for row in overstaked_rows:
     if row['exposure'] > row['maximum_stake_cents']:
       violations.append({
         'type':'exposure exceeded',
@@ -1104,57 +1106,6 @@ async def email_daily_backups_forever(conn: sqlalchemy.engine.Connection, emaile
       body=_backup_text(conn),
     )
 
-# def prediction_needs_email_reminder(now: datetime.datetime, prediction: mvp_pb2.WorldState.Prediction) -> bool:
-#     history = prediction.resolution_reminder_history
-#     return (
-#         prediction.resolves_at_unixtime < now.timestamp()
-#         and not history.skipped
-#         and not any(attempt.succeeded for attempt in history.attempts)
-#         and not (len(history.attempts) >= 3 and not any(attempt.succeeded for attempt in history.attempts[-3:]))
-#     )
-
-# def get_email_for_resolution_reminder(user_info: mvp_pb2.GenericUserInfo) -> Optional[str]:
-#     if (user_info.email_reminders_to_resolve
-#         and user_info.HasField('email')
-#         and user_info.email.WhichOneof('email_flow_state_kind') == 'verified'
-#         ):
-#         return user_info.email.verified
-#     return None
-
-# async def email_resolution_reminder_if_necessary(now: datetime.datetime, emailer: Emailer, storage: 'FsStorage', prediction_id: PredictionId) -> None:
-#     immut_wstate = storage.get()
-#     prediction = immut_wstate.predictions.get(prediction_id)
-#     if prediction is None:
-#         raise KeyError(f'no such prediction: {prediction_id}')
-
-#     if not prediction_needs_email_reminder(now=now, prediction=prediction):
-#         return
-
-#     creator_info = get_generic_user_info(immut_wstate, Username(prediction.creator))
-#     if creator_info is None:
-#         logger.error("prediction has nonexistent creator", prediction_id=prediction_id, creator=prediction.creator)
-#         return
-#     email_addr = get_email_for_resolution_reminder(creator_info)
-
-#     if email_addr is None:
-#         with storage.mutate() as mut_wstate:
-#             mut_wstate.predictions[prediction_id].resolution_reminder_history.skipped = True
-#     else:
-#         try:
-#             await emailer.send_resolution_reminder(
-#                 to=email_addr,
-#                 prediction_id=PredictionId(prediction_id),
-#                 prediction=prediction,
-#             )
-#             succeeded = True
-#         except Exception as e:
-#             logger.error('failed to send resolution reminder email', to=email_addr, prediction_id=prediction_id)
-#             succeeded = False
-
-#         with storage.mutate() as mut_wstate:
-#             mut_wstate.predictions[prediction_id].resolution_reminder_history.attempts.append(
-#                 mvp_pb2.EmailAttempt(unixtime=now.timestamp(), succeeded=succeeded)
-#             )
 
 async def forever(
   interval: datetime.timedelta,
@@ -1185,3 +1136,17 @@ async def email_resolution_reminders(
         prediction_text=info['prediction_text'],
     )
     conn.mark_resolution_reminder_sent(info['prediction_id'])
+
+async def email_invariant_violations(
+  conn: sqlalchemy.engine.Connection,
+  emailer: Emailer,
+  recipient_email: str,
+  now: datetime.datetime,
+):
+  logger.info('seeking invariant violations')
+  violations = find_invariant_violations(conn)
+  await emailer.send_invariant_violations(
+    to=recipient_email,
+    now=now,
+    violations=violations,
+  )

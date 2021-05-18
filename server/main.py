@@ -88,8 +88,11 @@ async def main(args):
     ))
     if args.email_daily_backups_to is not None:
         asyncio.get_running_loop().create_task(email_daily_backups_forever(conn=conn, emailer=emailer, recipient_email=args.email_daily_backups_to))
-    # if args.email_invariant_violations_to is not None:
-    #     asyncio.get_running_loop().create_task(email_invariant_violations_forever(storage=storage, emailer=emailer, recipient_email=args.email_daily_backups_to))
+    if args.email_invariant_violations_to is not None:
+        asyncio.get_running_loop().create_task(forever(
+            datetime.timedelta(hours=1),
+            lambda now: email_invariant_violations(raw_conn, emailer, recipient_email=args.email_invariant_violations_to, now=now),
+        ))
 
     # adapted from https://docs.aiohttp.org/en/stable/web_advanced.html#application-runners
     runner = web.AppRunner(app)

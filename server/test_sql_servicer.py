@@ -1,5 +1,10 @@
 import datetime
 import json
+
+from sqlalchemy.sql.ddl import CreateSchema
+from server.core import PredictionId
+from server.test_sql_conn import ALICE, BOB
+from server.protobuf import mvp_pb2
 from unittest import mock
 from unittest.mock import Mock
 
@@ -8,30 +13,35 @@ import sqlalchemy
 from .emailer import Emailer
 from .sql_servicer import SqlConn, find_invariant_violations, _backup_text, SqlServicer, TokenMint, email_resolution_reminders
 from . import sql_schema as schema
-from .test_utils import emailer
+from .test_utils import emailer, some_create_prediction_request
 
-# TODO: update this function to take a SqlConn instead
-#def test_find_invariant_violations():
-#  engine = schema.create_sqlite_engine(':memory:')
-#  with engine.connect() as conn:
-#    assert find_invariant_violations(conn) == []
-#
-#    conn.execute(sqlalchemy.insert(schema.predictions).values(
-#      prediction_id=1,
-#      prediction='a',
-#      certainty_low_p=0.4,
-#      certainty_high_p=0.6,
-#      maximum_stake_cents=100,
-#      created_at_unixtime=1,
-#      closes_at_unixtime=3,
-#      resolves_at_unixtime=4,
-#      special_rules='',
-#      creator='creator',
-#    ))
-#    assert find_invariant_violations(conn) == []
-#
-#    conn.execute(sqlalchemy.insert(schema.trades).values(prediction_id=1, bettor='bettor', transacted_at_unixtime=2, bettor_stake_cents=120, creator_stake_cents=200, bettor_is_a_skeptic=False))
-#    assert find_invariant_violations(conn) == [{'type': 'exposure exceeded', 'prediction_id': 1, 'actual_exposure': 200, 'maximum_stake_cents': 100}]
+class TestFindInvariantViolations:
+  def test_initially_empty(self):
+    engine = schema.create_sqlite_engine(':memory:')
+    with engine.connect() as raw_conn:
+      assert find_invariant_violations(raw_conn) == []
+
+  def test_detects_overpromising(self):
+    engine = schema.create_sqlite_engine(':memory:')
+    with engine.connect() as raw_conn:
+      now = datetime.datetime(2020, 1, 1, 0, 0, 0)
+      conn = SqlConn(raw_conn)
+      conn.register_username(ALICE, 'secret', 'alice_pwid')
+      conn.register_username(BOB, 'secret', 'bob_pwid')
+      predid = PredictionId(123)
+      conn.create_prediction(now, predid, ALICE, some_create_prediction_request(
+        maximum_stake_cents=100,
+        certainty=mvp_pb2.CertaintyRange(low=0.5, high=1.0),
+      ))
+      conn.stake(predid, BOB, True, 80, creator_stake_cents=80, now=now)
+      conn.stake(predid, BOB, True, 70, creator_stake_cents=70, now=now)
+
+      assert find_invariant_violations(raw_conn) == [{
+        'type': 'exposure exceeded',
+        'prediction_id': 123,
+        'maximum_stake_cents': 100,
+        'actual_exposure': 150,
+      }]
 
 def test_backup_text():
   engine = schema.create_sqlite_engine(':memory:')
