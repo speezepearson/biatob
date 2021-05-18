@@ -83,7 +83,7 @@ async def main(args):
     ).add_to_app(app)
 
     asyncio.get_running_loop().create_task(forever(
-        datetime.timedelta(seconds=13),
+        datetime.timedelta(hours=1),
         lambda now: email_resolution_reminders(conn, emailer, now),
     ))
     if args.email_daily_backups_to is not None:
