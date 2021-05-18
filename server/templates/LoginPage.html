@@ -1,8 +1,29 @@
 {% extends 'base_page.html' %}
 {% block title %} Log In {% endblock %}
 {% block page_body %}
-  <script type="text/javascript" src="/elm/Login.js"></script>
-  <script type="text/javascript">
-    main({elmApp: Elm.Elements.Login, flags: {}});
+
+{% include 'Navbar.html' %}
+
+<main>
+  <h1> Log In </h1>
+  <div id="login-widget"></div>
+  <script>
+    var destination = (() => {
+      var m = (/[?&]dest=([^&]+)/).exec(window.location.search);
+      return m ? m[1] : '/';
+    })();
+
+    {% if is_logged_in %}
+      window.location = destination;
+    {% else %}
+      var app = Elm.Elements.LogInWidget.init({
+        node: document.getElementById('login-widget'),
+      });
+      app.ports.loggedIn.subscribe(() => {window.location = destination});
+      document.getElementsByClassName('username-field')[0].focus();
+    {% endif %}
   </script>
+
+</main>
+
 {% endblock %}

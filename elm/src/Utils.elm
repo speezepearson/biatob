@@ -207,3 +207,9 @@ onEnter : msg -> msg -> H.Attribute msg
 onEnter msg nevermind =
   HE.on "keydown" <|
     JD.map (\keyCode -> if keyCode == 13 then msg else nevermind) HE.keyCode
+
+
+type WorkingState
+  = Awaiting { notification : Html Never }
+  | Working
+  | Done

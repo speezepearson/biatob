@@ -86,7 +86,8 @@ class WebServer:
         return web.Response(
             content_type='text/html',
             body=self._jinja.get_template('Welcome.html').render(
-                auth_success_pb_b64=pb_b64(auth_success),
+                is_logged_in=(auth is not None),
+                user_info_pb_b64=pb_b64(auth_success.user_info) if auth_success is not None else None,
             ))
 
     async def get_create_prediction_page(self, req: web.Request) -> web.Response:
@@ -137,11 +138,7 @@ class WebServer:
         auth = self._token_glue.parse_cookie(req)
         auth_success = self._get_auth_success(auth)
         if auth is None:
-            return web.Response(
-                content_type='text/html',
-                body=self._jinja.get_template('LoginPage.html').render(
-                    auth_success_pb_b64=pb_b64(auth_success),
-                ))
+            return web.HTTPTemporaryRedirect('/login?dest=/my_stakes')
         list_my_stakes_resp = self._servicer.ListMyStakes(auth, mvp_pb2.ListMyStakesRequest())
         if list_my_stakes_resp.WhichOneof('list_my_stakes_result') == 'error':
             return web.Response(status=400, body=str(list_my_stakes_resp.error))
@@ -178,15 +175,20 @@ class WebServer:
         auth = self._token_glue.parse_cookie(req)
         auth_success = self._get_auth_success(auth)
         if auth is None:
-            return web.Response(
-                content_type='text/html',
-                body=self._jinja.get_template('LoginPage.html').render(
-                    auth_success_pb_b64=pb_b64(auth_success),
-                ))
+            return web.HTTPTemporaryRedirect('/login?dest=/settings')
         return web.Response(
             content_type='text/html',
             body=self._jinja.get_template('SettingsPage.html').render(
                 auth_success_pb_b64=pb_b64(auth_success),
+            ))
+
+    async def get_login(self, req: web.Request) -> web.Response:
+        auth = self._token_glue.parse_cookie(req)
+        return web.Response(
+            content_type='text/html',
+            body=self._jinja.get_template('LoginPage.html').render(
+                is_logged_in=(auth is not None),
+                show_navbar_auth_widget=False,
             ))
 
     async def get_invitation(self, req: web.Request) -> web.Response:
@@ -229,6 +231,7 @@ class WebServer:
         app.router.add_get('/my_stakes', self.get_my_stakes)
         app.router.add_get('/username/{username:[a-zA-Z0-9_-]+}', self.get_username)
         app.router.add_get('/settings', self.get_settings)
+        app.router.add_get('/login', self.get_login)
         app.router.add_get('/invitation/{username}/{nonce}', self.get_invitation)
 
 

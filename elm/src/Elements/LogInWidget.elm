@@ -5,7 +5,7 @@ import Html.Attributes as HA
 import Html.Events as HE
 
 import Biatob.Proto.Mvp as Pb
-import Utils
+import Utils exposing (WorkingState(..))
 import Http
 
 import Field exposing (Field)
@@ -14,7 +14,7 @@ import Field
 import API
 import Browser
 
-port authChanged : () -> Cmd msg
+port loggedIn : () -> Cmd msg
 port passwordManagerFilled : ({target:String, value:String} -> msg) -> Sub msg
 
 type Msg
@@ -26,10 +26,6 @@ type Msg
   | RegisterUsername
   | RegisterUsernameFinished (Result Http.Error Pb.RegisterUsernameResponse)
 
-type WorkingState
-  = Awaiting { notification : Html Never }
-  | Working
-  | Done
 type alias Model =
   { usernameField : Field () String
   , passwordField : Field () String
@@ -142,7 +138,7 @@ update msg model =
           case resp.logInUsernameResult of
             Just (Pb.LogInUsernameResultOk _) ->
               ( { model | working = Done }
-              , authChanged ()
+              , loggedIn ()
               )
             Just (Pb.LogInUsernameResultError e) ->
               ( { model | working = Awaiting { notification = Utils.redText (Debug.toString e) } }
@@ -173,7 +169,7 @@ update msg model =
             case resp.registerUsernameResult of
               Just (Pb.RegisterUsernameResultOk _) ->
                 ( { model | working = Done }
-                , authChanged ()
+                , loggedIn ()
                 )
               Just (Pb.RegisterUsernameResultError e) ->
                 ( { model | working = Awaiting { notification = Utils.redText (Debug.toString e) } }

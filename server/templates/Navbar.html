@@ -11,19 +11,18 @@
           var app = Elm.Elements.SignOutButton.init({
             node: document.getElementById('sign-out-button'),
           });
-          app.ports.authChanged.subscribe(() => window.location.reload());
+          app.ports.loggedOut.subscribe(() => window.location.reload());
         </script>
       </li>
-    {% else %}
+    {% elif not (show_navbar_auth_widget is defined and not show_navbar_auth_widget) %}
       <li>
         <div id="auth-widget"></div>
         <script>
           var app = Elm.Elements.LogInWidget.init({
             node: document.getElementById('auth-widget'),
           });
-          app.ports.authChanged.subscribe(() => window.location.reload());
-          var usernameField = document.getElementsByClassName('username-field')[0];
-          if (usernameField) usernameField.focus();
+          app.ports.loggedIn.subscribe(() => window.location.reload());
+          document.getElementsByClassName('username-field')[0].focus();
         </script>
       </li>
     {% endif %}

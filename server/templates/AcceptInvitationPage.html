@@ -5,8 +5,6 @@
 {% include 'Navbar.html' %}
 
 <script type="text/javascript" src="/elm/AcceptInvitationButton.js"></script>
-<script type="text/javascript">
-</script>
 
 <main style="text-align: justify">
 
@@ -52,7 +50,7 @@
               var app = Elm.Elements.LogInWidget.init({
                 node: document.getElementById('authenticate-yourself-for-invitation'),
               });
-              app.ports.authChanged.subscribe(() => window.location.reload());
+              app.ports.loggedIn.subscribe(() => window.location.reload());
             </script>
           </li>
           <li>

@@ -5,22 +5,19 @@ import Html.Attributes as HA
 import Html.Events as HE
 
 import Biatob.Proto.Mvp as Pb
-import Utils
+import Utils exposing (WorkingState(..))
 import Http
 
 import API
 import Browser
 
-port authChanged : () -> Cmd msg
+port loggedOut : () -> Cmd msg
 
 type Msg
   = SignOut
   | SignOutFinished (Result Http.Error Pb.SignOutResponse)
 
-type Model
-  = Awaiting { notification : Html Never }
-  | Working
-  | Done
+type alias Model = WorkingState
 
 init : () -> (Model, Cmd Msg)
 init () =
@@ -54,7 +51,7 @@ update msg _ =
       ( case res of
           Err e -> Awaiting { notification = Utils.redText (Debug.toString e) }
           Ok {} -> Done
-      , authChanged ()
+      , loggedOut ()
       )
 
 subscriptions : Model -> Sub Msg
