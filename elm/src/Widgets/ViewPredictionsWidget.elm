@@ -134,7 +134,7 @@ type Msg
 
 init : Dict Int Pb.UserPredictionView -> Model
 init predictions =
-  { predictions = predictions |> Dict.map (\id p -> PredictionWidget.init id)
+  { predictions = predictions |> Dict.map (\id p -> PredictionWidget.init id |> PredictionWidget.setLinkTitle True)
   , filter = { own = Nothing , phase = Nothing }
   , order = CreatedDate Desc
   , allowFilterByOwner = True
@@ -188,7 +188,7 @@ view globals model =
         |> List.filter (\(id, _) -> filterMatches globals model.filter (Utils.must "TODO" (Dict.get id globals.serverState.predictions)))
         |> List.map (\(id, widget) ->
             H.div [HA.style "margin" "1em", HA.style "padding" "1em", HA.style "border" "1px solid black"]
-              [PredictionWidget.view {predictionId=id, shouldLinkTitle=True} globals widget |> H.map (PredictionMsg id)])
+              [PredictionWidget.view globals widget |> H.map (PredictionMsg id)])
         |> List.intersperse (H.hr [] [])
         |> H.div []
     ]

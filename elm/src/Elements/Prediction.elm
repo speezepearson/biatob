@@ -1,52 +1,40 @@
 module Elements.Prediction exposing (main)
 
-import Browser
-import Html as H exposing (Html)
-import Http
+import Html as H
 import Json.Decode as JD
-import Time
 
-import Biatob.Proto.Mvp as Pb
 import Utils
 
-import Task
-import Widgets.CopyWidget as CopyWidget
 import Widgets.PredictionWidget as Widget
-import Widgets.StakeWidget as StakeWidget
-import Widgets.SmallInvitationWidget as SmallInvitationWidget
 import Page
 import Page.Program
 
-type alias Model = ( Widget.Context , Widget.Model )
+type alias Model = Widget.Model
 type Msg
   = WidgetMsg Widget.Msg
 
 init : JD.Value -> Model
 init flags =
   let predictionId = Utils.mustDecodeFromFlags JD.int "predictionId" flags in
-  ( { predictionId = predictionId
-    , shouldLinkTitle = False
-    }
-  , Widget.init predictionId
-  )
+  Widget.init predictionId
 
 update : Msg -> Model -> ( Model, Page.Command Msg )
-update msg (ctx, widget) =
+update msg widget =
   case msg of
     WidgetMsg widgetMsg ->
       let
         (newWidget, innerCmd) = Widget.update widgetMsg widget
       in
-      ( ( ctx , newWidget )
+      ( newWidget
       , Page.mapCmd WidgetMsg innerCmd
       )
 
 pagedef : Page.Element Model Msg
 pagedef =
   { init = \flags -> (init flags, Page.NoCmd)
-  , view = \globals (ctx, widget) ->
+  , view = \globals widget ->
       { title = ""
-      , body = [H.main_ [] [Widget.view ctx globals widget |> H.map WidgetMsg]]
+      , body = [H.main_ [] [Widget.view globals widget |> H.map WidgetMsg]]
       }
   , update = update
   , subscriptions = \_ -> Sub.none

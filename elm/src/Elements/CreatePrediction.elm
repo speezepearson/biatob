@@ -108,7 +108,6 @@ view globals model =
             Just req ->
               previewPrediction {request=req, creatorName=Page.getAuth globals |> authName, createdAt=globals.now}
               |> (\prediction -> PredictionWidget.view
-                    {predictionId=12345, shouldLinkTitle = False}
                     { globals | serverState = globals.serverState |> \s -> { s | predictions = s.predictions |> D.insert 12345 prediction} }
                     (PredictionWidget.init 12345)
                     |> H.map (always Ignore))

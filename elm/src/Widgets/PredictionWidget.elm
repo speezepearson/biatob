@@ -21,26 +21,29 @@ type Msg
   = InvitationMsg SmallInvitationWidget.Msg
   | StakeMsg StakeWidget.Msg
   | Copy String
-  | Resolve Int Pb.Resolution
+  | Resolve Pb.Resolution
   | ResolveFinished (Result Http.Error Pb.ResolveResponse)
-type alias Context =
-  { predictionId : Int
-  , shouldLinkTitle : Bool
-  }
 type alias Model =
   { stakeForm : StakeWidget.Model
   , working : Bool
   , notification : Html Never
   , invitationWidget : SmallInvitationWidget.Model
+  , linkTitle : Bool
+  , predictionId : Int
   }
 
 init : Int -> Model
 init predictionId =
-  { stakeForm = StakeWidget.init
+  { stakeForm = StakeWidget.init predictionId
   , working = False
   , notification = H.text ""
   , invitationWidget = SmallInvitationWidget.init (Just <| "/p/" ++ String.fromInt predictionId)
+  , linkTitle = False
+  , predictionId = predictionId
   }
+setLinkTitle : Bool -> Model -> Model
+setLinkTitle linkTitle model =
+  { model | linkTitle = linkTitle }
 
 update : Msg -> Model -> ( Model , Page.Command Msg )
 update msg model =
@@ -60,9 +63,9 @@ update msg model =
       , Page.CopyCmd s
       )
 
-    Resolve predictionId resolution ->
+    Resolve resolution ->
       ( { model | working = True , notification = H.text "" }
-      , Page.RequestCmd <| Page.ResolveRequest ResolveFinished {predictionId=predictionId, resolution=resolution, notes=""}
+      , Page.RequestCmd <| Page.ResolveRequest ResolveFinished {predictionId=model.predictionId, resolution=resolution, notes=""}
       )
     ResolveFinished res ->
       case res of
@@ -77,10 +80,10 @@ update msg model =
             Nothing ->
               ( { model | working = False , notification = Utils.redText "Invalid server response (neither Ok nor Error in protobuf)" } , Page.NoCmd )
 
-viewStakeWidgetOrExcuse : Context -> Page.Globals -> Model -> Html Msg
-viewStakeWidgetOrExcuse ctx globals model =
+viewStakeWidgetOrExcuse : Page.Globals -> Model -> Html Msg
+viewStakeWidgetOrExcuse globals model =
   let
-    prediction = mustHaveLoadedPrediction ctx.predictionId globals
+    prediction = mustHaveLoadedPrediction model.predictionId globals
     creator = prediction.creator
   in
   if Utils.resolutionIsTerminal (Utils.currentResolution prediction) then
@@ -96,7 +99,7 @@ viewStakeWidgetOrExcuse ctx globals model =
       H.text ""
     else case Page.getRelationship globals creator |> Maybe.map (\r -> (r.trusting, r.trusted)) |> Maybe.withDefault (False, False) of
       (True, True) ->
-        StakeWidget.view {prediction=prediction, predictionId=ctx.predictionId, disableCommit=False{- TODO -}} globals model.stakeForm |> H.map StakeMsg
+        StakeWidget.view globals model.stakeForm |> H.map StakeMsg
       (False, False) ->
         H.div []
           [ H.text "You and "
@@ -147,10 +150,10 @@ mustHaveLoadedPrediction : PredictionId -> Page.Globals -> Pb.UserPredictionView
 mustHaveLoadedPrediction predictionId globals =
   Utils.must "prediction is not loaded in ServerState" <| D.get predictionId globals.serverState.predictions
 
-viewPredictionState : Context -> Page.Globals -> Model -> Html Msg
-viewPredictionState ctx globals model =
+viewPredictionState : Page.Globals -> Model -> Html Msg
+viewPredictionState globals model =
   let
-    prediction = mustHaveLoadedPrediction ctx.predictionId globals
+    prediction = mustHaveLoadedPrediction model.predictionId globals
     auditLog : Html Msg
     auditLog =
       if List.isEmpty prediction.resolutions then H.text "" else
@@ -209,10 +212,10 @@ viewPredictionState ctx globals model =
     , auditLog
     ]
 
-viewWinnings : Context -> Page.Globals -> Model -> Html Msg
-viewWinnings ctx globals model =
+viewWinnings : Page.Globals -> Model -> Html Msg
+viewWinnings globals model =
   let
-    prediction = mustHaveLoadedPrediction ctx.predictionId globals
+    prediction = mustHaveLoadedPrediction model.predictionId globals
     auditLog : Html Msg
     auditLog =
       if List.isEmpty prediction.yourTrades then H.text "" else
@@ -250,10 +253,10 @@ viewWinnings ctx globals model =
     , auditLog
     ]
 
-viewCreationParams : Context -> Page.Globals -> Model -> Html Msg
-viewCreationParams ctx globals model =
+viewCreationParams : Page.Globals -> Model -> Html Msg
+viewCreationParams globals model =
   let
-    prediction = mustHaveLoadedPrediction ctx.predictionId globals
+    prediction = mustHaveLoadedPrediction model.predictionId globals
     creator = prediction.creator
     openTime = Utils.unixtimeToTime prediction.createdUnixtime
     certainty = Utils.mustPredictionCertainty prediction
@@ -275,10 +278,10 @@ viewCreationParams ctx globals model =
     , H.text "."
     ]
 
-viewResolveButtons : Context -> Page.Globals -> Model -> Html Msg
-viewResolveButtons ctx globals model =
+viewResolveButtons : Page.Globals -> Model -> Html Msg
+viewResolveButtons globals model =
   let
-    prediction = mustHaveLoadedPrediction ctx.predictionId globals
+    prediction = mustHaveLoadedPrediction model.predictionId globals
   in
   if Page.isSelf globals prediction.creator then
     H.div []
@@ -287,7 +290,7 @@ viewResolveButtons ctx globals model =
             H.details [HA.style "color" "gray"]
               [ H.summary [] [H.text "Mistake?"]
               , H.text "If you resolved this prediction incorrectly, you can "
-              , H.button [HE.onClick (Resolve ctx.predictionId Pb.ResolutionNoneYet)] [H.text "un-resolve it."]
+              , H.button [HE.onClick (Resolve Pb.ResolutionNoneYet)] [H.text "un-resolve it."]
               ]
         in
         case Utils.currentResolution prediction of
@@ -299,9 +302,9 @@ viewResolveButtons ctx globals model =
             mistakeDetails
           Pb.ResolutionNoneYet ->
             H.div []
-              [ H.button [HE.onClick (Resolve ctx.predictionId Pb.ResolutionYes    )] [H.text "Resolve YES"]
-              , H.button [HE.onClick (Resolve ctx.predictionId Pb.ResolutionNo     )] [H.text "Resolve NO"]
-              , H.button [HE.onClick (Resolve ctx.predictionId Pb.ResolutionInvalid)] [H.text "Resolve INVALID"]
+              [ H.button [HE.onClick (Resolve Pb.ResolutionYes    )] [H.text "Resolve YES"]
+              , H.button [HE.onClick (Resolve Pb.ResolutionNo     )] [H.text "Resolve NO"]
+              , H.button [HE.onClick (Resolve Pb.ResolutionInvalid)] [H.text "Resolve INVALID"]
               ]
           Pb.ResolutionUnrecognized_ _ -> Debug.todo "unrecognized resolution"
       , model.notification |> H.map never
@@ -309,25 +312,25 @@ viewResolveButtons ctx globals model =
   else
     H.text ""
 
-view : Context -> Page.Globals -> Model -> Html Msg
-view ctx globals model =
+view : Page.Globals -> Model -> Html Msg
+view globals model =
   let
-    prediction = mustHaveLoadedPrediction ctx.predictionId globals
+    prediction = mustHaveLoadedPrediction model.predictionId globals
     creator = prediction.creator
   in
   H.div []
     [ H.h2 [] [
         let text = H.text <| "Prediction: by " ++ (String.left 10 <| Iso8601.fromTime <| Utils.unixtimeToTime prediction.resolvesAtUnixtime) ++ ", " ++ prediction.prediction in
-        if ctx.shouldLinkTitle then
-          H.a [HA.href <| "/p/" ++ String.fromInt ctx.predictionId] [text]
+        if model.linkTitle then
+          H.a [HA.href <| "/p/" ++ String.fromInt model.predictionId] [text]
         else
           text
         ]
-    , viewPredictionState ctx globals model
-    , viewResolveButtons ctx globals model
-    , viewWinnings ctx globals model
+    , viewPredictionState globals model
+    , viewResolveButtons globals model
+    , viewWinnings globals model
     , H.hr [] []
-    , viewCreationParams ctx globals model
+    , viewCreationParams globals model
     , case prediction.specialRules of
         "" ->
           H.text ""
@@ -337,7 +340,7 @@ view ctx globals model =
             , H.text <| " " ++ rules
             ]
     , H.hr [] []
-    , viewStakeWidgetOrExcuse ctx globals model
+    , viewStakeWidgetOrExcuse globals model
     , if Page.isLoggedIn globals then
         H.text ""
       else
@@ -385,7 +388,7 @@ view ctx globals model =
     , if Page.isSelf globals creator then
         H.div []
           [ H.text "If you want to link to your prediction, here are some snippets of HTML you could copy-paste:"
-          , viewEmbedInfo ctx globals model
+          , viewEmbedInfo globals model
           , H.text "If there are people you want to participate, but you haven't already established trust with them in Biatob, send them invitations: "
           , SmallInvitationWidget.view globals model.invitationWidget |> H.map InvitationMsg
           ]
@@ -393,12 +396,12 @@ view ctx globals model =
         H.text ""
     ]
 
-viewEmbedInfo : Context -> Page.Globals -> Model -> Html Msg
-viewEmbedInfo ctx globals model =
+viewEmbedInfo : Page.Globals -> Model -> Html Msg
+viewEmbedInfo globals model =
   let
-    prediction = mustHaveLoadedPrediction ctx.predictionId globals
-    linkUrl = globals.httpOrigin ++ "/p/" ++ String.fromInt ctx.predictionId  -- TODO(P0): needs origin to get stuck in text field
-    imgUrl = globals.httpOrigin ++ "/p/" ++ String.fromInt ctx.predictionId ++ "/embed.png"
+    prediction = mustHaveLoadedPrediction model.predictionId globals
+    linkUrl = globals.httpOrigin ++ "/p/" ++ String.fromInt model.predictionId  -- TODO(P0): needs origin to get stuck in text field
+    imgUrl = globals.httpOrigin ++ "/p/" ++ String.fromInt model.predictionId ++ "/embed.png"
     imgStyles = [("max-height","1.5ex"), ("border-bottom","1px solid #008800")]
     imgCode =
       "<a href=\"" ++ linkUrl ++ "\">"
