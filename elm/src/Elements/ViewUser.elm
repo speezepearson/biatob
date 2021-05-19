@@ -93,14 +93,14 @@ view globals model =
           ]
       else case globals.serverState.settings of
         Nothing -> H.text "Log in to see your relationship with this user."
-        Just userInfo ->
+        Just _ ->
           H.div []
             [ if Page.getRelationship globals model.username |> Maybe.map .trusting |> Maybe.withDefault False then
                 H.text "This user trusts you! :)"
               else
                 H.div []
                   [ H.text "This user hasn't marked you as trusted! If you think that, in real life, they "
-                  , H.i [] [H.text "do"]
+                  , Utils.i "do"
                   , H.text " trust you, send them an invitation: "
                   , SmallInvitationWidget.view globals model.invitationWidget |> H.map InvitationMsg
                   ]

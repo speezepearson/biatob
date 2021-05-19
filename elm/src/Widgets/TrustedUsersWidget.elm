@@ -111,7 +111,7 @@ view globals model =
     Just userInfo ->
       H.div []
         [ model.notification |> H.map never
-        , H.strong [] [H.text "Your relationships: "]
+        , Utils.b "Your relationships: "
         , let relationships = userInfo |> .relationships |> Utils.mustMapValues in
           if D.isEmpty relationships then
             H.text "nobody yet!"
@@ -133,7 +133,7 @@ view globals model =
                 ])
             <| D.toList relationships
         , H.br [] []
-        , H.strong [] [H.text "Invitations: "]
+        , Utils.b "Invitations: "
         , SmallInvitationWidget.view globals model.invitationWidget |> H.map InvitationMsg
         , H.div [] [H.text "Outstanding:", viewInvitations globals (\inv -> inv.acceptedByDepr == Nothing) ]
         , H.div [] [H.text "Past:",        viewInvitations globals (\inv -> inv.acceptedByDepr /= Nothing) ]

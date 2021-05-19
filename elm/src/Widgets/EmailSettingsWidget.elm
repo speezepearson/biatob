@@ -189,7 +189,7 @@ view globals model =
             Pb.EmailFlowStateKindVerified email ->
               H.div []
                 [ H.text "Your email address is: "
-                , H.strong [] [H.text email]
+                , Utils.b email
                 , H.text ". "
                 , H.button [HE.onClick DissociateEmail] [H.text "delete?"]
                 , H.br [] []

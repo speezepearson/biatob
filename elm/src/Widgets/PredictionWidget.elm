@@ -105,7 +105,7 @@ viewStakeWidgetOrExcuse globals model =
           [ H.text "You and "
           , Utils.renderUser creator
           , H.text " don't trust each other! If, in real life, you "
-          , H.i [] [H.text "do"]
+          , Utils.i "do"
           , H.text " trust each other to pay your debts, send them an invitation! "
           , SmallInvitationWidget.view globals model.invitationWidget |> H.map InvitationMsg
           ]
@@ -118,7 +118,7 @@ viewStakeWidgetOrExcuse globals model =
       (False, True) ->
         H.div []
           [ Utils.renderUser creator, H.text " hasn't marked you as trusted! If you think that, in real life, they "
-          , H.i [] [H.text "do"]
+          , Utils.i "do"
           , H.text " trust you to pay your debts, send them an invitation link: "
           , SmallInvitationWidget.view globals model.invitationWidget |> H.map InvitationMsg
           ]
@@ -263,7 +263,7 @@ viewCreationParams globals model =
   in
   H.p []
     [ H.text <| "On " ++ Utils.dateStr globals.timeZone openTime ++ ", "
-    , if Page.isSelf globals creator then H.strong [] [H.text "you"] else Utils.renderUser creator
+    , if Page.isSelf globals creator then Utils.b "you" else Utils.renderUser creator
     , H.text " assigned this a "
     , certainty.low |> (*) 100 |> round |> String.fromInt |> H.text
     , H.text "-"
@@ -336,7 +336,7 @@ view globals model =
           H.text ""
         rules ->
           H.div []
-            [ H.strong [] [H.text "Special rules:"]
+            [ Utils.b "Special rules:"
             , H.text <| " " ++ rules
             ]
     , H.hr [] []

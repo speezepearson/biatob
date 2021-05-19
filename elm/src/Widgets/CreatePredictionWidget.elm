@@ -187,9 +187,9 @@ view globals model =
                     in
                       case (betVsSkeptics, betVsBelievers) of
                         (Nothing, Nothing) -> H.text ""
-                        (Just s, Nothing) -> H.div [] [H.text "(In other words, I'd happily bet ", H.strong [] [H.text s], H.text " that this will happen.)"]
-                        (Nothing, Just s) -> H.div [] [H.text "(In other words, I'd happily bet ", H.strong [] [H.text s], H.text " that this won't happen.)"]
-                        (Just skep, Just bel)  -> H.div [] [H.text "(In other words, I'd happily bet ", H.strong [] [H.text skep], H.text " that this will happen, or ", H.strong [] [H.text bel], H.text " that it won't.)"]
+                        (Just s, Nothing) -> H.div [] [H.text "(In other words, I'd happily bet ", Utils.b s, H.text " that this will happen.)"]
+                        (Nothing, Just s) -> H.div [] [H.text "(In other words, I'd happily bet ", Utils.b s, H.text " that this won't happen.)"]
+                        (Just skep, Just bel)  -> H.div [] [H.text "(In other words, I'd happily bet ", Utils.b skep, H.text " that this will happen, or ", Utils.b bel, H.text " that it won't.)"]
             ]
         , H.li []
             [ H.text "This offer is open for "
@@ -212,7 +212,7 @@ view globals model =
                 , H.text <| "If it's 2021-01-01, and you're betting on whether [some thing] will happen by 2022-01-01,"
                     ++ " you don't want people to be able to wait until 2021-12-31 before betting against you."
                     ++ " You might say \"This offer is only open for 2 weeks,\" to give your friends time to bet,"
-                    ++ " without letting them get ", H.i [] [H.text "too much"], H.text " extra information."
+                    ++ " without letting them get ", Utils.i "too much", H.text " extra information."
                 ]
             ]
         , H.li []

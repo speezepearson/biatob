@@ -86,7 +86,7 @@ view globals model =
           ]
           []
       , H.text " that it won't, against ", Utils.renderUser creator, H.text "'s "
-      , H.strong [] [Field.parse {max=maxSkepticStakeCents} model.skepticStakeField |> Result.map (toFloat >> (*) creatorStakeFactorVsSkeptics >> round >> Utils.formatCents) |> Result.withDefault "???" |> H.text]
+      , Utils.b (Field.parse {max=maxSkepticStakeCents} model.skepticStakeField |> Result.map (toFloat >> (*) creatorStakeFactorVsSkeptics >> round >> Utils.formatCents) |> Result.withDefault "???")
       , H.text ". "
       , H.button
           (case Field.parse {max=maxSkepticStakeCents} model.skepticStakeField of
@@ -108,7 +108,7 @@ view globals model =
           ]
           []
       , H.text " that it will, against ", Utils.renderUser creator, H.text "'s "
-      , H.strong [] [Field.parse {max=maxBelieverStakeCents} model.believerStakeField |> Result.map (toFloat >> (*) creatorStakeFactorVsBelievers >> round >> Utils.formatCents) |> Result.withDefault "???" |> H.text]
+      , Utils.b (Field.parse {max=maxBelieverStakeCents} model.believerStakeField |> Result.map (toFloat >> (*) creatorStakeFactorVsBelievers >> round >> Utils.formatCents) |> Result.withDefault "???")
       , H.text ". "
       , H.button
           (case Field.parse {max=maxBelieverStakeCents} model.believerStakeField of

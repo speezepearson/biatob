@@ -119,8 +119,8 @@ view globals model =
       , H.p [] [H.text "This site is a tool that helps people make concrete predictions and bet on them, thereby clarifying their beliefs and making the world a better, saner place."]
       , H.p [] [H.text <| "Users can make predictions and say how confident they are;"
           ++ " then other people can bet real money against them. "
-          , H.strong [] [H.text "Everything is purely honor-system,"]
-          , H.text <| " so you don't have to provide a credit card or anything, but you ", H.i [] [H.text "do"]
+          , Utils.b "Everything is purely honor-system,"
+          , H.text <| " so you don't have to provide a credit card or anything, but you ", Utils.i  "do"
           , H.text <| " have to tell the site who you trust, so that it knows who's allowed to bet against you."
           ++ " (Honor systems only work where there is honor.)"]
       , H.p [] [Utils.renderUser model.invitationId.inviter, H.text <|
