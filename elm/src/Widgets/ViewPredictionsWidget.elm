@@ -7,7 +7,7 @@ import Dict exposing (Dict)
 import Time
 
 import Biatob.Proto.Mvp as Pb
-import Utils
+import Utils exposing (PredictionId)
 
 import Widgets.PredictionWidget as PredictionWidget
 import Page
@@ -120,19 +120,19 @@ sortPredictions toPrediction order predictions =
       List.sortBy (toPrediction >> \p -> p.createdUnixtime * sortKeySign dir) predictions
 
 type alias Model =
-  { predictions : Dict Int PredictionWidget.Model
+  { predictions : Dict PredictionId PredictionWidget.Model
   , filter : Filter
   , order : SortOrder
   , allowFilterByOwner : Bool
   }
 
 type Msg
-  = PredictionMsg Int PredictionWidget.Msg
+  = PredictionMsg PredictionId PredictionWidget.Msg
   | SetSortOrder SortOrder
   | SetFilter Filter
   | Ignore
 
-init : Dict Int Pb.UserPredictionView -> Model
+init : Dict PredictionId Pb.UserPredictionView -> Model
 init predictions =
   { predictions = predictions |> Dict.map (\id p -> PredictionWidget.init id |> PredictionWidget.setLinkTitle True)
   , filter = { own = Nothing , phase = Nothing }

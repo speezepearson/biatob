@@ -8,7 +8,7 @@ import Http
 import Dict as D
 
 import Biatob.Proto.Mvp as Pb
-import Utils
+import Utils exposing (Username)
 
 import Field exposing (Field)
 import Utils
@@ -19,12 +19,12 @@ import Widgets.CopyWidget as CopyWidget
 type Msg
   = Copy String
   | InvitationMsg SmallInvitationWidget.Msg
-  | RemoveTrust String
+  | RemoveTrust Username
   | SetTrustedFinished (Result Http.Error Pb.SetTrustedResponse)
 
 type alias Model =
   { invitationWidget : SmallInvitationWidget.Model
-  , addTrustedUserField : Field () String
+  , addTrustedUserField : Field () Username
   , working : Bool
   , notification : Html Never
   }

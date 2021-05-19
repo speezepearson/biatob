@@ -29,12 +29,6 @@ type Msg
   | CreateFinished (Result Http.Error Pb.CreatePredictionResponse)
   | Ignore
 
-authName : Maybe Pb.AuthToken -> String
-authName auth =
-  auth
-  |> Maybe.map .owner
-  |> Maybe.withDefault "[Creator]"
-
 init : Model
 init =
   { form = Form.init
@@ -106,7 +100,7 @@ view globals model =
     , H.div [HA.style "border" "1px solid black", HA.style "padding" "1em", HA.style "margin" "1em"]
         [ case Form.toCreateRequest globals.now globals.timeZone model.form of
             Just req ->
-              previewPrediction {request=req, creatorName=Page.getAuth globals |> authName, createdAt=globals.now}
+              previewPrediction {request=req, creatorName=Page.getAuth globals |> Maybe.map .owner |> Maybe.withDefault "you", createdAt=globals.now}
               |> (\prediction -> PredictionWidget.view
                     { globals | serverState = globals.serverState |> \s -> { s | predictions = s.predictions |> D.insert 12345 prediction} }
                     (PredictionWidget.init 12345)

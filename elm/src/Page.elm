@@ -19,7 +19,7 @@ import Time
 import Http
 
 import Biatob.Proto.Mvp as Pb
-import Utils exposing (Username, PredictionId, InvitationNonce)
+import Utils exposing (Username, PredictionId)
 
 type Command msg
   = NoCmd

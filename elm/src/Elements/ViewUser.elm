@@ -9,7 +9,7 @@ import Json.Decode as JD
 import Dict
 
 import Biatob.Proto.Mvp as Pb
-import Utils
+import Utils exposing (Username)
 
 import Widgets.SmallInvitationWidget as SmallInvitationWidget
 import Widgets.ViewPredictionsWidget as ViewPredictionsWidget
@@ -17,7 +17,7 @@ import Page
 import Page.Program
 
 type alias Model =
-  { username : String
+  { username : Username
   , predictionsWidget : ViewPredictionsWidget.Model
   , working : Bool
   , notification : Html Never

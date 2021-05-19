@@ -13,10 +13,12 @@ import Dict exposing (Dict)
 import Biatob.Proto.Mvp as Pb
 
 type alias Username = String
+type alias Password = String
+type alias EmailAddress = String
+type alias Cents = Int
 type alias PredictionId = Int
-type alias InvitationNonce = String
 
-formatCents : Int -> String
+formatCents : Cents -> String
 formatCents n =
   if n < 0 then "-" ++ formatCents (-n) else
   let
@@ -86,7 +88,7 @@ mustEmailFlowStateKind {emailFlowStateKind} = must "all EmailFlowStates must hav
 mustGetSettingsResult : Pb.GetSettingsResponse -> Pb.GetSettingsResult
 mustGetSettingsResult {getSettingsResult} = must "all GetSettingsResponses must have results" getSettingsResult
 
-mustPredictionsById : Pb.PredictionsById -> Dict Int Pb.UserPredictionView
+mustPredictionsById : Pb.PredictionsById -> Dict PredictionId Pb.UserPredictionView
 mustPredictionsById {predictions} = predictions |> Dict.map (\_ v -> must "no null values are allowed in a PredictionsById" v)
 
 mustMapValues : Dict comparable (Maybe v) -> Dict comparable v

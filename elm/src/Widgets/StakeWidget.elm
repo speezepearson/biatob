@@ -9,7 +9,7 @@ import Time
 import Http
 
 import Biatob.Proto.Mvp as Pb
-import Utils exposing (b, PredictionId)
+import Utils exposing (b, Cents, PredictionId)
 
 import Field exposing (Field)
 import Page
@@ -19,12 +19,12 @@ epsilon = 0.0000001 -- 🎵 I hate floating-point arithmetic 🎶
 type Msg
   = SetBelieverStakeField String
   | SetSkepticStakeField String
-  | Stake {bettorIsASkeptic : Bool, stakeCents : Int}
+  | Stake {bettorIsASkeptic : Bool, stakeCents : Cents}
   | StakeFinished (Result Http.Error Pb.StakeResponse)
 
 type alias Model =
-  { believerStakeField : Field {max : Int} Int
-  , skepticStakeField : Field {max : Int} Int
+  { believerStakeField : Field {max : Cents} Cents
+  , skepticStakeField : Field {max : Cents} Cents
   , working : Bool
   , notification : Html Never
   , disableCommit : Bool
@@ -125,7 +125,7 @@ view globals model =
 init : PredictionId -> Model
 init predictionId =
   let
-    parseCents : {max:Int} -> String -> Result String Int
+    parseCents : {max:Cents} -> String -> Result String Cents
     parseCents {max} s =
       case String.toFloat s of
         Nothing -> Err "must be a number"

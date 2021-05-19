@@ -10,7 +10,7 @@ import Dict as D exposing (Dict)
 
 import Iso8601
 import Biatob.Proto.Mvp as Pb
-import Utils exposing (PredictionId, Username)
+import Utils exposing (Cents, PredictionId, Username)
 
 import Widgets.StakeWidget as StakeWidget
 import Widgets.CopyWidget as CopyWidget
@@ -29,10 +29,10 @@ type alias Model =
   , notification : Html Never
   , invitationWidget : SmallInvitationWidget.Model
   , linkTitle : Bool
-  , predictionId : Int
+  , predictionId : PredictionId
   }
 
-init : Int -> Model
+init : PredictionId -> Model
 init predictionId =
   { stakeForm = StakeWidget.init predictionId
   , working = False
@@ -123,12 +123,12 @@ viewStakeWidgetOrExcuse globals model =
           , SmallInvitationWidget.view globals model.invitationWidget |> H.map InvitationMsg
           ]
 
-creatorWinningsByBettor : Bool -> List Pb.Trade -> Dict Username Int -- TODO: avoid key serialization collisions
+creatorWinningsByBettor : Bool -> List Pb.Trade -> Dict Username Cents
 creatorWinningsByBettor resolvedYes trades =
   trades
   |> List.foldl (\t d -> D.update t.bettor (Maybe.withDefault 0 >> ((+) (if xor resolvedYes t.bettorIsASkeptic then -t.creatorStakeCents else t.bettorStakeCents)) >> Just) d) D.empty
 
-stateWinnings : Username -> Int -> Html a
+stateWinnings : Username -> Cents -> Html a
 stateWinnings counterparty win =
   H.span [] <|
     ( if win > 0 then
@@ -137,7 +137,7 @@ stateWinnings counterparty win =
         [H.text "You owe ", Utils.renderUser counterparty]
     ) ++ [H.text <| " " ++ Utils.formatCents (abs win) ++ "."]
 
-enumerateWinnings : Dict Username Int -> Html Msg
+enumerateWinnings : Dict Username Cents -> Html Msg
 enumerateWinnings winningsByUser =
   H.ul [] <| (
     winningsByUser

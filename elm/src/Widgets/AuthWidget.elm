@@ -6,7 +6,7 @@ import Html.Events as HE
 import Html exposing (s)
 
 import Biatob.Proto.Mvp as Pb
-import Utils
+import Utils exposing (Username, Password)
 import Http
 
 import Field exposing (Field)
@@ -19,8 +19,8 @@ import Page
 port passwordManagerFilled : ({target:String, value:String} -> msg) -> Sub msg -- for password managers
 
 type Msg
-  = SetUsernameField String
-  | SetPasswordField String
+  = SetUsernameField Username
+  | SetPasswordField Password
   | Ignore
   | LogInUsername
   | LogInUsernameFinished (Result Http.Error Pb.LogInUsernameResponse)
@@ -29,8 +29,8 @@ type Msg
   | SignOut
   | SignOutFinished (Result Http.Error Pb.SignOutResponse)
 type alias Model =
-  { usernameField : Field () String
-  , passwordField : Field () String
+  { usernameField : Field () Username
+  , passwordField : Field () Password
   , working : Bool
   , notification : Html Never
   }

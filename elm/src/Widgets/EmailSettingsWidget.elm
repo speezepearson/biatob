@@ -6,7 +6,7 @@ import Html.Events as HE
 import Http
 
 import Biatob.Proto.Mvp as Pb
-import Utils
+import Utils exposing (EmailAddress, Password)
 
 import Field exposing (Field)
 import Page
@@ -15,8 +15,8 @@ import Set
 
 type Msg
   = Ignore
-  | SetEmailField String
-  | SetCodeField String
+  | SetEmailField EmailAddress
+  | SetCodeField Password
   | SetEmailResolutionNotifications Bool
   | SetEmailRemindersToResolve Bool
   | UpdateSettingsFinished (Result Http.Error Pb.UpdateSettingsResponse)
@@ -26,8 +26,8 @@ type Msg
   | VerifyEmail
   | VerifyEmailFinished (Result Http.Error Pb.VerifyEmailResponse)
 type alias Model =
-  { emailField : Field () String
-  , codeField : Field () String
+  { emailField : Field () EmailAddress
+  , codeField : Field () Password
   , working : Bool
   , notification : Html Never
   }
@@ -43,7 +43,7 @@ init =
   , notification = H.text ""
   }
 
-emailParser : Parser.Parser String
+emailParser : Parser.Parser EmailAddress
 emailParser =
   let
     validNameChars = Set.fromList <| String.toList "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-+."

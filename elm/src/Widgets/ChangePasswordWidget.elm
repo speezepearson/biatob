@@ -4,6 +4,7 @@ import Html as H exposing (Html)
 import Html.Attributes as HA
 import Html.Events as HE
 import Http
+import Utils exposing (Password)
 
 import Biatob.Proto.Mvp as Pb
 
@@ -12,15 +13,15 @@ import Field exposing (Field)
 import Page
 
 type alias Model =
-  { oldPasswordField : Field () String
-  , newPasswordField : Field () String
+  { oldPasswordField : Field () Password
+  , newPasswordField : Field () Password
   , working : Bool
   , error : Maybe String
   }
 
 type Msg
-  = SetOldPasswordField String
-  | SetNewPasswordField String
+  = SetOldPasswordField Password
+  | SetNewPasswordField Password
   | ChangePassword
   | ChangePasswordFinished (Result Http.Error Pb.ChangePasswordResponse)
 

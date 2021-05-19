@@ -2,7 +2,7 @@ module Widgets.CreatePredictionWidget exposing (..)
 
 import Html as H exposing (Html)
 import Html.Attributes as HA
-import Utils exposing (i)
+import Utils exposing (i, Cents)
 import Time
 
 import Field exposing (Field)
@@ -24,7 +24,7 @@ unitToSeconds u =
 type alias Model =
   { predictionField : Field () String
   , resolvesAtField : Field {now:Time.Posix, timeZone:Time.Zone} Time.Posix
-  , stakeField : Field () Int
+  , stakeField : Field () Cents
   , lowPField : Field () Float
   , highPField : Field {lowP:Float} Float
   , openForUnitField : Field () OpenForUnit
