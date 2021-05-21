@@ -19,7 +19,7 @@ type alias Model =
   { invitationId : Pb.InvitationId
   , invitationIsOpen : Bool
   , destination : Maybe String
-  , authWidget : AuthWidget.Model
+  , authWidget : AuthWidget.State
   , working : Bool
   , acceptNotification : Html Msg
   }
@@ -27,7 +27,14 @@ type alias Model =
 type Msg
   = AcceptInvitation
   | AcceptInvitationFinished (Result Http.Error Pb.AcceptInvitationResponse)
-  | AuthWidgetMsg AuthWidget.Msg
+  | SetAuthWidget AuthWidget.State
+  | LogInUsername AuthWidget.State Pb.LogInUsernameRequest
+  | LogInUsernameFinished (Result Http.Error Pb.LogInUsernameResponse)
+  | RegisterUsername AuthWidget.State Pb.RegisterUsernameRequest
+  | RegisterUsernameFinished (Result Http.Error Pb.RegisterUsernameResponse)
+  | SignOut AuthWidget.State Pb.SignOutRequest
+  | SignOutFinished (Result Http.Error Pb.SignOutResponse)
+  | Ignore
 
 init : JD.Value -> (Model, Page.Command Msg)
 init flags =
@@ -66,9 +73,34 @@ update msg model =
           ( { model | working = False , acceptNotification = Utils.redText "Invalid server response (neither Ok nor Error in protobuf)" }
           , Page.NoCmd
           )
-    AuthWidgetMsg widgetMsg ->
-      let (newWidget, widgetCmd) = AuthWidget.update widgetMsg model.authWidget in
-      ( { model | authWidget = newWidget } , Page.mapCmd AuthWidgetMsg widgetCmd )
+    SetAuthWidget widgetState ->
+      ( { model | authWidget = widgetState } , Page.NoCmd )
+    LogInUsername widgetState req ->
+      ( { model | authWidget = widgetState }
+      , Page.RequestCmd <| Page.LogInUsernameRequest LogInUsernameFinished req
+      )
+    LogInUsernameFinished res ->
+      ( { model | authWidget = model.authWidget |> AuthWidget.handleLogInUsernameResponse res }
+      , Page.NoCmd
+      )
+    RegisterUsername widgetState req ->
+      ( { model | authWidget = widgetState }
+      , Page.RequestCmd <| Page.RegisterUsernameRequest RegisterUsernameFinished req
+      )
+    RegisterUsernameFinished res ->
+      ( { model | authWidget = model.authWidget |> AuthWidget.handleRegisterUsernameResponse res }
+      , Page.NoCmd
+      )
+    SignOut widgetState req ->
+      ( { model | authWidget = widgetState }
+      , Page.RequestCmd <| Page.SignOutRequest SignOutFinished req
+      )
+    SignOutFinished res ->
+      ( { model | authWidget = model.authWidget |> AuthWidget.handleSignOutResponse res }
+      , Page.NoCmd
+      )
+    Ignore ->
+      ( model , Page.NoCmd )
 
 isOwnInvitation : Page.Globals -> Pb.InvitationId -> Bool
 isOwnInvitation globals invitationId =
@@ -102,7 +134,18 @@ view globals model =
         else
           [ H.text "If you trust them back, and you're interested in betting against them:"
           , H.ul []
-            [ H.li [] [H.text "Authenticate yourself: ", AuthWidget.view globals model.authWidget |> H.map AuthWidgetMsg]
+            [ H.li []
+              [ H.text "Authenticate yourself: "
+              , AuthWidget.view
+                  { setState = SetAuthWidget
+                  , logInUsername = LogInUsername
+                  , register = RegisterUsername
+                  , signOut = SignOut
+                  , ignore = Ignore
+                  , auth = Page.getAuth globals
+                  }
+                  model.authWidget
+              ]
             , H.li []
               [ H.text "...then click "
               , H.button
@@ -130,7 +173,7 @@ view globals model =
   ]}
 
 subscriptions : Model -> Sub Msg
-subscriptions model = AuthWidget.subscriptions model.authWidget |> Sub.map AuthWidgetMsg
+subscriptions _ = Sub.none
 
 pagedef : Page.Element Model Msg
 pagedef = {init=init, view=view, update=update, subscriptions=subscriptions}

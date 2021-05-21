@@ -2,13 +2,22 @@ module Widgets.Navbar exposing (..)
 
 import Html as H exposing (Html)
 import Html.Attributes as HA
+import Http
 
 import Widgets.AuthWidget as AuthWidget
 import Page
+import Biatob.Proto.Mvp as Pb
 
-type alias Model = { authWidget : AuthWidget.Model }
+type alias Model = { authWidget : AuthWidget.State }
 type Msg
-  = AuthWidgetMsg AuthWidget.Msg
+  = SetAuthWidget AuthWidget.State
+  | LogInUsername AuthWidget.State Pb.LogInUsernameRequest
+  | LogInUsernameFinished (Result Http.Error Pb.LogInUsernameResponse)
+  | RegisterUsername AuthWidget.State Pb.RegisterUsernameRequest
+  | RegisterUsernameFinished (Result Http.Error Pb.RegisterUsernameResponse)
+  | SignOut AuthWidget.State Pb.SignOutRequest
+  | SignOutFinished (Result Http.Error Pb.SignOutResponse)
+  | Ignore
 
 init : Model
 init = { authWidget = AuthWidget.init }
@@ -27,15 +36,50 @@ view globals model =
     [ H.ul [] <|
         H.li [] [H.a [HA.href "/"] [H.text "Home"]]
         :: (if Page.isLoggedIn globals then loggedInItems else [])
-        ++ [H.li [] [AuthWidget.view globals model.authWidget |> H.map AuthWidgetMsg]]
+        ++ [H.li []
+            [ AuthWidget.view
+                { setState = SetAuthWidget
+                , logInUsername = LogInUsername
+                , register = RegisterUsername
+                , signOut = SignOut
+                , ignore = Ignore
+                , auth = Page.getAuth globals
+                }
+                model.authWidget
+            ]]
     ]
 
 update : Msg -> Model -> ( Model , Page.Command Msg )
 update msg model =
   case msg of
-    AuthWidgetMsg widgetMsg ->
-      let (newWidget, innerCmd) = AuthWidget.update widgetMsg model.authWidget in
-      ( { model | authWidget = newWidget } , Page.mapCmd AuthWidgetMsg innerCmd )
+    SetAuthWidget widgetState ->
+      ( { model | authWidget = widgetState } , Page.NoCmd )
+    LogInUsername widgetState req ->
+      ( { model | authWidget = widgetState }
+      , Page.RequestCmd <| Page.LogInUsernameRequest LogInUsernameFinished req
+      )
+    LogInUsernameFinished res ->
+      ( { model | authWidget = model.authWidget |> AuthWidget.handleLogInUsernameResponse res }
+      , Page.NoCmd
+      )
+    RegisterUsername widgetState req ->
+      ( { model | authWidget = widgetState }
+      , Page.RequestCmd <| Page.RegisterUsernameRequest RegisterUsernameFinished req
+      )
+    RegisterUsernameFinished res ->
+      ( { model | authWidget = model.authWidget |> AuthWidget.handleRegisterUsernameResponse res }
+      , Page.NoCmd
+      )
+    SignOut widgetState req ->
+      ( { model | authWidget = widgetState }
+      , Page.RequestCmd <| Page.SignOutRequest SignOutFinished req
+      )
+    SignOutFinished res ->
+      ( { model | authWidget = model.authWidget |> AuthWidget.handleSignOutResponse res }
+      , Page.NoCmd
+      )
+    Ignore ->
+      ( model , Page.NoCmd )
 
 subscriptions : Model -> Sub Msg
-subscriptions model = AuthWidget.subscriptions model.authWidget |> Sub.map AuthWidgetMsg
+subscriptions _ = Sub.none

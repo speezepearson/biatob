@@ -1,4 +1,4 @@
-port module Widgets.AuthWidget exposing (..)
+module Widgets.AuthWidget exposing (..)
 
 import Html as H exposing (Html)
 import Html.Attributes as HA
@@ -9,11 +9,8 @@ import Biatob.Proto.Mvp as Pb
 import Utils exposing (Username, Password)
 import Http
 
-import Set
+import API
 import Utils
-import Page
-
-port passwordManagerFilled : ({target:String, value:String} -> msg) -> Sub msg -- for password managers
 
 type Msg
   = SetUsernameField Username
@@ -25,14 +22,44 @@ type Msg
   | RegisterUsernameFinished (Result Http.Error Pb.RegisterUsernameResponse)
   | SignOut
   | SignOutFinished (Result Http.Error Pb.SignOutResponse)
-type alias Model =
+type alias Config msg =
+  { setState : State -> msg
+  , logInUsername : State -> Pb.LogInUsernameRequest -> msg
+  , register : State -> Pb.RegisterUsernameRequest -> msg
+  , signOut : State -> Pb.SignOutRequest -> msg
+  , ignore : msg
+  , auth : Maybe Pb.AuthToken
+  }
+type alias State =
   { usernameField : String
   , passwordField : String
   , working : Bool
   , notification : Html Never
   }
 
-init : Model
+
+handleLogInUsernameResponse : Result Http.Error Pb.LogInUsernameResponse -> State -> State
+handleLogInUsernameResponse res state =
+  { state | working = False
+          , notification = case API.simplifyLogInUsernameResponse res of
+              Ok _ -> H.text ""
+              Err e -> Utils.redText e
+  }
+handleRegisterUsernameResponse : Result Http.Error Pb.RegisterUsernameResponse -> State -> State
+handleRegisterUsernameResponse res state =
+  { state | working = False
+          , notification = case API.simplifyRegisterUsernameResponse res of
+              Ok _ -> H.text ""
+              Err e -> Utils.redText e
+  }
+handleSignOutResponse : Result Http.Error Pb.SignOutResponse -> State -> State
+handleSignOutResponse res state =
+  { state | working = False
+          , notification = case API.simplifySignOutResponse res of
+              Ok _ -> H.text ""
+              Err e -> Utils.redText e
+  }
+init : State
 init =
   { usernameField = ""
   , passwordField = ""
@@ -40,133 +67,71 @@ init =
   , notification = H.text ""
   }
 
-view : Page.Globals -> Model -> Html Msg
-view globals model =
-  case Page.getAuth globals of
+view : Config msg -> State -> Html msg
+view config state =
+  let
+    logInMsg = config.logInUsername
+      { state | working = True , notification = H.text "" }
+      { username = state.usernameField , password = state.passwordField }
+    registerMsg = config.register
+      { state | working = True , notification = H.text "" }
+      { username = state.usernameField , password = state.passwordField }
+    signOutMsg = config.signOut
+      { state | working = True , notification = H.text "" }
+      {}
+  in
+  case config.auth of
     Nothing ->
       let
-        disableButtons = case (Utils.parseUsername model.usernameField, Utils.parsePassword model.passwordField) of
+        disableButtons = case (Utils.parseUsername state.usernameField, Utils.parsePassword state.passwordField) of
           (Ok _, Ok _) -> False
           _ -> True
       in
       H.div []
         [ H.input
-            [ HA.disabled model.working
+            [ HA.disabled state.working
             , HA.style "width" "8em"
             , HA.type_ "text"
             , HA.placeholder "username"
             , HA.class "username-field"
             , HA.class "watch-for-password-manager-fill"
             , HA.attribute "data-password-manager-target" "username"
-            , HA.attribute "data-elm-value" model.usernameField
-            , HE.onInput SetUsernameField
-            , HA.value model.usernameField
+            , HA.attribute "data-elm-value" state.usernameField
+            , HE.onInput (\s -> config.setState {state | usernameField=s})
+            , HA.value state.usernameField
             ] []
-          |> Utils.appendValidationError (if model.usernameField == "" then Nothing else Utils.resultToErr (Utils.parseUsername model.usernameField))
+          |> Utils.appendValidationError (if state.usernameField == "" then Nothing else Utils.resultToErr (Utils.parseUsername state.usernameField))
         , H.input
-            [ HA.disabled model.working
+            [ HA.disabled state.working
             , HA.style "width" "8em"
             , HA.type_ "password"
             , HA.placeholder "password"
             , HA.class "watch-for-password-manager-fill"
             , HA.attribute "data-password-manager-target" "password"
-            , HA.attribute "data-elm-value" model.passwordField
-            , HE.onInput SetPasswordField
-            , HA.value model.passwordField
-            , Utils.onEnter LogInUsername Ignore
+            , HA.attribute "data-elm-value" state.passwordField
+            , HE.onInput (\s -> config.setState {state | passwordField=s})
+            , HA.value state.passwordField
+            , Utils.onEnter logInMsg config.ignore
             ] []
-          |> Utils.appendValidationError (if model.passwordField == "" then Nothing else Utils.resultToErr (Utils.parsePassword model.passwordField))
+          |> Utils.appendValidationError (if state.passwordField == "" then Nothing else Utils.resultToErr (Utils.parsePassword state.passwordField))
         , H.button
-            [ HA.disabled <| model.working || disableButtons
-            , HE.onClick LogInUsername
+            [ HA.disabled <| state.working || disableButtons
+            , HE.onClick logInMsg
             ]
             [H.text "Log in"]
         , H.text " or "
         , H.button
-            [ HA.disabled <| model.working || disableButtons
-            , HE.onClick RegisterUsername
+            [ HA.disabled <| state.working || disableButtons
+            , HE.onClick registerMsg
             ]
             [H.text "Sign up"]
-        , model.notification |> H.map never
+        , state.notification |> H.map never
         ]
     Just auth ->
       H.div []
         [ H.text <| "Signed in as "
         , Utils.renderUser auth.owner
         , H.text " "
-        , H.button [HA.disabled model.working, HE.onClick SignOut] [H.text "Sign out"]
-        , model.notification |> H.map never
+        , H.button [HA.disabled state.working, HE.onClick signOutMsg] [H.text "Sign out"]
+        , state.notification |> H.map never
         ]
-
-update : Msg -> Model -> ( Model , Page.Command Msg )
-update msg model =
-  case msg of
-    SetUsernameField s -> ( { model | usernameField = s } , Page.NoCmd )
-    SetPasswordField s -> ( { model | passwordField = s } , Page.NoCmd )
-    LogInUsername ->
-      case (Utils.parseUsername model.usernameField, Utils.parsePassword model.passwordField) of
-        (Ok username, Ok password) ->
-          ( { model | working = True , notification = H.text "" }
-          , Page.RequestCmd <| Page.LogInUsernameRequest LogInUsernameFinished {username=username, password=password}
-          )
-        _ ->
-          ( model
-          , Page.NoCmd
-          )
-    LogInUsernameFinished res ->
-      ( case res of
-          Err e -> { model | working = False , notification = Utils.redText (Debug.toString e)}
-          Ok resp ->
-            case resp.logInUsernameResult of
-              Just (Pb.LogInUsernameResultOk _) ->
-                { model | working = False , notification = H.text "" }
-              Just (Pb.LogInUsernameResultError e) ->
-                { model | working = False , notification = Utils.redText (Debug.toString e) }
-              Nothing ->
-                { model | working = False , notification = Utils.redText "Invalid server response (neither Ok nor Error in protobuf)" }
-      , Page.NoCmd
-      )
-
-    RegisterUsername ->
-      case (Utils.parseUsername model.usernameField, Utils.parsePassword model.passwordField) of
-        (Ok username, Ok password) ->
-          ( { model | working = True , notification = H.text "" }
-          , Page.RequestCmd <| Page.RegisterUsernameRequest RegisterUsernameFinished {username=username, password=password}
-          )
-        _ ->
-          ( model
-          , Page.NoCmd
-          )
-    RegisterUsernameFinished res ->
-      ( case res of
-          Err e -> { model | working = False , notification = Utils.redText (Debug.toString e)}
-          Ok resp ->
-            case resp.registerUsernameResult of
-              Just (Pb.RegisterUsernameResultOk _) ->
-                { model | working = False , notification = H.text "" }
-              Just (Pb.RegisterUsernameResultError e) ->
-                { model | working = False , notification = Utils.redText (Debug.toString e) }
-              Nothing ->
-                { model | working = False , notification = Utils.redText "Invalid server response (neither Ok nor Error in protobuf)" }
-      , Page.NoCmd
-      )
-    SignOut ->
-      ( { model | working = True , notification = H.text "" }
-      , Page.RequestCmd <| Page.SignOutRequest SignOutFinished {}
-      )
-    SignOutFinished res ->
-      ( case res of
-          Err e -> { model | working = False , notification = Utils.redText (Debug.toString e)}
-          Ok _ -> { model | working = False , notification = H.text "" }
-      , Page.NoCmd
-      )
-
-    Ignore -> ( model , Page.NoCmd )
-
-subscriptions : Model -> Sub Msg
-subscriptions _ =
-  passwordManagerFilled (\event -> case (Debug.log "Password manager or something changed auth fields" event).target of
-    "username" -> SetUsernameField event.value
-    "password" -> SetPasswordField event.value
-    _ -> Ignore
-  )

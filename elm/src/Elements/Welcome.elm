@@ -4,6 +4,7 @@ import Browser
 import Html as H
 import Html.Attributes as HA
 import Json.Decode as JD
+import Http
 
 import Utils
 
@@ -12,17 +13,25 @@ import Widgets.SmallInvitationWidget as SmallInvitationWidget
 import Widgets.EmailSettingsWidget as EmailSettingsWidget
 import Page
 import Page.Program
+import Biatob.Proto.Mvp as Pb
 
 type alias Model =
-  { authWidget : AuthWidget.Model
+  { authWidget : AuthWidget.State
   , invitationWidget : SmallInvitationWidget.Model
   , emailSettingsWidget : EmailSettingsWidget.Model
   }
 
 type Msg
-  = AuthWidgetMsg AuthWidget.Msg
-  | InvitationMsg SmallInvitationWidget.Msg
+  = InvitationMsg SmallInvitationWidget.Msg
   | EmailSettingsMsg EmailSettingsWidget.Msg
+  | SetAuthWidget AuthWidget.State
+  | LogInUsername AuthWidget.State Pb.LogInUsernameRequest
+  | LogInUsernameFinished (Result Http.Error Pb.LogInUsernameResponse)
+  | RegisterUsername AuthWidget.State Pb.RegisterUsernameRequest
+  | RegisterUsernameFinished (Result Http.Error Pb.RegisterUsernameResponse)
+  | SignOut AuthWidget.State Pb.SignOutRequest
+  | SignOutFinished (Result Http.Error Pb.SignOutResponse)
+  | Ignore
 
 pagedef : Page.Element Model Msg
 pagedef =
@@ -45,15 +54,40 @@ init _ =
 update : Msg -> Model -> (Model, Page.Command Msg)
 update msg model =
   case msg of
-    AuthWidgetMsg widgetMsg ->
-      let (newWidget, innerCmd) = AuthWidget.update widgetMsg model.authWidget in
-      ( { model | authWidget = newWidget } , Page.mapCmd AuthWidgetMsg innerCmd )
     EmailSettingsMsg widgetMsg ->
       let (newWidget, innerCmd) = EmailSettingsWidget.update widgetMsg model.emailSettingsWidget in
       ( { model | emailSettingsWidget = newWidget } , Page.mapCmd EmailSettingsMsg innerCmd )
     InvitationMsg widgetMsg ->
       let (newWidget, innerCmd) = SmallInvitationWidget.update widgetMsg model.invitationWidget in
       ( { model | invitationWidget = newWidget } , Page.mapCmd InvitationMsg innerCmd )
+    SetAuthWidget widgetState ->
+      ( { model | authWidget = widgetState } , Page.NoCmd )
+    LogInUsername widgetState req ->
+      ( { model | authWidget = widgetState }
+      , Page.RequestCmd <| Page.LogInUsernameRequest LogInUsernameFinished req
+      )
+    LogInUsernameFinished res ->
+      ( { model | authWidget = model.authWidget |> AuthWidget.handleLogInUsernameResponse res }
+      , Page.NoCmd
+      )
+    RegisterUsername widgetState req ->
+      ( { model | authWidget = widgetState }
+      , Page.RequestCmd <| Page.RegisterUsernameRequest RegisterUsernameFinished req
+      )
+    RegisterUsernameFinished res ->
+      ( { model | authWidget = model.authWidget |> AuthWidget.handleRegisterUsernameResponse res }
+      , Page.NoCmd
+      )
+    SignOut widgetState req ->
+      ( { model | authWidget = widgetState }
+      , Page.RequestCmd <| Page.SignOutRequest SignOutFinished req
+      )
+    SignOutFinished res ->
+      ( { model | authWidget = model.authWidget |> AuthWidget.handleSignOutResponse res }
+      , Page.NoCmd
+      )
+    Ignore ->
+      ( model , Page.NoCmd )
 
 
 view : Page.Globals -> Model -> Browser.Document Msg
@@ -124,7 +158,16 @@ view globals model =
         [ H.li [HA.style "margin-bottom" "1em"]
             [ H.text " Create an account:   "
             , H.div [HA.id "welcome-page-auth-widget"]
-                [ AuthWidget.view globals model.authWidget |> H.map AuthWidgetMsg ]
+                [ AuthWidget.view
+                  { setState = SetAuthWidget
+                  , logInUsername = LogInUsername
+                  , register = RegisterUsername
+                  , signOut = SignOut
+                  , ignore = Ignore
+                  , auth = Page.getAuth globals
+                  }
+                  model.authWidget
+                ]
             ]
         , H.li [HA.style "margin-bottom" "1em"]
             [ H.text " Go to "
@@ -164,8 +207,7 @@ view globals model =
 subscriptions : Model -> Sub Msg
 subscriptions model =
   Sub.batch
-    [ AuthWidget.subscriptions model.authWidget |> Sub.map AuthWidgetMsg
-    , SmallInvitationWidget.subscriptions model.invitationWidget |> Sub.map InvitationMsg
+    [ SmallInvitationWidget.subscriptions model.invitationWidget |> Sub.map InvitationMsg
     , EmailSettingsWidget.subscriptions model.emailSettingsWidget |> Sub.map EmailSettingsMsg
     ]
 

@@ -57,3 +57,35 @@ postCreateInvitation : (Result Http.Error Pb.CreateInvitationResponse -> msg) ->
 postCreateInvitation = hit {url="/api/CreateInvitation", encoder=Pb.toCreateInvitationRequestEncoder, decoder=Pb.createInvitationResponseDecoder}
 postAcceptInvitation : (Result Http.Error Pb.AcceptInvitationResponse -> msg) -> Pb.AcceptInvitationRequest -> Cmd msg
 postAcceptInvitation = hit {url="/api/AcceptInvitation", encoder=Pb.toAcceptInvitationRequestEncoder, decoder=Pb.acceptInvitationResponseDecoder}
+
+simplifyLogInUsernameResponse : Result Http.Error Pb.LogInUsernameResponse -> Result String Pb.AuthSuccess
+simplifyLogInUsernameResponse res =
+  case res of
+    Err e -> Err (Debug.toString e)
+    Ok resp ->
+      case resp.logInUsernameResult of
+        Just (Pb.LogInUsernameResultOk success) ->
+          Ok success
+        Just (Pb.LogInUsernameResultError e) ->
+          Err (Debug.toString e) 
+        Nothing ->
+          Err "Invalid server response (neither Ok nor Error in protobuf)" 
+
+simplifyRegisterUsernameResponse : Result Http.Error Pb.RegisterUsernameResponse -> Result String Pb.AuthSuccess
+simplifyRegisterUsernameResponse res =
+  case res of
+    Err e -> Err (Debug.toString e)
+    Ok resp ->
+      case resp.registerUsernameResult of
+        Just (Pb.RegisterUsernameResultOk success) ->
+          Ok success
+        Just (Pb.RegisterUsernameResultError e) ->
+          Err (Debug.toString e) 
+        Nothing ->
+          Err "Invalid server response (neither Ok nor Error in protobuf)" 
+
+simplifySignOutResponse : Result Http.Error Pb.SignOutResponse -> Result String ()
+simplifySignOutResponse res =
+  case res of
+    Err e -> Err (Debug.toString e)
+    Ok {} -> Ok ()
