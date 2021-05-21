@@ -17,19 +17,21 @@ import Widgets.CopyWidget as CopyWidget
 
 type Msg
   = Copy String
-  | InvitationMsg SmallInvitationWidget.Msg
+  | SetInvitationWidget SmallInvitationWidget.State
+  | CreateInvitation SmallInvitationWidget.State Pb.CreateInvitationRequest
+  | CreateInvitationFinished (Result Http.Error Pb.CreateInvitationResponse)
   | RemoveTrust Username
   | SetTrustedFinished (Result Http.Error Pb.SetTrustedResponse)
 
 type alias Model =
-  { invitationWidget : SmallInvitationWidget.Model
+  { invitationWidget : SmallInvitationWidget.State
   , working : Bool
   , notification : Html Never
   }
 
 init : Model
 init =
-  { invitationWidget = SmallInvitationWidget.init Nothing
+  { invitationWidget = SmallInvitationWidget.init
   , working = False
   , notification = H.text ""
   }
@@ -42,10 +44,15 @@ update msg model =
       ( { model | working = True, notification = H.text "" }
       , Page.RequestCmd <| Page.SetTrustedRequest SetTrustedFinished {whoDepr=Just {kind=Just (Pb.KindUsername u)}, who=u, trusted=False}
       )
-    InvitationMsg widgetMsg ->
-      let (newWidget, widgetCmd) = SmallInvitationWidget.update widgetMsg model.invitationWidget in
-      ( { model | invitationWidget = newWidget }
-      , Page.mapCmd InvitationMsg widgetCmd
+    SetInvitationWidget widgetState ->
+      ( { model | invitationWidget = widgetState } , Page.NoCmd )
+    CreateInvitation widgetState req ->
+      ( { model | invitationWidget = widgetState }
+      , Page.RequestCmd <| Page.CreateInvitationRequest CreateInvitationFinished req
+      )
+    CreateInvitationFinished res ->
+      ( { model | invitationWidget = model.invitationWidget |> SmallInvitationWidget.handleCreateInvitationResponse res }
+      , Page.NoCmd
       )
     SetTrustedFinished res ->
       ( case res of
@@ -131,10 +138,17 @@ view globals model =
             <| D.toList relationships
         , H.br [] []
         , Utils.b "Invitations: "
-        , SmallInvitationWidget.view globals model.invitationWidget |> H.map InvitationMsg
+        , SmallInvitationWidget.view
+            { setState = SetInvitationWidget
+            , createInvitation = CreateInvitation
+            , copy = Copy
+            , destination = Nothing
+            , httpOrigin = globals.httpOrigin
+            }
+            model.invitationWidget
         , H.div [] [H.text "Outstanding:", viewInvitations globals (\inv -> inv.acceptedByDepr == Nothing) ]
         , H.div [] [H.text "Past:",        viewInvitations globals (\inv -> inv.acceptedByDepr /= Nothing) ]
         ]
 
 subscriptions : Model -> Sub Msg
-subscriptions model = SmallInvitationWidget.subscriptions model.invitationWidget |> Sub.map InvitationMsg
+subscriptions _ = Sub.none

@@ -15,20 +15,24 @@ import Widgets.SmallInvitationWidget as SmallInvitationWidget
 import Widgets.ViewPredictionsWidget as ViewPredictionsWidget
 import Page
 import Page.Program
+import Page exposing (Command(..))
 
 type alias Model =
   { username : Username
   , predictionsWidget : ViewPredictionsWidget.Model
   , working : Bool
   , notification : Html Never
-  , invitationWidget : SmallInvitationWidget.Model
+  , invitationWidget : SmallInvitationWidget.State
   }
 
 type Msg
   = SetTrusted Bool
   | SetTrustedFinished (Result Http.Error Pb.SetTrustedResponse)
   | PredictionsMsg ViewPredictionsWidget.Msg
-  | InvitationMsg SmallInvitationWidget.Msg
+  | SetInvitationWidget SmallInvitationWidget.State
+  | CreateInvitation SmallInvitationWidget.State Pb.CreateInvitationRequest
+  | CreateInvitationFinished (Result Http.Error Pb.CreateInvitationResponse)
+  | Copy String
 
 init : JD.Value -> (Model, Page.Command Msg)
 init flags =
@@ -44,7 +48,7 @@ init flags =
     , predictionsWidget = predsWidget
     , working = False
     , notification = H.text ""
-    , invitationWidget = SmallInvitationWidget.init Nothing
+    , invitationWidget = SmallInvitationWidget.init
     }
   , Page.NoCmd
   )
@@ -75,9 +79,20 @@ update msg model =
         ( { model | predictionsWidget = newWidget }
         , Page.mapCmd PredictionsMsg widgetCmd
         )
-    InvitationMsg widgetMsg ->
-      let (newWidget, innerCmd) = SmallInvitationWidget.update widgetMsg model.invitationWidget in
-      ( { model | invitationWidget = newWidget } , Page.mapCmd InvitationMsg innerCmd )
+    SetInvitationWidget widgetState ->
+      ( { model | invitationWidget = widgetState } , Page.NoCmd )
+    CreateInvitation widgetState req ->
+      ( { model | invitationWidget = widgetState }
+      , Page.RequestCmd <| Page.CreateInvitationRequest CreateInvitationFinished req
+      )
+    CreateInvitationFinished res ->
+      ( { model | invitationWidget = model.invitationWidget |> SmallInvitationWidget.handleCreateInvitationResponse res }
+      , Page.NoCmd
+      )
+    Copy s ->
+      ( model
+      , Page.CopyCmd s
+      )
 
 
 view : Page.Globals -> Model -> Browser.Document Msg
@@ -102,7 +117,14 @@ view globals model =
                   [ H.text "This user hasn't marked you as trusted! If you think that, in real life, they "
                   , Utils.i "do"
                   , H.text " trust you, send them an invitation: "
-                  , SmallInvitationWidget.view globals model.invitationWidget |> H.map InvitationMsg
+                  , SmallInvitationWidget.view
+                      { setState = SetInvitationWidget
+                      , createInvitation = CreateInvitation
+                      , copy = Copy
+                      , destination = Just <| "/username/" ++ model.username
+                      , httpOrigin = globals.httpOrigin
+                      }
+                      model.invitationWidget
                   ]
             , H.br [] []
             , if Page.getRelationship globals model.username |> Maybe.map .trusted |> Maybe.withDefault False then
@@ -131,7 +153,6 @@ subscriptions : Model -> Sub Msg
 subscriptions model =
   Sub.batch
     [ ViewPredictionsWidget.subscriptions model.predictionsWidget |> Sub.map PredictionsMsg
-    , SmallInvitationWidget.subscriptions model.invitationWidget |> Sub.map InvitationMsg
     ]
 
 pagedef : Page.Element Model Msg

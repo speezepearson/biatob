@@ -17,13 +17,12 @@ import Biatob.Proto.Mvp as Pb
 
 type alias Model =
   { authWidget : AuthWidget.State
-  , invitationWidget : SmallInvitationWidget.Model
+  , invitationWidget : SmallInvitationWidget.State
   , emailSettingsWidget : EmailSettingsWidget.Model
   }
 
 type Msg
-  = InvitationMsg SmallInvitationWidget.Msg
-  | EmailSettingsMsg EmailSettingsWidget.Msg
+  = EmailSettingsMsg EmailSettingsWidget.Msg
   | SetAuthWidget AuthWidget.State
   | LogInUsername AuthWidget.State Pb.LogInUsernameRequest
   | LogInUsernameFinished (Result Http.Error Pb.LogInUsernameResponse)
@@ -31,6 +30,10 @@ type Msg
   | RegisterUsernameFinished (Result Http.Error Pb.RegisterUsernameResponse)
   | SignOut AuthWidget.State Pb.SignOutRequest
   | SignOutFinished (Result Http.Error Pb.SignOutResponse)
+  | SetInvitationWidget SmallInvitationWidget.State
+  | CreateInvitation SmallInvitationWidget.State Pb.CreateInvitationRequest
+  | CreateInvitationFinished (Result Http.Error Pb.CreateInvitationResponse)
+  | Copy String
   | Ignore
 
 pagedef : Page.Element Model Msg
@@ -44,7 +47,7 @@ pagedef =
 init : JD.Value -> (Model, Page.Command Msg)
 init _ =
   ( { authWidget = AuthWidget.init
-    , invitationWidget = SmallInvitationWidget.init Nothing
+    , invitationWidget = SmallInvitationWidget.init
     , emailSettingsWidget = EmailSettingsWidget.init
     }
   , Page.NoCmd
@@ -57,9 +60,6 @@ update msg model =
     EmailSettingsMsg widgetMsg ->
       let (newWidget, innerCmd) = EmailSettingsWidget.update widgetMsg model.emailSettingsWidget in
       ( { model | emailSettingsWidget = newWidget } , Page.mapCmd EmailSettingsMsg innerCmd )
-    InvitationMsg widgetMsg ->
-      let (newWidget, innerCmd) = SmallInvitationWidget.update widgetMsg model.invitationWidget in
-      ( { model | invitationWidget = newWidget } , Page.mapCmd InvitationMsg innerCmd )
     SetAuthWidget widgetState ->
       ( { model | authWidget = widgetState } , Page.NoCmd )
     LogInUsername widgetState req ->
@@ -85,6 +85,20 @@ update msg model =
     SignOutFinished res ->
       ( { model | authWidget = model.authWidget |> AuthWidget.handleSignOutResponse res }
       , Page.NoCmd
+      )
+    SetInvitationWidget widgetState ->
+      ( { model | invitationWidget = widgetState } , Page.NoCmd )
+    CreateInvitation widgetState req ->
+      ( { model | invitationWidget = widgetState }
+      , Page.RequestCmd <| Page.CreateInvitationRequest CreateInvitationFinished req
+      )
+    CreateInvitationFinished res ->
+      ( { model | invitationWidget = model.invitationWidget |> SmallInvitationWidget.handleCreateInvitationResponse res }
+      , Page.NoCmd
+      )
+    Copy s ->
+      ( model
+      , Page.CopyCmd s
       )
     Ignore ->
       ( model , Page.NoCmd )
@@ -183,7 +197,14 @@ view globals model =
             [ H.text " Send your friends invitation links so I know who you trust to bet against you:   "
             , H.div [HA.style "border" "1px solid gray", HA.style "padding" "0.5em", HA.style "margin" "0.5em"]
                 [ if Page.isLoggedIn globals then
-                    SmallInvitationWidget.view globals model.invitationWidget |> H.map InvitationMsg
+                    SmallInvitationWidget.view
+                      { setState = SetInvitationWidget
+                      , createInvitation = CreateInvitation
+                      , copy = Copy
+                      , destination = Nothing
+                      , httpOrigin = globals.httpOrigin
+                      }
+                      model.invitationWidget
                   else
                     H.text "(first, log in)"
                 ]
@@ -206,9 +227,6 @@ view globals model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-  Sub.batch
-    [ SmallInvitationWidget.subscriptions model.invitationWidget |> Sub.map InvitationMsg
-    , EmailSettingsWidget.subscriptions model.emailSettingsWidget |> Sub.map EmailSettingsMsg
-    ]
+  EmailSettingsWidget.subscriptions model.emailSettingsWidget |> Sub.map EmailSettingsMsg
 
 main = Page.Program.page pagedef

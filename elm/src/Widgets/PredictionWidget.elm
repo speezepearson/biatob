@@ -18,26 +18,30 @@ import Widgets.SmallInvitationWidget as SmallInvitationWidget
 import Page
 
 type Msg
-  = InvitationMsg SmallInvitationWidget.Msg
-  | StakeMsg StakeWidget.Msg
+  = SetInvitationWidget SmallInvitationWidget.State
+  | CreateInvitation SmallInvitationWidget.State Pb.CreateInvitationRequest
+  | CreateInvitationFinished (Result Http.Error Pb.CreateInvitationResponse)
+  | SetStakeWidget StakeWidget.State
+  | Stake StakeWidget.State Pb.StakeRequest
+  | StakeFinished (Result Http.Error Pb.StakeResponse)
   | Copy String
   | Resolve Pb.Resolution
   | ResolveFinished (Result Http.Error Pb.ResolveResponse)
 type alias Model =
-  { stakeForm : StakeWidget.Model
+  { stakeWidget : StakeWidget.State
   , working : Bool
   , notification : Html Never
-  , invitationWidget : SmallInvitationWidget.Model
+  , invitationWidget : SmallInvitationWidget.State
   , linkTitle : Bool
   , predictionId : PredictionId
   }
 
 init : PredictionId -> Model
 init predictionId =
-  { stakeForm = StakeWidget.init predictionId
+  { stakeWidget = StakeWidget.init predictionId
   , working = False
   , notification = H.text ""
-  , invitationWidget = SmallInvitationWidget.init (Just <| "/p/" ++ String.fromInt predictionId)
+  , invitationWidget = SmallInvitationWidget.init
   , linkTitle = False
   , predictionId = predictionId
   }
@@ -48,19 +52,30 @@ setLinkTitle linkTitle model =
 update : Msg -> Model -> ( Model , Page.Command Msg )
 update msg model =
   case msg of
-    InvitationMsg widgetMsg ->
-      let (newWidget, widgetCmd) = SmallInvitationWidget.update widgetMsg model.invitationWidget in
-      ( { model | invitationWidget = newWidget }
-      , Page.mapCmd InvitationMsg widgetCmd
+    SetInvitationWidget widgetState ->
+      ( { model | invitationWidget = widgetState } , Page.NoCmd )
+    CreateInvitation widgetState req ->
+      ( { model | invitationWidget = widgetState }
+      , Page.RequestCmd <| Page.CreateInvitationRequest CreateInvitationFinished req
       )
-    StakeMsg widgetMsg ->
-      let (newWidget, widgetCmd) = StakeWidget.update widgetMsg model.stakeForm in
-      ( { model | stakeForm = newWidget }
-      , Page.mapCmd StakeMsg widgetCmd
+    CreateInvitationFinished res ->
+      ( { model | invitationWidget = model.invitationWidget |> SmallInvitationWidget.handleCreateInvitationResponse res }
+      , Page.NoCmd
       )
     Copy s ->
       ( model
       , Page.CopyCmd s
+      )
+
+    SetStakeWidget widgetState ->
+      ( { model | stakeWidget = widgetState } , Page.NoCmd )
+    Stake widgetState req ->
+      ( { model | stakeWidget = widgetState }
+      , Page.RequestCmd <| Page.StakeRequest StakeFinished req
+      )
+    StakeFinished res ->
+      ( { model | stakeWidget = model.stakeWidget |> StakeWidget.handleStakeResponse res }
+      , Page.NoCmd
       )
 
     Resolve resolution ->
@@ -99,7 +114,14 @@ viewStakeWidgetOrExcuse globals model =
       H.text ""
     else case Page.getRelationship globals creator |> Maybe.map (\r -> (r.trusting, r.trusted)) |> Maybe.withDefault (False, False) of
       (True, True) ->
-        StakeWidget.view globals model.stakeForm |> H.map StakeMsg
+        StakeWidget.view
+          { setState = SetStakeWidget
+          , stake = Stake
+          , predictionId = model.predictionId
+          , prediction = Utils.must "TODO" <| D.get model.predictionId globals.serverState.predictions
+          , now = globals.now
+          }
+          model.stakeWidget
       (False, False) ->
         H.div []
           [ H.text "You and "
@@ -107,7 +129,7 @@ viewStakeWidgetOrExcuse globals model =
           , H.text " don't trust each other! If, in real life, you "
           , Utils.i "do"
           , H.text " trust each other to pay your debts, send them an invitation! "
-          , SmallInvitationWidget.view globals model.invitationWidget |> H.map InvitationMsg
+          , viewInvitationWidget globals model
           ]
       (True, False) ->
         H.div []
@@ -120,7 +142,7 @@ viewStakeWidgetOrExcuse globals model =
           [ Utils.renderUser creator, H.text " hasn't marked you as trusted! If you think that, in real life, they "
           , Utils.i "do"
           , H.text " trust you to pay your debts, send them an invitation link: "
-          , SmallInvitationWidget.view globals model.invitationWidget |> H.map InvitationMsg
+          , viewInvitationWidget globals model
           ]
 
 creatorWinningsByBettor : Bool -> List Pb.Trade -> Dict Username Cents
@@ -390,7 +412,7 @@ view globals model =
           [ H.text "If you want to link to your prediction, here are some snippets of HTML you could copy-paste:"
           , viewEmbedInfo globals model
           , H.text "If there are people you want to participate, but you haven't already established trust with them in Biatob, send them invitations: "
-          , SmallInvitationWidget.view globals model.invitationWidget |> H.map InvitationMsg
+          , viewInvitationWidget globals model
           ]
       else
         H.text ""
@@ -435,9 +457,16 @@ viewEmbedInfo globals model =
         ]
       ]
 
+viewInvitationWidget : Page.Globals -> Model -> Html Msg
+viewInvitationWidget globals model =
+  SmallInvitationWidget.view
+    { setState = SetInvitationWidget
+    , createInvitation = CreateInvitation
+    , copy = Copy
+    , destination = Just <| "/p/" ++ String.fromInt model.predictionId
+    , httpOrigin = globals.httpOrigin
+    }
+    model.invitationWidget
+
 subscriptions : Model -> Sub Msg
-subscriptions model =
-  Sub.batch
-    [ StakeWidget.subscriptions model.stakeForm |> Sub.map StakeMsg
-    , SmallInvitationWidget.subscriptions model.invitationWidget |> Sub.map InvitationMsg
-    ]
+subscriptions _ = Sub.none

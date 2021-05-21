@@ -12,16 +12,18 @@ import Biatob.Proto.Mvp as Pb
 import Utils exposing (b, Cents, PredictionId)
 
 import Page
+import API
 
 epsilon = 0.0000001 -- 🎵 I hate floating-point arithmetic 🎶
 
-type Msg
-  = SetBelieverStakeField String
-  | SetSkepticStakeField String
-  | Stake {bettorIsASkeptic : Bool, stakeCents : Cents}
-  | StakeFinished (Result Http.Error Pb.StakeResponse)
-
-type alias Model =
+type alias Config msg =
+  { setState : State -> msg
+  , stake : State -> Pb.StakeRequest -> msg
+  , predictionId : PredictionId
+  , prediction : Pb.UserPredictionView
+  , now : Time.Posix
+  }
+type alias State =
   { believerStakeField : String
   , skepticStakeField : String
   , working : Bool
@@ -30,60 +32,44 @@ type alias Model =
   , predictionId : PredictionId
   }
 
-update : Msg -> Model -> ( Model , Page.Command Msg )
-update msg model =
-  case msg of
-    SetBelieverStakeField s -> ( { model | believerStakeField = s } , Page.NoCmd)
-    SetSkepticStakeField s -> ( { model | skepticStakeField = s } , Page.NoCmd)
-    Stake {bettorIsASkeptic, stakeCents} ->
-      ( { model | working = True , notification = H.text "" }
-      , Page.RequestCmd <| Page.StakeRequest StakeFinished {predictionId=model.predictionId, bettorIsASkeptic=bettorIsASkeptic, bettorStakeCents=stakeCents}
-      )
-    StakeFinished res ->
-      case res of
-        Err e ->
-          ( { model | working = False , notification = Utils.redText (Debug.toString e) } , Page.NoCmd )
-        Ok resp ->
-          case resp.stakeResult of
-            Just (Pb.StakeResultOk newPrediction) ->
-              ( { model | working = False
-                        , notification = Utils.greenText "Committed!"
-                        , believerStakeField = "0"
-                        , skepticStakeField = "0"
-                        }
-              , Page.NoCmd
-              )
-            Just (Pb.StakeResultError e) ->
-              ( { model | working = False , notification = Utils.redText (Debug.toString e) } , Page.NoCmd )
-            Nothing ->
-              ( { model | working = False , notification = Utils.redText "Invalid server response (neither Ok nor Error in protobuf)" } , Page.NoCmd )
+handleStakeResponse : Result Http.Error Pb.StakeResponse -> State -> State
+handleStakeResponse res state =
+  case API.simplifyStakeResponse res of
+    Ok resp ->
+      { state | working = False
+              , notification = Utils.greenText "Committed!"
+              , believerStakeField = "0"
+              , skepticStakeField = "0"
+      }
+    Err e ->
+      { state | working = False
+              , notification = Utils.redText e
+      }
 
-
-view : Page.Globals -> Model -> Html Msg
-view globals model =
+view : Config msg -> State -> Html msg
+view config state =
   let
-    prediction = globals.serverState.predictions |> Dict.get model.predictionId |> Utils.must "prediction for StakeWidget is not loaded"
-    creator = prediction.creator
-    certainty = Utils.mustPredictionCertainty prediction
+    creator = config.prediction.creator
+    certainty = Utils.mustPredictionCertainty config.prediction
 
-    isClosed = Utils.timeToUnixtime globals.now > prediction.closesUnixtime
-    disableInputs = isClosed || Utils.resolutionIsTerminal (Utils.currentResolution prediction)
+    isClosed = Utils.timeToUnixtime config.now > config.prediction.closesUnixtime
+    disableInputs = isClosed || Utils.resolutionIsTerminal (Utils.currentResolution config.prediction)
     creatorStakeFactorVsBelievers = (1 - certainty.high) / certainty.high
     creatorStakeFactorVsSkeptics = certainty.low / (1 - certainty.low)
-    maxBelieverStakeCents = if creatorStakeFactorVsBelievers == 0 then 0 else toFloat prediction.remainingStakeCentsVsBelievers / creatorStakeFactorVsBelievers + 0.001 |> floor
-    maxSkepticStakeCents = if creatorStakeFactorVsSkeptics == 0 then 0 else toFloat prediction.remainingStakeCentsVsSkeptics / creatorStakeFactorVsSkeptics + 0.001 |> floor
+    maxBelieverStakeCents = if creatorStakeFactorVsBelievers == 0 then 0 else toFloat config.prediction.remainingStakeCentsVsBelievers / creatorStakeFactorVsBelievers + 0.001 |> floor
+    maxSkepticStakeCents = if creatorStakeFactorVsSkeptics == 0 then 0 else toFloat config.prediction.remainingStakeCentsVsSkeptics / creatorStakeFactorVsSkeptics + 0.001 |> floor
   in
   H.div []
     [ if certainty.low == 0 then H.text "" else
-      let skepticStakeCents = parseCents {max=maxSkepticStakeCents} model.skepticStakeField in
+      let skepticStakeCents = parseCents {max=maxSkepticStakeCents} state.skepticStakeField in
       H.p []
       [ H.text "Do you ", b "strongly doubt", H.text " that this will happen? Then stake $"
       , H.input
           [ HA.style "width" "5em"
           , HA.type_"number", HA.min "0", HA.max (toFloat maxSkepticStakeCents / 100 + epsilon |> String.fromFloat), HA.step "any"
           , HA.disabled disableInputs
-          , HE.onInput SetSkepticStakeField
-          , HA.value model.skepticStakeField
+          , HE.onInput (\s -> config.setState {state | skepticStakeField = s})
+          , HA.value state.skepticStakeField
           ]
           []
         |> Utils.appendValidationError (Utils.resultToErr skepticStakeCents)
@@ -93,22 +79,22 @@ view globals model =
       , H.button
           (case skepticStakeCents of
             Ok stake ->
-              [ HE.onClick (Stake {bettorIsASkeptic=True, stakeCents=stake}) ]
+              [ HE.onClick (config.stake {state | working=True, notification=H.text ""} {predictionId=config.predictionId, bettorIsASkeptic=True, bettorStakeCents=stake}) ]
             Err _ ->
               [ HA.disabled True ]
           )
           [H.text "Commit"]
       ]
     , if certainty.high == 1 then H.text "" else
-      let believerStakeCents = parseCents {max=maxBelieverStakeCents} model.believerStakeField in
+      let believerStakeCents = parseCents {max=maxBelieverStakeCents} state.believerStakeField in
       H.p []
       [ H.text "Do you ", b "strongly believe", H.text " that this will happen? Then stake $"
       , H.input
           [ HA.style "width" "5em"
           , HA.type_"number", HA.min "0", HA.max (toFloat maxBelieverStakeCents / 100 + epsilon |> String.fromFloat), HA.step "any"
           , HA.disabled disableInputs
-          , HE.onInput SetBelieverStakeField
-          , HA.value model.believerStakeField
+          , HE.onInput (\s -> config.setState {state | believerStakeField=s})
+          , HA.value state.believerStakeField
           ]
           []
         |> Utils.appendValidationError (Utils.resultToErr believerStakeCents)
@@ -118,16 +104,16 @@ view globals model =
       , H.button
           (case believerStakeCents of
             Ok stake ->
-              [ HE.onClick (Stake {bettorIsASkeptic=False, stakeCents=stake}) ]
+              [ HE.onClick (config.stake {state | working=True, notification=H.text ""} {predictionId=config.predictionId, bettorIsASkeptic=False, bettorStakeCents=stake}) ]
             Err _ ->
               [ HA.disabled True ]
           )
           [H.text "Commit"]
       ]
-    , model.notification |> H.map never
+    , state.notification |> H.map never
     ]
 
-init : PredictionId -> Model
+init : PredictionId -> State
 init predictionId =
   { believerStakeField = "0"
   , skepticStakeField = "0"
@@ -144,6 +130,3 @@ parseCents {max} s =
     Just dollars ->
       let n = round (100*dollars) in
       if n < 0 || n > max then Err ("must be between $0 and " ++ Utils.formatCents max) else Ok n
-
-subscriptions : Model -> Sub Msg
-subscriptions _ = Sub.none

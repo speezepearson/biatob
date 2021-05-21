@@ -11,59 +11,38 @@ import Utils
 import Utils
 import Widgets.CopyWidget as CopyWidget
 import Page
+import API
 
 type Msg
   = Copy String
   | CreateInvitation
   | CreateInvitationFinished (Result Http.Error Pb.CreateInvitationResponse)
-type alias Model =
-  { invitationId : Maybe Pb.InvitationId
+type alias Config msg =
+  { setState : State -> msg
+  , createInvitation : State -> Pb.CreateInvitationRequest -> msg
+  , copy : String -> msg
   , destination : Maybe String
-  , working : Bool
-  , notification : Html Never
+  , httpOrigin : String
   }
+type State
+  = Unstarted
+  | AwaitingResponse
+  | Succeeded Pb.InvitationId
+  | Failed String
 
-update : Msg -> Model -> ( Model , Page.Command Msg )
-update msg model =
-  case msg of
-    Copy s -> ( model , Page.CopyCmd s )
-    CreateInvitation ->
-      ( { model | working = False , notification = H.text "" }
-      , Page.RequestCmd <| Page.CreateInvitationRequest CreateInvitationFinished {notes=""}
-      )
-    CreateInvitationFinished res ->
-      ( case res of
-          Err e ->
-            { model | working = False , notification = Utils.redText (Debug.toString e) }
-          Ok resp ->
-            case resp.createInvitationResult of
-              Just (Pb.CreateInvitationResultOk result) ->
-                { model | working = False
-                        , notification = H.text ""
-                        , invitationId = result.id
-                }
-              Just (Pb.CreateInvitationResultError e) ->
-                { model | working = False , notification = Utils.redText (Debug.toString e) }
-              Nothing ->
-                { model | working = False , notification = Utils.redText "Invalid server response (neither Ok nor Error in protobuf)" }
-      , Page.NoCmd
-      )
+handleCreateInvitationResponse : Result Http.Error Pb.CreateInvitationResponse -> State -> State
+handleCreateInvitationResponse res _ =
+  case API.simplifyCreateInvitationResponse res of
+    Ok resp -> Succeeded <| Utils.must "TODO" resp.id
+    Err e -> Failed e
 
-setInvitation : Maybe Pb.InvitationId -> Model -> Model
-setInvitation inv model = { model | invitationId = inv }
+init : State
+init = Unstarted
 
-init : Maybe String -> Model
-init destination =
-  { invitationId = Nothing
-  , destination = destination
-  , working = False
-  , notification = H.text ""
-  }
-
-view : Page.Globals -> Model -> Html Msg
-view globals model =
+view : Config msg -> State -> Html msg
+view config model =
   let
-    help : Html Msg
+    help : Html msg
     help =
       H.details [HA.style "display" "inline", HA.style "outline" "1px solid #cccccc"]
         [ H.summary [] [H.text "(huh?)"]
@@ -74,23 +53,29 @@ view globals model =
         ]
   in
   H.span []
-    [ case model.invitationId of
-        Nothing -> H.text ""
-        Just id ->
-          CopyWidget.view Copy (globals.httpOrigin ++ Utils.invitationPath id ++ case model.destination of
+    [ case model of
+        Succeeded id ->
+          CopyWidget.view config.copy (config.httpOrigin ++ Utils.invitationPath id ++ case config.destination of
              Just d -> "?dest="++d
              Nothing -> "" )
+        _ -> H.text ""
     , H.button
-        [ HA.disabled model.working
-        , HE.onClick CreateInvitation
+        [ HA.disabled (model == AwaitingResponse)
+        , HE.onClick (config.createInvitation AwaitingResponse {notes=""})
         ]
-        [ H.text <| if model.working then "Creating..." else if model.invitationId == Nothing then "Create invitation" else "Create another"
+        [ H.text <| case model of
+            Unstarted -> "Create invitation"
+            AwaitingResponse -> "Creating..."
+            Succeeded _ -> "Create another"
+            Failed e -> "Try again"
         ]
     , H.text " "
-    , model.notification |> H.map never
+    , case model of
+        Failed e -> Utils.redText e
+        _ -> H.text ""
     , H.text " "
     , help
     ]
 
-subscriptions : Model -> Sub Msg
+subscriptions : State -> Sub Msg
 subscriptions _ = Sub.none

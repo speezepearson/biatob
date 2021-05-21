@@ -6,22 +6,12 @@ import Html.Events as HE
 import Html exposing (s)
 
 import Biatob.Proto.Mvp as Pb
-import Utils exposing (Username, Password)
+import Utils
 import Http
 
 import API
 import Utils
 
-type Msg
-  = SetUsernameField Username
-  | SetPasswordField Password
-  | Ignore
-  | LogInUsername
-  | LogInUsernameFinished (Result Http.Error Pb.LogInUsernameResponse)
-  | RegisterUsername
-  | RegisterUsernameFinished (Result Http.Error Pb.RegisterUsernameResponse)
-  | SignOut
-  | SignOutFinished (Result Http.Error Pb.SignOutResponse)
 type alias Config msg =
   { setState : State -> msg
   , logInUsername : State -> Pb.LogInUsernameRequest -> msg

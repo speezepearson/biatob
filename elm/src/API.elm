@@ -89,3 +89,29 @@ simplifySignOutResponse res =
   case res of
     Err e -> Err (Debug.toString e)
     Ok {} -> Ok ()
+
+simplifyCreateInvitationResponse : Result Http.Error Pb.CreateInvitationResponse -> Result String Pb.CreateInvitationResponseResult
+simplifyCreateInvitationResponse res =
+  case res of
+    Err e -> Err (Debug.toString e)
+    Ok resp ->
+      case resp.createInvitationResult of
+        Just (Pb.CreateInvitationResultOk result) ->
+          Ok result
+        Just (Pb.CreateInvitationResultError e) ->
+          Err (Debug.toString e) 
+        Nothing ->
+          Err "Invalid server response (neither Ok nor Error in protobuf)" 
+
+simplifyStakeResponse : Result Http.Error Pb.StakeResponse -> Result String Pb.UserPredictionView
+simplifyStakeResponse res =
+  case res of
+    Err e -> Err (Debug.toString e)
+    Ok resp ->
+      case resp.stakeResult of
+        Just (Pb.StakeResultOk result) ->
+          Ok result
+        Just (Pb.StakeResultError e) ->
+          Err (Debug.toString e) 
+        Nothing ->
+          Err "Invalid server response (neither Ok nor Error in protobuf)" 
