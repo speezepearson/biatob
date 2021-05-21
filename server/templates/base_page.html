@@ -39,15 +39,15 @@
       });
       var usernameField = document.getElementsByClassName('username-field')[0];
       if (usernameField) usernameField.focus();
-      app.ports.pageCopy.subscribe(s => {
+      [app.ports.copy, app.ports.pageCopy].forEach(port => {if (port) port.subscribe(s => {
         var e = document.createElement('input');
         e.value = s;
         document.body.appendChild(e);
         e.select();
         document.execCommand('copy');
         e.remove();
-      })
-      app.ports.navigate.subscribe(dest => {if (dest) {window.location=dest} else window.location.reload()});
+      })})
+      if (app.ports.navigate) app.ports.navigate.subscribe(dest => {if (dest) {window.location=dest} else window.location.reload()});
 
       // Elm doesn't watch for external DOM modification, so when password managers fill things in,
       // we need to notify Elm.

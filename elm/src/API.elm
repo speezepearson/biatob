@@ -167,3 +167,16 @@ simplifyChangePasswordResponse res =
           Err (Debug.toString e)
         Nothing ->
           Err "Invalid server response (neither Ok nor Error in protobuf)"
+
+simplifySetTrustedResponse : Result Http.Error Pb.SetTrustedResponse -> Result String Pb.GenericUserInfo
+simplifySetTrustedResponse res =
+  case res of
+    Err e -> Err (Debug.toString e)
+    Ok resp ->
+      case resp.setTrustedResult of
+        Just (Pb.SetTrustedResultOk result) ->
+          Ok result
+        Just (Pb.SetTrustedResultError e) ->
+          Err (Debug.toString e)
+        Nothing ->
+          Err "Invalid server response (neither Ok nor Error in protobuf)"

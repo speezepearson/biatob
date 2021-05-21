@@ -206,87 +206,25 @@ type Response
 updateGlobalsFromResponse : Response -> Globals -> Globals
 updateGlobalsFromResponse resp globals =
   case resp of
-    WhoamiResponse _ _ -> globals
-    SignOutResponse _ res -> case res of
-      Ok _ -> { globals | authToken = Nothing , serverState = globals.serverState |> \s -> { s | settings = Nothing } }
-      Err _ -> globals
-    RegisterUsernameResponse _ res -> case res of
-      Ok {registerUsernameResult} -> case registerUsernameResult of
-        Just (Pb.RegisterUsernameResultOk authSuccess) -> { globals | authToken = Just (authSuccess |> Utils.mustAuthSuccessToken) , serverState = globals.serverState |> \s -> { s | settings = Just (Utils.mustAuthSuccessUserInfo authSuccess)} }
-        _ -> globals
-      Err _ -> globals
-    LogInUsernameResponse _ res -> case res of
-      Ok {logInUsernameResult} -> case logInUsernameResult of
-        Just (Pb.LogInUsernameResultOk authSuccess) -> { globals | authToken = Just (authSuccess |> Utils.mustAuthSuccessToken) , serverState = globals.serverState |> \s -> { s | settings = Just (Utils.mustAuthSuccessUserInfo authSuccess)} }
-        _ -> globals
-      Err _ -> globals
-    CreatePredictionResponse _ _ -> globals
-    GetPredictionResponse req res -> case res of
-      Ok {getPredictionResult} -> case getPredictionResult of
-        Just (Pb.GetPredictionResultPrediction prediction) -> { globals | serverState = globals.serverState |> addPrediction req.predictionId prediction }
-        _ -> globals
-      Err _ -> globals
-    ListMyStakesResponse {} res -> case res of
-      Ok {listMyStakesResult} -> case listMyStakesResult of
-        Just (Pb.ListMyStakesResultOk predictions) -> { globals | serverState = globals.serverState |> addPredictions predictions }
-        _ -> globals
-      Err _ -> globals
-    ListPredictionsResponse _ res -> case res of
-      Ok {listPredictionsResult} -> case listPredictionsResult of
-        Just (Pb.ListPredictionsResultOk predictions) -> { globals | serverState = globals.serverState |> addPredictions predictions }
-        _ -> globals
-      Err _ -> globals
-    StakeResponse req res -> case res of
-      Ok {stakeResult} -> case Debug.log "stakeResult" stakeResult of
-        Just (Pb.StakeResultOk newPrediction) -> { globals | serverState = globals.serverState |> addPrediction req.predictionId newPrediction }
-        _ -> globals
-      Err _ -> globals
-    ResolveResponse req res -> case res of
-      Ok {resolveResult} -> case Debug.log "resolveResult" resolveResult of
-        Just (Pb.ResolveResultOk newPrediction) -> { globals | serverState = globals.serverState |> addPrediction req.predictionId newPrediction }
-        _ -> globals
-      Err _ -> globals
-    SetTrustedResponse _ res -> case res of
-      Ok {setTrustedResult} -> case Debug.log "setTrustedResult" setTrustedResult of
-        Just (Pb.SetTrustedResultOk userInfo) -> Debug.log "globals before update" globals |> updateUserInfo (\_ -> userInfo) |> Debug.log "globals after update"
-        _ -> globals
-      Err _ -> globals
-    GetUserResponse req res -> case res of
-      Ok {getUserResult} -> case Debug.log "getUserResult" getUserResult of
-        Just (Pb.GetUserResultOk relationship) -> { globals | serverState = globals.serverState |> addRelationship req.who relationship }
-        _ -> globals
-      Err _ -> globals
-    ChangePasswordResponse _ _ -> globals
-    SetEmailResponse _ res -> case res of
-      Ok {setEmailResult} -> case setEmailResult of
-        Just (Pb.SetEmailResultOk email) -> globals |> updateUserInfo (\u -> { u | email = Just email })
-        _ -> globals
-      Err _ -> globals
-    VerifyEmailResponse _ res -> case res of
-      Ok {verifyEmailResult} -> case verifyEmailResult of
-        Just (Pb.VerifyEmailResultOk email) -> globals |> updateUserInfo (\u -> { u | email = Just email })
-        _ -> globals
-      Err _ -> globals
-    GetSettingsResponse _ res -> case res of
-      Ok {getSettingsResult} -> case getSettingsResult of
-        Just (Pb.GetSettingsResultOk newInfo) -> globals |> updateUserInfo (always newInfo)
-        _ -> globals
-      Err _ -> globals
-    UpdateSettingsResponse _ res -> case res of
-      Ok {updateSettingsResult} -> case updateSettingsResult of
-        Just (Pb.UpdateSettingsResultOk newInfo) -> globals |> updateUserInfo (always newInfo)
-        _ -> globals
-      Err _ -> globals
-    CreateInvitationResponse _ res -> case res of
-      Ok {createInvitationResult} -> case createInvitationResult of
-        Just (Pb.CreateInvitationResultOk result) -> globals |> updateUserInfo (\_ -> Utils.must "TODO" result.userInfo)
-        _ -> globals
-      Err _ -> globals
-    AcceptInvitationResponse _ res -> case res of
-      Ok {acceptInvitationResult} -> case acceptInvitationResult of
-        Just (Pb.AcceptInvitationResultOk userInfo) -> globals |> updateUserInfo (\_ -> userInfo)
-        _ -> globals
-      Err _ -> globals
+    WhoamiResponse req res -> handleWhoamiResponse req res globals
+    SignOutResponse req res -> handleSignOutResponse req res globals
+    RegisterUsernameResponse req res -> handleRegisterUsernameResponse req res globals
+    LogInUsernameResponse req res -> handleLogInUsernameResponse req res globals
+    CreatePredictionResponse req res -> handleCreatePredictionResponse req res globals
+    GetPredictionResponse req res -> handleGetPredictionResponse req res globals
+    ListMyStakesResponse req res -> handleListMyStakesResponse req res globals
+    ListPredictionsResponse req res -> handleListPredictionsResponse req res globals
+    StakeResponse req res -> handleStakeResponse req res globals
+    ResolveResponse req res -> handleResolveResponse req res globals
+    SetTrustedResponse req res -> handleSetTrustedResponse req res globals
+    GetUserResponse req res -> handleGetUserResponse req res globals
+    ChangePasswordResponse req res -> handleChangePasswordResponse req res globals
+    SetEmailResponse req res -> handleSetEmailResponse req res globals
+    VerifyEmailResponse req res -> handleVerifyEmailResponse req res globals
+    GetSettingsResponse req res -> handleGetSettingsResponse req res globals
+    UpdateSettingsResponse req res -> handleUpdateSettingsResponse req res globals
+    CreateInvitationResponse req res -> handleCreateInvitationResponse req res globals
+    AcceptInvitationResponse req res -> handleAcceptInvitationResponse req res globals
 
 addPrediction : PredictionId -> Pb.UserPredictionView -> ServerState -> ServerState
 addPrediction predictionId prediction state =
@@ -299,25 +237,6 @@ addPredictions predictions state =
 addRelationship : Username -> Pb.Relationship -> ServerState -> ServerState
 addRelationship username relationship state =
   { state | settings = state.settings |> Maybe.map (\s -> { s | relationships = s.relationships |> Dict.insert username (Just relationship) }) }
-
-globalsDecoder : JD.Decoder Globals
-globalsDecoder =
-  (JD.field "authSuccessPbB64" <| JD.nullable <| Utils.pbB64Decoder Pb.authSuccessDecoder) |> JD.andThen (\authSuccess ->
-  (JD.maybe <| JD.field "predictionsPbB64" <| Utils.pbB64Decoder Pb.predictionsByIdDecoder) |> JD.map (Maybe.map .predictions >> Maybe.withDefault Dict.empty) |> JD.andThen (\predictions ->
-  (JD.field "initUnixtime" JD.float |> JD.map Utils.unixtimeToTime) |> JD.andThen (\now ->
-  (JD.field "timeZoneOffsetMinutes" JD.int |> JD.map (\n -> Time.customZone n [])) |> JD.andThen (\timeZone ->
-  (JD.field "httpOrigin" JD.string) |> JD.andThen (\httpOrigin ->
-    JD.succeed
-      { authToken = Maybe.map Utils.mustAuthSuccessToken authSuccess
-      , serverState =
-          { settings = Maybe.map Utils.mustAuthSuccessUserInfo authSuccess
-          , predictions = predictions |> Utils.mustMapValues
-          }
-      , now = now
-      , timeZone = timeZone
-      , httpOrigin = httpOrigin
-      }
-  )))))
 
 updateUserInfo : (Pb.GenericUserInfo -> Pb.GenericUserInfo) -> Globals -> Globals
 updateUserInfo f globals =

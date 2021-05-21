@@ -1,4 +1,4 @@
-module Elements.Welcome exposing (main)
+port module Elements.Welcome exposing (main)
 
 import Browser
 import Html as H
@@ -12,131 +12,154 @@ import Widgets.AuthWidget as AuthWidget
 import Widgets.SmallInvitationWidget as SmallInvitationWidget
 import Widgets.EmailSettingsWidget as EmailSettingsWidget
 import Page
-import Page.Program
+import API
+import Widgets.Navbar as Navbar
 import Biatob.Proto.Mvp as Pb
 
+port copy : String -> Cmd msg
+
 type alias Model =
-  { authWidget : AuthWidget.State
+  { globals : Page.Globals
+  , navbarAuth : AuthWidget.State
+  , authWidget : AuthWidget.State
   , invitationWidget : SmallInvitationWidget.State
   , emailSettingsWidget : EmailSettingsWidget.State
   }
 
+type AuthWidgetLoc = Navbar | Inline
 type Msg
   = SetEmailWidget EmailSettingsWidget.State
   | UpdateSettings EmailSettingsWidget.State Pb.UpdateSettingsRequest
-  | UpdateSettingsFinished (Result Http.Error Pb.UpdateSettingsResponse)
+  | UpdateSettingsFinished Pb.UpdateSettingsRequest (Result Http.Error Pb.UpdateSettingsResponse)
   | SetEmail EmailSettingsWidget.State Pb.SetEmailRequest
-  | SetEmailFinished (Result Http.Error Pb.SetEmailResponse)
+  | SetEmailFinished Pb.SetEmailRequest (Result Http.Error Pb.SetEmailResponse)
   | VerifyEmail EmailSettingsWidget.State Pb.VerifyEmailRequest
-  | VerifyEmailFinished (Result Http.Error Pb.VerifyEmailResponse)
-  | SetAuthWidget AuthWidget.State
-  | LogInUsername AuthWidget.State Pb.LogInUsernameRequest
-  | LogInUsernameFinished (Result Http.Error Pb.LogInUsernameResponse)
-  | RegisterUsername AuthWidget.State Pb.RegisterUsernameRequest
-  | RegisterUsernameFinished (Result Http.Error Pb.RegisterUsernameResponse)
-  | SignOut AuthWidget.State Pb.SignOutRequest
-  | SignOutFinished (Result Http.Error Pb.SignOutResponse)
+  | VerifyEmailFinished Pb.VerifyEmailRequest (Result Http.Error Pb.VerifyEmailResponse)
+  | SetAuthWidget AuthWidgetLoc AuthWidget.State
+  | LogInUsername AuthWidgetLoc AuthWidget.State Pb.LogInUsernameRequest
+  | LogInUsernameFinished AuthWidgetLoc Pb.LogInUsernameRequest (Result Http.Error Pb.LogInUsernameResponse)
+  | RegisterUsername AuthWidgetLoc AuthWidget.State Pb.RegisterUsernameRequest
+  | RegisterUsernameFinished AuthWidgetLoc Pb.RegisterUsernameRequest (Result Http.Error Pb.RegisterUsernameResponse)
+  | SignOut AuthWidgetLoc AuthWidget.State Pb.SignOutRequest
+  | SignOutFinished AuthWidgetLoc Pb.SignOutRequest (Result Http.Error Pb.SignOutResponse)
   | SetInvitationWidget SmallInvitationWidget.State
   | CreateInvitation SmallInvitationWidget.State Pb.CreateInvitationRequest
-  | CreateInvitationFinished (Result Http.Error Pb.CreateInvitationResponse)
+  | CreateInvitationFinished Pb.CreateInvitationRequest (Result Http.Error Pb.CreateInvitationResponse)
   | Copy String
   | Ignore
 
-pagedef : Page.Element Model Msg
-pagedef =
-  { init = init
-  , view = view
-  , update = update
-  , subscriptions = subscriptions
-  }
-
-init : JD.Value -> (Model, Page.Command Msg)
-init _ =
-  ( { authWidget = AuthWidget.init
+init : JD.Value -> (Model, Cmd Msg)
+init flags =
+  ( { globals = JD.decodeValue Page.globalsDecoder flags |> Utils.mustResult "flags"
+    , navbarAuth = AuthWidget.init
+    , authWidget = AuthWidget.init
     , invitationWidget = SmallInvitationWidget.init
     , emailSettingsWidget = EmailSettingsWidget.init
     }
-  , Page.NoCmd
+  , Cmd.none
   )
 
+updateAuthWidget : AuthWidgetLoc -> (AuthWidget.State -> AuthWidget.State) -> Model -> Model
+updateAuthWidget loc f model =
+  case loc of
+    Navbar -> { model | navbarAuth = model.navbarAuth |> f }
+    Inline -> { model | authWidget = model.authWidget |> f }
 
-update : Msg -> Model -> (Model, Page.Command Msg)
+update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
     SetEmailWidget widgetState ->
-      ( { model | emailSettingsWidget = widgetState } , Page.NoCmd )
+      ( { model | emailSettingsWidget = widgetState } , Cmd.none )
     UpdateSettings widgetState req ->
       ( { model | emailSettingsWidget = widgetState }
-      , Page.RequestCmd <| Page.UpdateSettingsRequest UpdateSettingsFinished req
+      , API.postUpdateSettings (UpdateSettingsFinished req) req
       )
-    UpdateSettingsFinished res ->
-      ( { model | emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleUpdateSettingsResponse res }
-      , Page.NoCmd
+    UpdateSettingsFinished req res ->
+      ( { model | emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleUpdateSettingsResponse res
+                , globals = model.globals |> Page.handleUpdateSettingsResponse req res
+        }
+      , Cmd.none
       )
     SetEmail widgetState req ->
       ( { model | emailSettingsWidget = widgetState }
-      , Page.RequestCmd <| Page.SetEmailRequest SetEmailFinished req
+      , API.postSetEmail (SetEmailFinished req) req
       )
-    SetEmailFinished res ->
-      ( { model | emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleSetEmailResponse res }
-      , Page.NoCmd
+    SetEmailFinished req res ->
+      ( { model | emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleSetEmailResponse res
+                , globals = model.globals |> Page.handleSetEmailResponse req res
+        }
+      , Cmd.none
       )
     VerifyEmail widgetState req ->
       ( { model | emailSettingsWidget = widgetState }
-      , Page.RequestCmd <| Page.VerifyEmailRequest VerifyEmailFinished req
+      , API.postVerifyEmail (VerifyEmailFinished req) req
       )
-    VerifyEmailFinished res ->
-      ( { model | emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleVerifyEmailResponse res }
-      , Page.NoCmd
+    VerifyEmailFinished req res ->
+      ( { model | emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleVerifyEmailResponse res
+                , globals = model.globals |> Page.handleVerifyEmailResponse req res
+        }
+      , Cmd.none
       )
-    SetAuthWidget widgetState ->
-      ( { model | authWidget = widgetState } , Page.NoCmd )
-    LogInUsername widgetState req ->
-      ( { model | authWidget = widgetState }
-      , Page.RequestCmd <| Page.LogInUsernameRequest LogInUsernameFinished req
+    SetAuthWidget loc widgetState ->
+      ( updateAuthWidget loc (always widgetState) model , Cmd.none )
+    LogInUsername loc widgetState req ->
+      ( updateAuthWidget loc (always widgetState) model
+      , API.postLogInUsername (LogInUsernameFinished loc req) req
       )
-    LogInUsernameFinished res ->
-      ( { model | authWidget = model.authWidget |> AuthWidget.handleLogInUsernameResponse res }
-      , Page.NoCmd
+    LogInUsernameFinished loc req res ->
+      ( updateAuthWidget loc (AuthWidget.handleLogInUsernameResponse res) { model | globals = model.globals |> Page.handleLogInUsernameResponse req res }
+      , Cmd.none
       )
-    RegisterUsername widgetState req ->
-      ( { model | authWidget = widgetState }
-      , Page.RequestCmd <| Page.RegisterUsernameRequest RegisterUsernameFinished req
+    RegisterUsername loc widgetState req ->
+      ( updateAuthWidget loc (always widgetState) model
+      , API.postRegisterUsername (RegisterUsernameFinished loc req) req
       )
-    RegisterUsernameFinished res ->
-      ( { model | authWidget = model.authWidget |> AuthWidget.handleRegisterUsernameResponse res }
-      , Page.NoCmd
+    RegisterUsernameFinished loc req res ->
+      ( updateAuthWidget loc (AuthWidget.handleRegisterUsernameResponse res) { model | globals = model.globals |> Page.handleRegisterUsernameResponse req res }
+      , Cmd.none
       )
-    SignOut widgetState req ->
-      ( { model | authWidget = widgetState }
-      , Page.RequestCmd <| Page.SignOutRequest SignOutFinished req
+    SignOut loc widgetState req ->
+      ( updateAuthWidget loc (always widgetState) model
+      , API.postSignOut (SignOutFinished loc req) req
       )
-    SignOutFinished res ->
-      ( { model | authWidget = model.authWidget |> AuthWidget.handleSignOutResponse res }
-      , Page.NoCmd
+    SignOutFinished loc req res ->
+      ( updateAuthWidget loc (AuthWidget.handleSignOutResponse res) { model | globals = model.globals |> Page.handleSignOutResponse req res }
+      , Cmd.none
       )
     SetInvitationWidget widgetState ->
-      ( { model | invitationWidget = widgetState } , Page.NoCmd )
+      ( { model | invitationWidget = widgetState } , Cmd.none )
     CreateInvitation widgetState req ->
       ( { model | invitationWidget = widgetState }
-      , Page.RequestCmd <| Page.CreateInvitationRequest CreateInvitationFinished req
+      , API.postCreateInvitation (CreateInvitationFinished req) req
       )
-    CreateInvitationFinished res ->
-      ( { model | invitationWidget = model.invitationWidget |> SmallInvitationWidget.handleCreateInvitationResponse res }
-      , Page.NoCmd
+    CreateInvitationFinished req res ->
+      ( { model | invitationWidget = model.invitationWidget |> SmallInvitationWidget.handleCreateInvitationResponse res
+                , globals = model.globals |> Page.handleCreateInvitationResponse req res
+        }
+      , Cmd.none
       )
     Copy s ->
       ( model
-      , Page.CopyCmd s
+      , copy s
       )
     Ignore ->
-      ( model , Page.NoCmd )
+      ( model , Cmd.none )
 
 
-view : Page.Globals -> Model -> Browser.Document Msg
-view globals model =
+view : Model -> Browser.Document Msg
+view model =
   { title = "Welcome to Biatob!"
   , body = [
+    Navbar.view
+        { setState = SetAuthWidget Navbar
+        , logInUsername = LogInUsername Navbar
+        , register = RegisterUsername Navbar
+        , signOut = SignOut Navbar
+        , ignore = Ignore
+        , auth = Page.getAuth model.globals
+        }
+        model.navbarAuth
+    ,
     H.main_ [HA.style "text-align" "justify"]
     [ H.h1 [] [H.text "Betting is a tax on BS."]
     , H.p []
@@ -202,12 +225,12 @@ view globals model =
             [ H.text " Create an account:   "
             , H.div [HA.id "welcome-page-auth-widget"]
                 [ AuthWidget.view
-                  { setState = SetAuthWidget
-                  , logInUsername = LogInUsername
-                  , register = RegisterUsername
-                  , signOut = SignOut
+                  { setState = SetAuthWidget Inline
+                  , logInUsername = LogInUsername Inline
+                  , register = RegisterUsername Inline
+                  , signOut = SignOut Inline
                   , ignore = Ignore
-                  , auth = Page.getAuth globals
+                  , auth = Page.getAuth model.globals
                   }
                   model.authWidget
                 ]
@@ -225,13 +248,13 @@ view globals model =
         , H.li [HA.style "margin-bottom" "1em"]
             [ H.text " Send your friends invitation links so I know who you trust to bet against you:   "
             , H.div [HA.style "border" "1px solid gray", HA.style "padding" "0.5em", HA.style "margin" "0.5em"]
-                [ if Page.isLoggedIn globals then
+                [ if Page.isLoggedIn model.globals then
                     SmallInvitationWidget.view
                       { setState = SetInvitationWidget
                       , createInvitation = CreateInvitation
                       , copy = Copy
                       , destination = Nothing
-                      , httpOrigin = globals.httpOrigin
+                      , httpOrigin = model.globals.httpOrigin
                       }
                       model.invitationWidget
                   else
@@ -241,7 +264,7 @@ view globals model =
         , H.li [HA.style "margin-bottom" "1em"]
             [ H.text " Consider adding an email address, so I can remind you to resolve your prediction when the time comes:   "
             , H.div [HA.style "border" "1px solid gray", HA.style "padding" "0.5em", HA.style "margin" "0.5em"]
-                [ case Page.getUserInfo globals of
+                [ case Page.getUserInfo model.globals of
                     Nothing -> H.text "(first, log in)"
                     Just userInfo ->
                       EmailSettingsWidget.view
@@ -265,4 +288,4 @@ view globals model =
 subscriptions : Model -> Sub Msg
 subscriptions _ = Sub.none
 
-main = Page.Program.page pagedef
+main = Browser.document {init=init, view=view, update=update, subscriptions=subscriptions}

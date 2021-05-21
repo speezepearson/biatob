@@ -10,13 +10,8 @@ import Utils
 
 import Utils
 import Widgets.CopyWidget as CopyWidget
-import Page
 import API
 
-type Msg
-  = Copy String
-  | CreateInvitation
-  | CreateInvitationFinished (Result Http.Error Pb.CreateInvitationResponse)
 type alias Config msg =
   { setState : State -> msg
   , createInvitation : State -> Pb.CreateInvitationRequest -> msg
@@ -76,6 +71,3 @@ view config model =
     , H.text " "
     , help
     ]
-
-subscriptions : State -> Sub Msg
-subscriptions _ = Sub.none

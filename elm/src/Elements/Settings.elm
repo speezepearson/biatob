@@ -1,96 +1,188 @@
-module Elements.Settings exposing (main)
+port module Elements.Settings exposing (main)
 
 import Browser
 import Html as H
 import Http
+import Json.Decode as JD
 
 import Widgets.ChangePasswordWidget as ChangePasswordWidget
 import Widgets.EmailSettingsWidget as EmailSettingsWidget
 import Widgets.TrustedUsersWidget as TrustedUsersWidget
 import Page
-import Page.Program
 import API
+import Utils
+import Widgets.AuthWidget as AuthWidget
+import Widgets.Navbar as Navbar
 import Biatob.Proto.Mvp as Pb
 
+port copy : String -> Cmd msg
+
 type alias Model =
-  { emailSettingsWidget : EmailSettingsWidget.State
-  , trustedUsersWidget : TrustedUsersWidget.Model
+  { globals : Page.Globals
+  , navbarAuth : AuthWidget.State
+  , emailSettingsWidget : EmailSettingsWidget.State
+  , trustedUsersWidget : TrustedUsersWidget.State
   , changePasswordWidget : ChangePasswordWidget.State
   }
 
 type Msg
   = SetEmailWidget EmailSettingsWidget.State
   | UpdateSettings EmailSettingsWidget.State Pb.UpdateSettingsRequest
-  | UpdateSettingsFinished (Result Http.Error Pb.UpdateSettingsResponse)
+  | UpdateSettingsFinished Pb.UpdateSettingsRequest (Result Http.Error Pb.UpdateSettingsResponse)
   | SetEmail EmailSettingsWidget.State Pb.SetEmailRequest
-  | SetEmailFinished (Result Http.Error Pb.SetEmailResponse)
+  | SetEmailFinished Pb.SetEmailRequest (Result Http.Error Pb.SetEmailResponse)
   | VerifyEmail EmailSettingsWidget.State Pb.VerifyEmailRequest
-  | VerifyEmailFinished (Result Http.Error Pb.VerifyEmailResponse)
-  | TrustedUsersMsg TrustedUsersWidget.Msg
+  | VerifyEmailFinished Pb.VerifyEmailRequest (Result Http.Error Pb.VerifyEmailResponse)
+  | SetTrustedUsersWidget TrustedUsersWidget.State
+  | CreateInvitation TrustedUsersWidget.State Pb.CreateInvitationRequest
+  | CreateInvitationFinished Pb.CreateInvitationRequest (Result Http.Error Pb.CreateInvitationResponse)
+  | SetTrusted TrustedUsersWidget.State Pb.SetTrustedRequest
+  | SetTrustedFinished Pb.SetTrustedRequest (Result Http.Error Pb.SetTrustedResponse)
   | SetChangePasswordWidget ChangePasswordWidget.State
   | ChangePassword ChangePasswordWidget.State Pb.ChangePasswordRequest
-  | ChangePasswordFinished (Result Http.Error Pb.ChangePasswordResponse)
+  | ChangePasswordFinished Pb.ChangePasswordRequest (Result Http.Error Pb.ChangePasswordResponse)
+  | SetAuthWidget AuthWidget.State
+  | LogInUsername AuthWidget.State Pb.LogInUsernameRequest
+  | LogInUsernameFinished Pb.LogInUsernameRequest (Result Http.Error Pb.LogInUsernameResponse)
+  | RegisterUsername AuthWidget.State Pb.RegisterUsernameRequest
+  | RegisterUsernameFinished Pb.RegisterUsernameRequest (Result Http.Error Pb.RegisterUsernameResponse)
+  | SignOut AuthWidget.State Pb.SignOutRequest
+  | SignOutFinished Pb.SignOutRequest (Result Http.Error Pb.SignOutResponse)
+  | Copy String
   | Ignore
 
-init : Model
-init =
-  { emailSettingsWidget = EmailSettingsWidget.init
-  , trustedUsersWidget = TrustedUsersWidget.init
-  , changePasswordWidget = ChangePasswordWidget.init
-  }
+init : JD.Value -> ( Model , Cmd Msg )
+init flags =
+  ( { globals = JD.decodeValue Page.globalsDecoder flags |> Result.toMaybe |> Utils.must "flags"
+    , navbarAuth = AuthWidget.init
+    , emailSettingsWidget = EmailSettingsWidget.init
+    , trustedUsersWidget = TrustedUsersWidget.init
+    , changePasswordWidget = ChangePasswordWidget.init
+    }
+  , Cmd.none
+  )
 
-update : Msg -> Model -> (Model, Page.Command Msg)
+update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
     SetChangePasswordWidget widgetState ->
-      ( { model | changePasswordWidget = widgetState } , Page.NoCmd )
+      ( { model | changePasswordWidget = widgetState } , Cmd.none )
     ChangePassword widgetState req ->
       ( { model | changePasswordWidget = widgetState }
-      , Page.RequestCmd <| Page.ChangePasswordRequest ChangePasswordFinished req
+      , API.postChangePassword (ChangePasswordFinished req) req
       )
-    ChangePasswordFinished res ->
-      ( { model | changePasswordWidget = model.changePasswordWidget |> ChangePasswordWidget.handleChangePasswordResponse res }
-      , Page.NoCmd
+    ChangePasswordFinished req res ->
+      ( { model | changePasswordWidget = model.changePasswordWidget |> ChangePasswordWidget.handleChangePasswordResponse res
+                , globals = model.globals |> Page.handleChangePasswordResponse req res
+        }
+      , Cmd.none
       )
-    TrustedUsersMsg widgetMsg ->
-      let (newWidget, innerCmd) = TrustedUsersWidget.update widgetMsg model.trustedUsersWidget in
-      ( { model | trustedUsersWidget = newWidget } , Page.mapCmd TrustedUsersMsg innerCmd )
+    SetTrustedUsersWidget widgetState ->
+      ( { model | trustedUsersWidget = widgetState } , Cmd.none )
+    CreateInvitation widgetState req ->
+      ( { model | trustedUsersWidget = widgetState }
+      , API.postCreateInvitation (CreateInvitationFinished req) req
+      )
+    CreateInvitationFinished req res ->
+      ( { model | trustedUsersWidget = model.trustedUsersWidget |> TrustedUsersWidget.handleCreateInvitationResponse res
+                , globals = model.globals |> Page.handleCreateInvitationResponse req res
+        }
+      , Cmd.none
+      )
+    SetTrusted widgetState req ->
+      ( { model | trustedUsersWidget = widgetState }
+      , API.postSetTrusted (SetTrustedFinished req) req
+      )
+    SetTrustedFinished req res ->
+      ( { model | trustedUsersWidget = model.trustedUsersWidget |> TrustedUsersWidget.handleSetTrustedResponse res
+                , globals = model.globals |> Page.handleSetTrustedResponse req res
+        }
+      , Cmd.none
+      )
+
 
     SetEmailWidget widgetState ->
-      ( { model | emailSettingsWidget = widgetState } , Page.NoCmd )
+      ( { model | emailSettingsWidget = widgetState } , Cmd.none )
     UpdateSettings widgetState req ->
       ( { model | emailSettingsWidget = widgetState }
-      , Page.RequestCmd <| Page.UpdateSettingsRequest UpdateSettingsFinished req
+      , API.postUpdateSettings (UpdateSettingsFinished req) req
       )
-    UpdateSettingsFinished res ->
-      ( { model | emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleUpdateSettingsResponse res }
-      , Page.NoCmd
+    UpdateSettingsFinished req res ->
+      ( { model | emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleUpdateSettingsResponse res
+                , globals = model.globals |> Page.handleUpdateSettingsResponse req res
+        }
+      , Cmd.none
       )
     SetEmail widgetState req ->
       ( { model | emailSettingsWidget = widgetState }
-      , Page.RequestCmd <| Page.SetEmailRequest SetEmailFinished req
+      , API.postSetEmail (SetEmailFinished req) req
       )
-    SetEmailFinished res ->
-      ( { model | emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleSetEmailResponse res }
-      , Page.NoCmd
+    SetEmailFinished req res ->
+      ( { model | emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleSetEmailResponse res
+                , globals = model.globals |> Page.handleSetEmailResponse req res
+        }
+      , Cmd.none
       )
     VerifyEmail widgetState req ->
       ( { model | emailSettingsWidget = widgetState }
-      , Page.RequestCmd <| Page.VerifyEmailRequest VerifyEmailFinished req
+      , API.postVerifyEmail (VerifyEmailFinished req) req
       )
-    VerifyEmailFinished res ->
-      ( { model | emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleVerifyEmailResponse res }
-      , Page.NoCmd
+    VerifyEmailFinished req res ->
+      ( { model | emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleVerifyEmailResponse res
+                , globals = model.globals |> Page.handleVerifyEmailResponse req res
+        }
+      , Cmd.none
+      )
+    SetAuthWidget widgetState ->
+      ( { model | navbarAuth = widgetState } , Cmd.none )
+    LogInUsername widgetState req ->
+      ( { model | navbarAuth = widgetState }
+      , API.postLogInUsername (LogInUsernameFinished req) req
+      )
+    LogInUsernameFinished req res ->
+      ( { model | globals = model.globals |> Page.handleLogInUsernameResponse req res , navbarAuth = model.navbarAuth |> AuthWidget.handleLogInUsernameResponse res }
+      , Cmd.none
+      )
+    RegisterUsername widgetState req ->
+      ( { model | navbarAuth = widgetState }
+      , API.postRegisterUsername (RegisterUsernameFinished req) req
+      )
+    RegisterUsernameFinished req res ->
+      ( { model | globals = model.globals |> Page.handleRegisterUsernameResponse req res , navbarAuth = model.navbarAuth |> AuthWidget.handleRegisterUsernameResponse res }
+      , Cmd.none
+      )
+    SignOut widgetState req ->
+      ( { model | navbarAuth = widgetState }
+      , API.postSignOut (SignOutFinished req) req
+      )
+    SignOutFinished req res ->
+      ( { model | globals = model.globals |> Page.handleSignOutResponse req res , navbarAuth = model.navbarAuth |> AuthWidget.handleSignOutResponse res }
+      , Cmd.none
+      )
+    Copy s ->
+      ( model
+      , copy s
       )
     Ignore ->
-      ( model , Page.NoCmd )
+      ( model , Cmd.none )
 
 
-view : Page.Globals -> Model -> Browser.Document Msg
-view globals model =
+view : Model -> Browser.Document Msg
+view model =
   { title = "Settings"
   , body = [
-    H.main_ [] <| List.singleton <| case globals.serverState.settings of
+    Navbar.view
+        { setState = SetAuthWidget
+        , logInUsername = LogInUsername
+        , register = RegisterUsername
+        , signOut = SignOut
+        , ignore = Ignore
+        , auth = Page.getAuth model.globals
+        }
+        model.navbarAuth
+    ,
+    H.main_ []
+    [ case model.globals.serverState.settings of
       Nothing -> H.text "You have to log in to view your settings!"
       Just userInfo ->
         H.div []
@@ -108,7 +200,17 @@ view globals model =
               model.emailSettingsWidget
           , H.hr [] []
           , H.h3 [] [H.text "Trust"]
-          , TrustedUsersWidget.view globals model.trustedUsersWidget |> H.map TrustedUsersMsg
+          , TrustedUsersWidget.view
+              { setState = SetTrustedUsersWidget
+              , createInvitation = CreateInvitation
+              , setTrusted = SetTrusted
+              , copy = Copy
+              , auth = model.globals.authToken |> Utils.must "should condense Globals.auth and .serverState.settings into a single type, since they Nothing together"
+              , userInfo = userInfo
+              , timeZone = model.globals.timeZone
+              , httpOrigin = model.globals.httpOrigin
+              }
+              model.trustedUsersWidget
           , H.hr [] []
           , H.div []
               [ H.h3 [] [H.text "Change password"]
@@ -119,14 +221,10 @@ view globals model =
                   model.changePasswordWidget
               ]
           ]
-  ]
+  ]]
   }
 
 subscriptions : Model -> Sub Msg
-subscriptions model =
-  TrustedUsersWidget.subscriptions model.trustedUsersWidget |> Sub.map TrustedUsersMsg
+subscriptions _ = Sub.none
 
-pagedef : Page.Element Model Msg
-pagedef = {init=\_ -> (init, Page.NoCmd), view=view, update=update, subscriptions=subscriptions}
-
-main = Page.Program.page pagedef
+main = Browser.document {init=init, view=view, update=update, subscriptions=subscriptions}
