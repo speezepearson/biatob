@@ -18,11 +18,17 @@ import Biatob.Proto.Mvp as Pb
 type alias Model =
   { authWidget : AuthWidget.State
   , invitationWidget : SmallInvitationWidget.State
-  , emailSettingsWidget : EmailSettingsWidget.Model
+  , emailSettingsWidget : EmailSettingsWidget.State
   }
 
 type Msg
-  = EmailSettingsMsg EmailSettingsWidget.Msg
+  = SetEmailWidget EmailSettingsWidget.State
+  | UpdateSettings EmailSettingsWidget.State Pb.UpdateSettingsRequest
+  | UpdateSettingsFinished (Result Http.Error Pb.UpdateSettingsResponse)
+  | SetEmail EmailSettingsWidget.State Pb.SetEmailRequest
+  | SetEmailFinished (Result Http.Error Pb.SetEmailResponse)
+  | VerifyEmail EmailSettingsWidget.State Pb.VerifyEmailRequest
+  | VerifyEmailFinished (Result Http.Error Pb.VerifyEmailResponse)
   | SetAuthWidget AuthWidget.State
   | LogInUsername AuthWidget.State Pb.LogInUsernameRequest
   | LogInUsernameFinished (Result Http.Error Pb.LogInUsernameResponse)
@@ -57,9 +63,32 @@ init _ =
 update : Msg -> Model -> (Model, Page.Command Msg)
 update msg model =
   case msg of
-    EmailSettingsMsg widgetMsg ->
-      let (newWidget, innerCmd) = EmailSettingsWidget.update widgetMsg model.emailSettingsWidget in
-      ( { model | emailSettingsWidget = newWidget } , Page.mapCmd EmailSettingsMsg innerCmd )
+    SetEmailWidget widgetState ->
+      ( { model | emailSettingsWidget = widgetState } , Page.NoCmd )
+    UpdateSettings widgetState req ->
+      ( { model | emailSettingsWidget = widgetState }
+      , Page.RequestCmd <| Page.UpdateSettingsRequest UpdateSettingsFinished req
+      )
+    UpdateSettingsFinished res ->
+      ( { model | emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleUpdateSettingsResponse res }
+      , Page.NoCmd
+      )
+    SetEmail widgetState req ->
+      ( { model | emailSettingsWidget = widgetState }
+      , Page.RequestCmd <| Page.SetEmailRequest SetEmailFinished req
+      )
+    SetEmailFinished res ->
+      ( { model | emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleSetEmailResponse res }
+      , Page.NoCmd
+      )
+    VerifyEmail widgetState req ->
+      ( { model | emailSettingsWidget = widgetState }
+      , Page.RequestCmd <| Page.VerifyEmailRequest VerifyEmailFinished req
+      )
+    VerifyEmailFinished res ->
+      ( { model | emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleVerifyEmailResponse res }
+      , Page.NoCmd
+      )
     SetAuthWidget widgetState ->
       ( { model | authWidget = widgetState } , Page.NoCmd )
     LogInUsername widgetState req ->
@@ -215,7 +244,15 @@ view globals model =
                 [ case Page.getUserInfo globals of
                     Nothing -> H.text "(first, log in)"
                     Just userInfo ->
-                      EmailSettingsWidget.view globals model.emailSettingsWidget |> H.map EmailSettingsMsg
+                      EmailSettingsWidget.view
+                        { setState = SetEmailWidget
+                        , ignore = Ignore
+                        , setEmail = SetEmail
+                        , verifyEmail = VerifyEmail
+                        , updateSettings = UpdateSettings
+                        , userInfo = userInfo
+                        }
+                        model.emailSettingsWidget
                 ]
             ]
         , H.li [HA.style "margin-bottom" "1em"]
@@ -226,7 +263,6 @@ view globals model =
   ]}
 
 subscriptions : Model -> Sub Msg
-subscriptions model =
-  EmailSettingsWidget.subscriptions model.emailSettingsWidget |> Sub.map EmailSettingsMsg
+subscriptions _ = Sub.none
 
 main = Page.Program.page pagedef

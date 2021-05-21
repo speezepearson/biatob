@@ -115,3 +115,42 @@ simplifyStakeResponse res =
           Err (Debug.toString e) 
         Nothing ->
           Err "Invalid server response (neither Ok nor Error in protobuf)" 
+
+simplifyUpdateSettingsResponse : Result Http.Error Pb.UpdateSettingsResponse -> Result String Pb.GenericUserInfo
+simplifyUpdateSettingsResponse res =
+  case res of
+    Err e -> Err (Debug.toString e)
+    Ok resp ->
+      case resp.updateSettingsResult of
+        Just (Pb.UpdateSettingsResultOk result) ->
+          Ok result
+        Just (Pb.UpdateSettingsResultError e) ->
+          Err (Debug.toString e) 
+        Nothing ->
+          Err "Invalid server response (neither Ok nor Error in protobuf)" 
+
+simplifySetEmailResponse : Result Http.Error Pb.SetEmailResponse -> Result String Pb.EmailFlowState
+simplifySetEmailResponse res =
+  case res of
+    Err e -> Err (Debug.toString e)
+    Ok resp ->
+      case resp.setEmailResult of
+        Just (Pb.SetEmailResultOk result) ->
+          Ok result
+        Just (Pb.SetEmailResultError e) ->
+          Err (Debug.toString e) 
+        Nothing ->
+          Err "Invalid server response (neither Ok nor Error in protobuf)" 
+
+simplifyVerifyEmailResponse : Result Http.Error Pb.VerifyEmailResponse -> Result String Pb.EmailFlowState
+simplifyVerifyEmailResponse res =
+  case res of
+    Err e -> Err (Debug.toString e)
+    Ok resp ->
+      case resp.verifyEmailResult of
+        Just (Pb.VerifyEmailResultOk result) ->
+          Ok result
+        Just (Pb.VerifyEmailResultError e) ->
+          Err (Debug.toString e) 
+        Nothing ->
+          Err "Invalid server response (neither Ok nor Error in protobuf)" 
