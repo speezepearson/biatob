@@ -6,7 +6,7 @@ import Html.Events as HE
 import Http
 
 import Biatob.Proto.Mvp as Pb
-import Utils exposing (EmailAddress, Password)
+import Utils exposing (EmailAddress)
 
 import API
 import Parser exposing ((|.), (|=))

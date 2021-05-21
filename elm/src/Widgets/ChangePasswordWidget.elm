@@ -9,7 +9,6 @@ import Utils exposing (Password)
 import Biatob.Proto.Mvp as Pb
 
 import Biatob.Proto.Mvp exposing (StakeResult(..))
-import Page
 import API
 
 type alias Config msg =

@@ -42,7 +42,7 @@ type Msg
   | SetSpecialRulesField String
 
 toCreateRequest : Time.Posix -> Time.Zone -> Model -> Maybe Pb.CreatePredictionRequest
-toCreateRequest now zone model =
+toCreateRequest now _ model =
   parsePrediction model |> Result.toMaybe |> Maybe.andThen (\prediction ->
   parseResolvesAt now model |> Result.toMaybe |> Maybe.andThen (\resolvesAt ->
   parseStake model |> Result.toMaybe |> Maybe.andThen (\stake ->

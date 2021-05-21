@@ -1,7 +1,5 @@
 module Widgets.StakeWidget exposing (..)
 
-import Browser
-import Dict
 import Html as H exposing (Html)
 import Html.Attributes as HA
 import Html.Events as HE
@@ -11,9 +9,9 @@ import Http
 import Biatob.Proto.Mvp as Pb
 import Utils exposing (b, Cents, PredictionId)
 
-import Page
 import API
 
+epsilon : Float
 epsilon = 0.0000001 -- 🎵 I hate floating-point arithmetic 🎶
 
 type alias Config msg =
@@ -35,7 +33,7 @@ type alias State =
 handleStakeResponse : Result Http.Error Pb.StakeResponse -> State -> State
 handleStakeResponse res state =
   case API.simplifyStakeResponse res of
-    Ok resp ->
+    Ok _ ->
       { state | working = False
               , notification = Utils.greenText "Committed!"
               , believerStakeField = "0"

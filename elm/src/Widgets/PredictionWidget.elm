@@ -4,7 +4,6 @@ import Html as H exposing (Html)
 import Html.Attributes as HA
 import Html.Events as HE
 import Http
-import Json.Decode as JD
 import Time
 import Dict as D exposing (Dict)
 
@@ -88,7 +87,7 @@ update msg model =
           ( { model | working = False , notification = Utils.redText (Debug.toString e) } , Page.NoCmd )
         Ok resp ->
           case resp.resolveResult of
-            Just (Pb.ResolveResultOk newPrediction) ->
+            Just (Pb.ResolveResultOk _) ->
               ( { model | working = False , notification = H.text "" } , Page.NoCmd )
             Just (Pb.ResolveResultError e) ->
               ( { model | working = False , notification = Utils.redText (Debug.toString e) } , Page.NoCmd )

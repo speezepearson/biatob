@@ -1,5 +1,4 @@
 module Widgets.TrustedUsersWidget exposing (..)
-import Page
 
 import Html as H exposing (Html)
 import Html.Attributes as HA
@@ -8,8 +7,6 @@ import Http
 import Dict as D
 
 import Biatob.Proto.Mvp as Pb
-import Utils exposing (Username)
-
 import Utils
 
 import Widgets.SmallInvitationWidget as SmallInvitationWidget

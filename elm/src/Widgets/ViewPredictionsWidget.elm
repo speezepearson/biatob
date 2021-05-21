@@ -134,7 +134,7 @@ type Msg
 
 init : Dict PredictionId Pb.UserPredictionView -> Model
 init predictions =
-  { predictions = predictions |> Dict.map (\id p -> PredictionWidget.init id |> PredictionWidget.setLinkTitle True)
+  { predictions = predictions |> Dict.map (\id _ -> PredictionWidget.init id |> PredictionWidget.setLinkTitle True)
   , filter = { own = Nothing , phase = Nothing }
   , order = CreatedDate Desc
   , allowFilterByOwner = True
