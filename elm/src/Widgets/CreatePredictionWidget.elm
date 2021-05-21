@@ -47,7 +47,7 @@ toCreateRequest now zone model =
   parseResolvesAt now model |> Result.toMaybe |> Maybe.andThen (\resolvesAt ->
   parseStake model |> Result.toMaybe |> Maybe.andThen (\stake ->
   parseLowProbability model |> Result.toMaybe |> Maybe.andThen (\lowP ->
-  parseHighProbability model |> Result.toMaybe |> Maybe.andThen (\highP -> if highP < lowP then Nothing else 
+  parseHighProbability model |> Result.toMaybe |> Maybe.andThen (\highP -> if highP < lowP then Nothing else
   parseOpenForSeconds now model |> Result.toMaybe |> Maybe.andThen (\openForSeconds ->
     Just
       { prediction = prediction

@@ -15,7 +15,7 @@ import Biatob.Proto.Mvp as Pb
 type alias Model =
   { emailSettingsWidget : EmailSettingsWidget.State
   , trustedUsersWidget : TrustedUsersWidget.Model
-  , changePasswordWidget : ChangePasswordWidget.Model
+  , changePasswordWidget : ChangePasswordWidget.State
   }
 
 type Msg
@@ -27,7 +27,9 @@ type Msg
   | VerifyEmail EmailSettingsWidget.State Pb.VerifyEmailRequest
   | VerifyEmailFinished (Result Http.Error Pb.VerifyEmailResponse)
   | TrustedUsersMsg TrustedUsersWidget.Msg
-  | ChangePasswordMsg ChangePasswordWidget.Msg
+  | SetChangePasswordWidget ChangePasswordWidget.State
+  | ChangePassword ChangePasswordWidget.State Pb.ChangePasswordRequest
+  | ChangePasswordFinished (Result Http.Error Pb.ChangePasswordResponse)
   | Ignore
 
 init : Model
@@ -40,9 +42,16 @@ init =
 update : Msg -> Model -> (Model, Page.Command Msg)
 update msg model =
   case msg of
-    ChangePasswordMsg widgetMsg ->
-      let (newWidget, innerCmd) = ChangePasswordWidget.update widgetMsg model.changePasswordWidget in
-      ( { model | changePasswordWidget = newWidget } , Page.mapCmd ChangePasswordMsg innerCmd )
+    SetChangePasswordWidget widgetState ->
+      ( { model | changePasswordWidget = widgetState } , Page.NoCmd )
+    ChangePassword widgetState req ->
+      ( { model | changePasswordWidget = widgetState }
+      , Page.RequestCmd <| Page.ChangePasswordRequest ChangePasswordFinished req
+      )
+    ChangePasswordFinished res ->
+      ( { model | changePasswordWidget = model.changePasswordWidget |> ChangePasswordWidget.handleChangePasswordResponse res }
+      , Page.NoCmd
+      )
     TrustedUsersMsg widgetMsg ->
       let (newWidget, innerCmd) = TrustedUsersWidget.update widgetMsg model.trustedUsersWidget in
       ( { model | trustedUsersWidget = newWidget } , Page.mapCmd TrustedUsersMsg innerCmd )
@@ -103,7 +112,11 @@ view globals model =
           , H.hr [] []
           , H.div []
               [ H.h3 [] [H.text "Change password"]
-              , ChangePasswordWidget.view model.changePasswordWidget |> H.map ChangePasswordMsg
+              , ChangePasswordWidget.view
+                  { setState = SetChangePasswordWidget
+                  , changePassword = ChangePassword
+                  }
+                  model.changePasswordWidget
               ]
           ]
   ]
@@ -111,10 +124,7 @@ view globals model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-  Sub.batch
-    [ TrustedUsersWidget.subscriptions model.trustedUsersWidget |> Sub.map TrustedUsersMsg
-    , ChangePasswordWidget.subscriptions model.changePasswordWidget |> Sub.map ChangePasswordMsg
-    ]
+  TrustedUsersWidget.subscriptions model.trustedUsersWidget |> Sub.map TrustedUsersMsg
 
 pagedef : Page.Element Model Msg
 pagedef = {init=\_ -> (init, Page.NoCmd), view=view, update=update, subscriptions=subscriptions}

@@ -8,6 +8,7 @@ import Json.Decode as JD
 import Html as H
 import Task
 
+import Widgets.AuthWidget as AuthWidget
 import Biatob.Proto.Mvp as Pb
 import API
 import Utils exposing (PredictionId, Username)
@@ -19,7 +20,7 @@ port navigate : Maybe String -> Cmd msg
 
 type alias Model model =
   { globals : Globals
-  , navbar : Navbar.Model
+  , navbarAuth : AuthWidget.State
   , reloading : Bool
   , inner : model
   }
@@ -27,9 +28,15 @@ type alias Model model =
 type Msg msg
   = Inner msg
   | RequestFinished Response msg
-  | NavbarMsg Navbar.Msg
-  | NavbarRequestFinished Response Navbar.Msg
   | Tick Time.Posix
+  | NavbarSetAuthWidget AuthWidget.State
+  | NavbarLogInUsername AuthWidget.State Pb.LogInUsernameRequest
+  | NavbarLogInUsernameFinished (Result Http.Error Pb.LogInUsernameResponse)
+  | NavbarRegisterUsername AuthWidget.State Pb.RegisterUsernameRequest
+  | NavbarRegisterUsernameFinished (Result Http.Error Pb.RegisterUsernameResponse)
+  | NavbarSignOut AuthWidget.State Pb.SignOutRequest
+  | NavbarSignOutFinished (Result Http.Error Pb.SignOutResponse)
+  | Ignore
 
 page : Element model msg -> Program JD.Value (Model model) (Msg msg)
 page elem =
@@ -38,7 +45,7 @@ page elem =
     init flags =
       let (inner, cmd) = elem.init flags in
       ( { globals = JD.decodeValue globalsDecoder flags |> Utils.mustResult "flags"
-        , navbar = Navbar.init
+        , navbarAuth = AuthWidget.init
         , reloading = False
         , inner = inner
         }
@@ -54,7 +61,16 @@ page elem =
                 if model.reloading then
                   [H.text "Reloading..."]
                 else
-                  ( (Navbar.view model.globals model.navbar |> H.map NavbarMsg)
+                  ( (Navbar.view
+                      { setState = NavbarSetAuthWidget
+                      , logInUsername = NavbarLogInUsername
+                      , register = NavbarRegisterUsername
+                      , signOut = NavbarSignOut
+                      , ignore = Ignore
+                      , auth = model.globals.authToken
+                      }
+                      model.navbarAuth
+                    )
                     :: List.map (H.map Inner) body)
             }
 
@@ -74,24 +90,49 @@ page elem =
             ( { model | inner = newInner , globals = model.globals |> updateGlobalsFromResponse resp }
             , toCmd RequestFinished Inner cmd
             )
-        NavbarMsg widgetMsg ->
-          let (newWidget, widgetCmd) = Navbar.update widgetMsg model.navbar in
-          ( { model | navbar = newWidget } , toCmd NavbarRequestFinished NavbarMsg widgetCmd )
-        NavbarRequestFinished resp widgetMsg ->
-          if didAuthChange resp then
-            ( {model|reloading=True} , navigate Nothing )
-          else
-            let (newWidget, widgetCmd) = Navbar.update widgetMsg model.navbar in
-            ( { model | navbar = newWidget , globals = model.globals |> updateGlobalsFromResponse resp }
-            , toCmd NavbarRequestFinished NavbarMsg widgetCmd
-            )
+        NavbarSetAuthWidget widgetState ->
+          ( { model | navbarAuth = widgetState } , Cmd.none )
+        NavbarLogInUsername widgetState req ->
+          ( { model | navbarAuth = widgetState }
+          , API.postLogInUsername NavbarLogInUsernameFinished req
+          )
+        NavbarLogInUsernameFinished res ->
+          case API.simplifyLogInUsernameResponse res of
+            Ok _ -> ( { model | reloading = True } , navigate Nothing )
+            Err _ ->
+              ( { model | navbarAuth = model.navbarAuth |> AuthWidget.handleLogInUsernameResponse res }
+              , Cmd.none
+              )
+        NavbarRegisterUsername widgetState req ->
+          ( { model | navbarAuth = widgetState }
+          , API.postRegisterUsername NavbarRegisterUsernameFinished req
+          )
+        NavbarRegisterUsernameFinished res ->
+          case API.simplifyRegisterUsernameResponse res of
+            Ok _ -> ( { model | reloading = True } , navigate Nothing )
+            Err _ ->
+              ( { model | navbarAuth = model.navbarAuth |> AuthWidget.handleRegisterUsernameResponse res }
+              , Cmd.none
+              )
+        NavbarSignOut widgetState req ->
+          ( { model | navbarAuth = widgetState }
+          , API.postSignOut NavbarSignOutFinished req
+          )
+        NavbarSignOutFinished res ->
+          case API.simplifySignOutResponse res of
+            Ok _ -> ( { model | reloading = True } , navigate Nothing )
+            Err _ ->
+              ( { model | navbarAuth = model.navbarAuth |> AuthWidget.handleSignOutResponse res }
+              , Cmd.none
+              )
+        Ignore ->
+          ( model , Cmd.none )
 
     subscriptions : Model model -> Sub (Msg msg)
     subscriptions model =
       Sub.batch
         [ Time.every 1000 Tick
         , Sub.map Inner (elem.subscriptions model.inner)
-        , Sub.map NavbarMsg (Navbar.subscriptions model.navbar)
         ]
   in
   Browser.document {init=init, view=view, update=update, subscriptions=subscriptions}

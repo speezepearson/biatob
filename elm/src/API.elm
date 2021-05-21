@@ -67,9 +67,9 @@ simplifyLogInUsernameResponse res =
         Just (Pb.LogInUsernameResultOk success) ->
           Ok success
         Just (Pb.LogInUsernameResultError e) ->
-          Err (Debug.toString e) 
+          Err (Debug.toString e)
         Nothing ->
-          Err "Invalid server response (neither Ok nor Error in protobuf)" 
+          Err "Invalid server response (neither Ok nor Error in protobuf)"
 
 simplifyRegisterUsernameResponse : Result Http.Error Pb.RegisterUsernameResponse -> Result String Pb.AuthSuccess
 simplifyRegisterUsernameResponse res =
@@ -80,9 +80,9 @@ simplifyRegisterUsernameResponse res =
         Just (Pb.RegisterUsernameResultOk success) ->
           Ok success
         Just (Pb.RegisterUsernameResultError e) ->
-          Err (Debug.toString e) 
+          Err (Debug.toString e)
         Nothing ->
-          Err "Invalid server response (neither Ok nor Error in protobuf)" 
+          Err "Invalid server response (neither Ok nor Error in protobuf)"
 
 simplifySignOutResponse : Result Http.Error Pb.SignOutResponse -> Result String ()
 simplifySignOutResponse res =
@@ -99,9 +99,9 @@ simplifyCreateInvitationResponse res =
         Just (Pb.CreateInvitationResultOk result) ->
           Ok result
         Just (Pb.CreateInvitationResultError e) ->
-          Err (Debug.toString e) 
+          Err (Debug.toString e)
         Nothing ->
-          Err "Invalid server response (neither Ok nor Error in protobuf)" 
+          Err "Invalid server response (neither Ok nor Error in protobuf)"
 
 simplifyStakeResponse : Result Http.Error Pb.StakeResponse -> Result String Pb.UserPredictionView
 simplifyStakeResponse res =
@@ -112,9 +112,9 @@ simplifyStakeResponse res =
         Just (Pb.StakeResultOk result) ->
           Ok result
         Just (Pb.StakeResultError e) ->
-          Err (Debug.toString e) 
+          Err (Debug.toString e)
         Nothing ->
-          Err "Invalid server response (neither Ok nor Error in protobuf)" 
+          Err "Invalid server response (neither Ok nor Error in protobuf)"
 
 simplifyUpdateSettingsResponse : Result Http.Error Pb.UpdateSettingsResponse -> Result String Pb.GenericUserInfo
 simplifyUpdateSettingsResponse res =
@@ -125,9 +125,9 @@ simplifyUpdateSettingsResponse res =
         Just (Pb.UpdateSettingsResultOk result) ->
           Ok result
         Just (Pb.UpdateSettingsResultError e) ->
-          Err (Debug.toString e) 
+          Err (Debug.toString e)
         Nothing ->
-          Err "Invalid server response (neither Ok nor Error in protobuf)" 
+          Err "Invalid server response (neither Ok nor Error in protobuf)"
 
 simplifySetEmailResponse : Result Http.Error Pb.SetEmailResponse -> Result String Pb.EmailFlowState
 simplifySetEmailResponse res =
@@ -138,9 +138,9 @@ simplifySetEmailResponse res =
         Just (Pb.SetEmailResultOk result) ->
           Ok result
         Just (Pb.SetEmailResultError e) ->
-          Err (Debug.toString e) 
+          Err (Debug.toString e)
         Nothing ->
-          Err "Invalid server response (neither Ok nor Error in protobuf)" 
+          Err "Invalid server response (neither Ok nor Error in protobuf)"
 
 simplifyVerifyEmailResponse : Result Http.Error Pb.VerifyEmailResponse -> Result String Pb.EmailFlowState
 simplifyVerifyEmailResponse res =
@@ -151,6 +151,19 @@ simplifyVerifyEmailResponse res =
         Just (Pb.VerifyEmailResultOk result) ->
           Ok result
         Just (Pb.VerifyEmailResultError e) ->
-          Err (Debug.toString e) 
+          Err (Debug.toString e)
         Nothing ->
-          Err "Invalid server response (neither Ok nor Error in protobuf)" 
+          Err "Invalid server response (neither Ok nor Error in protobuf)"
+
+simplifyChangePasswordResponse : Result Http.Error Pb.ChangePasswordResponse -> Result String Pb.Void
+simplifyChangePasswordResponse res =
+  case res of
+    Err e -> Err (Debug.toString e)
+    Ok resp ->
+      case resp.changePasswordResult of
+        Just (Pb.ChangePasswordResultOk result) ->
+          Ok result
+        Just (Pb.ChangePasswordResultError e) ->
+          Err (Debug.toString e)
+        Nothing ->
+          Err "Invalid server response (neither Ok nor Error in protobuf)"
