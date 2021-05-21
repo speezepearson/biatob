@@ -4,6 +4,7 @@ import Html as H exposing (Html)
 import Html.Attributes as HA
 import Html.Events as HE
 import Json.Decode as JD
+import Set
 import Time
 
 import Base64
@@ -17,6 +18,55 @@ type alias Password = String
 type alias EmailAddress = String
 type alias Cents = Int
 type alias PredictionId = Int
+
+illegalUsernameCharacters : String -> Set.Set Char
+illegalUsernameCharacters s =
+  let
+    okayChars = ("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789" |> String.toList |> Set.fromList)
+    presentChars = s |> String.toList |> Set.fromList
+  in
+    Set.diff presentChars okayChars
+
+parseUsername : String -> Result String Username
+parseUsername s =
+  if s=="" then
+    Err ""
+  else let badChars = illegalUsernameCharacters s in
+  if not (Set.isEmpty badChars) then
+    Err ("bad characters: " ++ Debug.toString (Set.toList badChars))
+  else
+    Ok s
+parsePassword : String -> Result String Password
+parsePassword s =
+  if s=="" then
+    Err ""
+  else if String.length s > 256 then
+    Err "must not be over 256 characters, good grief"
+  else
+    Ok s
+
+isOk : Result e x -> Bool
+isOk res =
+  case res of
+    Ok _ -> True
+    Err _ -> False
+isErr : Result e x -> Bool
+isErr res = not (isOk res)
+
+resultToErr : Result e x -> Maybe e
+resultToErr res =
+  case res of
+    Err e -> Just e
+    Ok _ -> Nothing
+appendValidationError : Maybe String -> Html msg -> Html msg
+appendValidationError err elem =
+  case err of
+    Just e ->
+      H.span [HA.style "outline" "1px solid red"]
+        [ elem
+        , H.span [HA.style "color" "red"] [H.text e]
+        ]
+    Nothing -> H.span [] [elem] -- the extra span is necessary for Elm to realize the input is the same, to keep focus on it
 
 formatCents : Cents -> String
 formatCents n =

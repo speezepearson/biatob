@@ -9,11 +9,8 @@ import Biatob.Proto.Mvp as Pb
 import Utils exposing (Username, Password)
 import Http
 
-import Field exposing (Field)
 import Set
-import Field
-import Page
-import Field
+import Utils
 import Page
 
 port passwordManagerFilled : ({target:String, value:String} -> msg) -> Sub msg -- for password managers
@@ -29,37 +26,16 @@ type Msg
   | SignOut
   | SignOutFinished (Result Http.Error Pb.SignOutResponse)
 type alias Model =
-  { usernameField : Field () Username
-  , passwordField : Field () Password
+  { usernameField : String
+  , passwordField : String
   , working : Bool
   , notification : Html Never
   }
 
-illegalUsernameCharacters : String -> Set.Set Char
-illegalUsernameCharacters s =
-  let
-    okayChars = ("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789" |> String.toList |> Set.fromList)
-    presentChars = s |> String.toList |> Set.fromList
-  in
-    Set.diff presentChars okayChars
-
 init : Model
 init =
-  { usernameField = Field.okIfEmpty <| Field.init "" <| \() s ->
-      if s=="" then
-        Err ""
-      else let badChars = illegalUsernameCharacters s in
-      if not (Set.isEmpty badChars) then
-        Err ("bad characters: " ++ Debug.toString (Set.toList badChars))
-      else
-        Ok s
-  , passwordField = Field.okIfEmpty <| Field.init "" <| \() s ->
-      if s=="" then
-        Err ""
-      else if String.length s > 256 then
-        Err "must not be over 256 characters, good grief"
-      else
-        Ok s
+  { usernameField = ""
+  , passwordField = ""
   , working = False
   , notification = H.text ""
   }
@@ -69,13 +45,12 @@ view globals model =
   case Page.getAuth globals of
     Nothing ->
       let
-        disableButtons = case (Field.parse () model.usernameField, Field.parse () model.passwordField) of
+        disableButtons = case (Utils.parseUsername model.usernameField, Utils.parsePassword model.passwordField) of
           (Ok _, Ok _) -> False
           _ -> True
       in
       H.div []
-        [ Field.inputFor SetUsernameField () model.usernameField
-            H.input
+        [ H.input
             [ HA.disabled model.working
             , HA.style "width" "8em"
             , HA.type_ "text"
@@ -83,19 +58,24 @@ view globals model =
             , HA.class "username-field"
             , HA.class "watch-for-password-manager-fill"
             , HA.attribute "data-password-manager-target" "username"
-            , HA.attribute "data-elm-value" model.usernameField.string
+            , HA.attribute "data-elm-value" model.usernameField
+            , HE.onInput SetUsernameField
+            , HA.value model.usernameField
             ] []
-        , Field.inputFor SetPasswordField () model.passwordField
-            H.input
+          |> Utils.appendValidationError (if model.usernameField == "" then Nothing else Utils.resultToErr (Utils.parseUsername model.usernameField))
+        , H.input
             [ HA.disabled model.working
             , HA.style "width" "8em"
             , HA.type_ "password"
             , HA.placeholder "password"
             , HA.class "watch-for-password-manager-fill"
             , HA.attribute "data-password-manager-target" "password"
-            , HA.attribute "data-elm-value" model.usernameField.string
+            , HA.attribute "data-elm-value" model.passwordField
+            , HE.onInput SetPasswordField
+            , HA.value model.passwordField
             , Utils.onEnter LogInUsername Ignore
             ] []
+          |> Utils.appendValidationError (if model.passwordField == "" then Nothing else Utils.resultToErr (Utils.parsePassword model.passwordField))
         , H.button
             [ HA.disabled <| model.working || disableButtons
             , HE.onClick LogInUsername
@@ -121,10 +101,10 @@ view globals model =
 update : Msg -> Model -> ( Model , Page.Command Msg )
 update msg model =
   case msg of
-    SetUsernameField s -> ( { model | usernameField = model.usernameField |> Field.setStr s } , Page.NoCmd )
-    SetPasswordField s -> ( { model | passwordField = model.passwordField |> Field.setStr s } , Page.NoCmd )
+    SetUsernameField s -> ( { model | usernameField = s } , Page.NoCmd )
+    SetPasswordField s -> ( { model | passwordField = s } , Page.NoCmd )
     LogInUsername ->
-      case (Field.parse () model.usernameField, Field.parse () model.passwordField) of
+      case (Utils.parseUsername model.usernameField, Utils.parsePassword model.passwordField) of
         (Ok username, Ok password) ->
           ( { model | working = True , notification = H.text "" }
           , Page.RequestCmd <| Page.LogInUsernameRequest LogInUsernameFinished {username=username, password=password}
@@ -148,7 +128,7 @@ update msg model =
       )
 
     RegisterUsername ->
-      case (Field.parse () model.usernameField, Field.parse () model.passwordField) of
+      case (Utils.parseUsername model.usernameField, Utils.parsePassword model.passwordField) of
         (Ok username, Ok password) ->
           ( { model | working = True , notification = H.text "" }
           , Page.RequestCmd <| Page.RegisterUsernameRequest RegisterUsernameFinished {username=username, password=password}

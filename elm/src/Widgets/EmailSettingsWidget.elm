@@ -8,7 +8,6 @@ import Http
 import Biatob.Proto.Mvp as Pb
 import Utils exposing (EmailAddress, Password)
 
-import Field exposing (Field)
 import Page
 import Parser exposing ((|.), (|=))
 import Set
@@ -26,19 +25,22 @@ type Msg
   | VerifyEmail
   | VerifyEmailFinished (Result Http.Error Pb.VerifyEmailResponse)
 type alias Model =
-  { emailField : Field () EmailAddress
-  , codeField : Field () Password
+  { emailField : String
+  , codeField : String
   , working : Bool
   , notification : Html Never
   }
 
+parseEmailAddress : Model -> Result String EmailAddress
+parseEmailAddress model =
+  case Parser.run emailParser model.emailField of
+    Ok s -> Ok s
+    Err _ -> Err "doesn't look valid, sorry"
+
 init : Model
 init =
-  { emailField = Field.okIfEmpty <| Field.init "" <| \() s ->
-      case Parser.run emailParser s of
-        Ok _ -> Ok s
-        Err _ -> Err "doesn't look valid, sorry"
-  , codeField = Field.init "" <| \() s -> if String.isEmpty s then Err "enter code" else Ok s
+  { emailField = ""
+  , codeField = ""
   , working = False
   , notification = H.text ""
   }
@@ -59,8 +61,8 @@ update : Msg -> Model -> ( Model , Page.Command Msg )
 update msg model =
   case msg of
     Ignore -> ( model , Page.NoCmd )
-    SetEmailField s -> ( { model | emailField = model.emailField |> Field.setStr s } , Page.NoCmd )
-    SetCodeField s -> ( { model | codeField = model.codeField |> Field.setStr s } , Page.NoCmd )
+    SetEmailField s -> ( { model | emailField = s } , Page.NoCmd )
+    SetCodeField s -> ( { model | codeField = s } , Page.NoCmd )
     SetEmailRemindersToResolve value ->
       ( { model | working = True , notification = H.text "" }
       , Page.RequestCmd <| Page.UpdateSettingsRequest UpdateSettingsFinished {emailRemindersToResolve=Just {value=value}, emailResolutionNotifications=Nothing}
@@ -89,7 +91,7 @@ update msg model =
       , Page.RequestCmd <| Page.SetEmailRequest SetEmailFinished {email=""}
       )
     SetEmail ->
-      case Field.parse () model.emailField of
+      case parseEmailAddress model of
         Err _ -> ( model , Page.NoCmd )
         Ok email ->
           ( { model | working = True , notification = H.text "" }
@@ -111,12 +113,9 @@ update msg model =
       )
 
     VerifyEmail ->
-      case Field.parse () model.codeField of
-        Err _ -> ( model , Page.NoCmd )
-        Ok code ->
-          ( { model | working = True , notification = H.text "" }
-          , Page.RequestCmd <| Page.VerifyEmailRequest VerifyEmailFinished {code=code}
-          )
+      ( { model | working = True , notification = H.text "" }
+      , Page.RequestCmd <| Page.VerifyEmailRequest VerifyEmailFinished {code=model.codeField}
+      )
     VerifyEmailFinished res ->
       ( case res of
         Err e ->
@@ -152,16 +151,18 @@ view globals model =
             Pb.EmailFlowStateKindUnstarted _ ->
               H.div []
                 [ H.text "Register an email address for notifications: "
-                , Field.inputFor SetEmailField () model.emailField
-                    H.input
+                , H.input
                     [ HA.type_ "email"
                     , HA.disabled <| model.working
                     , HA.placeholder "email@ddre.ss"
+                    , HE.onInput SetEmailField
+                    , HA.value model.emailField
                     , Utils.onEnter SetEmail Ignore
                     ] []
+                  |> Utils.appendValidationError (if model.emailField == "" then Nothing else Utils.resultToErr (parseEmailAddress model))
                 , H.button
                     [ HE.onClick SetEmail
-                    , HA.disabled <| model.working || Result.toMaybe (Field.parse () model.emailField) == Nothing
+                    , HA.disabled <| model.working || Result.toMaybe (parseEmailAddress model) == Nothing
                     ] [H.text "Send verification"]
                 , model.notification |> H.map never
                 ]
@@ -170,15 +171,16 @@ view globals model =
                 [ H.text "I sent a verification code to "
                 , Utils.b email
                 , H.text ". Enter it here: "
-                , Field.inputFor SetCodeField () model.codeField
-                    H.input
+                , H.input
                     [ HA.disabled <| model.working
                     , HA.placeholder "code"
                     , Utils.onEnter VerifyEmail Ignore
+                    , HE.onInput SetCodeField
+                    , HA.value model.codeField
                     ] []
                 , H.button
                     [ HE.onClick VerifyEmail
-                    , HA.disabled <| model.working || Result.toMaybe (Field.parse () model.codeField) == Nothing
+                    , HA.disabled <| model.working || model.codeField == ""
                     ] [H.text "Verify code"]
                   -- TODO: "Resend email"
                 , model.notification |> H.map never

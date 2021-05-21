@@ -10,7 +10,6 @@ import Dict as D
 import Biatob.Proto.Mvp as Pb
 import Utils exposing (Username)
 
-import Field exposing (Field)
 import Utils
 
 import Widgets.SmallInvitationWidget as SmallInvitationWidget
@@ -24,7 +23,6 @@ type Msg
 
 type alias Model =
   { invitationWidget : SmallInvitationWidget.Model
-  , addTrustedUserField : Field () Username
   , working : Bool
   , notification : Html Never
   }
@@ -32,7 +30,6 @@ type alias Model =
 init : Model
 init =
   { invitationWidget = SmallInvitationWidget.init Nothing
-  , addTrustedUserField = Field.okIfEmpty <| Field.init "" <| \() s -> if String.isEmpty s then Err "must not be empty" else Ok s
   , working = False
   , notification = H.text ""
   }
