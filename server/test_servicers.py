@@ -581,9 +581,10 @@ class TestChangePassword:
     with assert_user_unchanged(any_servicer, real_token, 'rando password'):
       assert 'must log in' in str(ChangePasswordErr(any_servicer, None, 'rando password', 'new rando password'))
 
-  async def test_happy_path(self, any_servicer: Servicer):
+  async def test_can_log_in_with_new_password(self, any_servicer: Servicer):
     token = new_user_token(any_servicer, 'rando')
     ChangePasswordOk(any_servicer, token, 'rando password', 'new rando password')
+    assert LogInUsernameOk(any_servicer, None, 'rando', 'new rando password').token.owner == 'rando'
 
   async def test_error_when_wrong_old_password(self, any_servicer: Servicer):
     token = new_user_token(any_servicer, 'rando')

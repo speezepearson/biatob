@@ -896,7 +896,7 @@ class SqlServicer(Servicer):
         return mvp_pb2.ChangePasswordResponse(error=mvp_pb2.ChangePasswordResponse.Error(catchall='wrong old password'))
 
       logger.info('changing password', who=token.owner)
-      self._conn.change_password(token_owner(token), request.old_password)
+      self._conn.change_password(token_owner(token), request.new_password)
 
       return mvp_pb2.ChangePasswordResponse(ok=mvp_pb2.VOID)
 
