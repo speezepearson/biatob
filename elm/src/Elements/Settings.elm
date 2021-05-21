@@ -16,6 +16,7 @@ import Widgets.Navbar as Navbar
 import Biatob.Proto.Mvp as Pb
 
 port copy : String -> Cmd msg
+port navigate : Maybe String -> Cmd msg
 
 type alias Model =
   { globals : Page.Globals
@@ -141,7 +142,7 @@ update msg model =
       )
     LogInUsernameFinished req res ->
       ( { model | globals = model.globals |> Page.handleLogInUsernameResponse req res , navbarAuth = model.navbarAuth |> AuthWidget.handleLogInUsernameResponse res }
-      , Cmd.none
+      , navigate Nothing
       )
     RegisterUsername widgetState req ->
       ( { model | navbarAuth = widgetState }
@@ -149,7 +150,7 @@ update msg model =
       )
     RegisterUsernameFinished req res ->
       ( { model | globals = model.globals |> Page.handleRegisterUsernameResponse req res , navbarAuth = model.navbarAuth |> AuthWidget.handleRegisterUsernameResponse res }
-      , Cmd.none
+      , navigate Nothing
       )
     SignOut widgetState req ->
       ( { model | navbarAuth = widgetState }
@@ -157,7 +158,7 @@ update msg model =
       )
     SignOutFinished req res ->
       ( { model | globals = model.globals |> Page.handleSignOutResponse req res , navbarAuth = model.navbarAuth |> AuthWidget.handleSignOutResponse res }
-      , Cmd.none
+      , navigate (Just "/")
       )
     Copy s ->
       ( model
@@ -183,9 +184,9 @@ view model =
     ,
     H.main_ []
     [ case model.globals.serverState.settings of
-      Nothing -> H.text "You have to log in to view your settings!"
-      Just userInfo ->
-        H.div []
+        Nothing -> H.text "You need to log in to view your settings!"
+        Just userInfo ->
+          H.div []
           [ H.h2 [] [H.text "Settings"]
           , H.hr [] []
           , H.h3 [] [H.text "Email"]

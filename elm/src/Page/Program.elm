@@ -120,7 +120,7 @@ page elem =
           )
         NavbarSignOutFinished res ->
           case API.simplifySignOutResponse res of
-            Ok _ -> ( { model | reloading = True } , navigate Nothing )
+            Ok _ -> ( { model | reloading = True } , navigate (Just "/") )
             Err _ ->
               ( { model | navbarAuth = model.navbarAuth |> AuthWidget.handleSignOutResponse res }
               , Cmd.none

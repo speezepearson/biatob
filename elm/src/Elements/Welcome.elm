@@ -17,6 +17,7 @@ import Widgets.Navbar as Navbar
 import Biatob.Proto.Mvp as Pb
 
 port copy : String -> Cmd msg
+port navigate : Maybe String -> Cmd msg
 
 type alias Model =
   { globals : Page.Globals
@@ -108,7 +109,7 @@ update msg model =
       )
     LogInUsernameFinished loc req res ->
       ( updateAuthWidget loc (AuthWidget.handleLogInUsernameResponse res) { model | globals = model.globals |> Page.handleLogInUsernameResponse req res }
-      , Cmd.none
+      , if loc == Inline then navigate <| Just "/welcome#welcome-page-auth-widget" else Cmd.none
       )
     RegisterUsername loc widgetState req ->
       ( updateAuthWidget loc (always widgetState) model
@@ -116,7 +117,7 @@ update msg model =
       )
     RegisterUsernameFinished loc req res ->
       ( updateAuthWidget loc (AuthWidget.handleRegisterUsernameResponse res) { model | globals = model.globals |> Page.handleRegisterUsernameResponse req res }
-      , Cmd.none
+      , if loc == Inline then navigate <| Just "/welcome#welcome-page-auth-widget" else Cmd.none
       )
     SignOut loc widgetState req ->
       ( updateAuthWidget loc (always widgetState) model
@@ -124,7 +125,7 @@ update msg model =
       )
     SignOutFinished loc req res ->
       ( updateAuthWidget loc (AuthWidget.handleSignOutResponse res) { model | globals = model.globals |> Page.handleSignOutResponse req res }
-      , Cmd.none
+      , navigate (Just "/")
       )
     SetInvitationWidget widgetState ->
       ( { model | invitationWidget = widgetState } , Cmd.none )

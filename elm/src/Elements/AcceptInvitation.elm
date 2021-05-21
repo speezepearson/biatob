@@ -95,7 +95,7 @@ update msg model =
       )
     LogInUsernameFinished loc req res ->
       ( updateAuthWidget loc (AuthWidget.handleLogInUsernameResponse res) { model | globals = model.globals |> Page.handleLogInUsernameResponse req res }
-      , Cmd.none
+      , navigate Nothing
       )
     RegisterUsername loc widgetState req ->
       ( updateAuthWidget loc (always widgetState) model
@@ -103,7 +103,7 @@ update msg model =
       )
     RegisterUsernameFinished loc req res ->
       ( updateAuthWidget loc (AuthWidget.handleRegisterUsernameResponse res) { model | globals = model.globals |> Page.handleRegisterUsernameResponse req res }
-      , Cmd.none
+      , navigate Nothing
       )
     SignOut loc widgetState req ->
       ( updateAuthWidget loc (always widgetState) model
@@ -111,7 +111,7 @@ update msg model =
       )
     SignOutFinished loc req res ->
       ( updateAuthWidget loc (AuthWidget.handleSignOutResponse res) { model | globals = model.globals |> Page.handleSignOutResponse req res }
-      , Cmd.none
+      , navigate (Just "/")
       )
     Ignore ->
       ( model , Cmd.none )

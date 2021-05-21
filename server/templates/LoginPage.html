@@ -3,6 +3,9 @@
 {% block page_body %}
   <script type="text/javascript" src="/elm/Login.js"></script>
   <script type="text/javascript">
-    main({elmApp: Elm.Elements.Login, flags: {}});
+    var destination = (() => { var m = (/[?&]dest=([^&]+)/).exec(window.location.search); return m ? m[1] : "/"})();
+    main({elmApp: Elm.Elements.Login, flags: {
+      destination: destination,
+    }});
   </script>
 {% endblock %}
