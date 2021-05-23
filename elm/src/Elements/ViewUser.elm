@@ -32,7 +32,7 @@ type alias Model =
 
 type Msg
   = SetTrusted Bool
-  | SetTrustedFinished (Result Http.Error Pb.SetTrustedResponse)
+  | SetTrustedFinished Pb.SetTrustedRequest (Result Http.Error Pb.SetTrustedResponse)
   | SetAuthWidget AuthWidget.State
   | LogInUsername AuthWidget.State Pb.LogInUsernameRequest
   | LogInUsernameFinished Pb.LogInUsernameRequest (Result Http.Error Pb.LogInUsernameResponse)
@@ -43,7 +43,7 @@ type Msg
   | SetPredictionsWidget ViewPredictionsWidget.State
   | SetInvitationWidget SmallInvitationWidget.State
   | CreateInvitation SmallInvitationWidget.State Pb.CreateInvitationRequest
-  | CreateInvitationFinished (Result Http.Error Pb.CreateInvitationResponse)
+  | CreateInvitationFinished Pb.CreateInvitationRequest (Result Http.Error Pb.CreateInvitationResponse)
   | Copy String
   | Ignore
 
@@ -64,21 +64,17 @@ update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
     SetTrusted trusted ->
+      let req = {who=model.who, whoDepr=Nothing, trusted=trusted} in
       ( { model | working = True , notification = H.text "" }
-      , API.postSetTrusted SetTrustedFinished {who=model.who, whoDepr=Nothing, trusted=trusted}
+      , API.postSetTrusted (SetTrustedFinished req) req
       )
-    SetTrustedFinished res ->
-      ( case res of
-          Err e ->
-            { model | working = False , notification = Utils.redText (Debug.toString e) }
-          Ok resp ->
-            case resp.setTrustedResult of
-              Just (Pb.SetTrustedResultOk _) ->
-                { model | working = False, notification = H.text "" }
-              Just (Pb.SetTrustedResultError e) ->
-                { model | working = False , notification = Utils.redText (Debug.toString e) }
-              Nothing ->
-                { model | working = False , notification = Utils.redText "Invalid server response (neither Ok nor Error in protobuf)" }
+    SetTrustedFinished req res ->
+      ( { model | globals = model.globals |> Globals.handleSetTrustedResponse req res
+                , working = False
+                , notification = case API.simplifySetTrustedResponse res of
+                    Ok _ -> H.text ""
+                    Err e -> Utils.redText e
+        }
       , Cmd.none
       )
     SetAuthWidget widgetState ->
@@ -113,10 +109,12 @@ update msg model =
       ( { model | invitationWidget = widgetState } , Cmd.none )
     CreateInvitation widgetState req ->
       ( { model | invitationWidget = widgetState }
-      , API.postCreateInvitation CreateInvitationFinished req
+      , API.postCreateInvitation (CreateInvitationFinished req) req
       )
-    CreateInvitationFinished res ->
-      ( { model | invitationWidget = model.invitationWidget |> SmallInvitationWidget.handleCreateInvitationResponse res }
+    CreateInvitationFinished req res ->
+      ( { model | invitationWidget = model.invitationWidget |> SmallInvitationWidget.handleCreateInvitationResponse res
+                , globals = model.globals |> Globals.handleCreateInvitationResponse req res
+        }
       , Cmd.none
       )
     Copy s ->

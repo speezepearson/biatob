@@ -50,7 +50,7 @@ type Msg
   | SetOpenForSecondsField String
   | SetSpecialRulesField String
   | Create
-  | CreateFinished (Result Http.Error Pb.CreatePredictionResponse)
+  | CreateFinished Pb.CreatePredictionRequest (Result Http.Error Pb.CreatePredictionResponse)
   | SetAuthWidget AuthWidget.State
   | LogInUsername AuthWidget.State Pb.LogInUsernameRequest
   | LogInUsernameFinished Pb.LogInUsernameRequest (Result Http.Error Pb.LogInUsernameResponse)
@@ -227,30 +227,21 @@ update msg model =
       case buildCreateRequest model of
         Just req ->
           ( { model | working = True , createError = Nothing }
-          , API.postCreatePrediction CreateFinished req
+          , API.postCreatePrediction (CreateFinished req) req
           )
         Nothing ->
           ( { model | createError = Just "bad form" } -- TODO: improve error message
           , Cmd.none
           )
-    CreateFinished (Err e) ->
-      ( { model | working = False , createError = Just (Debug.toString e) }
+    CreateFinished req res ->
+      ( { model | globals = model.globals |> Globals.handleCreatePredictionResponse req res
+                , working = False
+                , createError = case API.simplifyCreatePredictionResponse res of
+                    Ok _ -> Nothing
+                    Err e -> Just e
+        }
       , Cmd.none
       )
-    CreateFinished (Ok resp) ->
-      case resp.createPredictionResult of
-        Just (Pb.CreatePredictionResultNewPredictionId id) ->
-          ( model
-          , navigate <| Just <| "/p/" ++ String.fromInt id
-          )
-        Just (Pb.CreatePredictionResultError e) ->
-          ( { model | working = False , createError = Just (Debug.toString e) }
-          , Cmd.none
-          )
-        Nothing ->
-          ( { model | working = False , createError = Just "Invalid server response (neither Ok nor Error in protobuf)" }
-          , Cmd.none
-          )
 
     Ignore ->
       (model, Cmd.none)

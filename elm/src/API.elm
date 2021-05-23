@@ -4,6 +4,7 @@ import Protobuf.Decode as PD
 import Protobuf.Encode as PE
 import Biatob.Proto.Mvp as Pb
 import Http
+import Utils exposing (PredictionId)
 
 type alias Endpoint req resp =
   { encoder : (req -> PE.Encoder)
@@ -99,6 +100,32 @@ simplifyCreateInvitationResponse res =
         Just (Pb.CreateInvitationResultOk result) ->
           Ok result
         Just (Pb.CreateInvitationResultError e) ->
+          Err (Debug.toString e)
+        Nothing ->
+          Err "Invalid server response (neither Ok nor Error in protobuf)"
+
+simplifyAcceptInvitationResponse : Result Http.Error Pb.AcceptInvitationResponse -> Result String Pb.GenericUserInfo
+simplifyAcceptInvitationResponse res =
+  case res of
+    Err e -> Err (Debug.toString e)
+    Ok resp ->
+      case resp.acceptInvitationResult of
+        Just (Pb.AcceptInvitationResultOk result) ->
+          Ok result
+        Just (Pb.AcceptInvitationResultError e) ->
+          Err (Debug.toString e)
+        Nothing ->
+          Err "Invalid server response (neither Ok nor Error in protobuf)"
+
+simplifyCreatePredictionResponse : Result Http.Error Pb.CreatePredictionResponse -> Result String PredictionId
+simplifyCreatePredictionResponse res =
+  case res of
+    Err e -> Err (Debug.toString e)
+    Ok resp ->
+      case resp.createPredictionResult of
+        Just (Pb.CreatePredictionResultNewPredictionId result) ->
+          Ok result
+        Just (Pb.CreatePredictionResultError e) ->
           Err (Debug.toString e)
         Nothing ->
           Err "Invalid server response (neither Ok nor Error in protobuf)"

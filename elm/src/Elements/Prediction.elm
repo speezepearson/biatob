@@ -40,7 +40,7 @@ type Msg
   | SignOutFinished Pb.SignOutRequest (Result Http.Error Pb.SignOutResponse)
   | SetInvitationWidget SmallInvitationWidget.State
   | CreateInvitation SmallInvitationWidget.State Pb.CreateInvitationRequest
-  | CreateInvitationFinished (Result Http.Error Pb.CreateInvitationResponse)
+  | CreateInvitationFinished Pb.CreateInvitationRequest (Result Http.Error Pb.CreateInvitationResponse)
   | Copy String
   | SetPredictionWidget PredictionWidget.State
   | Stake PredictionWidget.State Pb.StakeRequest
@@ -242,10 +242,10 @@ update msg model =
       ( { model | invitationWidget = widgetState } , Cmd.none )
     CreateInvitation widgetState req ->
       ( { model | invitationWidget = widgetState }
-      , API.postCreateInvitation CreateInvitationFinished req
+      , API.postCreateInvitation (CreateInvitationFinished req) req
       )
-    CreateInvitationFinished res ->
-      ( { model | invitationWidget = model.invitationWidget |> SmallInvitationWidget.handleCreateInvitationResponse res }
+    CreateInvitationFinished req res ->
+      ( { model | globals = model.globals |> Globals.handleCreateInvitationResponse req res , invitationWidget = model.invitationWidget |> SmallInvitationWidget.handleCreateInvitationResponse res }
       , Cmd.none
       )
     Copy s ->

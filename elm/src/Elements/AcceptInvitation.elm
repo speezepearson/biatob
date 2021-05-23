@@ -82,24 +82,15 @@ update msg model =
       ( { model | working = True , acceptNotification = H.text "" }
       , API.postAcceptInvitation (AcceptInvitationFinished {invitationId=Just model.invitationId}) {invitationId=Just model.invitationId}
       )
-    AcceptInvitationFinished _ (Err e) ->
-      ( { model | working = False , acceptNotification = Utils.redText (Debug.toString e) }
+    AcceptInvitationFinished req res ->
+      ( { model | working = False
+                , acceptNotification = case API.simplifyAcceptInvitationResponse res of
+                    Ok _ -> H.text ""
+                    Err e -> Utils.redText e
+                , globals = model.globals |> Globals.handleAcceptInvitationResponse req res
+        }
       , Cmd.none
       )
-    AcceptInvitationFinished _ (Ok resp) ->
-      case resp.acceptInvitationResult of
-        Just (Pb.AcceptInvitationResultOk _) ->
-          ( model
-          , navigate <| Just <| Maybe.withDefault (Utils.pathToUserPage model.invitationId.inviter) model.destination
-          )
-        Just (Pb.AcceptInvitationResultError e) ->
-          ( { model | working = False , acceptNotification = Utils.redText (Debug.toString e) }
-          , Cmd.none
-          )
-        Nothing ->
-          ( { model | working = False , acceptNotification = Utils.redText "Invalid server response (neither Ok nor Error in protobuf)" }
-          , Cmd.none
-          )
     SetAuthWidget loc widgetState ->
       ( updateAuthWidget loc (always widgetState) model , Cmd.none )
     LogInUsername loc widgetState req ->
