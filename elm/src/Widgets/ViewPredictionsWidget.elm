@@ -7,10 +7,20 @@ import Dict exposing (Dict)
 import Time
 
 import Biatob.Proto.Mvp as Pb
-import Utils exposing (PredictionId)
+import Utils exposing (PredictionId, Username)
 
-import Widgets.PredictionWidget as PredictionWidget
-import Page
+type alias Config msg =
+  { setState : State -> msg
+  , predictions : Dict PredictionId Pb.UserPredictionView
+  , allowFilterByOwner : Bool
+  , self : Username
+  , now : Time.Posix
+  , timeZone : Time.Zone
+  }
+type alias State =
+  { filter : Filter
+  , order : SortOrder
+  }
 
 type LifecyclePhase
   = Open
@@ -33,26 +43,32 @@ type alias Filter =
   { own : Maybe Bool
   , phase : Maybe LifecyclePhase
   }
-filterMatches : Page.Globals -> Filter -> Pb.UserPredictionView -> Bool
-filterMatches globals filter prediction =
-  List.all identity
-    [ filter.own
-      |> Maybe.map ((==) (Page.isSelf globals prediction.creator))
-      |> Maybe.withDefault True
-    , filter.phase
-      |> Maybe.map (\phase -> phaseMatches globals.now phase prediction)
-      |> Maybe.withDefault True
-    ]
-viewFilterInput : Filter -> Html Msg
-viewFilterInput filter =
+setOwn : Maybe Bool -> Filter -> Filter
+setOwn own filter = { filter | own = own }
+setPhase : Maybe LifecyclePhase -> Filter -> Filter
+setPhase phase filter = { filter | phase = phase }
+filterMatches : Config msg -> Filter -> Pb.UserPredictionView -> Bool
+filterMatches config filter prediction =
+  ( case filter.own of
+      Nothing -> True
+      Just True -> prediction.creator == config.self
+      Just False -> prediction.creator /= config.self
+  ) && (
+    case filter.phase of
+      Nothing -> True
+      Just phase -> phaseMatches config.now phase prediction
+  )
+viewFilterInput : Config msg -> State -> Html msg
+viewFilterInput config state =
   H.span []
     [ H.select
-        [ HE.onInput <| \s -> case s of
-            "all owners" -> SetFilter {filter | own = Nothing}
-            "my own" -> SetFilter {filter | own = Just True}
-            "not mine" -> SetFilter {filter | own = Just False}
+        [ HE.onInput <| \s -> config.setState {state | filter = state.filter |> setOwn (case s of
+            "all owners" -> Nothing
+            "my own" -> Just True
+            "not mine" -> Just False
             _ -> Debug.todo <| "unrecognized value: " ++ s
-        , HA.value <| case filter.own of
+            )}
+        , HA.value <| case state.filter.own of
             Nothing -> "all owners"
             Just True -> "my own"
             Just False -> "not mine"
@@ -62,13 +78,14 @@ viewFilterInput filter =
         , H.option [HA.value "not mine"] [H.text "not mine"]
         ]
     , H.select
-        [ HE.onInput <| \s -> case s of
-            "all phases" -> SetFilter {filter | phase = Nothing}
-            "open" -> SetFilter {filter | phase = Just Open}
-            "needs resolution" -> SetFilter {filter | phase = Just NeedsResolution}
-            "resolved" -> SetFilter {filter | phase = Just Resolved}
+        [ HE.onInput <| \s -> config.setState {state | filter = state.filter |> setPhase (case s of
+            "all phases" -> Nothing
+            "open" -> Just Open
+            "needs resolution" -> Just NeedsResolution
+            "resolved" -> Just Resolved
             _ -> Debug.todo <| "unrecognized value: " ++ s
-        , HA.value <| case filter.phase of
+          )}
+        , HA.value <| case state.filter.phase of
             Nothing -> "all phases"
             Just Open -> "open"
             Just NeedsResolution -> "needs resolution"
@@ -90,16 +107,17 @@ sortKeySign dir =
 type SortOrder
   = ResolutionDate Ordering
   | CreatedDate Ordering
-viewSortOrderInput : SortOrder -> Html Msg
-viewSortOrderInput order =
+viewSortOrderInput : Config msg -> State -> Html msg
+viewSortOrderInput config state =
   H.select
-    [ HE.onInput <| \s -> case s of
-        "created, desc" -> SetSortOrder (CreatedDate Desc)
-        "created, asc" -> SetSortOrder (CreatedDate Asc)
-        "resolves, desc" -> SetSortOrder (ResolutionDate Asc)
-        "resolves, asc" -> SetSortOrder (ResolutionDate Asc)
+    [ HE.onInput <| \s -> config.setState {state | order = case s of
+        "created, desc" -> CreatedDate Desc
+        "created, asc" -> CreatedDate Asc
+        "resolves, desc" -> ResolutionDate Asc
+        "resolves, asc" -> ResolutionDate Asc
         _ -> Debug.todo <| "unrecognized value: " ++ s
-    , HA.value <| case order of
+      }
+    , HA.value <| case state.order of
         CreatedDate Desc -> "created, desc"
         CreatedDate Asc -> "created, asc"
         ResolutionDate Desc -> "resolves, desc"
@@ -119,79 +137,70 @@ sortPredictions toPrediction order predictions =
     CreatedDate dir ->
       List.sortBy (toPrediction >> \p -> p.createdUnixtime * sortKeySign dir) predictions
 
-type alias Model =
-  { predictions : Dict PredictionId PredictionWidget.Model
-  , filter : Filter
-  , order : SortOrder
-  , allowFilterByOwner : Bool
-  }
-
-type Msg
-  = PredictionMsg PredictionId PredictionWidget.Msg
-  | SetSortOrder SortOrder
-  | SetFilter Filter
-  | Ignore
-
-init : Dict PredictionId Pb.UserPredictionView -> Model
-init predictions =
-  { predictions = predictions |> Dict.map (\id _ -> PredictionWidget.init id |> PredictionWidget.setLinkTitle True)
-  , filter = { own = Nothing , phase = Nothing }
+init : State
+init =
+  { filter = { own = Nothing , phase = Nothing }
   , order = CreatedDate Desc
-  , allowFilterByOwner = True
   }
 
-noFilterByOwner : Model -> Model
-noFilterByOwner model = { model | allowFilterByOwner = False }
-
-update : Msg -> Model -> (Model, Page.Command Msg)
-update msg model =
-  case msg of
-    PredictionMsg id widgetMsg ->
-      case Dict.get id model.predictions of
-        Nothing -> Debug.todo "got message for unknown prediction"
-        Just widget ->
-          let
-            (newWidget, widgetCmd) = PredictionWidget.update widgetMsg widget
-          in
-          ( { model | predictions = model.predictions |> Dict.insert id newWidget }
-          , Page.mapCmd (PredictionMsg id) widgetCmd
-          )
-
-    SetSortOrder order ->
-      ( { model | order = order }
-      , Page.NoCmd
-      )
-
-    SetFilter filter ->
-      ( { model | filter = filter }
-      , Page.NoCmd
-      )
-
-    Ignore -> ( model , Page.NoCmd )
-
-view : Page.Globals -> Model -> Html Msg
-view globals model =
+view : Config msg -> State -> Html msg
+view config state =
   H.div []
-    [ if model.allowFilterByOwner then
-        H.span [] [H.text "Filter: ", viewFilterInput model.filter]
+    [ if config.allowFilterByOwner then
+        H.span [] [H.text "Filter: ", viewFilterInput config state]
       else
         H.text ""
     , H.text " Sort: "
-    , viewSortOrderInput model.order
+    , viewSortOrderInput config state
     , H.hr [] []
-    , if Dict.isEmpty model.predictions then
+    , if Dict.isEmpty config.predictions then
         H.text "<none>"
       else
-        model.predictions
+        config.predictions
         |> Dict.toList
-        |> sortPredictions (\(id, _) -> Utils.must "TODO" (Dict.get id globals.serverState.predictions)) model.order
-        |> List.filter (\(id, _) -> filterMatches globals model.filter (Utils.must "TODO" (Dict.get id globals.serverState.predictions)))
-        |> List.map (\(id, widget) ->
-            H.div [HA.style "margin" "1em", HA.style "padding" "1em", HA.style "border" "1px solid black"]
-              [PredictionWidget.view globals widget |> H.map (PredictionMsg id)])
-        |> List.intersperse (H.hr [] [])
-        |> H.div []
+        |> sortPredictions (\(id, _) -> Utils.must "TODO" (Dict.get id config.predictions)) state.order
+        |> List.filter (\(id, _) -> filterMatches config state.filter (Utils.must "TODO" (Dict.get id config.predictions)))
+        |> List.map (\(id, prediction) ->
+            viewRow
+              { cell = H.td
+              , created = H.text <| Utils.dateStr config.timeZone (Utils.unixtimeToTime prediction.createdUnixtime)
+              , creator = if config.allowFilterByOwner then Just (H.text prediction.creator) else Nothing
+              , resolves = H.text <| Utils.dateStr config.timeZone (Utils.unixtimeToTime prediction.resolvesAtUnixtime)
+              , prediction = H.a [HA.href <| "/p/" ++ String.fromInt id] [H.text prediction.prediction]
+              , resolution = case List.head (List.reverse prediction.resolutions) |> Maybe.map .resolution of
+                  Nothing -> H.text ""
+                  Just Pb.ResolutionNoneYet -> H.text ""
+                  Just Pb.ResolutionYes -> H.text "Yes"
+                  Just Pb.ResolutionNo -> H.text "No"
+                  Just Pb.ResolutionInvalid -> H.text "Invalid!"
+                  Just (Pb.ResolutionUnrecognized_ _) -> Debug.todo "unrecognized resolution"
+              })
+        |> (::) (viewRow
+            { cell = H.th
+            , created = H.text "Predicted on"
+            , creator = if config.allowFilterByOwner then Just (H.text "Creator") else Nothing
+            , resolves = H.text "Resolves by"
+            , prediction = H.text "Prediction"
+            , resolution = H.text "Resolution"
+            })
+        |> H.table [HA.class "prediction-list-table"]
     ]
 
-subscriptions : Model -> Sub Msg
-subscriptions _ = Sub.none
+viewRow :
+  { cell : List (H.Attribute msg) -> List (Html msg) -> Html msg
+  , created : Html msg
+  , creator : Maybe (Html msg)
+  , resolves : Html msg
+  , prediction : Html msg
+  , resolution : Html msg
+  } -> Html msg
+viewRow info =
+  H.tr []
+  [ info.cell [] [info.created]
+  , case info.creator of
+      Nothing -> H.text ""
+      Just creator -> info.cell [] [creator]
+  , info.cell [] [info.resolves]
+  , info.cell [] [info.prediction]
+  , info.cell [] [info.resolution]
+  ]

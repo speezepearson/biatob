@@ -28,7 +28,6 @@ type Msg
   | RegisterUsernameFinished Pb.RegisterUsernameRequest (Result Http.Error Pb.RegisterUsernameResponse)
   | SignOut AuthWidget.State Pb.SignOutRequest
   | SignOutFinished Pb.SignOutRequest (Result Http.Error Pb.SignOutResponse)
-  | Copy String
   | Ignore
 
 init : JD.Value -> ( Model , Cmd Msg )
@@ -74,10 +73,6 @@ update msg model =
     SignOutFinished req res ->
       ( { model | globals = model.globals |> Page.handleSignOutResponse req res , navbarAuth = model.navbarAuth |> AuthWidget.handleSignOutResponse res }
       , navigate (Just "/")
-      )
-    Copy s ->
-      ( model
-      , copy s
       )
     Ignore ->
       ( model , Cmd.none )
