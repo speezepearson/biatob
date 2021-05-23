@@ -1,6 +1,7 @@
 port module Elements.AcceptInvitation exposing (main)
 
 import Browser
+import Dict
 import Html as H exposing (Html)
 import Html.Attributes as HA
 import Html.Events as HE
@@ -44,16 +45,28 @@ type Msg
 
 init : JD.Value -> (Model, Cmd Msg)
 init flags =
-  ( { globals = JD.decodeValue Page.globalsDecoder flags |> Result.toMaybe |> Utils.must "flags"
-    , invitationId = Utils.mustDecodePbFromFlags Pb.invitationIdDecoder "invitationIdPbB64" flags
-    , destination = Utils.mustDecodeFromFlags (JD.nullable JD.string) "destination" flags
+  let
+    globals = JD.decodeValue Page.globalsDecoder flags |> Result.toMaybe |> Utils.must "flags"
+    invitationId = Utils.mustDecodePbFromFlags Pb.invitationIdDecoder "invitationIdPbB64" flags
+    destination = Utils.mustDecodeFromFlags (JD.nullable JD.string) "destination" flags
+  in
+  ( { globals = globals
+    , invitationId = invitationId
+    , destination = destination
     , invitationIsOpen = Utils.mustDecodeFromFlags JD.bool "invitationIsOpen" flags
     , navbarAuth = AuthWidget.init
     , authWidget = AuthWidget.init
     , working = False
     , acceptNotification = H.text ""
     }
-  , Cmd.none
+  , case globals.serverState.settings |> Maybe.map .relationships |> Maybe.andThen (Dict.get invitationId.inviter) |> Maybe.andThen identity of
+      Just {trusted, trusting} ->
+        if trusted && trusting then
+          navigate destination
+        else
+          Cmd.none
+      Nothing -> Cmd.none
+
   )
 
 updateAuthWidget : AuthWidgetLoc -> (AuthWidget.State -> AuthWidget.State) -> Model -> Model

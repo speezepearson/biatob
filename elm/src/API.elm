@@ -116,6 +116,19 @@ simplifyStakeResponse res =
         Nothing ->
           Err "Invalid server response (neither Ok nor Error in protobuf)"
 
+simplifyResolveResponse : Result Http.Error Pb.ResolveResponse -> Result String Pb.UserPredictionView
+simplifyResolveResponse res =
+  case res of
+    Err e -> Err (Debug.toString e)
+    Ok resp ->
+      case resp.resolveResult of
+        Just (Pb.ResolveResultOk result) ->
+          Ok result
+        Just (Pb.ResolveResultError e) ->
+          Err (Debug.toString e)
+        Nothing ->
+          Err "Invalid server response (neither Ok nor Error in protobuf)"
+
 simplifyUpdateSettingsResponse : Result Http.Error Pb.UpdateSettingsResponse -> Result String Pb.GenericUserInfo
 simplifyUpdateSettingsResponse res =
   case res of

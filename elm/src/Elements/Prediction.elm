@@ -1,43 +1,277 @@
-module Elements.Prediction exposing (main)
+port module Elements.Prediction exposing (main)
 
-import Html as H
+import Browser
+import Dict
+import Html as H exposing (Html)
+import Html.Attributes as HA
 import Json.Decode as JD
+import Http
 
 import Utils
 
-import Widgets.PredictionWidget as Widget
+import Widgets.CopyWidget as CopyWidget
+import Widgets.AuthWidget as AuthWidget
+import Widgets.Navbar as Navbar
+import Widgets.PredictionWidget as PredictionWidget
+import Widgets.SmallInvitationWidget as SmallInvitationWidget
 import Page
-import Page.Program
+import API
+import Biatob.Proto.Mvp as Pb
+import Utils exposing (PredictionId)
 
-type alias Model = Widget.Model
-type Msg
-  = WidgetMsg Widget.Msg
+port copy : String -> Cmd msg
+port navigate : Maybe String -> Cmd msg
 
-init : JD.Value -> Model
-init flags =
-  let predictionId = Utils.mustDecodeFromFlags JD.int "predictionId" flags in
-  Widget.init predictionId
-
-update : Msg -> Model -> ( Model, Page.Command Msg )
-update msg widget =
-  case msg of
-    WidgetMsg widgetMsg ->
-      let
-        (newWidget, innerCmd) = Widget.update widgetMsg widget
-      in
-      ( newWidget
-      , Page.mapCmd WidgetMsg innerCmd
-      )
-
-pagedef : Page.Element Model Msg
-pagedef =
-  { init = \flags -> (init flags, Page.NoCmd)
-  , view = \globals widget ->
-      { title = ""
-      , body = [H.main_ [] [Widget.view globals widget |> H.map WidgetMsg]]
-      }
-  , update = update
-  , subscriptions = \_ -> Sub.none
+type alias Model =
+  { globals : Page.Globals
+  , navbarAuth : AuthWidget.State
+  , predictionId : PredictionId
+  , predictionWidget : PredictionWidget.State
+  , invitationWidget : SmallInvitationWidget.State
   }
 
-main = Page.Program.page pagedef
+type Msg
+  = SetAuthWidget AuthWidget.State
+  | LogInUsername AuthWidget.State Pb.LogInUsernameRequest
+  | LogInUsernameFinished Pb.LogInUsernameRequest (Result Http.Error Pb.LogInUsernameResponse)
+  | RegisterUsername AuthWidget.State Pb.RegisterUsernameRequest
+  | RegisterUsernameFinished Pb.RegisterUsernameRequest (Result Http.Error Pb.RegisterUsernameResponse)
+  | SignOut AuthWidget.State Pb.SignOutRequest
+  | SignOutFinished Pb.SignOutRequest (Result Http.Error Pb.SignOutResponse)
+  | SetInvitationWidget SmallInvitationWidget.State
+  | CreateInvitation SmallInvitationWidget.State Pb.CreateInvitationRequest
+  | CreateInvitationFinished (Result Http.Error Pb.CreateInvitationResponse)
+  | Copy String
+  | SetPredictionWidget PredictionWidget.State
+  | Stake PredictionWidget.State Pb.StakeRequest
+  | StakeFinished Pb.StakeRequest (Result Http.Error Pb.StakeResponse)
+  | Resolve PredictionWidget.State Pb.ResolveRequest
+  | ResolveFinished Pb.ResolveRequest (Result Http.Error Pb.ResolveResponse)
+  | Ignore
+
+init : JD.Value -> ( Model, Cmd Msg )
+init flags =
+  ( { globals = JD.decodeValue Page.globalsDecoder flags |> Result.toMaybe |> Utils.must "flags"
+    , navbarAuth = AuthWidget.init
+    , predictionId = Utils.mustDecodeFromFlags JD.int "predictionId" flags
+    , predictionWidget = PredictionWidget.init
+    , invitationWidget = SmallInvitationWidget.init
+    }
+  , Cmd.none
+  )
+
+view : Model -> Browser.Document Msg
+view model =
+  let prediction = Utils.must "must have loaded prediction being viewed" <| Dict.get model.predictionId model.globals.serverState.predictions in
+  { title = "My stakes"
+  , body =
+    [ Navbar.view
+        { setState = SetAuthWidget
+        , logInUsername = LogInUsername
+        , register = RegisterUsername
+        , signOut = SignOut
+        , ignore = Ignore
+        , auth = Page.getAuth model.globals
+        }
+        model.navbarAuth
+    , H.main_ []
+      [ H.h2 [] [H.text "My Stakes"]
+      , PredictionWidget.view
+          { setState = SetPredictionWidget
+          , copy = Copy
+          , stake = Stake
+          , resolve = Resolve
+          , invitationWidget = viewInvitationWidget model
+          , linkTitle = False
+          , disableCommit = True
+          , predictionId = model.predictionId
+          , prediction = prediction
+          , httpOrigin = model.globals.httpOrigin
+          , creatorRelationship =
+              if not (Page.isLoggedIn model.globals) then
+                PredictionWidget.LoggedOut
+              else if Page.isSelf model.globals prediction.creator then
+                PredictionWidget.Self
+              else case Page.getRelationship model.globals prediction.creator |> Maybe.map (\r -> (r.trusting, r.trusted)) |> Maybe.withDefault (False, False) of
+                (True, True) -> PredictionWidget.Friends
+                (True, False) -> PredictionWidget.TrustedByOwner
+                (False, True) -> PredictionWidget.TrustsOwner
+                (False, False) -> PredictionWidget.NoRelation
+          , timeZone = model.globals.timeZone
+          , now = model.globals.now
+          }
+          model.predictionWidget
+    , if not (Page.isLoggedIn model.globals) then
+        viewWhatIsThis prediction
+      else if Page.isSelf model.globals prediction.creator then
+        H.div []
+          [ H.text "If you want to link to your prediction, here are some snippets of HTML you could copy-paste:"
+          , viewEmbedInfo model
+          , H.text "If there are people you want to participate, but you haven't already established trust with them in Biatob, send them invitations: "
+          , viewInvitationWidget model
+          ]
+      else
+        H.text ""
+      ]
+    ]
+  }
+
+viewInvitationWidget : Model -> Html Msg
+viewInvitationWidget model =
+  SmallInvitationWidget.view
+    { setState = SetInvitationWidget
+    , createInvitation = CreateInvitation
+    , copy = Copy
+    , destination = Just <| "/p/" ++ String.fromInt model.predictionId
+    , httpOrigin = model.globals.httpOrigin
+    }
+    model.invitationWidget
+viewEmbedInfo : Model -> Html Msg
+viewEmbedInfo model =
+  let
+    prediction = Utils.must "must have loaded prediction being viewed" <| Dict.get model.predictionId model.globals.serverState.predictions
+    linkUrl = model.globals.httpOrigin ++ "/p/" ++ String.fromInt model.predictionId  -- TODO(P0): needs origin to get stuck in text field
+    imgUrl = model.globals.httpOrigin ++ "/p/" ++ String.fromInt model.predictionId ++ "/embed.png"
+    imgStyles = [("max-height","1.5ex"), ("border-bottom","1px solid #008800")]
+    imgCode =
+      "<a href=\"" ++ linkUrl ++ "\">"
+      ++ "<img style=\"" ++ (imgStyles |> List.map (\(k,v) -> k++":"++v) |> String.join ";") ++ "\" src=\"" ++ imgUrl ++ "\" /></a>"
+    linkText =
+      "["
+      ++ Utils.formatCents (prediction.maximumStakeCents // 100 * 100)
+      ++ " @ "
+      ++ String.fromInt (round <| (Utils.mustPredictionCertainty prediction).low * 100)
+      ++ "-"
+      ++ String.fromInt (round <| (Utils.mustPredictionCertainty prediction).high * 100)
+      ++ "%]"
+    linkCode =
+      "<a href=\"" ++ linkUrl ++ "\">" ++ linkText ++ "</a>"
+  in
+    H.ul []
+      [ H.li [] <|
+        [ H.text "A linked inline image: "
+        , CopyWidget.view Copy imgCode
+        , H.br [] []
+        , H.text "This would render as: "
+        , H.a [HA.href linkUrl]
+          [ H.img (HA.src imgUrl :: (imgStyles |> List.map (\(k,v) -> HA.style k v))) []]
+        ]
+      , H.li [] <|
+        [ H.text "A boring old link: "
+        , CopyWidget.view Copy linkCode
+        , H.br [] []
+        , H.text "This would render as: "
+        , H.a [HA.href linkUrl] [H.text linkText]
+        ]
+      ]
+
+viewWhatIsThis : Pb.UserPredictionView -> Html msg
+viewWhatIsThis prediction =
+  H.div []
+  [ H.hr [HA.style "margin" "4em 0"] []
+  , H.h3 [] [H.text "Huh? What is this?"]
+  , H.p []
+      [ H.text "This site is a tool that helps people make friendly wagers, thereby clarifying and concretizing their beliefs and making the world a better, saner place."
+      ]
+  , H.p []
+      [ Utils.renderUser prediction.creator
+      , H.text <| " is putting their money where their mouth is: they've staked " ++ Utils.formatCents prediction.maximumStakeCents ++ " of real-life money on this prediction,"
+          ++ " and they're willing to bet at the above odds against anybody they trust. Good for them!"
+      ]
+  , H.p []
+      [ H.text "If you know and trust ", Utils.renderUser prediction.creator
+      , H.text <| ", and they know and trust you, and you want to bet against them on this prediction,"
+          ++ " then message them however you normally do, and ask them for an invitation to this market!"
+      ]
+  , H.hr [] []
+  , H.h3 [] [H.text "But... why would you do this?"]
+  , H.p []
+      [ H.text "Personally, when I force myself to make concrete predictions -- especially on topics I feel strongly about -- it frequently turns out that "
+      , Utils.i "I don't actually believe what I thought I did."
+      , H.text " Crazy, right!? Brains suck! And betting, i.e. attaching money to my predictions, is "
+      , H.a [HA.href "https://marginalrevolution.com/marginalrevolution/2012/11/a-bet-is-a-tax-on-bullshit.html"]
+          [ H.text "an incentive to actually try to get them right"
+          ]
+      , H.text ": it forces my brain to cut through (some of) the layers of "
+      , H.a [HA.href "https://en.wikipedia.org/wiki/Social-desirability_bias"]
+          [ H.text "social-desirability bias"
+          ]
+      , H.text " and "
+      , H.a [HA.href "https://www.lesswrong.com/posts/DSnamjnW7Ad8vEEKd/trivers-on-self-deception"]
+          [ H.text "Triversian self-deception"
+          ]
+      , H.text " to lay bare "
+      , H.a [HA.href "https://www.lesswrong.com/posts/a7n8GdKiAZRX86T5A/making-beliefs-pay-rent-in-anticipated-experiences"]
+          [ H.text "my actual beliefs about what I expect to see"
+          ]
+      , H.text "."
+      ]
+  , H.p [] [H.text "I made this tool to share that joy with you."]
+  ]
+
+update : Msg -> Model -> ( Model , Cmd Msg )
+update msg model =
+  case msg of
+    SetAuthWidget widgetState ->
+      ( { model | navbarAuth = widgetState } , Cmd.none )
+    LogInUsername widgetState req ->
+      ( { model | navbarAuth = widgetState }
+      , API.postLogInUsername (LogInUsernameFinished req) req
+      )
+    LogInUsernameFinished req res ->
+      ( { model | globals = model.globals |> Page.handleLogInUsernameResponse req res , navbarAuth = model.navbarAuth |> AuthWidget.handleLogInUsernameResponse res }
+      , navigate Nothing
+      )
+    RegisterUsername widgetState req ->
+      ( { model | navbarAuth = widgetState }
+      , API.postRegisterUsername (RegisterUsernameFinished req) req
+      )
+    RegisterUsernameFinished req res ->
+      ( { model | globals = model.globals |> Page.handleRegisterUsernameResponse req res , navbarAuth = model.navbarAuth |> AuthWidget.handleRegisterUsernameResponse res }
+      , navigate Nothing
+      )
+    SignOut widgetState req ->
+      ( { model | navbarAuth = widgetState }
+      , API.postSignOut (SignOutFinished req) req
+      )
+    SignOutFinished req res ->
+      ( { model | globals = model.globals |> Page.handleSignOutResponse req res , navbarAuth = model.navbarAuth |> AuthWidget.handleSignOutResponse res }
+      , navigate <| Just "/"
+      )
+    SetInvitationWidget widgetState ->
+      ( { model | invitationWidget = widgetState } , Cmd.none )
+    CreateInvitation widgetState req ->
+      ( { model | invitationWidget = widgetState }
+      , API.postCreateInvitation CreateInvitationFinished req
+      )
+    CreateInvitationFinished res ->
+      ( { model | invitationWidget = model.invitationWidget |> SmallInvitationWidget.handleCreateInvitationResponse res }
+      , Cmd.none
+      )
+    Copy s ->
+      ( model
+      , copy s
+      )
+    SetPredictionWidget widgetState ->
+      ( { model | predictionWidget = widgetState } , Cmd.none )
+    Stake widgetState req ->
+      ( { model | predictionWidget = widgetState }
+      , API.postStake (StakeFinished req) req
+      )
+    StakeFinished req res ->
+      ( { model | predictionWidget = model.predictionWidget |> PredictionWidget.handleStakeResponse res , globals = model.globals |> Page.handleStakeResponse req res }
+      , Cmd.none
+      )
+    Resolve widgetState req ->
+      ( { model | predictionWidget = widgetState }
+      , API.postResolve (ResolveFinished req) req
+      )
+    ResolveFinished req res ->
+      ( { model | predictionWidget = model.predictionWidget |> PredictionWidget.handleResolveResponse res , globals = model.globals |> Page.handleResolveResponse req res }
+      , Cmd.none
+      )
+    Ignore ->
+      ( model , Cmd.none )
+
+
+main = Browser.document {init=init, view=view, update=update, subscriptions=\_ -> Sub.none}
