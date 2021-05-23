@@ -5,7 +5,7 @@ import Html as H
 import Http
 import Json.Decode as JD
 
-import Page
+import Globals
 import Widgets.AuthWidget as AuthWidget
 import Widgets.Navbar as Navbar
 import Biatob.Proto.Mvp as Pb
@@ -16,7 +16,7 @@ port copy : String -> Cmd msg
 port navigate : Maybe String -> Cmd msg
 
 type alias Model =
-  { globals : Page.Globals
+  { globals : Globals.Globals
   , navbarAuth : AuthWidget.State
   , destination : String
   }
@@ -34,7 +34,7 @@ init : JD.Value -> ( Model , Cmd Msg )
 init flags =
   let
     model =
-      { globals = JD.decodeValue Page.globalsDecoder flags |> Result.toMaybe |> Utils.must "flags"
+      { globals = JD.decodeValue Globals.globalsDecoder flags |> Result.toMaybe |> Utils.must "flags"
       , navbarAuth = AuthWidget.init
       , destination = Utils.mustDecodeFromFlags JD.string "destination" flags
       }
@@ -55,7 +55,7 @@ update msg model =
       , API.postLogInUsername (LogInUsernameFinished req) req
       )
     LogInUsernameFinished req res ->
-      ( { model | globals = model.globals |> Page.handleLogInUsernameResponse req res , navbarAuth = model.navbarAuth |> AuthWidget.handleLogInUsernameResponse res }
+      ( { model | globals = model.globals |> Globals.handleLogInUsernameResponse req res , navbarAuth = model.navbarAuth |> AuthWidget.handleLogInUsernameResponse res }
       , navigate <| Just model.destination
       )
     RegisterUsername widgetState req ->
@@ -63,7 +63,7 @@ update msg model =
       , API.postRegisterUsername (RegisterUsernameFinished req) req
       )
     RegisterUsernameFinished req res ->
-      ( { model | globals = model.globals |> Page.handleRegisterUsernameResponse req res , navbarAuth = model.navbarAuth |> AuthWidget.handleRegisterUsernameResponse res }
+      ( { model | globals = model.globals |> Globals.handleRegisterUsernameResponse req res , navbarAuth = model.navbarAuth |> AuthWidget.handleRegisterUsernameResponse res }
       , navigate <| Just model.destination
       )
     SignOut widgetState req ->
@@ -71,7 +71,7 @@ update msg model =
       , API.postSignOut (SignOutFinished req) req
       )
     SignOutFinished req res ->
-      ( { model | globals = model.globals |> Page.handleSignOutResponse req res , navbarAuth = model.navbarAuth |> AuthWidget.handleSignOutResponse res }
+      ( { model | globals = model.globals |> Globals.handleSignOutResponse req res , navbarAuth = model.navbarAuth |> AuthWidget.handleSignOutResponse res }
       , navigate (Just "/")
       )
     Ignore ->
@@ -88,7 +88,7 @@ view model =
         , register = RegisterUsername
         , signOut = SignOut
         , ignore = Ignore
-        , auth = Page.getAuth model.globals
+        , auth = Globals.getAuth model.globals
         }
         model.navbarAuth
     ,

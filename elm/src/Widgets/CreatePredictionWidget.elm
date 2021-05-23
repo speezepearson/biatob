@@ -8,7 +8,7 @@ import Time
 
 import Biatob.Proto.Mvp as Pb
 import Utils
-import Page
+import Globals
 
 maxLegalStakeCents = 500000
 epsilon = 0.000001

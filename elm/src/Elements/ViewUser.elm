@@ -6,7 +6,6 @@ import Html.Attributes as HA
 import Html.Events as HE
 import Http
 import Json.Decode as JD
-import Dict
 
 import Biatob.Proto.Mvp as Pb
 import API
@@ -16,14 +15,13 @@ import Widgets.AuthWidget as AuthWidget
 import Widgets.Navbar as Navbar
 import Widgets.SmallInvitationWidget as SmallInvitationWidget
 import Widgets.ViewPredictionsWidget as ViewPredictionsWidget
-import Page
-import Page exposing (Command(..))
+import Globals
 
 port copy : String -> Cmd msg
 port navigate : Maybe String -> Cmd msg
 
 type alias Model =
-  { globals : Page.Globals
+  { globals : Globals.Globals
   , navbarAuth : AuthWidget.State
   , who : Username
   , predictionsWidget : ViewPredictionsWidget.State
@@ -51,7 +49,7 @@ type Msg
 
 init : JD.Value -> ( Model, Cmd Msg )
 init flags =
-  ( { globals = JD.decodeValue Page.globalsDecoder flags |> Result.toMaybe |> Utils.must "flags"
+  ( { globals = JD.decodeValue Globals.globalsDecoder flags |> Result.toMaybe |> Utils.must "flags"
     , navbarAuth = AuthWidget.init
     , who = Utils.mustDecodeFromFlags JD.string "who" flags
     , predictionsWidget = ViewPredictionsWidget.init
@@ -90,7 +88,7 @@ update msg model =
       , API.postLogInUsername (LogInUsernameFinished req) req
       )
     LogInUsernameFinished req res ->
-      ( { model | globals = model.globals |> Page.handleLogInUsernameResponse req res , navbarAuth = model.navbarAuth |> AuthWidget.handleLogInUsernameResponse res }
+      ( { model | globals = model.globals |> Globals.handleLogInUsernameResponse req res , navbarAuth = model.navbarAuth |> AuthWidget.handleLogInUsernameResponse res }
       , navigate Nothing
       )
     RegisterUsername widgetState req ->
@@ -98,7 +96,7 @@ update msg model =
       , API.postRegisterUsername (RegisterUsernameFinished req) req
       )
     RegisterUsernameFinished req res ->
-      ( { model | globals = model.globals |> Page.handleRegisterUsernameResponse req res , navbarAuth = model.navbarAuth |> AuthWidget.handleRegisterUsernameResponse res }
+      ( { model | globals = model.globals |> Globals.handleRegisterUsernameResponse req res , navbarAuth = model.navbarAuth |> AuthWidget.handleRegisterUsernameResponse res }
       , navigate Nothing
       )
     SignOut widgetState req ->
@@ -106,7 +104,7 @@ update msg model =
       , API.postSignOut (SignOutFinished req) req
       )
     SignOutFinished req res ->
-      ( { model | globals = model.globals |> Page.handleSignOutResponse req res , navbarAuth = model.navbarAuth |> AuthWidget.handleSignOutResponse res }
+      ( { model | globals = model.globals |> Globals.handleSignOutResponse req res , navbarAuth = model.navbarAuth |> AuthWidget.handleSignOutResponse res }
       , navigate Nothing
       )
     SetPredictionsWidget widgetState ->
@@ -138,13 +136,13 @@ view model =
         , register = RegisterUsername
         , signOut = SignOut
         , ignore = Ignore
-        , auth = Page.getAuth model.globals
+        , auth = Globals.getAuth model.globals
         }
         model.navbarAuth
     , H.main_ []
     [ H.h2 [] [H.text model.who]
     , H.br [] []
-    , if Page.isSelf model.globals model.who then
+    , if Globals.isSelf model.globals model.who then
         H.div []
           [ H.text "This is you! You might have meant to visit "
           , H.a [HA.href "/settings"] [H.text "your settings"]
@@ -154,7 +152,7 @@ view model =
         Nothing -> H.text "Log in to see your relationship with this user."
         Just _ ->
           H.div []
-            [ if Page.getRelationship model.globals model.who |> Maybe.map .trusting |> Maybe.withDefault False then
+            [ if Globals.getRelationship model.globals model.who |> Maybe.map .trusting |> Maybe.withDefault False then
                 H.text "This user trusts you! :)"
               else
                 H.div []
@@ -171,7 +169,7 @@ view model =
                       model.invitationWidget
                   ]
             , H.br [] []
-            , if Page.getRelationship model.globals model.who |> Maybe.map .trusted |> Maybe.withDefault False then
+            , if Globals.getRelationship model.globals model.who |> Maybe.map .trusted |> Maybe.withDefault False then
                 H.div []
                   [ H.text "You trust this user. "
                   , H.button [HA.disabled model.working, HE.onClick (SetTrusted False)] [H.text "Mark untrusted"]
@@ -183,7 +181,7 @@ view model =
                   ]
             , model.notification |> H.map never
             , H.br [] []
-            , if Page.getRelationship model.globals model.who |> Maybe.map .trusting |> Maybe.withDefault False then
+            , if Globals.getRelationship model.globals model.who |> Maybe.map .trusting |> Maybe.withDefault False then
                 H.div []
                   [ H.h3 [] [H.text "Predictions"]
                   , ViewPredictionsWidget.view

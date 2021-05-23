@@ -11,7 +11,7 @@ import Utils
 import Widgets.AuthWidget as AuthWidget
 import Widgets.SmallInvitationWidget as SmallInvitationWidget
 import Widgets.EmailSettingsWidget as EmailSettingsWidget
-import Page
+import Globals
 import API
 import Widgets.Navbar as Navbar
 import Biatob.Proto.Mvp as Pb
@@ -20,7 +20,7 @@ port copy : String -> Cmd msg
 port navigate : Maybe String -> Cmd msg
 
 type alias Model =
-  { globals : Page.Globals
+  { globals : Globals.Globals
   , navbarAuth : AuthWidget.State
   , authWidget : AuthWidget.State
   , invitationWidget : SmallInvitationWidget.State
@@ -51,7 +51,7 @@ type Msg
 
 init : JD.Value -> (Model, Cmd Msg)
 init flags =
-  ( { globals = JD.decodeValue Page.globalsDecoder flags |> Utils.mustResult "flags"
+  ( { globals = JD.decodeValue Globals.globalsDecoder flags |> Utils.mustResult "flags"
     , navbarAuth = AuthWidget.init
     , authWidget = AuthWidget.init
     , invitationWidget = SmallInvitationWidget.init
@@ -77,7 +77,7 @@ update msg model =
       )
     UpdateSettingsFinished req res ->
       ( { model | emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleUpdateSettingsResponse res
-                , globals = model.globals |> Page.handleUpdateSettingsResponse req res
+                , globals = model.globals |> Globals.handleUpdateSettingsResponse req res
         }
       , Cmd.none
       )
@@ -87,7 +87,7 @@ update msg model =
       )
     SetEmailFinished req res ->
       ( { model | emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleSetEmailResponse res
-                , globals = model.globals |> Page.handleSetEmailResponse req res
+                , globals = model.globals |> Globals.handleSetEmailResponse req res
         }
       , Cmd.none
       )
@@ -97,7 +97,7 @@ update msg model =
       )
     VerifyEmailFinished req res ->
       ( { model | emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleVerifyEmailResponse res
-                , globals = model.globals |> Page.handleVerifyEmailResponse req res
+                , globals = model.globals |> Globals.handleVerifyEmailResponse req res
         }
       , Cmd.none
       )
@@ -108,7 +108,7 @@ update msg model =
       , API.postLogInUsername (LogInUsernameFinished loc req) req
       )
     LogInUsernameFinished loc req res ->
-      ( updateAuthWidget loc (AuthWidget.handleLogInUsernameResponse res) { model | globals = model.globals |> Page.handleLogInUsernameResponse req res }
+      ( updateAuthWidget loc (AuthWidget.handleLogInUsernameResponse res) { model | globals = model.globals |> Globals.handleLogInUsernameResponse req res }
       , if loc == Inline then navigate <| Just "/welcome#welcome-page-auth-widget" else Cmd.none
       )
     RegisterUsername loc widgetState req ->
@@ -116,7 +116,7 @@ update msg model =
       , API.postRegisterUsername (RegisterUsernameFinished loc req) req
       )
     RegisterUsernameFinished loc req res ->
-      ( updateAuthWidget loc (AuthWidget.handleRegisterUsernameResponse res) { model | globals = model.globals |> Page.handleRegisterUsernameResponse req res }
+      ( updateAuthWidget loc (AuthWidget.handleRegisterUsernameResponse res) { model | globals = model.globals |> Globals.handleRegisterUsernameResponse req res }
       , if loc == Inline then navigate <| Just "/welcome#welcome-page-auth-widget" else Cmd.none
       )
     SignOut loc widgetState req ->
@@ -124,7 +124,7 @@ update msg model =
       , API.postSignOut (SignOutFinished loc req) req
       )
     SignOutFinished loc req res ->
-      ( updateAuthWidget loc (AuthWidget.handleSignOutResponse res) { model | globals = model.globals |> Page.handleSignOutResponse req res }
+      ( updateAuthWidget loc (AuthWidget.handleSignOutResponse res) { model | globals = model.globals |> Globals.handleSignOutResponse req res }
       , navigate (Just "/")
       )
     SetInvitationWidget widgetState ->
@@ -135,7 +135,7 @@ update msg model =
       )
     CreateInvitationFinished req res ->
       ( { model | invitationWidget = model.invitationWidget |> SmallInvitationWidget.handleCreateInvitationResponse res
-                , globals = model.globals |> Page.handleCreateInvitationResponse req res
+                , globals = model.globals |> Globals.handleCreateInvitationResponse req res
         }
       , Cmd.none
       )
@@ -157,7 +157,7 @@ view model =
         , register = RegisterUsername Navbar
         , signOut = SignOut Navbar
         , ignore = Ignore
-        , auth = Page.getAuth model.globals
+        , auth = Globals.getAuth model.globals
         }
         model.navbarAuth
     ,
@@ -231,7 +231,7 @@ view model =
                   , register = RegisterUsername Inline
                   , signOut = SignOut Inline
                   , ignore = Ignore
-                  , auth = Page.getAuth model.globals
+                  , auth = Globals.getAuth model.globals
                   }
                   model.authWidget
                 ]
@@ -249,7 +249,7 @@ view model =
         , H.li [HA.style "margin-bottom" "1em"]
             [ H.text " Send your friends invitation links so I know who you trust to bet against you:   "
             , H.div [HA.style "border" "1px solid gray", HA.style "padding" "0.5em", HA.style "margin" "0.5em"]
-                [ if Page.isLoggedIn model.globals then
+                [ if Globals.isLoggedIn model.globals then
                     SmallInvitationWidget.view
                       { setState = SetInvitationWidget
                       , createInvitation = CreateInvitation
@@ -265,7 +265,7 @@ view model =
         , H.li [HA.style "margin-bottom" "1em"]
             [ H.text " Consider adding an email address, so I can remind you to resolve your prediction when the time comes:   "
             , H.div [HA.style "border" "1px solid gray", HA.style "padding" "0.5em", HA.style "margin" "0.5em"]
-                [ case Page.getUserInfo model.globals of
+                [ case Globals.getUserInfo model.globals of
                     Nothing -> H.text "(first, log in)"
                     Just userInfo ->
                       EmailSettingsWidget.view

@@ -11,14 +11,14 @@ import Biatob.Proto.Mvp exposing (StakeResult(..))
 import Widgets.AuthWidget as AuthWidget
 import Widgets.Navbar as Navbar
 import Widgets.ViewPredictionsWidget as ViewPredictionsWidget
-import Page
+import Globals
 import Browser
 import API
 
 port navigate : Maybe String -> Cmd msg
 
 type alias Model =
-  { globals : Page.Globals
+  { globals : Globals.Globals
   , navbarAuth : AuthWidget.State
   , predictionsWidget : ViewPredictionsWidget.State
   }
@@ -35,7 +35,7 @@ type Msg
 
 init : JD.Value -> ( Model, Cmd Msg )
 init flags =
-  ( { globals = JD.decodeValue Page.globalsDecoder flags |> Result.toMaybe |> Utils.must "flags"
+  ( { globals = JD.decodeValue Globals.globalsDecoder flags |> Result.toMaybe |> Utils.must "flags"
     , navbarAuth = AuthWidget.init
     , predictionsWidget = ViewPredictionsWidget.init
     }
@@ -52,7 +52,7 @@ view model =
         , register = RegisterUsername
         , signOut = SignOut
         , ignore = Ignore
-        , auth = Page.getAuth model.globals
+        , auth = Globals.getAuth model.globals
         }
         model.navbarAuth
     , H.main_ []
@@ -80,7 +80,7 @@ update msg model =
       , API.postLogInUsername (LogInUsernameFinished req) req
       )
     LogInUsernameFinished req res ->
-      ( { model | globals = model.globals |> Page.handleLogInUsernameResponse req res , navbarAuth = model.navbarAuth |> AuthWidget.handleLogInUsernameResponse res }
+      ( { model | globals = model.globals |> Globals.handleLogInUsernameResponse req res , navbarAuth = model.navbarAuth |> AuthWidget.handleLogInUsernameResponse res }
       , navigate Nothing
       )
     RegisterUsername widgetState req ->
@@ -88,7 +88,7 @@ update msg model =
       , API.postRegisterUsername (RegisterUsernameFinished req) req
       )
     RegisterUsernameFinished req res ->
-      ( { model | globals = model.globals |> Page.handleRegisterUsernameResponse req res , navbarAuth = model.navbarAuth |> AuthWidget.handleRegisterUsernameResponse res }
+      ( { model | globals = model.globals |> Globals.handleRegisterUsernameResponse req res , navbarAuth = model.navbarAuth |> AuthWidget.handleRegisterUsernameResponse res }
       , navigate Nothing
       )
     SignOut widgetState req ->
@@ -96,7 +96,7 @@ update msg model =
       , API.postSignOut (SignOutFinished req) req
       )
     SignOutFinished req res ->
-      ( { model | globals = model.globals |> Page.handleSignOutResponse req res , navbarAuth = model.navbarAuth |> AuthWidget.handleSignOutResponse res }
+      ( { model | globals = model.globals |> Globals.handleSignOutResponse req res , navbarAuth = model.navbarAuth |> AuthWidget.handleSignOutResponse res }
       , navigate <| Just "/"
       )
     SetPredictionsWidget widgetState ->

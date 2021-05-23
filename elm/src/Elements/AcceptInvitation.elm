@@ -13,14 +13,14 @@ import Utils
 
 import Widgets.AuthWidget as AuthWidget
 import Utils
-import Page
+import Globals
 import API
 import Widgets.Navbar as Navbar
 
 port navigate : Maybe String -> Cmd msg
 
 type alias Model =
-  { globals : Page.Globals
+  { globals : Globals.Globals
   , navbarAuth : AuthWidget.State
   , invitationId : Pb.InvitationId
   , invitationIsOpen : Bool
@@ -46,7 +46,7 @@ type Msg
 init : JD.Value -> (Model, Cmd Msg)
 init flags =
   let
-    globals = JD.decodeValue Page.globalsDecoder flags |> Result.toMaybe |> Utils.must "flags"
+    globals = JD.decodeValue Globals.globalsDecoder flags |> Result.toMaybe |> Utils.must "flags"
     invitationId = Utils.mustDecodePbFromFlags Pb.invitationIdDecoder "invitationIdPbB64" flags
     destination = Utils.mustDecodeFromFlags (JD.nullable JD.string) "destination" flags
   in
@@ -107,7 +107,7 @@ update msg model =
       , API.postLogInUsername (LogInUsernameFinished loc req) req
       )
     LogInUsernameFinished loc req res ->
-      ( updateAuthWidget loc (AuthWidget.handleLogInUsernameResponse res) { model | globals = model.globals |> Page.handleLogInUsernameResponse req res }
+      ( updateAuthWidget loc (AuthWidget.handleLogInUsernameResponse res) { model | globals = model.globals |> Globals.handleLogInUsernameResponse req res }
       , navigate Nothing
       )
     RegisterUsername loc widgetState req ->
@@ -115,7 +115,7 @@ update msg model =
       , API.postRegisterUsername (RegisterUsernameFinished loc req) req
       )
     RegisterUsernameFinished loc req res ->
-      ( updateAuthWidget loc (AuthWidget.handleRegisterUsernameResponse res) { model | globals = model.globals |> Page.handleRegisterUsernameResponse req res }
+      ( updateAuthWidget loc (AuthWidget.handleRegisterUsernameResponse res) { model | globals = model.globals |> Globals.handleRegisterUsernameResponse req res }
       , navigate Nothing
       )
     SignOut loc widgetState req ->
@@ -123,15 +123,15 @@ update msg model =
       , API.postSignOut (SignOutFinished loc req) req
       )
     SignOutFinished loc req res ->
-      ( updateAuthWidget loc (AuthWidget.handleSignOutResponse res) { model | globals = model.globals |> Page.handleSignOutResponse req res }
+      ( updateAuthWidget loc (AuthWidget.handleSignOutResponse res) { model | globals = model.globals |> Globals.handleSignOutResponse req res }
       , navigate (Just "/")
       )
     Ignore ->
       ( model , Cmd.none )
 
-isOwnInvitation : Page.Globals -> Pb.InvitationId -> Bool
+isOwnInvitation : Globals.Globals -> Pb.InvitationId -> Bool
 isOwnInvitation globals invitationId =
-  case Page.getAuth globals of
+  case Globals.getAuth globals of
     Nothing -> False
     Just token -> token.owner == invitationId.inviter
 
@@ -145,7 +145,7 @@ view model =
         , register = RegisterUsername Navbar
         , signOut = SignOut Navbar
         , ignore = Ignore
-        , auth = Page.getAuth model.globals
+        , auth = Globals.getAuth model.globals
         }
         model.navbarAuth
     ,
@@ -162,7 +162,7 @@ view model =
           ++ " They trust you to behave honorably and pay your debts, and hope that you trust them back."
         ]
       , H.p [] <|
-        if Page.isLoggedIn model.globals then
+        if Globals.isLoggedIn model.globals then
           [ H.text "If you trust them back, click "
           , H.button [HE.onClick AcceptInvitation, HA.disabled model.working] [H.text "I trust the person who sent me this link"]
           , model.acceptNotification
@@ -179,7 +179,7 @@ view model =
                   , register = RegisterUsername Inline
                   , signOut = SignOut Inline
                   , ignore = Ignore
-                  , auth = Page.getAuth model.globals
+                  , auth = Globals.getAuth model.globals
                   }
                   model.authWidget
               ]

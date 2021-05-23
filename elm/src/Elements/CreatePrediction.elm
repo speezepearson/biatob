@@ -16,7 +16,7 @@ import Widgets.AuthWidget as AuthWidget
 import Widgets.Navbar as Navbar
 import Widgets.PredictionWidget as PredictionWidget
 import Utils
-import Page
+import Globals
 import API
 
 port navigate : Maybe String -> Cmd msg
@@ -25,7 +25,7 @@ maxLegalStakeCents = 500000
 epsilon = 0.000001
 
 type alias Model =
-  { globals : Page.Globals
+  { globals : Globals.Globals
   , navbarAuth : AuthWidget.State
   , predictionField : String
   , resolvesAtField : String
@@ -167,7 +167,7 @@ parseOpenForSeconds now model =
 
 init : JD.Value -> ( Model , Cmd Msg )
 init flags =
-  ( { globals = JD.decodeValue Page.globalsDecoder flags |> Utils.mustResult "flags"
+  ( { globals = JD.decodeValue Globals.globalsDecoder flags |> Utils.mustResult "flags"
     , navbarAuth = AuthWidget.init
     , predictionField = ""
     , resolvesAtField = ""
@@ -204,7 +204,7 @@ update msg model =
       , API.postLogInUsername (LogInUsernameFinished req) req
       )
     LogInUsernameFinished req res ->
-      ( { model | globals = model.globals |> Page.handleLogInUsernameResponse req res , navbarAuth = model.navbarAuth |> AuthWidget.handleLogInUsernameResponse res }
+      ( { model | globals = model.globals |> Globals.handleLogInUsernameResponse req res , navbarAuth = model.navbarAuth |> AuthWidget.handleLogInUsernameResponse res }
       , navigate Nothing
       )
     RegisterUsername widgetState req ->
@@ -212,7 +212,7 @@ update msg model =
       , API.postRegisterUsername (RegisterUsernameFinished req) req
       )
     RegisterUsernameFinished req res ->
-      ( { model | globals = model.globals |> Page.handleRegisterUsernameResponse req res , navbarAuth = model.navbarAuth |> AuthWidget.handleRegisterUsernameResponse res }
+      ( { model | globals = model.globals |> Globals.handleRegisterUsernameResponse req res , navbarAuth = model.navbarAuth |> AuthWidget.handleRegisterUsernameResponse res }
       , navigate Nothing
       )
     SignOut widgetState req ->
@@ -220,7 +220,7 @@ update msg model =
       , API.postSignOut (SignOutFinished req) req
       )
     SignOutFinished req res ->
-      ( { model | globals = model.globals |> Page.handleSignOutResponse req res , navbarAuth = model.navbarAuth |> AuthWidget.handleSignOutResponse res }
+      ( { model | globals = model.globals |> Globals.handleSignOutResponse req res , navbarAuth = model.navbarAuth |> AuthWidget.handleSignOutResponse res }
       , navigate (Just "/")
       )
     Create ->
@@ -258,7 +258,7 @@ update msg model =
 viewForm : Model -> Html Msg
 viewForm model =
   let
-    disabled = not <| Page.isLoggedIn model.globals
+    disabled = not <| Globals.isLoggedIn model.globals
     placeholders =
       { prediction = "at least 50% of U.S. COVID-19 cases will be B117 or a derivative strain, as reported by the CDC"
       , stake = "100"
@@ -450,12 +450,12 @@ view model =
         , register = RegisterUsername
         , signOut = SignOut
         , ignore = Ignore
-        , auth = Page.getAuth model.globals
+        , auth = Globals.getAuth model.globals
         }
         model.navbarAuth
     , H.main_ []
     [ H.h2 [] [H.text "New Prediction"]
-    , case Page.getAuth model.globals of
+    , case Globals.getAuth model.globals of
        Just _ -> H.text ""
        Nothing ->
         H.div []
@@ -466,9 +466,9 @@ view model =
     , H.div [HA.style "text-align" "center", HA.style "margin-bottom" "2em"]
         [ H.button
             [ HE.onClick Create
-            , HA.disabled (not (Page.isLoggedIn model.globals) || buildCreateRequest model == Nothing || model.working)
+            , HA.disabled (not (Globals.isLoggedIn model.globals) || buildCreateRequest model == Nothing || model.working)
             ]
-            [ H.text <| if Page.isLoggedIn model.globals then "Create" else "Log in to create" ]
+            [ H.text <| if Globals.isLoggedIn model.globals then "Create" else "Log in to create" ]
         ]
     , case model.createError of
         Just e -> H.div [HA.style "color" "red"] [H.text e]
@@ -478,7 +478,7 @@ view model =
     , H.div [HA.style "border" "1px solid black", HA.style "padding" "1em", HA.style "margin" "1em"]
         [ case buildCreateRequest model of
             Just req ->
-              previewPrediction {request=req, creatorName=Page.getAuth model.globals |> Maybe.map .owner |> Maybe.withDefault "you", createdAt=model.globals.now}
+              previewPrediction {request=req, creatorName=Globals.getAuth model.globals |> Maybe.map .owner |> Maybe.withDefault "you", createdAt=model.globals.now}
               |> (\prediction -> PredictionWidget.view
                     { setState = SetPreviewWidget
                     , copy = \_ -> Ignore

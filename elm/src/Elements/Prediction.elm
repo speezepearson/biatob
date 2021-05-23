@@ -14,7 +14,7 @@ import Widgets.AuthWidget as AuthWidget
 import Widgets.Navbar as Navbar
 import Widgets.PredictionWidget as PredictionWidget
 import Widgets.SmallInvitationWidget as SmallInvitationWidget
-import Page
+import Globals
 import API
 import Biatob.Proto.Mvp as Pb
 import Utils exposing (PredictionId)
@@ -23,7 +23,7 @@ port copy : String -> Cmd msg
 port navigate : Maybe String -> Cmd msg
 
 type alias Model =
-  { globals : Page.Globals
+  { globals : Globals.Globals
   , navbarAuth : AuthWidget.State
   , predictionId : PredictionId
   , predictionWidget : PredictionWidget.State
@@ -51,7 +51,7 @@ type Msg
 
 init : JD.Value -> ( Model, Cmd Msg )
 init flags =
-  ( { globals = JD.decodeValue Page.globalsDecoder flags |> Result.toMaybe |> Utils.must "flags"
+  ( { globals = JD.decodeValue Globals.globalsDecoder flags |> Result.toMaybe |> Utils.must "flags"
     , navbarAuth = AuthWidget.init
     , predictionId = Utils.mustDecodeFromFlags JD.int "predictionId" flags
     , predictionWidget = PredictionWidget.init
@@ -71,7 +71,7 @@ view model =
         , register = RegisterUsername
         , signOut = SignOut
         , ignore = Ignore
-        , auth = Page.getAuth model.globals
+        , auth = Globals.getAuth model.globals
         }
         model.navbarAuth
     , H.main_ []
@@ -88,11 +88,11 @@ view model =
           , prediction = prediction
           , httpOrigin = model.globals.httpOrigin
           , creatorRelationship =
-              if not (Page.isLoggedIn model.globals) then
+              if not (Globals.isLoggedIn model.globals) then
                 PredictionWidget.LoggedOut
-              else if Page.isSelf model.globals prediction.creator then
+              else if Globals.isSelf model.globals prediction.creator then
                 PredictionWidget.Self
-              else case Page.getRelationship model.globals prediction.creator |> Maybe.map (\r -> (r.trusting, r.trusted)) |> Maybe.withDefault (False, False) of
+              else case Globals.getRelationship model.globals prediction.creator |> Maybe.map (\r -> (r.trusting, r.trusted)) |> Maybe.withDefault (False, False) of
                 (True, True) -> PredictionWidget.Friends
                 (True, False) -> PredictionWidget.TrustedByOwner
                 (False, True) -> PredictionWidget.TrustsOwner
@@ -101,9 +101,9 @@ view model =
           , now = model.globals.now
           }
           model.predictionWidget
-    , if not (Page.isLoggedIn model.globals) then
+    , if not (Globals.isLoggedIn model.globals) then
         viewWhatIsThis prediction
-      else if Page.isSelf model.globals prediction.creator then
+      else if Globals.isSelf model.globals prediction.creator then
         H.div []
           [ H.text "If you want to link to your prediction, here are some snippets of HTML you could copy-paste:"
           , viewEmbedInfo model
@@ -219,7 +219,7 @@ update msg model =
       , API.postLogInUsername (LogInUsernameFinished req) req
       )
     LogInUsernameFinished req res ->
-      ( { model | globals = model.globals |> Page.handleLogInUsernameResponse req res , navbarAuth = model.navbarAuth |> AuthWidget.handleLogInUsernameResponse res }
+      ( { model | globals = model.globals |> Globals.handleLogInUsernameResponse req res , navbarAuth = model.navbarAuth |> AuthWidget.handleLogInUsernameResponse res }
       , navigate Nothing
       )
     RegisterUsername widgetState req ->
@@ -227,7 +227,7 @@ update msg model =
       , API.postRegisterUsername (RegisterUsernameFinished req) req
       )
     RegisterUsernameFinished req res ->
-      ( { model | globals = model.globals |> Page.handleRegisterUsernameResponse req res , navbarAuth = model.navbarAuth |> AuthWidget.handleRegisterUsernameResponse res }
+      ( { model | globals = model.globals |> Globals.handleRegisterUsernameResponse req res , navbarAuth = model.navbarAuth |> AuthWidget.handleRegisterUsernameResponse res }
       , navigate Nothing
       )
     SignOut widgetState req ->
@@ -235,7 +235,7 @@ update msg model =
       , API.postSignOut (SignOutFinished req) req
       )
     SignOutFinished req res ->
-      ( { model | globals = model.globals |> Page.handleSignOutResponse req res , navbarAuth = model.navbarAuth |> AuthWidget.handleSignOutResponse res }
+      ( { model | globals = model.globals |> Globals.handleSignOutResponse req res , navbarAuth = model.navbarAuth |> AuthWidget.handleSignOutResponse res }
       , navigate <| Just "/"
       )
     SetInvitationWidget widgetState ->
@@ -259,7 +259,7 @@ update msg model =
       , API.postStake (StakeFinished req) req
       )
     StakeFinished req res ->
-      ( { model | predictionWidget = model.predictionWidget |> PredictionWidget.handleStakeResponse res , globals = model.globals |> Page.handleStakeResponse req res }
+      ( { model | predictionWidget = model.predictionWidget |> PredictionWidget.handleStakeResponse res , globals = model.globals |> Globals.handleStakeResponse req res }
       , Cmd.none
       )
     Resolve widgetState req ->
@@ -267,7 +267,7 @@ update msg model =
       , API.postResolve (ResolveFinished req) req
       )
     ResolveFinished req res ->
-      ( { model | predictionWidget = model.predictionWidget |> PredictionWidget.handleResolveResponse res , globals = model.globals |> Page.handleResolveResponse req res }
+      ( { model | predictionWidget = model.predictionWidget |> PredictionWidget.handleResolveResponse res , globals = model.globals |> Globals.handleResolveResponse req res }
       , Cmd.none
       )
     Ignore ->

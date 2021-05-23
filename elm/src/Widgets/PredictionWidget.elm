@@ -13,7 +13,7 @@ import Utils exposing (Cents, PredictionId, Username, b)
 
 import Widgets.CopyWidget as CopyWidget
 import Widgets.SmallInvitationWidget as SmallInvitationWidget
-import Page
+import Globals
 import API
 
 epsilon : Float
@@ -194,7 +194,7 @@ enumerateWinnings winningsByUser =
     |> List.map (\(b, win) -> H.li [] [stateWinnings b win])
     )
 
-mustHaveLoadedPrediction : PredictionId -> Page.Globals -> Pb.UserPredictionView
+mustHaveLoadedPrediction : PredictionId -> Globals.Globals -> Pb.UserPredictionView
 mustHaveLoadedPrediction predictionId config =
   Utils.must "prediction is not loaded in ServerState" <| D.get predictionId config.serverState.predictions
 

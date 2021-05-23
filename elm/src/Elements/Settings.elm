@@ -8,7 +8,7 @@ import Json.Decode as JD
 import Widgets.ChangePasswordWidget as ChangePasswordWidget
 import Widgets.EmailSettingsWidget as EmailSettingsWidget
 import Widgets.TrustedUsersWidget as TrustedUsersWidget
-import Page
+import Globals
 import API
 import Utils
 import Widgets.AuthWidget as AuthWidget
@@ -19,7 +19,7 @@ port copy : String -> Cmd msg
 port navigate : Maybe String -> Cmd msg
 
 type alias Model =
-  { globals : Page.Globals
+  { globals : Globals.Globals
   , navbarAuth : AuthWidget.State
   , emailSettingsWidget : EmailSettingsWidget.State
   , trustedUsersWidget : TrustedUsersWidget.State
@@ -54,7 +54,7 @@ type Msg
 
 init : JD.Value -> ( Model , Cmd Msg )
 init flags =
-  ( { globals = JD.decodeValue Page.globalsDecoder flags |> Result.toMaybe |> Utils.must "flags"
+  ( { globals = JD.decodeValue Globals.globalsDecoder flags |> Result.toMaybe |> Utils.must "flags"
     , navbarAuth = AuthWidget.init
     , emailSettingsWidget = EmailSettingsWidget.init
     , trustedUsersWidget = TrustedUsersWidget.init
@@ -74,7 +74,7 @@ update msg model =
       )
     ChangePasswordFinished req res ->
       ( { model | changePasswordWidget = model.changePasswordWidget |> ChangePasswordWidget.handleChangePasswordResponse res
-                , globals = model.globals |> Page.handleChangePasswordResponse req res
+                , globals = model.globals |> Globals.handleChangePasswordResponse req res
         }
       , Cmd.none
       )
@@ -86,7 +86,7 @@ update msg model =
       )
     CreateInvitationFinished req res ->
       ( { model | trustedUsersWidget = model.trustedUsersWidget |> TrustedUsersWidget.handleCreateInvitationResponse res
-                , globals = model.globals |> Page.handleCreateInvitationResponse req res
+                , globals = model.globals |> Globals.handleCreateInvitationResponse req res
         }
       , Cmd.none
       )
@@ -96,7 +96,7 @@ update msg model =
       )
     SetTrustedFinished req res ->
       ( { model | trustedUsersWidget = model.trustedUsersWidget |> TrustedUsersWidget.handleSetTrustedResponse res
-                , globals = model.globals |> Page.handleSetTrustedResponse req res
+                , globals = model.globals |> Globals.handleSetTrustedResponse req res
         }
       , Cmd.none
       )
@@ -110,7 +110,7 @@ update msg model =
       )
     UpdateSettingsFinished req res ->
       ( { model | emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleUpdateSettingsResponse res
-                , globals = model.globals |> Page.handleUpdateSettingsResponse req res
+                , globals = model.globals |> Globals.handleUpdateSettingsResponse req res
         }
       , Cmd.none
       )
@@ -120,7 +120,7 @@ update msg model =
       )
     SetEmailFinished req res ->
       ( { model | emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleSetEmailResponse res
-                , globals = model.globals |> Page.handleSetEmailResponse req res
+                , globals = model.globals |> Globals.handleSetEmailResponse req res
         }
       , Cmd.none
       )
@@ -130,7 +130,7 @@ update msg model =
       )
     VerifyEmailFinished req res ->
       ( { model | emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleVerifyEmailResponse res
-                , globals = model.globals |> Page.handleVerifyEmailResponse req res
+                , globals = model.globals |> Globals.handleVerifyEmailResponse req res
         }
       , Cmd.none
       )
@@ -141,7 +141,7 @@ update msg model =
       , API.postLogInUsername (LogInUsernameFinished req) req
       )
     LogInUsernameFinished req res ->
-      ( { model | globals = model.globals |> Page.handleLogInUsernameResponse req res , navbarAuth = model.navbarAuth |> AuthWidget.handleLogInUsernameResponse res }
+      ( { model | globals = model.globals |> Globals.handleLogInUsernameResponse req res , navbarAuth = model.navbarAuth |> AuthWidget.handleLogInUsernameResponse res }
       , navigate Nothing
       )
     RegisterUsername widgetState req ->
@@ -149,7 +149,7 @@ update msg model =
       , API.postRegisterUsername (RegisterUsernameFinished req) req
       )
     RegisterUsernameFinished req res ->
-      ( { model | globals = model.globals |> Page.handleRegisterUsernameResponse req res , navbarAuth = model.navbarAuth |> AuthWidget.handleRegisterUsernameResponse res }
+      ( { model | globals = model.globals |> Globals.handleRegisterUsernameResponse req res , navbarAuth = model.navbarAuth |> AuthWidget.handleRegisterUsernameResponse res }
       , navigate Nothing
       )
     SignOut widgetState req ->
@@ -157,7 +157,7 @@ update msg model =
       , API.postSignOut (SignOutFinished req) req
       )
     SignOutFinished req res ->
-      ( { model | globals = model.globals |> Page.handleSignOutResponse req res , navbarAuth = model.navbarAuth |> AuthWidget.handleSignOutResponse res }
+      ( { model | globals = model.globals |> Globals.handleSignOutResponse req res , navbarAuth = model.navbarAuth |> AuthWidget.handleSignOutResponse res }
       , navigate (Just "/")
       )
     Copy s ->
@@ -178,7 +178,7 @@ view model =
         , register = RegisterUsername
         , signOut = SignOut
         , ignore = Ignore
-        , auth = Page.getAuth model.globals
+        , auth = Globals.getAuth model.globals
         }
         model.navbarAuth
     ,
