@@ -198,7 +198,7 @@ viewPredictionState config _ =
         [ H.summary [] [H.text "Details"]
         , config.prediction.resolutions
           |> List.map (\event -> H.li []
-              [ H.text <| "[" ++ Utils.isoStr Time.utc (Utils.unixtimeToTime event.unixtime) ++ " UTC] "
+              [ H.text <| "[" ++ Utils.isoStr config.timeZone (Utils.unixtimeToTime event.unixtime) ++ "] "
               , H.text <| case event.resolution of
                   Pb.ResolutionYes -> "resolved YES"
                   Pb.ResolutionNo -> "resolved NO"
@@ -258,7 +258,7 @@ viewWinnings config _ =
       H.details [HA.style "opacity" "50%"]
         [ H.summary [] [H.text "Details"]
         , config.prediction.yourTrades
-          |> List.map (\t -> H.li [] [ H.text <| "[" ++ Utils.isoStr Time.utc (Utils.unixtimeToTime t.transactedUnixtime) ++ " UTC] "
+          |> List.map (\t -> H.li [] [ H.text <| "[" ++ Utils.isoStr config.timeZone (Utils.unixtimeToTime t.transactedUnixtime) ++ "] "
                                      , Utils.renderUser t.bettor
                                      , H.text <| " bet " ++ (if t.bettorIsASkeptic then "NO" else "YES") ++ " staking " ++ Utils.formatCents t.bettorStakeCents ++ " against " ++ Utils.formatCents t.creatorStakeCents])
           |> H.ul []
