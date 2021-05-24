@@ -216,7 +216,7 @@ viewInvitationWidget model =
     { setState = SetInvitationWidget
     , createInvitation = CreateInvitation
     , copy = Copy
-    , destination = Just <| "/username/" ++ model.who
+    , destination = Nothing
     , httpOrigin = model.globals.httpOrigin
     }
     model.invitationWidget
