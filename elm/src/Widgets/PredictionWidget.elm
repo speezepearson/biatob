@@ -64,7 +64,7 @@ viewStakeWidgetOrExcuse config state =
     H.text <| "This prediction closed on " ++ Utils.dateStr config.timeZone (Utils.predictionClosesTime prediction) ++ "."
   else
     case config.creatorRelationship of
-      LoggedOut -> 
+      LoggedOut ->
         H.div []
           [ H.text "You must be logged in to bet on this prediction!"
           ]

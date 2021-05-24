@@ -73,8 +73,8 @@ update msg model =
       , API.postChangePassword (ChangePasswordFinished req) req
       )
     ChangePasswordFinished req res ->
-      ( { model | changePasswordWidget = model.changePasswordWidget |> ChangePasswordWidget.handleChangePasswordResponse res
-                , globals = model.globals |> Globals.handleChangePasswordResponse req res
+      ( { model | globals = model.globals |> Globals.handleChangePasswordResponse req res
+                , changePasswordWidget = model.changePasswordWidget |> ChangePasswordWidget.handleChangePasswordResponse res
         }
       , Cmd.none
       )
@@ -85,8 +85,8 @@ update msg model =
       , API.postCreateInvitation (CreateInvitationFinished req) req
       )
     CreateInvitationFinished req res ->
-      ( { model | trustedUsersWidget = model.trustedUsersWidget |> TrustedUsersWidget.handleCreateInvitationResponse res
-                , globals = model.globals |> Globals.handleCreateInvitationResponse req res
+      ( { model | globals = model.globals |> Globals.handleCreateInvitationResponse req res
+                , trustedUsersWidget = model.trustedUsersWidget |> TrustedUsersWidget.handleCreateInvitationResponse res
         }
       , Cmd.none
       )
@@ -95,8 +95,8 @@ update msg model =
       , API.postSetTrusted (SetTrustedFinished req) req
       )
     SetTrustedFinished req res ->
-      ( { model | trustedUsersWidget = model.trustedUsersWidget |> TrustedUsersWidget.handleSetTrustedResponse res
-                , globals = model.globals |> Globals.handleSetTrustedResponse req res
+      ( { model | globals = model.globals |> Globals.handleSetTrustedResponse req res
+                , trustedUsersWidget = model.trustedUsersWidget |> TrustedUsersWidget.handleSetTrustedResponse res
         }
       , Cmd.none
       )
@@ -109,8 +109,8 @@ update msg model =
       , API.postUpdateSettings (UpdateSettingsFinished req) req
       )
     UpdateSettingsFinished req res ->
-      ( { model | emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleUpdateSettingsResponse res
-                , globals = model.globals |> Globals.handleUpdateSettingsResponse req res
+      ( { model | globals = model.globals |> Globals.handleUpdateSettingsResponse req res
+                , emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleUpdateSettingsResponse res
         }
       , Cmd.none
       )
@@ -119,8 +119,8 @@ update msg model =
       , API.postSetEmail (SetEmailFinished req) req
       )
     SetEmailFinished req res ->
-      ( { model | emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleSetEmailResponse res
-                , globals = model.globals |> Globals.handleSetEmailResponse req res
+      ( { model | globals = model.globals |> Globals.handleSetEmailResponse req res
+                , emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleSetEmailResponse res
         }
       , Cmd.none
       )
@@ -129,8 +129,8 @@ update msg model =
       , API.postVerifyEmail (VerifyEmailFinished req) req
       )
     VerifyEmailFinished req res ->
-      ( { model | emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleVerifyEmailResponse res
-                , globals = model.globals |> Globals.handleVerifyEmailResponse req res
+      ( { model | globals = model.globals |> Globals.handleVerifyEmailResponse req res
+                , emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleVerifyEmailResponse res
         }
       , Cmd.none
       )
@@ -141,7 +141,9 @@ update msg model =
       , API.postLogInUsername (LogInUsernameFinished req) req
       )
     LogInUsernameFinished req res ->
-      ( { model | globals = model.globals |> Globals.handleLogInUsernameResponse req res , navbarAuth = model.navbarAuth |> AuthWidget.handleLogInUsernameResponse res }
+      ( { model | globals = model.globals |> Globals.handleLogInUsernameResponse req res
+                , navbarAuth = model.navbarAuth |> AuthWidget.handleLogInUsernameResponse res
+        }
       , navigate Nothing
       )
     RegisterUsername widgetState req ->
@@ -149,7 +151,9 @@ update msg model =
       , API.postRegisterUsername (RegisterUsernameFinished req) req
       )
     RegisterUsernameFinished req res ->
-      ( { model | globals = model.globals |> Globals.handleRegisterUsernameResponse req res , navbarAuth = model.navbarAuth |> AuthWidget.handleRegisterUsernameResponse res }
+      ( { model | globals = model.globals |> Globals.handleRegisterUsernameResponse req res
+                , navbarAuth = model.navbarAuth |> AuthWidget.handleRegisterUsernameResponse res
+        }
       , navigate Nothing
       )
     SignOut widgetState req ->
@@ -157,7 +161,9 @@ update msg model =
       , API.postSignOut (SignOutFinished req) req
       )
     SignOutFinished req res ->
-      ( { model | globals = model.globals |> Globals.handleSignOutResponse req res , navbarAuth = model.navbarAuth |> AuthWidget.handleSignOutResponse res }
+      ( { model | globals = model.globals |> Globals.handleSignOutResponse req res
+                , navbarAuth = model.navbarAuth |> AuthWidget.handleSignOutResponse res
+        }
       , navigate (Just "/")
       )
     Copy s ->

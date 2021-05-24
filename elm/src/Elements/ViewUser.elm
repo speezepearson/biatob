@@ -84,7 +84,9 @@ update msg model =
       , API.postLogInUsername (LogInUsernameFinished req) req
       )
     LogInUsernameFinished req res ->
-      ( { model | globals = model.globals |> Globals.handleLogInUsernameResponse req res , navbarAuth = model.navbarAuth |> AuthWidget.handleLogInUsernameResponse res }
+      ( { model | globals = model.globals |> Globals.handleLogInUsernameResponse req res
+                , navbarAuth = model.navbarAuth |> AuthWidget.handleLogInUsernameResponse res
+        }
       , navigate Nothing
       )
     RegisterUsername widgetState req ->
@@ -92,7 +94,9 @@ update msg model =
       , API.postRegisterUsername (RegisterUsernameFinished req) req
       )
     RegisterUsernameFinished req res ->
-      ( { model | globals = model.globals |> Globals.handleRegisterUsernameResponse req res , navbarAuth = model.navbarAuth |> AuthWidget.handleRegisterUsernameResponse res }
+      ( { model | globals = model.globals |> Globals.handleRegisterUsernameResponse req res
+                , navbarAuth = model.navbarAuth |> AuthWidget.handleRegisterUsernameResponse res
+        }
       , navigate Nothing
       )
     SignOut widgetState req ->
@@ -100,7 +104,9 @@ update msg model =
       , API.postSignOut (SignOutFinished req) req
       )
     SignOutFinished req res ->
-      ( { model | globals = model.globals |> Globals.handleSignOutResponse req res , navbarAuth = model.navbarAuth |> AuthWidget.handleSignOutResponse res }
+      ( { model | globals = model.globals |> Globals.handleSignOutResponse req res
+                , navbarAuth = model.navbarAuth |> AuthWidget.handleSignOutResponse res
+        }
       , navigate Nothing
       )
     SetPredictionsWidget widgetState ->
@@ -112,8 +118,8 @@ update msg model =
       , API.postCreateInvitation (CreateInvitationFinished req) req
       )
     CreateInvitationFinished req res ->
-      ( { model | invitationWidget = model.invitationWidget |> SmallInvitationWidget.handleCreateInvitationResponse res
-                , globals = model.globals |> Globals.handleCreateInvitationResponse req res
+      ( { model | globals = model.globals |> Globals.handleCreateInvitationResponse req res
+                , invitationWidget = model.invitationWidget |> SmallInvitationWidget.handleCreateInvitationResponse res
         }
       , Cmd.none
       )

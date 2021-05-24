@@ -76,8 +76,8 @@ update msg model =
       , API.postUpdateSettings (UpdateSettingsFinished req) req
       )
     UpdateSettingsFinished req res ->
-      ( { model | emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleUpdateSettingsResponse res
-                , globals = model.globals |> Globals.handleUpdateSettingsResponse req res
+      ( { model | globals = model.globals |> Globals.handleUpdateSettingsResponse req res
+                , emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleUpdateSettingsResponse res
         }
       , Cmd.none
       )
@@ -86,8 +86,8 @@ update msg model =
       , API.postSetEmail (SetEmailFinished req) req
       )
     SetEmailFinished req res ->
-      ( { model | emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleSetEmailResponse res
-                , globals = model.globals |> Globals.handleSetEmailResponse req res
+      ( { model | globals = model.globals |> Globals.handleSetEmailResponse req res
+                , emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleSetEmailResponse res
         }
       , Cmd.none
       )
@@ -96,8 +96,8 @@ update msg model =
       , API.postVerifyEmail (VerifyEmailFinished req) req
       )
     VerifyEmailFinished req res ->
-      ( { model | emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleVerifyEmailResponse res
-                , globals = model.globals |> Globals.handleVerifyEmailResponse req res
+      ( { model | globals = model.globals |> Globals.handleVerifyEmailResponse req res
+                , emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleVerifyEmailResponse res
         }
       , Cmd.none
       )
@@ -134,8 +134,8 @@ update msg model =
       , API.postCreateInvitation (CreateInvitationFinished req) req
       )
     CreateInvitationFinished req res ->
-      ( { model | invitationWidget = model.invitationWidget |> SmallInvitationWidget.handleCreateInvitationResponse res
-                , globals = model.globals |> Globals.handleCreateInvitationResponse req res
+      ( { model | globals = model.globals |> Globals.handleCreateInvitationResponse req res
+                , invitationWidget = model.invitationWidget |> SmallInvitationWidget.handleCreateInvitationResponse res
         }
       , Cmd.none
       )

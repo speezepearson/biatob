@@ -83,11 +83,11 @@ update msg model =
       , API.postAcceptInvitation (AcceptInvitationFinished {invitationId=Just model.invitationId}) {invitationId=Just model.invitationId}
       )
     AcceptInvitationFinished req res ->
-      ( { model | working = False
+      ( { model | globals = model.globals |> Globals.handleAcceptInvitationResponse req res
+                , working = False
                 , acceptNotification = case API.simplifyAcceptInvitationResponse res of
                     Ok _ -> H.text ""
                     Err e -> Utils.redText e
-                , globals = model.globals |> Globals.handleAcceptInvitationResponse req res
         }
       , Cmd.none
       )
