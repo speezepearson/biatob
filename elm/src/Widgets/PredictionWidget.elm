@@ -13,7 +13,6 @@ import Utils exposing (Cents, PredictionId, Username, b)
 
 import Widgets.CopyWidget as CopyWidget
 import Widgets.SmallInvitationWidget as SmallInvitationWidget
-import Globals
 import API
 
 epsilon : Float

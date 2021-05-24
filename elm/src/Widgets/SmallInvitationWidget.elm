@@ -62,7 +62,7 @@ view config model =
             Unstarted -> "Create invitation"
             AwaitingResponse -> "Creating..."
             Succeeded _ -> "Create another"
-            Failed e -> "Try again"
+            Failed _ -> "Try again"
         ]
     , H.text " "
     , case model of

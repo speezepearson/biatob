@@ -59,6 +59,7 @@ type Msg
   | RegisterUsernameFinished Pb.RegisterUsernameRequest (Result Http.Error Pb.RegisterUsernameResponse)
   | SignOut AuthWidget.State Pb.SignOutRequest
   | SignOutFinished Pb.SignOutRequest (Result Http.Error Pb.SignOutResponse)
+  | Tick Time.Posix
   | Ignore
 
 
@@ -248,7 +249,10 @@ update msg model =
         }
       , navigate <| Just "/"
       )
-
+    Tick now ->
+      ( { model | globals = model.globals |> Globals.tick now }
+      , Cmd.none
+      )
     Ignore ->
       (model, Cmd.none)
 

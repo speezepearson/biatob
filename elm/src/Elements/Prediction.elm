@@ -18,6 +18,7 @@ import Globals
 import API
 import Biatob.Proto.Mvp as Pb
 import Utils exposing (PredictionId)
+import Time
 
 port copy : String -> Cmd msg
 port navigate : Maybe String -> Cmd msg
@@ -47,6 +48,7 @@ type Msg
   | Stake PredictionWidget.State Pb.StakeRequest
   | StakeFinished Pb.StakeRequest (Result Http.Error Pb.StakeResponse)
   | Copy String
+  | Tick Time.Posix
   | Ignore
 
 init : JD.Value -> ( Model, Cmd Msg )
@@ -280,8 +282,15 @@ update msg model =
       ( model
       , copy s
       )
+    Tick now ->
+      ( { model | globals = model.globals |> Globals.tick now }
+      , Cmd.none
+      )
     Ignore ->
       ( model , Cmd.none )
 
+subscriptions : Model -> Sub Msg
+subscriptions _ =
+    Sub.none
 
-main = Browser.document {init=init, view=view, update=update, subscriptions=\_ -> Sub.none}
+main = Browser.document {init=init, view=view, update=update, subscriptions=subscriptions}

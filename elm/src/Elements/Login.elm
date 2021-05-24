@@ -4,6 +4,7 @@ import Browser
 import Html as H
 import Http
 import Json.Decode as JD
+import Time
 
 import Globals
 import Widgets.AuthWidget as AuthWidget
@@ -28,6 +29,7 @@ type Msg
   | RegisterUsernameFinished Pb.RegisterUsernameRequest (Result Http.Error Pb.RegisterUsernameResponse)
   | SignOut AuthWidget.State Pb.SignOutRequest
   | SignOutFinished Pb.SignOutRequest (Result Http.Error Pb.SignOutResponse)
+  | Tick Time.Posix
   | Ignore
 
 init : JD.Value -> ( Model , Cmd Msg )
@@ -79,6 +81,10 @@ update msg model =
                 , navbarAuth = model.navbarAuth |> AuthWidget.handleSignOutResponse res
         }
       , navigate <| Just "/"
+      )
+    Tick now ->
+      ( { model | globals = model.globals |> Globals.tick now }
+      , Cmd.none
       )
     Ignore ->
       ( model , Cmd.none )

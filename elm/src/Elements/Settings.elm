@@ -14,6 +14,7 @@ import Utils
 import Widgets.AuthWidget as AuthWidget
 import Widgets.Navbar as Navbar
 import Biatob.Proto.Mvp as Pb
+import Time
 
 port copy : String -> Cmd msg
 port navigate : Maybe String -> Cmd msg
@@ -50,6 +51,7 @@ type Msg
   | VerifyEmail EmailSettingsWidget.State Pb.VerifyEmailRequest
   | VerifyEmailFinished Pb.VerifyEmailRequest (Result Http.Error Pb.VerifyEmailResponse)
   | Copy String
+  | Tick Time.Posix
   | Ignore
 
 init : JD.Value -> ( Model , Cmd Msg )
@@ -167,6 +169,10 @@ update msg model =
     Copy s ->
       ( model
       , copy s
+      )
+    Tick now ->
+      ( { model | globals = model.globals |> Globals.tick now }
+      , Cmd.none
       )
     Ignore ->
       ( model , Cmd.none )

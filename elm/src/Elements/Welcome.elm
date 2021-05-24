@@ -5,6 +5,7 @@ import Html as H
 import Html.Attributes as HA
 import Json.Decode as JD
 import Http
+import Time
 
 import Utils
 
@@ -47,6 +48,7 @@ type Msg
   | VerifyEmail EmailSettingsWidget.State Pb.VerifyEmailRequest
   | VerifyEmailFinished Pb.VerifyEmailRequest (Result Http.Error Pb.VerifyEmailResponse)
   | Copy String
+  | Tick Time.Posix
   | Ignore
 
 init : JD.Value -> (Model, Cmd Msg)
@@ -142,6 +144,10 @@ update msg model =
     Copy s ->
       ( model
       , copy s
+      )
+    Tick now ->
+      ( { model | globals = model.globals |> Globals.tick now }
+      , Cmd.none
       )
     Ignore ->
       ( model , Cmd.none )

@@ -16,6 +16,7 @@ import Utils
 import Globals
 import API
 import Widgets.Navbar as Navbar
+import Time
 
 port navigate : Maybe String -> Cmd msg
 
@@ -41,6 +42,7 @@ type Msg
   | RegisterUsernameFinished AuthWidgetLoc Pb.RegisterUsernameRequest (Result Http.Error Pb.RegisterUsernameResponse)
   | SignOut AuthWidgetLoc AuthWidget.State Pb.SignOutRequest
   | SignOutFinished AuthWidgetLoc Pb.SignOutRequest (Result Http.Error Pb.SignOutResponse)
+  | Tick Time.Posix
   | Ignore
 
 init : JD.Value -> (Model, Cmd Msg)
@@ -116,6 +118,10 @@ update msg model =
     SignOutFinished loc req res ->
       ( updateAuthWidget loc (AuthWidget.handleSignOutResponse res) { model | globals = model.globals |> Globals.handleSignOutResponse req res }
       , navigate <| Just "/"
+      )
+    Tick now ->
+      ( { model | globals = model.globals |> Globals.tick now }
+      , Cmd.none
       )
     Ignore ->
       ( model , Cmd.none )

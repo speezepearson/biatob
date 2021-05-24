@@ -16,6 +16,7 @@ import Widgets.Navbar as Navbar
 import Widgets.SmallInvitationWidget as SmallInvitationWidget
 import Widgets.ViewPredictionsWidget as ViewPredictionsWidget
 import Globals
+import Time
 
 port copy : String -> Cmd msg
 port navigate : Maybe String -> Cmd msg
@@ -45,6 +46,7 @@ type Msg
   | SignOut AuthWidget.State Pb.SignOutRequest
   | SignOutFinished Pb.SignOutRequest (Result Http.Error Pb.SignOutResponse)
   | Copy String
+  | Tick Time.Posix
   | Ignore
 
 init : JD.Value -> ( Model, Cmd Msg )
@@ -127,6 +129,10 @@ update msg model =
       ( model
       , copy s
       )
+    Tick now ->
+      ( { model | globals = model.globals |> Globals.tick now }
+      , Cmd.none
+      )
     Ignore ->
       ( model , Cmd.none )
 
@@ -206,4 +212,4 @@ view model =
 subscriptions : Model -> Sub Msg
 subscriptions _ = Sub.none
 
-main = Browser.document {init=init, view=view, update=update, subscriptions=\_ -> Sub.none}
+main = Browser.document {init=init, view=view, update=update, subscriptions=subscriptions}

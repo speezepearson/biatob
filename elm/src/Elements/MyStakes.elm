@@ -14,6 +14,7 @@ import Widgets.ViewPredictionsWidget as ViewPredictionsWidget
 import Globals
 import Browser
 import API
+import Time
 
 port navigate : Maybe String -> Cmd msg
 
@@ -31,6 +32,7 @@ type Msg
   | RegisterUsernameFinished Pb.RegisterUsernameRequest (Result Http.Error Pb.RegisterUsernameResponse)
   | SignOut AuthWidget.State Pb.SignOutRequest
   | SignOutFinished Pb.SignOutRequest (Result Http.Error Pb.SignOutResponse)
+  | Tick Time.Posix
   | Ignore
 
 init : JD.Value -> ( Model, Cmd Msg )
@@ -107,8 +109,15 @@ update msg model =
         }
       , navigate <| Just "/"
       )
+    Tick now ->
+      ( { model | globals = model.globals |> Globals.tick now }
+      , Cmd.none
+      )
     Ignore ->
       ( model , Cmd.none )
 
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Sub.none
 
-main = Browser.document {init=init, view=view, update=update, subscriptions=\_ -> Sub.none}
+main = Browser.document {init=init, view=view, update=update, subscriptions=subscriptions}

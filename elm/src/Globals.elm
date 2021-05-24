@@ -7,6 +7,7 @@ module Globals exposing
   , getRelationship
   , ServerState
   , globalsDecoder
+  , tick
   , handleWhoamiResponse
   , handleSignOutResponse
   , handleRegisterUsernameResponse
@@ -189,6 +190,10 @@ getUserInfo globals =
 getAuth : Globals -> Maybe Pb.AuthToken
 getAuth globals =
   globals.authToken
+
+tick : Time.Posix -> Globals -> Globals
+tick now globals =
+  { globals | now = now }
 
 isLoggedIn : Globals -> Bool
 isLoggedIn globals = globals.authToken /= Nothing
