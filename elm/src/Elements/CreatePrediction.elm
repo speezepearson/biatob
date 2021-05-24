@@ -217,9 +217,9 @@ update msg model =
                     Ok _ -> Nothing
                     Err e -> Just e
         }
-      , navigate <| case API.simplifyCreatePredictionResponse res of
-          Ok predictionId -> Just <| "/p/" ++ String.fromInt predictionId
-          Err _ -> Nothing
+      , case API.simplifyCreatePredictionResponse res of
+          Ok predictionId -> navigate <| Just <| Utils.pathToPrediction predictionId
+          Err _ -> Cmd.none
       )
     LogInUsername widgetState req ->
       ( { model | navbarAuth = widgetState }
@@ -229,7 +229,9 @@ update msg model =
       ( { model | globals = model.globals |> Globals.handleLogInUsernameResponse req res
                 , navbarAuth = model.navbarAuth |> AuthWidget.handleLogInUsernameResponse res
         }
-      , navigate Nothing
+      , case API.simplifyLogInUsernameResponse res of
+          Ok _ -> navigate Nothing
+          Err _ -> Cmd.none
       )
     RegisterUsername widgetState req ->
       ( { model | navbarAuth = widgetState }
@@ -239,7 +241,9 @@ update msg model =
       ( { model | globals = model.globals |> Globals.handleRegisterUsernameResponse req res
                 , navbarAuth = model.navbarAuth |> AuthWidget.handleRegisterUsernameResponse res
         }
-      , navigate Nothing
+      , case API.simplifyRegisterUsernameResponse res of
+          Ok _ -> navigate Nothing
+          Err _ -> Cmd.none
       )
     SignOut widgetState req ->
       ( { model | navbarAuth = widgetState }
@@ -249,7 +253,9 @@ update msg model =
       ( { model | globals = model.globals |> Globals.handleSignOutResponse req res
                 , navbarAuth = model.navbarAuth |> AuthWidget.handleSignOutResponse res
         }
-      , navigate <| Just "/"
+      , case API.simplifySignOutResponse res of
+          Ok _ -> navigate Nothing
+          Err _ -> Cmd.none
       )
     Tick now ->
       ( { model | globals = model.globals |> Globals.tick now }
@@ -550,7 +556,7 @@ view model =
                     , invitationWidget = H.text "TODO"
                     , linkTitle = False
                     , disableCommit = True
-                    , predictionId = 12345
+                    , predictionId = "12345"
                     , prediction = prediction
                     , httpOrigin = model.globals.httpOrigin
                     , creatorRelationship = Globals.Friends

@@ -60,7 +60,9 @@ update msg model =
       ( { model | globals = model.globals |> Globals.handleLogInUsernameResponse req res
                 , navbarAuth = model.navbarAuth |> AuthWidget.handleLogInUsernameResponse res
         }
-      , navigate <| Just model.destination
+      , case API.simplifyLogInUsernameResponse res of
+          Ok _ -> navigate <| Just model.destination
+          Err _ -> Cmd.none
       )
     RegisterUsername widgetState req ->
       ( { model | navbarAuth = widgetState }
@@ -70,7 +72,9 @@ update msg model =
       ( { model | globals = model.globals |> Globals.handleRegisterUsernameResponse req res
                 , navbarAuth = model.navbarAuth |> AuthWidget.handleRegisterUsernameResponse res
         }
-      , navigate <| Just model.destination
+      , case API.simplifyRegisterUsernameResponse res of
+          Ok _ -> navigate <| Just model.destination
+          Err _ -> Cmd.none
       )
     SignOut widgetState req ->
       ( { model | navbarAuth = widgetState }
@@ -80,7 +84,9 @@ update msg model =
       ( { model | globals = model.globals |> Globals.handleSignOutResponse req res
                 , navbarAuth = model.navbarAuth |> AuthWidget.handleSignOutResponse res
         }
-      , navigate <| Just "/"
+      , case API.simplifySignOutResponse res of
+          Ok _ -> navigate <| Just "/"
+          Err _ -> Cmd.none
       )
     Tick now ->
       ( { model | globals = model.globals |> Globals.tick now }

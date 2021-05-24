@@ -93,7 +93,9 @@ update msg model =
       )
     LogInUsernameFinished loc req res ->
       ( updateAuthWidget loc (AuthWidget.handleLogInUsernameResponse res) { model | globals = model.globals |> Globals.handleLogInUsernameResponse req res }
-      , if loc == Inline then navigate <| Just "/welcome#welcome-page-auth-widget" else Cmd.none
+      , case API.simplifyLogInUsernameResponse res of
+          Ok _ -> navigate <| if loc == Inline then Just "/welcome#welcome-page-auth-widget" else Nothing
+          Err _ -> Cmd.none
       )
     RegisterUsername loc widgetState req ->
       ( updateAuthWidget loc (always widgetState) model
@@ -101,7 +103,9 @@ update msg model =
       )
     RegisterUsernameFinished loc req res ->
       ( updateAuthWidget loc (AuthWidget.handleRegisterUsernameResponse res) { model | globals = model.globals |> Globals.handleRegisterUsernameResponse req res }
-      , if loc == Inline then navigate <| Just "/welcome#welcome-page-auth-widget" else Cmd.none
+      , case API.simplifyRegisterUsernameResponse res of
+          Ok _ -> navigate <| if loc == Inline then Just "/welcome#welcome-page-auth-widget" else Nothing
+          Err _ -> Cmd.none
       )
     SetEmail widgetState req ->
       ( { model | emailSettingsWidget = widgetState }
@@ -119,7 +123,9 @@ update msg model =
       )
     SignOutFinished loc req res ->
       ( updateAuthWidget loc (AuthWidget.handleSignOutResponse res) { model | globals = model.globals |> Globals.handleSignOutResponse req res }
-      , navigate <| Just "/"
+      , case API.simplifySignOutResponse res of
+          Ok _ -> navigate <| Just "/"
+          Err _ -> Cmd.none
       )
     UpdateSettings widgetState req ->
       ( { model | emailSettingsWidget = widgetState }

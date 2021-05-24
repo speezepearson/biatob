@@ -17,7 +17,7 @@ type alias Username = String
 type alias Password = String
 type alias EmailAddress = String
 type alias Cents = Int
-type alias PredictionId = Int
+type alias PredictionId = String
 
 illegalUsernameCharacters : String -> Set.Set Char
 illegalUsernameCharacters s =
@@ -240,7 +240,7 @@ predictionClosesTime prediction = unixtimeToTime prediction.closesUnixtime
 
 pathToPrediction : PredictionId -> String
 pathToPrediction predictionId =
-  "/p/" ++ String.fromInt predictionId
+  "/p/" ++ predictionId
 
 pathToUserPage : Username -> String
 pathToUserPage user =

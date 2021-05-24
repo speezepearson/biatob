@@ -688,7 +688,7 @@ class SqlServicer(Servicer):
       if problems is not None:
         return mvp_pb2.CreatePredictionResponse(error=mvp_pb2.CreatePredictionResponse.Error(catchall=problems))
 
-      prediction_id = PredictionId(self._rng.randrange(2**32)) # TODO(P0): make this a string
+      prediction_id = PredictionId(str(self._rng.randrange(2**64)))
       logger.debug('creating prediction', prediction_id=prediction_id, request=request)
       self._conn.create_prediction(
         now=now,
@@ -719,7 +719,7 @@ class SqlServicer(Servicer):
 
       prediction_ids = self._conn.list_stakes(token_owner(token))
 
-      predictions_by_id: MutableMapping[int, mvp_pb2.UserPredictionView] = {}
+      predictions_by_id: MutableMapping[str, mvp_pb2.UserPredictionView] = {}
       for prediction_id in prediction_ids:
         view = self._conn.view_prediction(token_owner(token), prediction_id)
         assert view is not None
@@ -740,7 +740,7 @@ class SqlServicer(Servicer):
 
       prediction_ids = self._conn.list_predictions_created(creator)
 
-      predictions_by_id: MutableMapping[int, mvp_pb2.UserPredictionView] = {}
+      predictions_by_id: MutableMapping[str, mvp_pb2.UserPredictionView] = {}
       for prediction_id in prediction_ids:
         view = self._conn.view_prediction(token_owner(token), prediction_id)
         assert view is not None

@@ -49,7 +49,7 @@ Index('side_payments_by_pair', side_payments.c.from_username, side_payments.c.to
 predictions = Table(
   'predictions',
   metadata,
-  Column('prediction_id', Integer(), primary_key=True, nullable=False),
+  Column('prediction_id', String(64), primary_key=True, nullable=False),
   Column('prediction', String(1024), CheckConstraint('LENGTH(prediction) > 0'), nullable=False),
   Column('certainty_low_p', REAL(), nullable=False),
   Column('certainty_high_p', REAL(), CheckConstraint('certainty_high_p >= certainty_low_p'), nullable=False),

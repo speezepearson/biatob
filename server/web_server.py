@@ -100,7 +100,7 @@ class WebServer:
     async def get_view_prediction_page(self, req: web.Request) -> web.Response:
         auth = self._token_glue.parse_cookie(req)
         auth_success = self._get_auth_success(auth)
-        prediction_id = int(req.match_info['prediction_id'])
+        prediction_id = str(req.match_info['prediction_id'])
         get_prediction_resp = self._servicer.GetPrediction(auth, mvp_pb2.GetPredictionRequest(prediction_id=prediction_id))
         if get_prediction_resp.WhichOneof('get_prediction_result') == 'error':
             return web.Response(status=404, body=str(get_prediction_resp.error))
@@ -118,7 +118,7 @@ class WebServer:
     async def get_prediction_img_embed(self, req: web.Request) -> web.Response:
         auth = self._token_glue.parse_cookie(req)
         auth_success = self._get_auth_success(auth)
-        prediction_id = int(req.match_info['prediction_id'])
+        prediction_id = str(req.match_info['prediction_id'])
         get_prediction_resp = self._servicer.GetPrediction(auth, mvp_pb2.GetPredictionRequest(prediction_id=prediction_id))
         if get_prediction_resp.WhichOneof('get_prediction_result') == 'error':
             return web.Response(status=404, body=str(get_prediction_resp.error))

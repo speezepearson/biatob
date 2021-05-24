@@ -103,7 +103,9 @@ update msg model =
       )
     LogInUsernameFinished loc req res ->
       ( updateAuthWidget loc (AuthWidget.handleLogInUsernameResponse res) { model | globals = model.globals |> Globals.handleLogInUsernameResponse req res }
-      , navigate Nothing
+      , case API.simplifyLogInUsernameResponse res of
+          Ok _ -> navigate Nothing
+          Err _ -> Cmd.none
       )
     RegisterUsername loc widgetState req ->
       ( updateAuthWidget loc (always widgetState) model
@@ -111,7 +113,9 @@ update msg model =
       )
     RegisterUsernameFinished loc req res ->
       ( updateAuthWidget loc (AuthWidget.handleRegisterUsernameResponse res) { model | globals = model.globals |> Globals.handleRegisterUsernameResponse req res }
-      , navigate Nothing
+      , case API.simplifyRegisterUsernameResponse res of
+          Ok _ -> navigate Nothing
+          Err _ -> Cmd.none
       )
     SignOut loc widgetState req ->
       ( updateAuthWidget loc (always widgetState) model
@@ -119,7 +123,9 @@ update msg model =
       )
     SignOutFinished loc req res ->
       ( updateAuthWidget loc (AuthWidget.handleSignOutResponse res) { model | globals = model.globals |> Globals.handleSignOutResponse req res }
-      , navigate <| Just "/"
+      , case API.simplifySignOutResponse res of
+          Ok _ -> navigate <| Just "/"
+          Err _ -> Cmd.none
       )
     Tick now ->
       ( { model | globals = model.globals |> Globals.tick now }

@@ -22,7 +22,8 @@ def app(loop, web_server):
 async def test_smoke(aiohttp_client, app, api_server, any_servicer):
   api_server.add_to_app(app)
   prediction_id = any_servicer.CreatePrediction(new_user_token(any_servicer, 'rando'), some_create_prediction_request()).new_prediction_id
-  assert prediction_id > 0
+  assert prediction_id
+
   logged_in_cli = await aiohttp_client(app)
   await post_proto(logged_in_cli, '/api/RegisterUsername', mvp_pb2.RegisterUsernameRequest(username='alice', password='alice'), mvp_pb2.RegisterUsernameResponse)
 

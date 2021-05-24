@@ -34,6 +34,8 @@ BOB = Username('bob')
 CHARLIE = Username('charlie')
 DOLORES = Username('dolores')
 
+PRED_ID = PredictionId('my_pred_id')
+
 T0 = datetime.datetime(2020, 1, 1, 0, 0, 0)
 T1 = T0 + datetime.timedelta(hours=1)
 T2 = T1 + datetime.timedelta(hours=1)
@@ -184,7 +186,7 @@ class TestInvitations:
 
 class TestPredictions:
   def test_view_contains_all_creation_fields(self, conn: SqlConn):
-    predid = PredictionId(123)
+    predid = PredictionId(PRED_ID)
     conn.register_username(ALICE, 'password', password_id='alicepwid')
 
     conn.create_prediction(now=T0, prediction_id=predid, creator=ALICE, request=mvp_pb2.CreatePredictionRequest(
@@ -212,7 +214,7 @@ class TestPredictions:
     conn.register_username(ALICE, 'password', password_id='alicepwid')
     with pytest.raises(sqlalchemy.exc.IntegrityError):
       conn.stake(
-        prediction_id=PredictionId(123),
+        prediction_id=PredictionId(PRED_ID),
         bettor=ALICE,
         bettor_is_a_skeptic=True,
         bettor_stake_cents=1,
@@ -236,72 +238,71 @@ class TestResolutionNotifications:
     want_notifs: bool,
     expected_addrs: Iterable[str],
   ):
-    prediction_id = PredictionId(456)
     conn.register_username(ALICE, 'password', password_id='alicepwid')
-    conn.create_prediction(now=T0, prediction_id=prediction_id, creator=ALICE, request=some_create_prediction_request())
+    conn.create_prediction(now=T0, prediction_id=PRED_ID, creator=ALICE, request=some_create_prediction_request())
 
     conn.register_username(BOB, 'password', password_id='bobpwid')
-    conn.stake(prediction_id=prediction_id, bettor=BOB, bettor_is_a_skeptic=True, bettor_stake_cents=1, creator_stake_cents=1, now=T0)
+    conn.stake(prediction_id=PRED_ID, bettor=BOB, bettor_is_a_skeptic=True, bettor_stake_cents=1, creator_stake_cents=1, now=T0)
 
     conn.set_email(user, efs)
     conn.update_settings(user, mvp_pb2.UpdateSettingsRequest(email_resolution_notifications=mvp_pb2.MaybeBool(value=want_notifs)))
-    assert set(conn.get_resolution_notification_addrs(prediction_id)) == set(expected_addrs)
+    assert set(conn.get_resolution_notification_addrs(PRED_ID)) == set(expected_addrs)
 
   def test_ignores_unrelated_predictions(self, conn: SqlConn):
     for user in [ALICE, BOB, CHARLIE, DOLORES]:
       create_user(conn, user, email_address=f'{user}@example.com', email_resolution_notifications=True)
 
-    for creator, bettor, predid in [(ALICE, BOB, 123), (BOB, CHARLIE, 234), (ALICE, DOLORES, 345), (CHARLIE, DOLORES, 456)]:
+    for creator, bettor, predid in [(ALICE, BOB, '123'), (BOB, CHARLIE, '234'), (ALICE, DOLORES, '345'), (CHARLIE, DOLORES, '456')]:
       conn.create_prediction(now=T0, prediction_id=PredictionId(predid), creator=creator, request=some_create_prediction_request())
       conn.stake(prediction_id=PredictionId(predid), bettor=bettor, bettor_is_a_skeptic=True, bettor_stake_cents=1, creator_stake_cents=1, now=T0)
 
-    assert set(conn.get_resolution_notification_addrs(PredictionId(456))) == {'charlie@example.com', 'dolores@example.com'}
+    assert set(conn.get_resolution_notification_addrs(PredictionId('456'))) == {'charlie@example.com', 'dolores@example.com'}
 
 class TestResolutionReminders:
   def test_requires_email(self, conn: SqlConn):
     create_user(conn, ALICE, email_reminders_to_resolve=True)
-    conn.create_prediction(now=T0, prediction_id=PredictionId(456), creator=ALICE, request=some_create_prediction_request(resolves_at_unixtime=T1.timestamp()))
+    conn.create_prediction(now=T0, prediction_id=PRED_ID, creator=ALICE, request=some_create_prediction_request(resolves_at_unixtime=T1.timestamp()))
     assert [r['prediction_id'] for r in conn.get_predictions_needing_resolution_reminders(now=T2)] == []
     conn.set_email(ALICE, mvp_pb2.EmailFlowState(verified='alice@example.com'))
-    assert [r['prediction_id'] for r in conn.get_predictions_needing_resolution_reminders(now=T2)] == [456]
+    assert [r['prediction_id'] for r in conn.get_predictions_needing_resolution_reminders(now=T2)] == [PRED_ID]
 
   def test_requires_preferences(self, conn: SqlConn):
     create_user(conn, ALICE, email_address='alice@example.com')
-    conn.create_prediction(now=T0, prediction_id=PredictionId(456), creator=ALICE, request=some_create_prediction_request(resolves_at_unixtime=T1.timestamp()))
+    conn.create_prediction(now=T0, prediction_id=PRED_ID, creator=ALICE, request=some_create_prediction_request(resolves_at_unixtime=T1.timestamp()))
     assert [r['prediction_id'] for r in conn.get_predictions_needing_resolution_reminders(now=T2)] == []
     conn.update_settings(ALICE, mvp_pb2.UpdateSettingsRequest(email_reminders_to_resolve=mvp_pb2.MaybeBool(value=True)))
-    assert [r['prediction_id'] for r in conn.get_predictions_needing_resolution_reminders(now=T2)] == [456]
+    assert [r['prediction_id'] for r in conn.get_predictions_needing_resolution_reminders(now=T2)] == [PRED_ID]
 
   def test_requires_resolves_at_is_in_past(self, conn: SqlConn):
     create_user(conn, ALICE, email_address='alice@example.com', email_reminders_to_resolve=True)
-    conn.create_prediction(now=T0, prediction_id=PredictionId(456), creator=ALICE, request=some_create_prediction_request(resolves_at_unixtime=T2.timestamp()))
+    conn.create_prediction(now=T0, prediction_id=PRED_ID, creator=ALICE, request=some_create_prediction_request(resolves_at_unixtime=T2.timestamp()))
     assert [r['prediction_id'] for r in conn.get_predictions_needing_resolution_reminders(now=T1)] == []
-    assert [r['prediction_id'] for r in conn.get_predictions_needing_resolution_reminders(now=T3)] == [456]
+    assert [r['prediction_id'] for r in conn.get_predictions_needing_resolution_reminders(now=T3)] == [PRED_ID]
 
   def test_requires_prediction_is_unresolved(self, conn: SqlConn):
     create_user(conn, ALICE, email_address='alice@example.com', email_reminders_to_resolve=True)
-    conn.create_prediction(now=T0, prediction_id=PredictionId(456), creator=ALICE, request=some_create_prediction_request(resolves_at_unixtime=T1.timestamp()))
-    assert [r['prediction_id'] for r in conn.get_predictions_needing_resolution_reminders(now=T2)] == [456]
-    conn.resolve(now=T1, request=mvp_pb2.ResolveRequest(prediction_id=456, resolution=mvp_pb2.RESOLUTION_YES))
+    conn.create_prediction(now=T0, prediction_id=PRED_ID, creator=ALICE, request=some_create_prediction_request(resolves_at_unixtime=T1.timestamp()))
+    assert [r['prediction_id'] for r in conn.get_predictions_needing_resolution_reminders(now=T2)] == [PRED_ID]
+    conn.resolve(now=T1, request=mvp_pb2.ResolveRequest(prediction_id=PRED_ID, resolution=mvp_pb2.RESOLUTION_YES))
     assert [r['prediction_id'] for r in conn.get_predictions_needing_resolution_reminders(now=T2)] == []
 
   def test_catches_flipflop_unresolved_predictions(self, conn: SqlConn):
     create_user(conn, ALICE, email_address='alice@example.com', email_reminders_to_resolve=True)
-    conn.create_prediction(now=T0, prediction_id=PredictionId(456), creator=ALICE, request=some_create_prediction_request(resolves_at_unixtime=T1.timestamp()))
-    conn.resolve(now=T1, request=mvp_pb2.ResolveRequest(prediction_id=456, resolution=mvp_pb2.RESOLUTION_YES))
-    conn.resolve(now=T2, request=mvp_pb2.ResolveRequest(prediction_id=456, resolution=mvp_pb2.RESOLUTION_NONE_YET))
-    assert [r['prediction_id'] for r in conn.get_predictions_needing_resolution_reminders(now=T3)] == [456]
+    conn.create_prediction(now=T0, prediction_id=PRED_ID, creator=ALICE, request=some_create_prediction_request(resolves_at_unixtime=T1.timestamp()))
+    conn.resolve(now=T1, request=mvp_pb2.ResolveRequest(prediction_id=PRED_ID, resolution=mvp_pb2.RESOLUTION_YES))
+    conn.resolve(now=T2, request=mvp_pb2.ResolveRequest(prediction_id=PRED_ID, resolution=mvp_pb2.RESOLUTION_NONE_YET))
+    assert [r['prediction_id'] for r in conn.get_predictions_needing_resolution_reminders(now=T3)] == [PRED_ID]
 
   def test_ignores_flipflop_resolved_predictions(self, conn: SqlConn):
     create_user(conn, ALICE, email_address='alice@example.com', email_reminders_to_resolve=True)
-    conn.create_prediction(now=T0, prediction_id=PredictionId(456), creator=ALICE, request=some_create_prediction_request(resolves_at_unixtime=T1.timestamp()))
-    conn.resolve(now=T1, request=mvp_pb2.ResolveRequest(prediction_id=456, resolution=mvp_pb2.RESOLUTION_YES))
-    conn.resolve(now=T2, request=mvp_pb2.ResolveRequest(prediction_id=456, resolution=mvp_pb2.RESOLUTION_NONE_YET))
-    conn.resolve(now=T3, request=mvp_pb2.ResolveRequest(prediction_id=456, resolution=mvp_pb2.RESOLUTION_YES))
+    conn.create_prediction(now=T0, prediction_id=PRED_ID, creator=ALICE, request=some_create_prediction_request(resolves_at_unixtime=T1.timestamp()))
+    conn.resolve(now=T1, request=mvp_pb2.ResolveRequest(prediction_id=PRED_ID, resolution=mvp_pb2.RESOLUTION_YES))
+    conn.resolve(now=T2, request=mvp_pb2.ResolveRequest(prediction_id=PRED_ID, resolution=mvp_pb2.RESOLUTION_NONE_YET))
+    conn.resolve(now=T3, request=mvp_pb2.ResolveRequest(prediction_id=PRED_ID, resolution=mvp_pb2.RESOLUTION_YES))
     assert [r['prediction_id'] for r in conn.get_predictions_needing_resolution_reminders(now=T4)] == []
 
   def test_skips_previously_reminded(self, conn: SqlConn):
     create_user(conn, ALICE, email_address='alice@example.com', email_reminders_to_resolve=True)
-    conn.create_prediction(now=T0, prediction_id=PredictionId(456), creator=ALICE, request=some_create_prediction_request(resolves_at_unixtime=T1.timestamp()))
-    conn.mark_resolution_reminder_sent(prediction_id=PredictionId(456))
+    conn.create_prediction(now=T0, prediction_id=PRED_ID, creator=ALICE, request=some_create_prediction_request(resolves_at_unixtime=T1.timestamp()))
+    conn.mark_resolution_reminder_sent(prediction_id=PRED_ID)
     assert [r['prediction_id'] for r in conn.get_predictions_needing_resolution_reminders(now=T2)] == []

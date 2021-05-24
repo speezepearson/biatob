@@ -11,6 +11,8 @@ from .core import Servicer
 from .emailer import Emailer
 from .test_utils import *
 
+PRED_ID_1 = PredictionId('my_pred_id_1')
+
 def Whoami(servicer: Servicer, token: Optional[mvp_pb2.AuthToken]) -> mvp_pb2.AuthToken:
   return servicer.Whoami(token, mvp_pb2.WhoamiRequest()).auth
 
@@ -28,13 +30,13 @@ def LogInUsernameErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], use
   return assert_oneof(servicer.LogInUsername(token, mvp_pb2.LogInUsernameRequest(username=username, password=password)), 'log_in_username_result', 'error', mvp_pb2.LogInUsernameResponse.Error)
 
 def CreatePredictionOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], request_kwargs: Mapping[str, Any]) -> PredictionId:
-  return PredictionId(assert_oneof(servicer.CreatePrediction(token, some_create_prediction_request(**request_kwargs)), 'create_prediction_result', 'new_prediction_id', int))
+  return PredictionId(assert_oneof(servicer.CreatePrediction(token, some_create_prediction_request(**request_kwargs)), 'create_prediction_result', 'new_prediction_id', str))
 def CreatePredictionErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], request_kwargs: Mapping[str, Any]) -> mvp_pb2.CreatePredictionResponse.Error:
   return assert_oneof(servicer.CreatePrediction(token, some_create_prediction_request(**request_kwargs)), 'create_prediction_result', 'error', mvp_pb2.CreatePredictionResponse.Error)
 
-def GetPredictionOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], prediction_id: int) -> mvp_pb2.UserPredictionView:
+def GetPredictionOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], prediction_id: str) -> mvp_pb2.UserPredictionView:
   return assert_oneof(servicer.GetPrediction(token, mvp_pb2.GetPredictionRequest(prediction_id=prediction_id)), 'get_prediction_result', 'prediction', mvp_pb2.UserPredictionView)
-def GetPredictionErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], prediction_id: int) -> mvp_pb2.GetPredictionResponse.Error:
+def GetPredictionErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], prediction_id: str) -> mvp_pb2.GetPredictionResponse.Error:
   return assert_oneof(servicer.GetPrediction(token, mvp_pb2.GetPredictionRequest(prediction_id=prediction_id)), 'get_prediction_result', 'error', mvp_pb2.GetPredictionResponse.Error)
 
 def ListMyStakesOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken]) -> mvp_pb2.PredictionsById:
@@ -52,9 +54,9 @@ def StakeOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], request: mvp
 def StakeErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.StakeRequest) -> mvp_pb2.StakeResponse.Error:
   return assert_oneof(servicer.Stake(token, request), 'stake_result', 'error', mvp_pb2.StakeResponse.Error)
 
-def ResolveOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], prediction_id: int, resolution: mvp_pb2.Resolution.V, notes: str = '') -> mvp_pb2.UserPredictionView:
+def ResolveOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], prediction_id: str, resolution: mvp_pb2.Resolution.V, notes: str = '') -> mvp_pb2.UserPredictionView:
   return assert_oneof(servicer.Resolve(token, mvp_pb2.ResolveRequest(prediction_id=prediction_id, resolution=resolution, notes=notes)), 'resolve_result', 'ok', mvp_pb2.UserPredictionView)
-def ResolveErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], prediction_id: int, resolution: mvp_pb2.Resolution.V, notes: str = '') -> mvp_pb2.ResolveResponse.Error:
+def ResolveErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], prediction_id: str, resolution: mvp_pb2.Resolution.V, notes: str = '') -> mvp_pb2.ResolveResponse.Error:
   return assert_oneof(servicer.Resolve(token, mvp_pb2.ResolveRequest(prediction_id=prediction_id, resolution=resolution, notes=notes)), 'resolve_result', 'error', mvp_pb2.ResolveResponse.Error)
 
 def SetTrustedOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], who: str, trusted: bool) -> mvp_pb2.GenericUserInfo:
@@ -246,6 +248,11 @@ class TestCreatePrediction:
     for prediction_id in ids:
       GetPredictionOk(any_servicer, token, prediction_id)
 
+  async def test_returns_urlsafe_ids(self, any_servicer: Servicer):
+    token = new_user_token(any_servicer, 'rando')
+    ids = {CreatePredictionOk(any_servicer, token, {}) for _ in range(30)}
+    assert all(id.isalnum() for id in ids)
+
 
 class TestGetPrediction:
 
@@ -296,7 +303,7 @@ class TestGetPrediction:
     GetPredictionOk(any_servicer, new_user_token(any_servicer, 'otherrando'), prediction_id)
 
   async def test_error_if_no_such_prediction(self, any_servicer: Servicer):
-    assert 'no such prediction' in str(GetPredictionErr(any_servicer, new_user_token(any_servicer, 'otherrando'), 12345))
+    assert 'no such prediction' in str(GetPredictionErr(any_servicer, new_user_token(any_servicer, 'otherrando'), PredictionId('12345')))
 
 class TestListMyStakes:
 
@@ -476,7 +483,7 @@ class TestResolve:
   async def test_error_if_no_such_prediction(self, any_servicer: Servicer):
     rando_token = new_user_token(any_servicer, 'rando')
     prediction_id = CreatePredictionOk(any_servicer, rando_token, {})
-    assert 'no such prediction' in str(ResolveErr(any_servicer, rando_token, prediction_id+1, mvp_pb2.RESOLUTION_YES))
+    assert 'no such prediction' in str(ResolveErr(any_servicer, rando_token, 'not_'+prediction_id, mvp_pb2.RESOLUTION_YES))
 
   async def test_error_if_notes_too_long(self, any_servicer: Servicer):
     rando_token = new_user_token(any_servicer, 'rando')

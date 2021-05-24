@@ -10,7 +10,7 @@ from typing import overload, Optional, Container, NewType, Callable
 
 from .protobuf import mvp_pb2
 
-PredictionId = NewType('PredictionId', int)
+PredictionId = NewType('PredictionId', str)
 Username = NewType('Username', str)
 
 MAX_LEGAL_STAKE_CENTS = 5_000_00
