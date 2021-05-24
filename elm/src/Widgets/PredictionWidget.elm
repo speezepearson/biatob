@@ -54,14 +54,10 @@ init =
 type CreatorRelationship = LoggedOut | Self | Friends | TrustsOwner | TrustedByOwner | NoRelation
 viewStakeWidgetOrExcuse : Config msg -> State -> Html msg
 viewStakeWidgetOrExcuse config state =
-  let
-    prediction = config.prediction
-    creator = prediction.creator
-  in
-  if Utils.resolutionIsTerminal (Utils.currentResolution prediction) then
+  if Utils.resolutionIsTerminal (Utils.currentResolution config.prediction) then
     H.text "This prediction has resolved, so cannot be bet in."
-  else if prediction.closesUnixtime < Utils.timeToUnixtime config.now then
-    H.text <| "This prediction closed on " ++ Utils.dateStr config.timeZone (Utils.predictionClosesTime prediction) ++ "."
+  else if config.prediction.closesUnixtime < Utils.timeToUnixtime config.now then
+    H.text <| "This prediction closed on " ++ Utils.dateStr config.timeZone (Utils.predictionClosesTime config.prediction) ++ "."
   else
     case config.creatorRelationship of
       LoggedOut ->
@@ -73,7 +69,7 @@ viewStakeWidgetOrExcuse config state =
       NoRelation ->
         H.div []
           [ H.text "You and "
-          , Utils.renderUser creator
+          , Utils.renderUser config.prediction.creator
           , H.text " don't trust each other! If, in real life, you "
           , Utils.i "do"
           , H.text " trust each other to pay your debts, send them an invitation! "
@@ -82,7 +78,7 @@ viewStakeWidgetOrExcuse config state =
       TrustedByOwner ->
         H.div []
           [ H.text "You don't trust "
-          , Utils.renderUser creator
+          , Utils.renderUser config.prediction.creator
           , H.text " to pay their debts, so you probably don't want to bet on this prediction. If you actually"
           , Utils.i "do"
           , H.text " trust them to pay their debts, send them an invitation link: "
@@ -90,7 +86,7 @@ viewStakeWidgetOrExcuse config state =
           ]
       TrustsOwner ->
         H.div []
-          [ Utils.renderUser creator, H.text " hasn't marked you as trusted! If you think that, in real life, they "
+          [ Utils.renderUser config.prediction.creator, H.text " hasn't marked you as trusted! If you think that, in real life, they "
           , Utils.i "do"
           , H.text " trust you to pay your debts, send them an invitation link: "
           , config.invitationWidget
@@ -99,7 +95,6 @@ viewStakeWidgetOrExcuse config state =
 viewStakeWidget : Config msg -> State -> Html msg
 viewStakeWidget config state =
   let
-    creator = config.prediction.creator
     certainty = Utils.mustPredictionCertainty config.prediction
 
     isClosed = Utils.timeToUnixtime config.now > config.prediction.closesUnixtime
@@ -123,7 +118,7 @@ viewStakeWidget config state =
           ]
           []
         |> Utils.appendValidationError (Utils.resultToErr skepticStakeCents)
-      , H.text " that it won't, against ", Utils.renderUser creator, H.text "'s "
+      , H.text " that it won't, against ", Utils.renderUser config.prediction.creator, H.text "'s "
       , Utils.b (skepticStakeCents |> Result.map (toFloat >> (*) creatorStakeFactorVsSkeptics >> round >> Utils.formatCents) |> Result.withDefault "???")
       , H.text ". "
       , H.button
@@ -148,7 +143,7 @@ viewStakeWidget config state =
           ]
           []
         |> Utils.appendValidationError (Utils.resultToErr believerStakeCents)
-      , H.text " that it will, against ", Utils.renderUser creator, H.text "'s "
+      , H.text " that it will, against ", Utils.renderUser config.prediction.creator, H.text "'s "
       , Utils.b (believerStakeCents |> Result.map (toFloat >> (*) creatorStakeFactorVsBelievers >> round >> Utils.formatCents) |> Result.withDefault "???")
       , H.text ". "
       , H.button
@@ -194,20 +189,15 @@ enumerateWinnings winningsByUser =
     |> List.map (\(b, win) -> H.li [] [stateWinnings b win])
     )
 
-mustHaveLoadedPrediction : PredictionId -> Globals.Globals -> Pb.UserPredictionView
-mustHaveLoadedPrediction predictionId config =
-  Utils.must "prediction is not loaded in ServerState" <| D.get predictionId config.serverState.predictions
-
 viewPredictionState : Config msg -> State -> Html msg
 viewPredictionState config _ =
   let
-    prediction = config.prediction
     auditLog : Html msg
     auditLog =
-      if List.isEmpty prediction.resolutions then H.text "" else
+      if List.isEmpty config.prediction.resolutions then H.text "" else
       H.details [HA.style "opacity" "50%"]
         [ H.summary [] [H.text "Details"]
-        , prediction.resolutions
+        , config.prediction.resolutions
           |> List.map (\event -> H.li []
               [ H.text <| "[" ++ Utils.isoStr Time.utc (Utils.unixtimeToTime event.unixtime) ++ " UTC] "
               , H.text <| case event.resolution of
@@ -221,7 +211,7 @@ viewPredictionState config _ =
         ]
   in
   H.div []
-    [ case Utils.currentResolution prediction of
+    [ case Utils.currentResolution config.prediction of
       Pb.ResolutionYes ->
         H.text "This prediction has resolved YES. "
       Pb.ResolutionNo ->
@@ -230,8 +220,8 @@ viewPredictionState config _ =
         H.text "This prediction has resolved INVALID. "
       Pb.ResolutionNoneYet ->
         let
-          secondsToClose = prediction.closesUnixtime - Utils.timeToUnixtime config.now
-          secondsToResolve = prediction.resolvesAtUnixtime - Utils.timeToUnixtime config.now
+          secondsToClose = config.prediction.closesUnixtime - Utils.timeToUnixtime config.now
+          secondsToResolve = config.prediction.resolvesAtUnixtime - Utils.timeToUnixtime config.now
         in
           H.text <|
             ( if secondsToClose > 0 then
@@ -239,20 +229,20 @@ viewPredictionState config _ =
                   if secondsToClose < 86400 then
                     "in " ++ Utils.renderIntervalSeconds secondsToClose
                   else
-                    "on " ++ Utils.dateStr config.timeZone (Utils.unixtimeToTime prediction.closesUnixtime)
+                    "on " ++ Utils.dateStr config.timeZone (Utils.unixtimeToTime config.prediction.closesUnixtime)
                 ) ++ ", and "
               else
-                "Betting closed on" ++ Utils.dateStr config.timeZone (Utils.unixtimeToTime prediction.closesUnixtime) ++ ", and "
+                "Betting closed on" ++ Utils.dateStr config.timeZone (Utils.unixtimeToTime config.prediction.closesUnixtime) ++ ", and "
             ) ++
             ( if secondsToResolve > 0 then
                 "the prediction should resolve " ++ (
                   if secondsToResolve < 86400 then
                     "in " ++ Utils.renderIntervalSeconds secondsToResolve
                   else
-                    "on " ++ Utils.dateStr config.timeZone (Utils.unixtimeToTime prediction.resolvesAtUnixtime)
+                    "on " ++ Utils.dateStr config.timeZone (Utils.unixtimeToTime config.prediction.resolvesAtUnixtime)
                 ) ++ ". "
               else
-                "the prediction should have resolved on " ++ Utils.dateStr config.timeZone (Utils.unixtimeToTime prediction.resolvesAtUnixtime) ++ ". Consider pinging the creator! "
+                "the prediction should have resolved on " ++ Utils.dateStr config.timeZone (Utils.unixtimeToTime config.prediction.resolvesAtUnixtime) ++ ". Consider pinging the creator! "
             )
       Pb.ResolutionUnrecognized_ _ ->
         H.span [HA.style "color" "red"]
@@ -263,13 +253,12 @@ viewPredictionState config _ =
 viewWinnings : Config msg -> State -> Html msg
 viewWinnings config _ =
   let
-    prediction = config.prediction
     auditLog : Html msg
     auditLog =
-      if List.isEmpty prediction.yourTrades then H.text "" else
+      if List.isEmpty config.prediction.yourTrades then H.text "" else
       H.details [HA.style "opacity" "50%"]
         [ H.summary [] [H.text "Details"]
-        , prediction.yourTrades
+        , config.prediction.yourTrades
           |> List.map (\t -> H.li [] [ H.text <| "[" ++ Utils.isoStr Time.utc (Utils.unixtimeToTime t.transactedUnixtime) ++ " UTC] "
                                      , Utils.renderUser t.bettor
                                      , H.text <| " bet " ++ (if t.bettorIsASkeptic then "NO" else "YES") ++ " staking " ++ Utils.formatCents t.bettorStakeCents ++ " against " ++ Utils.formatCents t.creatorStakeCents])
@@ -277,15 +266,15 @@ viewWinnings config _ =
         ]
     ifRes : Bool -> Html msg
     ifRes res =
-      let creatorWinnings = creatorWinningsByBettor res prediction.yourTrades in
+      let creatorWinnings = creatorWinningsByBettor res config.prediction.yourTrades in
       case config.creatorRelationship of
         Self -> enumerateWinnings creatorWinnings
         LoggedOut -> H.text ""
-        _ -> creatorWinnings |> D.values |> List.sum |> (\n -> -n) |> stateWinnings prediction.creator
+        _ -> creatorWinnings |> D.values |> List.sum |> (\n -> -n) |> stateWinnings config.prediction.creator
   in
-  if List.isEmpty prediction.yourTrades then H.text "" else
+  if List.isEmpty config.prediction.yourTrades then H.text "" else
   H.div []
-    [ case Utils.currentResolution prediction of
+    [ case Utils.currentResolution config.prediction of
       Pb.ResolutionYes ->
         ifRes True
       Pb.ResolutionNo ->
@@ -304,23 +293,21 @@ viewWinnings config _ =
 viewCreationParams : Config msg -> State -> Html msg
 viewCreationParams config _ =
   let
-    prediction = config.prediction
-    creator = prediction.creator
-    openTime = Utils.unixtimeToTime prediction.createdUnixtime
-    certainty = Utils.mustPredictionCertainty prediction
+    openTime = Utils.unixtimeToTime config.prediction.createdUnixtime
+    certainty = Utils.mustPredictionCertainty config.prediction
   in
   H.p []
     [ H.text <| "On " ++ Utils.dateStr config.timeZone openTime ++ ", "
     , case config.creatorRelationship of
         Self -> Utils.b "you"
-        _ -> Utils.renderUser creator
+        _ -> Utils.renderUser config.prediction.creator
     , H.text " assigned this a "
     , certainty.low |> (*) 100 |> round |> String.fromInt |> H.text
     , H.text "-"
     , certainty.high |> (*) 100 |> round |> String.fromInt |> H.text
     , H.text "% chance, and staked "
-    , prediction.maximumStakeCents |> Utils.formatCents |> H.text
-    , case (prediction.maximumStakeCents - prediction.remainingStakeCentsVsSkeptics, prediction.maximumStakeCents - prediction.remainingStakeCentsVsBelievers) of
+    , config.prediction.maximumStakeCents |> Utils.formatCents |> H.text
+    , case (config.prediction.maximumStakeCents - config.prediction.remainingStakeCentsVsSkeptics, config.prediction.maximumStakeCents - config.prediction.remainingStakeCentsVsBelievers) of
         (0, 0) -> H.text ""
         (promisedToSkeptics, 0) -> H.span [HA.style "opacity" "50%"] [H.text <| " (though they've already promised away " ++ Utils.formatCents promisedToSkeptics ++ " if this doesn't happen)"]
         (0, promisedToBelievers) -> H.span [HA.style "opacity" "50%"] [H.text <| " (though they've already promised away " ++ Utils.formatCents promisedToBelievers ++ " if this happens)"]
@@ -363,12 +350,9 @@ viewResolveButtons config state =
 
 view : Config msg -> State -> Html msg
 view config state =
-  let
-    prediction = config.prediction
-  in
   H.div []
     [ H.h2 [] [
-        let text = H.text <| "Prediction: by " ++ (String.left 10 <| Iso8601.fromTime <| Utils.unixtimeToTime prediction.resolvesAtUnixtime) ++ ", " ++ prediction.prediction in
+        let text = H.text <| "Prediction: by " ++ (String.left 10 <| Iso8601.fromTime <| Utils.unixtimeToTime config.prediction.resolvesAtUnixtime) ++ ", " ++ config.prediction.prediction in
         if config.linkTitle then
           H.a [HA.href <| "/p/" ++ String.fromInt config.predictionId] [text]
         else
@@ -379,7 +363,7 @@ view config state =
     , viewWinnings config state
     , H.hr [] []
     , viewCreationParams config state
-    , case prediction.specialRules of
+    , case config.prediction.specialRules of
         "" ->
           H.text ""
         rules ->
@@ -394,7 +378,6 @@ view config state =
 viewEmbedInfo : Config msg -> State -> Html msg
 viewEmbedInfo config _ =
   let
-    prediction = config.prediction
     linkUrl = config.httpOrigin ++ "/p/" ++ String.fromInt config.predictionId  -- TODO(P0): needs origin to get stuck in text field
     imgUrl = config.httpOrigin ++ "/p/" ++ String.fromInt config.predictionId ++ "/embed.png"
     imgStyles = [("max-height","1.5ex"), ("border-bottom","1px solid #008800")]
@@ -403,11 +386,11 @@ viewEmbedInfo config _ =
       ++ "<img style=\"" ++ (imgStyles |> List.map (\(k,v) -> k++":"++v) |> String.join ";") ++ "\" src=\"" ++ imgUrl ++ "\" /></a>"
     linkText =
       "["
-      ++ Utils.formatCents (prediction.maximumStakeCents // 100 * 100)
+      ++ Utils.formatCents (config.prediction.maximumStakeCents // 100 * 100)
       ++ " @ "
-      ++ String.fromInt (round <| (Utils.mustPredictionCertainty prediction).low * 100)
+      ++ String.fromInt (round <| (Utils.mustPredictionCertainty config.prediction).low * 100)
       ++ "-"
-      ++ String.fromInt (round <| (Utils.mustPredictionCertainty prediction).high * 100)
+      ++ String.fromInt (round <| (Utils.mustPredictionCertainty config.prediction).high * 100)
       ++ "%]"
     linkCode =
       "<a href=\"" ++ linkUrl ++ "\">" ++ linkText ++ "</a>"

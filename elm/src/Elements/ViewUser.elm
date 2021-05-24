@@ -49,7 +49,7 @@ type Msg
 
 init : JD.Value -> ( Model, Cmd Msg )
 init flags =
-  ( { globals = JD.decodeValue Globals.globalsDecoder flags |> Result.toMaybe |> Utils.must "flags"
+  ( { globals = JD.decodeValue Globals.globalsDecoder flags |> Utils.mustResult "flags"
     , navbarAuth = AuthWidget.init
     , who = Utils.mustDecodeFromFlags JD.string "who" flags
     , predictionsWidget = ViewPredictionsWidget.init

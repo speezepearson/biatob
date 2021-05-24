@@ -54,7 +54,7 @@ type Msg
 
 init : JD.Value -> ( Model , Cmd Msg )
 init flags =
-  ( { globals = JD.decodeValue Globals.globalsDecoder flags |> Result.toMaybe |> Utils.must "flags"
+  ( { globals = JD.decodeValue Globals.globalsDecoder flags |> Utils.mustResult "flags"
     , navbarAuth = AuthWidget.init
     , emailSettingsWidget = EmailSettingsWidget.init
     , trustedUsersWidget = TrustedUsersWidget.init
@@ -142,7 +142,7 @@ update msg model =
       ( { model | globals = model.globals |> Globals.handleSignOutResponse req res
                 , navbarAuth = model.navbarAuth |> AuthWidget.handleSignOutResponse res
         }
-      , navigate (Just "/")
+      , navigate <| Just "/"
       )
     UpdateSettings widgetState req ->
       ( { model | emailSettingsWidget = widgetState }

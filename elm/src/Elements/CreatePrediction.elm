@@ -246,7 +246,7 @@ update msg model =
       ( { model | globals = model.globals |> Globals.handleSignOutResponse req res
                 , navbarAuth = model.navbarAuth |> AuthWidget.handleSignOutResponse res
         }
-      , navigate (Just "/")
+      , navigate <| Just "/"
       )
 
     Ignore ->

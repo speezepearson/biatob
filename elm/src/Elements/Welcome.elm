@@ -117,7 +117,7 @@ update msg model =
       )
     SignOutFinished loc req res ->
       ( updateAuthWidget loc (AuthWidget.handleSignOutResponse res) { model | globals = model.globals |> Globals.handleSignOutResponse req res }
-      , navigate (Just "/")
+      , navigate <| Just "/"
       )
     UpdateSettings widgetState req ->
       ( { model | emailSettingsWidget = widgetState }

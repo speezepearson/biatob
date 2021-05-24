@@ -34,7 +34,7 @@ init : JD.Value -> ( Model , Cmd Msg )
 init flags =
   let
     model =
-      { globals = JD.decodeValue Globals.globalsDecoder flags |> Result.toMaybe |> Utils.must "flags"
+      { globals = JD.decodeValue Globals.globalsDecoder flags |> Utils.mustResult "flags"
       , navbarAuth = AuthWidget.init
       , destination = Utils.mustDecodeFromFlags JD.string "destination" flags
       }
@@ -78,7 +78,7 @@ update msg model =
       ( { model | globals = model.globals |> Globals.handleSignOutResponse req res
                 , navbarAuth = model.navbarAuth |> AuthWidget.handleSignOutResponse res
         }
-      , navigate (Just "/")
+      , navigate <| Just "/"
       )
     Ignore ->
       ( model , Cmd.none )

@@ -28,7 +28,7 @@ type State
 handleCreateInvitationResponse : Result Http.Error Pb.CreateInvitationResponse -> State -> State
 handleCreateInvitationResponse res _ =
   case API.simplifyCreateInvitationResponse res of
-    Ok resp -> Succeeded <| Utils.must "TODO" resp.id
+    Ok resp -> Succeeded <| Utils.must "every CreateInvitationResponse should return an id" resp.id
     Err e -> Failed e
 
 init : State

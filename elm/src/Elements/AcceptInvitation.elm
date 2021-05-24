@@ -46,7 +46,7 @@ type Msg
 init : JD.Value -> (Model, Cmd Msg)
 init flags =
   let
-    globals = JD.decodeValue Globals.globalsDecoder flags |> Result.toMaybe |> Utils.must "flags"
+    globals = JD.decodeValue Globals.globalsDecoder flags |> Utils.mustResult "flags"
     invitationId = Utils.mustDecodePbFromFlags Pb.invitationIdDecoder "invitationIdPbB64" flags
     destination = Utils.mustDecodeFromFlags (JD.nullable JD.string) "destination" flags
   in
@@ -115,7 +115,7 @@ update msg model =
       )
     SignOutFinished loc req res ->
       ( updateAuthWidget loc (AuthWidget.handleSignOutResponse res) { model | globals = model.globals |> Globals.handleSignOutResponse req res }
-      , navigate (Just "/")
+      , navigate <| Just "/"
       )
     Ignore ->
       ( model , Cmd.none )

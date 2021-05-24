@@ -158,8 +158,8 @@ view config state =
       else
         config.predictions
         |> Dict.toList
-        |> sortPredictions (\(id, _) -> Utils.must "TODO" (Dict.get id config.predictions)) state.order
-        |> List.filter (\(id, _) -> filterMatches config state.filter (Utils.must "TODO" (Dict.get id config.predictions)))
+        |> sortPredictions (\(_, prediction) -> prediction) state.order
+        |> List.filter (\(_, prediction) -> filterMatches config state.filter prediction)
         |> List.map (\(id, prediction) ->
             viewRow
               { cell = H.td
