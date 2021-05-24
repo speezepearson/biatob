@@ -217,7 +217,9 @@ update msg model =
                     Ok _ -> Nothing
                     Err e -> Just e
         }
-      , Cmd.none
+      , navigate <| case API.simplifyCreatePredictionResponse res of
+          Ok predictionId -> Just <| "/p/" ++ String.fromInt predictionId
+          Err _ -> Nothing
       )
     LogInUsername widgetState req ->
       ( { model | navbarAuth = widgetState }

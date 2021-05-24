@@ -93,7 +93,9 @@ update msg model =
                     Ok _ -> H.text ""
                     Err e -> Utils.redText e
         }
-      , Cmd.none
+      , case API.simplifyAcceptInvitationResponse res of
+          Ok _ -> navigate model.destination
+          Err _ -> Cmd.none
       )
     LogInUsername loc widgetState req ->
       ( updateAuthWidget loc (always widgetState) model
