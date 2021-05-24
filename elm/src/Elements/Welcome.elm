@@ -29,23 +29,23 @@ type alias Model =
 
 type AuthWidgetLoc = Navbar | Inline
 type Msg
-  = SetEmailWidget EmailSettingsWidget.State
-  | UpdateSettings EmailSettingsWidget.State Pb.UpdateSettingsRequest
-  | UpdateSettingsFinished Pb.UpdateSettingsRequest (Result Http.Error Pb.UpdateSettingsResponse)
-  | SetEmail EmailSettingsWidget.State Pb.SetEmailRequest
-  | SetEmailFinished Pb.SetEmailRequest (Result Http.Error Pb.SetEmailResponse)
-  | VerifyEmail EmailSettingsWidget.State Pb.VerifyEmailRequest
-  | VerifyEmailFinished Pb.VerifyEmailRequest (Result Http.Error Pb.VerifyEmailResponse)
-  | SetAuthWidget AuthWidgetLoc AuthWidget.State
+  = SetAuthWidget AuthWidgetLoc AuthWidget.State
+  | SetEmailWidget EmailSettingsWidget.State
+  | SetInvitationWidget SmallInvitationWidget.State
+  | CreateInvitation SmallInvitationWidget.State Pb.CreateInvitationRequest
+  | CreateInvitationFinished Pb.CreateInvitationRequest (Result Http.Error Pb.CreateInvitationResponse)
   | LogInUsername AuthWidgetLoc AuthWidget.State Pb.LogInUsernameRequest
   | LogInUsernameFinished AuthWidgetLoc Pb.LogInUsernameRequest (Result Http.Error Pb.LogInUsernameResponse)
   | RegisterUsername AuthWidgetLoc AuthWidget.State Pb.RegisterUsernameRequest
   | RegisterUsernameFinished AuthWidgetLoc Pb.RegisterUsernameRequest (Result Http.Error Pb.RegisterUsernameResponse)
+  | SetEmail EmailSettingsWidget.State Pb.SetEmailRequest
+  | SetEmailFinished Pb.SetEmailRequest (Result Http.Error Pb.SetEmailResponse)
   | SignOut AuthWidgetLoc AuthWidget.State Pb.SignOutRequest
   | SignOutFinished AuthWidgetLoc Pb.SignOutRequest (Result Http.Error Pb.SignOutResponse)
-  | SetInvitationWidget SmallInvitationWidget.State
-  | CreateInvitation SmallInvitationWidget.State Pb.CreateInvitationRequest
-  | CreateInvitationFinished Pb.CreateInvitationRequest (Result Http.Error Pb.CreateInvitationResponse)
+  | UpdateSettings EmailSettingsWidget.State Pb.UpdateSettingsRequest
+  | UpdateSettingsFinished Pb.UpdateSettingsRequest (Result Http.Error Pb.UpdateSettingsResponse)
+  | VerifyEmail EmailSettingsWidget.State Pb.VerifyEmailRequest
+  | VerifyEmailFinished Pb.VerifyEmailRequest (Result Http.Error Pb.VerifyEmailResponse)
   | Copy String
   | Ignore
 
@@ -69,40 +69,22 @@ updateAuthWidget loc f model =
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
-    SetEmailWidget widgetState ->
-      ( { model | emailSettingsWidget = widgetState } , Cmd.none )
-    UpdateSettings widgetState req ->
-      ( { model | emailSettingsWidget = widgetState }
-      , API.postUpdateSettings (UpdateSettingsFinished req) req
-      )
-    UpdateSettingsFinished req res ->
-      ( { model | globals = model.globals |> Globals.handleUpdateSettingsResponse req res
-                , emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleUpdateSettingsResponse res
-        }
-      , Cmd.none
-      )
-    SetEmail widgetState req ->
-      ( { model | emailSettingsWidget = widgetState }
-      , API.postSetEmail (SetEmailFinished req) req
-      )
-    SetEmailFinished req res ->
-      ( { model | globals = model.globals |> Globals.handleSetEmailResponse req res
-                , emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleSetEmailResponse res
-        }
-      , Cmd.none
-      )
-    VerifyEmail widgetState req ->
-      ( { model | emailSettingsWidget = widgetState }
-      , API.postVerifyEmail (VerifyEmailFinished req) req
-      )
-    VerifyEmailFinished req res ->
-      ( { model | globals = model.globals |> Globals.handleVerifyEmailResponse req res
-                , emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleVerifyEmailResponse res
-        }
-      , Cmd.none
-      )
     SetAuthWidget loc widgetState ->
       ( updateAuthWidget loc (always widgetState) model , Cmd.none )
+    SetEmailWidget widgetState ->
+      ( { model | emailSettingsWidget = widgetState } , Cmd.none )
+    SetInvitationWidget widgetState ->
+      ( { model | invitationWidget = widgetState } , Cmd.none )
+    CreateInvitation widgetState req ->
+      ( { model | invitationWidget = widgetState }
+      , API.postCreateInvitation (CreateInvitationFinished req) req
+      )
+    CreateInvitationFinished req res ->
+      ( { model | globals = model.globals |> Globals.handleCreateInvitationResponse req res
+                , invitationWidget = model.invitationWidget |> SmallInvitationWidget.handleCreateInvitationResponse res
+        }
+      , Cmd.none
+      )
     LogInUsername loc widgetState req ->
       ( updateAuthWidget loc (always widgetState) model
       , API.postLogInUsername (LogInUsernameFinished loc req) req
@@ -119,6 +101,16 @@ update msg model =
       ( updateAuthWidget loc (AuthWidget.handleRegisterUsernameResponse res) { model | globals = model.globals |> Globals.handleRegisterUsernameResponse req res }
       , if loc == Inline then navigate <| Just "/welcome#welcome-page-auth-widget" else Cmd.none
       )
+    SetEmail widgetState req ->
+      ( { model | emailSettingsWidget = widgetState }
+      , API.postSetEmail (SetEmailFinished req) req
+      )
+    SetEmailFinished req res ->
+      ( { model | globals = model.globals |> Globals.handleSetEmailResponse req res
+                , emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleSetEmailResponse res
+        }
+      , Cmd.none
+      )
     SignOut loc widgetState req ->
       ( updateAuthWidget loc (always widgetState) model
       , API.postSignOut (SignOutFinished loc req) req
@@ -127,15 +119,23 @@ update msg model =
       ( updateAuthWidget loc (AuthWidget.handleSignOutResponse res) { model | globals = model.globals |> Globals.handleSignOutResponse req res }
       , navigate (Just "/")
       )
-    SetInvitationWidget widgetState ->
-      ( { model | invitationWidget = widgetState } , Cmd.none )
-    CreateInvitation widgetState req ->
-      ( { model | invitationWidget = widgetState }
-      , API.postCreateInvitation (CreateInvitationFinished req) req
+    UpdateSettings widgetState req ->
+      ( { model | emailSettingsWidget = widgetState }
+      , API.postUpdateSettings (UpdateSettingsFinished req) req
       )
-    CreateInvitationFinished req res ->
-      ( { model | globals = model.globals |> Globals.handleCreateInvitationResponse req res
-                , invitationWidget = model.invitationWidget |> SmallInvitationWidget.handleCreateInvitationResponse res
+    UpdateSettingsFinished req res ->
+      ( { model | globals = model.globals |> Globals.handleUpdateSettingsResponse req res
+                , emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleUpdateSettingsResponse res
+        }
+      , Cmd.none
+      )
+    VerifyEmail widgetState req ->
+      ( { model | emailSettingsWidget = widgetState }
+      , API.postVerifyEmail (VerifyEmailFinished req) req
+      )
+    VerifyEmailFinished req res ->
+      ( { model | globals = model.globals |> Globals.handleVerifyEmailResponse req res
+                , emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleVerifyEmailResponse res
         }
       , Cmd.none
       )

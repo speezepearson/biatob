@@ -31,19 +31,19 @@ type alias Model =
   }
 
 type Msg
-  = SetTrusted Bool
-  | SetTrustedFinished Pb.SetTrustedRequest (Result Http.Error Pb.SetTrustedResponse)
-  | SetAuthWidget AuthWidget.State
+  = SetAuthWidget AuthWidget.State
+  | SetInvitationWidget SmallInvitationWidget.State
+  | SetPredictionsWidget ViewPredictionsWidget.State
+  | CreateInvitation SmallInvitationWidget.State Pb.CreateInvitationRequest
+  | CreateInvitationFinished Pb.CreateInvitationRequest (Result Http.Error Pb.CreateInvitationResponse)
   | LogInUsername AuthWidget.State Pb.LogInUsernameRequest
   | LogInUsernameFinished Pb.LogInUsernameRequest (Result Http.Error Pb.LogInUsernameResponse)
   | RegisterUsername AuthWidget.State Pb.RegisterUsernameRequest
   | RegisterUsernameFinished Pb.RegisterUsernameRequest (Result Http.Error Pb.RegisterUsernameResponse)
+  | SetTrusted Bool
+  | SetTrustedFinished Pb.SetTrustedRequest (Result Http.Error Pb.SetTrustedResponse)
   | SignOut AuthWidget.State Pb.SignOutRequest
   | SignOutFinished Pb.SignOutRequest (Result Http.Error Pb.SignOutResponse)
-  | SetPredictionsWidget ViewPredictionsWidget.State
-  | SetInvitationWidget SmallInvitationWidget.State
-  | CreateInvitation SmallInvitationWidget.State Pb.CreateInvitationRequest
-  | CreateInvitationFinished Pb.CreateInvitationRequest (Result Http.Error Pb.CreateInvitationResponse)
   | Copy String
   | Ignore
 
@@ -63,22 +63,22 @@ init flags =
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
-    SetTrusted trusted ->
-      let req = {who=model.who, whoDepr=Nothing, trusted=trusted} in
-      ( { model | working = True , notification = H.text "" }
-      , API.postSetTrusted (SetTrustedFinished req) req
+    SetAuthWidget widgetState ->
+      ( { model | navbarAuth = widgetState } , Cmd.none )
+    SetInvitationWidget widgetState ->
+      ( { model | invitationWidget = widgetState } , Cmd.none )
+    SetPredictionsWidget widgetState ->
+      ( { model | predictionsWidget = widgetState } , Cmd.none )
+    CreateInvitation widgetState req ->
+      ( { model | invitationWidget = widgetState }
+      , API.postCreateInvitation (CreateInvitationFinished req) req
       )
-    SetTrustedFinished req res ->
-      ( { model | globals = model.globals |> Globals.handleSetTrustedResponse req res
-                , working = False
-                , notification = case API.simplifySetTrustedResponse res of
-                    Ok _ -> H.text ""
-                    Err e -> Utils.redText e
+    CreateInvitationFinished req res ->
+      ( { model | globals = model.globals |> Globals.handleCreateInvitationResponse req res
+                , invitationWidget = model.invitationWidget |> SmallInvitationWidget.handleCreateInvitationResponse res
         }
       , Cmd.none
       )
-    SetAuthWidget widgetState ->
-      ( { model | navbarAuth = widgetState } , Cmd.none )
     LogInUsername widgetState req ->
       ( { model | navbarAuth = widgetState }
       , API.postLogInUsername (LogInUsernameFinished req) req
@@ -99,6 +99,20 @@ update msg model =
         }
       , navigate Nothing
       )
+    SetTrusted trusted ->
+      let req = {who=model.who, whoDepr=Nothing, trusted=trusted} in
+      ( { model | working = True , notification = H.text "" }
+      , API.postSetTrusted (SetTrustedFinished req) req
+      )
+    SetTrustedFinished req res ->
+      ( { model | globals = model.globals |> Globals.handleSetTrustedResponse req res
+                , working = False
+                , notification = case API.simplifySetTrustedResponse res of
+                    Ok _ -> H.text ""
+                    Err e -> Utils.redText e
+        }
+      , Cmd.none
+      )
     SignOut widgetState req ->
       ( { model | navbarAuth = widgetState }
       , API.postSignOut (SignOutFinished req) req
@@ -108,20 +122,6 @@ update msg model =
                 , navbarAuth = model.navbarAuth |> AuthWidget.handleSignOutResponse res
         }
       , navigate Nothing
-      )
-    SetPredictionsWidget widgetState ->
-      ( { model | predictionsWidget = widgetState } , Cmd.none )
-    SetInvitationWidget widgetState ->
-      ( { model | invitationWidget = widgetState } , Cmd.none )
-    CreateInvitation widgetState req ->
-      ( { model | invitationWidget = widgetState }
-      , API.postCreateInvitation (CreateInvitationFinished req) req
-      )
-    CreateInvitationFinished req res ->
-      ( { model | globals = model.globals |> Globals.handleCreateInvitationResponse req res
-                , invitationWidget = model.invitationWidget |> SmallInvitationWidget.handleCreateInvitationResponse res
-        }
-      , Cmd.none
       )
     Copy s ->
       ( model

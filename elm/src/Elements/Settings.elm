@@ -27,28 +27,28 @@ type alias Model =
   }
 
 type Msg
-  = SetEmailWidget EmailSettingsWidget.State
-  | UpdateSettings EmailSettingsWidget.State Pb.UpdateSettingsRequest
-  | UpdateSettingsFinished Pb.UpdateSettingsRequest (Result Http.Error Pb.UpdateSettingsResponse)
-  | SetEmail EmailSettingsWidget.State Pb.SetEmailRequest
-  | SetEmailFinished Pb.SetEmailRequest (Result Http.Error Pb.SetEmailResponse)
-  | VerifyEmail EmailSettingsWidget.State Pb.VerifyEmailRequest
-  | VerifyEmailFinished Pb.VerifyEmailRequest (Result Http.Error Pb.VerifyEmailResponse)
-  | SetTrustedUsersWidget TrustedUsersWidget.State
-  | CreateInvitation TrustedUsersWidget.State Pb.CreateInvitationRequest
-  | CreateInvitationFinished Pb.CreateInvitationRequest (Result Http.Error Pb.CreateInvitationResponse)
-  | SetTrusted TrustedUsersWidget.State Pb.SetTrustedRequest
-  | SetTrustedFinished Pb.SetTrustedRequest (Result Http.Error Pb.SetTrustedResponse)
+  = SetAuthWidget AuthWidget.State
   | SetChangePasswordWidget ChangePasswordWidget.State
+  | SetEmailWidget EmailSettingsWidget.State
+  | SetTrustedUsersWidget TrustedUsersWidget.State
   | ChangePassword ChangePasswordWidget.State Pb.ChangePasswordRequest
   | ChangePasswordFinished Pb.ChangePasswordRequest (Result Http.Error Pb.ChangePasswordResponse)
-  | SetAuthWidget AuthWidget.State
+  | CreateInvitation TrustedUsersWidget.State Pb.CreateInvitationRequest
+  | CreateInvitationFinished Pb.CreateInvitationRequest (Result Http.Error Pb.CreateInvitationResponse)
   | LogInUsername AuthWidget.State Pb.LogInUsernameRequest
   | LogInUsernameFinished Pb.LogInUsernameRequest (Result Http.Error Pb.LogInUsernameResponse)
   | RegisterUsername AuthWidget.State Pb.RegisterUsernameRequest
   | RegisterUsernameFinished Pb.RegisterUsernameRequest (Result Http.Error Pb.RegisterUsernameResponse)
+  | SetEmail EmailSettingsWidget.State Pb.SetEmailRequest
+  | SetEmailFinished Pb.SetEmailRequest (Result Http.Error Pb.SetEmailResponse)
+  | SetTrusted TrustedUsersWidget.State Pb.SetTrustedRequest
+  | SetTrustedFinished Pb.SetTrustedRequest (Result Http.Error Pb.SetTrustedResponse)
   | SignOut AuthWidget.State Pb.SignOutRequest
   | SignOutFinished Pb.SignOutRequest (Result Http.Error Pb.SignOutResponse)
+  | UpdateSettings EmailSettingsWidget.State Pb.UpdateSettingsRequest
+  | UpdateSettingsFinished Pb.UpdateSettingsRequest (Result Http.Error Pb.UpdateSettingsResponse)
+  | VerifyEmail EmailSettingsWidget.State Pb.VerifyEmailRequest
+  | VerifyEmailFinished Pb.VerifyEmailRequest (Result Http.Error Pb.VerifyEmailResponse)
   | Copy String
   | Ignore
 
@@ -66,8 +66,14 @@ init flags =
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
+    SetAuthWidget widgetState ->
+      ( { model | navbarAuth = widgetState } , Cmd.none )
     SetChangePasswordWidget widgetState ->
       ( { model | changePasswordWidget = widgetState } , Cmd.none )
+    SetEmailWidget widgetState ->
+      ( { model | emailSettingsWidget = widgetState } , Cmd.none )
+    SetTrustedUsersWidget widgetState ->
+      ( { model | trustedUsersWidget = widgetState } , Cmd.none )
     ChangePassword widgetState req ->
       ( { model | changePasswordWidget = widgetState }
       , API.postChangePassword (ChangePasswordFinished req) req
@@ -78,8 +84,6 @@ update msg model =
         }
       , Cmd.none
       )
-    SetTrustedUsersWidget widgetState ->
-      ( { model | trustedUsersWidget = widgetState } , Cmd.none )
     CreateInvitation widgetState req ->
       ( { model | trustedUsersWidget = widgetState }
       , API.postCreateInvitation (CreateInvitationFinished req) req
@@ -90,52 +94,6 @@ update msg model =
         }
       , Cmd.none
       )
-    SetTrusted widgetState req ->
-      ( { model | trustedUsersWidget = widgetState }
-      , API.postSetTrusted (SetTrustedFinished req) req
-      )
-    SetTrustedFinished req res ->
-      ( { model | globals = model.globals |> Globals.handleSetTrustedResponse req res
-                , trustedUsersWidget = model.trustedUsersWidget |> TrustedUsersWidget.handleSetTrustedResponse res
-        }
-      , Cmd.none
-      )
-
-
-    SetEmailWidget widgetState ->
-      ( { model | emailSettingsWidget = widgetState } , Cmd.none )
-    UpdateSettings widgetState req ->
-      ( { model | emailSettingsWidget = widgetState }
-      , API.postUpdateSettings (UpdateSettingsFinished req) req
-      )
-    UpdateSettingsFinished req res ->
-      ( { model | globals = model.globals |> Globals.handleUpdateSettingsResponse req res
-                , emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleUpdateSettingsResponse res
-        }
-      , Cmd.none
-      )
-    SetEmail widgetState req ->
-      ( { model | emailSettingsWidget = widgetState }
-      , API.postSetEmail (SetEmailFinished req) req
-      )
-    SetEmailFinished req res ->
-      ( { model | globals = model.globals |> Globals.handleSetEmailResponse req res
-                , emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleSetEmailResponse res
-        }
-      , Cmd.none
-      )
-    VerifyEmail widgetState req ->
-      ( { model | emailSettingsWidget = widgetState }
-      , API.postVerifyEmail (VerifyEmailFinished req) req
-      )
-    VerifyEmailFinished req res ->
-      ( { model | globals = model.globals |> Globals.handleVerifyEmailResponse req res
-                , emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleVerifyEmailResponse res
-        }
-      , Cmd.none
-      )
-    SetAuthWidget widgetState ->
-      ( { model | navbarAuth = widgetState } , Cmd.none )
     LogInUsername widgetState req ->
       ( { model | navbarAuth = widgetState }
       , API.postLogInUsername (LogInUsernameFinished req) req
@@ -156,6 +114,26 @@ update msg model =
         }
       , navigate Nothing
       )
+    SetEmail widgetState req ->
+      ( { model | emailSettingsWidget = widgetState }
+      , API.postSetEmail (SetEmailFinished req) req
+      )
+    SetEmailFinished req res ->
+      ( { model | globals = model.globals |> Globals.handleSetEmailResponse req res
+                , emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleSetEmailResponse res
+        }
+      , Cmd.none
+      )
+    SetTrusted widgetState req ->
+      ( { model | trustedUsersWidget = widgetState }
+      , API.postSetTrusted (SetTrustedFinished req) req
+      )
+    SetTrustedFinished req res ->
+      ( { model | globals = model.globals |> Globals.handleSetTrustedResponse req res
+                , trustedUsersWidget = model.trustedUsersWidget |> TrustedUsersWidget.handleSetTrustedResponse res
+        }
+      , Cmd.none
+      )
     SignOut widgetState req ->
       ( { model | navbarAuth = widgetState }
       , API.postSignOut (SignOutFinished req) req
@@ -165,6 +143,26 @@ update msg model =
                 , navbarAuth = model.navbarAuth |> AuthWidget.handleSignOutResponse res
         }
       , navigate (Just "/")
+      )
+    UpdateSettings widgetState req ->
+      ( { model | emailSettingsWidget = widgetState }
+      , API.postUpdateSettings (UpdateSettingsFinished req) req
+      )
+    UpdateSettingsFinished req res ->
+      ( { model | globals = model.globals |> Globals.handleUpdateSettingsResponse req res
+                , emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleUpdateSettingsResponse res
+        }
+      , Cmd.none
+      )
+    VerifyEmail widgetState req ->
+      ( { model | emailSettingsWidget = widgetState }
+      , API.postVerifyEmail (VerifyEmailFinished req) req
+      )
+    VerifyEmailFinished req res ->
+      ( { model | globals = model.globals |> Globals.handleVerifyEmailResponse req res
+                , emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleVerifyEmailResponse res
+        }
+      , Cmd.none
       )
     Copy s ->
       ( model

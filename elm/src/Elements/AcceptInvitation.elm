@@ -32,9 +32,9 @@ type alias Model =
 
 type AuthWidgetLoc = Navbar | Inline
 type Msg
-  = AcceptInvitation
+  = SetAuthWidget AuthWidgetLoc AuthWidget.State
+  | AcceptInvitation
   | AcceptInvitationFinished Pb.AcceptInvitationRequest (Result Http.Error Pb.AcceptInvitationResponse)
-  | SetAuthWidget AuthWidgetLoc AuthWidget.State
   | LogInUsername AuthWidgetLoc AuthWidget.State Pb.LogInUsernameRequest
   | LogInUsernameFinished AuthWidgetLoc Pb.LogInUsernameRequest (Result Http.Error Pb.LogInUsernameResponse)
   | RegisterUsername AuthWidgetLoc AuthWidget.State Pb.RegisterUsernameRequest
@@ -78,6 +78,8 @@ updateAuthWidget loc f model =
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
+    SetAuthWidget loc widgetState ->
+      ( updateAuthWidget loc (always widgetState) model , Cmd.none )
     AcceptInvitation ->
       ( { model | working = True , acceptNotification = H.text "" }
       , API.postAcceptInvitation (AcceptInvitationFinished {invitationId=Just model.invitationId}) {invitationId=Just model.invitationId}
@@ -91,8 +93,6 @@ update msg model =
         }
       , Cmd.none
       )
-    SetAuthWidget loc widgetState ->
-      ( updateAuthWidget loc (always widgetState) model , Cmd.none )
     LogInUsername loc widgetState req ->
       ( updateAuthWidget loc (always widgetState) model
       , API.postLogInUsername (LogInUsernameFinished loc req) req

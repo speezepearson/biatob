@@ -24,13 +24,13 @@ type alias Model =
   }
 type Msg
   = SetAuthWidget AuthWidget.State
+  | SetPredictionsWidget ViewPredictionsWidget.State
   | LogInUsername AuthWidget.State Pb.LogInUsernameRequest
   | LogInUsernameFinished Pb.LogInUsernameRequest (Result Http.Error Pb.LogInUsernameResponse)
   | RegisterUsername AuthWidget.State Pb.RegisterUsernameRequest
   | RegisterUsernameFinished Pb.RegisterUsernameRequest (Result Http.Error Pb.RegisterUsernameResponse)
   | SignOut AuthWidget.State Pb.SignOutRequest
   | SignOutFinished Pb.SignOutRequest (Result Http.Error Pb.SignOutResponse)
-  | SetPredictionsWidget ViewPredictionsWidget.State
   | Ignore
 
 init : JD.Value -> ( Model, Cmd Msg )
@@ -75,6 +75,8 @@ update msg model =
   case msg of
     SetAuthWidget widgetState ->
       ( { model | navbarAuth = widgetState } , Cmd.none )
+    SetPredictionsWidget widgetState ->
+      ( { model | predictionsWidget = widgetState } , Cmd.none )
     LogInUsername widgetState req ->
       ( { model | navbarAuth = widgetState }
       , API.postLogInUsername (LogInUsernameFinished req) req
@@ -105,8 +107,6 @@ update msg model =
         }
       , navigate <| Just "/"
       )
-    SetPredictionsWidget widgetState ->
-      ( { model | predictionsWidget = widgetState } , Cmd.none )
     Ignore ->
       ( model , Cmd.none )
 

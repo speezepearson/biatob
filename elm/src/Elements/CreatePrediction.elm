@@ -49,16 +49,16 @@ type Msg
   | SetOpenForUnitField String
   | SetOpenForSecondsField String
   | SetSpecialRulesField String
+  | SetAuthWidget AuthWidget.State
+  | SetPreviewWidget PredictionWidget.State
   | Create
   | CreateFinished Pb.CreatePredictionRequest (Result Http.Error Pb.CreatePredictionResponse)
-  | SetAuthWidget AuthWidget.State
   | LogInUsername AuthWidget.State Pb.LogInUsernameRequest
   | LogInUsernameFinished Pb.LogInUsernameRequest (Result Http.Error Pb.LogInUsernameResponse)
   | RegisterUsername AuthWidget.State Pb.RegisterUsernameRequest
   | RegisterUsernameFinished Pb.RegisterUsernameRequest (Result Http.Error Pb.RegisterUsernameResponse)
   | SignOut AuthWidget.State Pb.SignOutRequest
   | SignOutFinished Pb.SignOutRequest (Result Http.Error Pb.SignOutResponse)
-  | SetPreviewWidget PredictionWidget.State
   | Ignore
 
 
@@ -195,10 +195,29 @@ update msg model =
     SetOpenForUnitField s -> ( { model | openForUnitField = s } , Cmd.none )
     SetOpenForSecondsField s -> ( { model | openForSecondsField = s } , Cmd.none )
     SetSpecialRulesField s -> ( { model | specialRulesField = s } , Cmd.none )
-    SetPreviewWidget widgetState ->
-      ( { model | previewWidget = widgetState } , Cmd.none )
     SetAuthWidget widgetState ->
       ( { model | navbarAuth = widgetState } , Cmd.none )
+    SetPreviewWidget widgetState ->
+      ( { model | previewWidget = widgetState } , Cmd.none )
+    Create ->
+      case buildCreateRequest model of
+        Just req ->
+          ( { model | working = True , createError = Nothing }
+          , API.postCreatePrediction (CreateFinished req) req
+          )
+        Nothing ->
+          ( { model | createError = Just "bad form" } -- TODO: improve error message
+          , Cmd.none
+          )
+    CreateFinished req res ->
+      ( { model | globals = model.globals |> Globals.handleCreatePredictionResponse req res
+                , working = False
+                , createError = case API.simplifyCreatePredictionResponse res of
+                    Ok _ -> Nothing
+                    Err e -> Just e
+        }
+      , Cmd.none
+      )
     LogInUsername widgetState req ->
       ( { model | navbarAuth = widgetState }
       , API.postLogInUsername (LogInUsernameFinished req) req
@@ -228,25 +247,6 @@ update msg model =
                 , navbarAuth = model.navbarAuth |> AuthWidget.handleSignOutResponse res
         }
       , navigate (Just "/")
-      )
-    Create ->
-      case buildCreateRequest model of
-        Just req ->
-          ( { model | working = True , createError = Nothing }
-          , API.postCreatePrediction (CreateFinished req) req
-          )
-        Nothing ->
-          ( { model | createError = Just "bad form" } -- TODO: improve error message
-          , Cmd.none
-          )
-    CreateFinished req res ->
-      ( { model | globals = model.globals |> Globals.handleCreatePredictionResponse req res
-                , working = False
-                , createError = case API.simplifyCreatePredictionResponse res of
-                    Ok _ -> Nothing
-                    Err e -> Just e
-        }
-      , Cmd.none
       )
 
     Ignore ->

@@ -32,21 +32,21 @@ type alias Model =
 
 type Msg
   = SetAuthWidget AuthWidget.State
+  | SetInvitationWidget SmallInvitationWidget.State
+  | SetPredictionWidget PredictionWidget.State
+  | CreateInvitation SmallInvitationWidget.State Pb.CreateInvitationRequest
+  | CreateInvitationFinished Pb.CreateInvitationRequest (Result Http.Error Pb.CreateInvitationResponse)
   | LogInUsername AuthWidget.State Pb.LogInUsernameRequest
   | LogInUsernameFinished Pb.LogInUsernameRequest (Result Http.Error Pb.LogInUsernameResponse)
   | RegisterUsername AuthWidget.State Pb.RegisterUsernameRequest
   | RegisterUsernameFinished Pb.RegisterUsernameRequest (Result Http.Error Pb.RegisterUsernameResponse)
-  | SignOut AuthWidget.State Pb.SignOutRequest
-  | SignOutFinished Pb.SignOutRequest (Result Http.Error Pb.SignOutResponse)
-  | SetInvitationWidget SmallInvitationWidget.State
-  | CreateInvitation SmallInvitationWidget.State Pb.CreateInvitationRequest
-  | CreateInvitationFinished Pb.CreateInvitationRequest (Result Http.Error Pb.CreateInvitationResponse)
-  | Copy String
-  | SetPredictionWidget PredictionWidget.State
-  | Stake PredictionWidget.State Pb.StakeRequest
-  | StakeFinished Pb.StakeRequest (Result Http.Error Pb.StakeResponse)
   | Resolve PredictionWidget.State Pb.ResolveRequest
   | ResolveFinished Pb.ResolveRequest (Result Http.Error Pb.ResolveResponse)
+  | SignOut AuthWidget.State Pb.SignOutRequest
+  | SignOutFinished Pb.SignOutRequest (Result Http.Error Pb.SignOutResponse)
+  | Stake PredictionWidget.State Pb.StakeRequest
+  | StakeFinished Pb.StakeRequest (Result Http.Error Pb.StakeResponse)
+  | Copy String
   | Ignore
 
 init : JD.Value -> ( Model, Cmd Msg )
@@ -214,6 +214,18 @@ update msg model =
   case msg of
     SetAuthWidget widgetState ->
       ( { model | navbarAuth = widgetState } , Cmd.none )
+    SetInvitationWidget widgetState ->
+      ( { model | invitationWidget = widgetState } , Cmd.none )
+    SetPredictionWidget widgetState ->
+      ( { model | predictionWidget = widgetState } , Cmd.none )
+    CreateInvitation widgetState req ->
+      ( { model | invitationWidget = widgetState }
+      , API.postCreateInvitation (CreateInvitationFinished req) req
+      )
+    CreateInvitationFinished req res ->
+      ( { model | globals = model.globals |> Globals.handleCreateInvitationResponse req res , invitationWidget = model.invitationWidget |> SmallInvitationWidget.handleCreateInvitationResponse res }
+      , Cmd.none
+      )
     LogInUsername widgetState req ->
       ( { model | navbarAuth = widgetState }
       , API.postLogInUsername (LogInUsernameFinished req) req
@@ -234,6 +246,16 @@ update msg model =
         }
       , navigate Nothing
       )
+    Resolve widgetState req ->
+      ( { model | predictionWidget = widgetState }
+      , API.postResolve (ResolveFinished req) req
+      )
+    ResolveFinished req res ->
+      ( { model | globals = model.globals |> Globals.handleResolveResponse req res
+                , predictionWidget = model.predictionWidget |> PredictionWidget.handleResolveResponse res
+        }
+      , Cmd.none
+      )
     SignOut widgetState req ->
       ( { model | navbarAuth = widgetState }
       , API.postSignOut (SignOutFinished req) req
@@ -244,22 +266,6 @@ update msg model =
         }
       , navigate <| Just "/"
       )
-    SetInvitationWidget widgetState ->
-      ( { model | invitationWidget = widgetState } , Cmd.none )
-    CreateInvitation widgetState req ->
-      ( { model | invitationWidget = widgetState }
-      , API.postCreateInvitation (CreateInvitationFinished req) req
-      )
-    CreateInvitationFinished req res ->
-      ( { model | globals = model.globals |> Globals.handleCreateInvitationResponse req res , invitationWidget = model.invitationWidget |> SmallInvitationWidget.handleCreateInvitationResponse res }
-      , Cmd.none
-      )
-    Copy s ->
-      ( model
-      , copy s
-      )
-    SetPredictionWidget widgetState ->
-      ( { model | predictionWidget = widgetState } , Cmd.none )
     Stake widgetState req ->
       ( { model | predictionWidget = widgetState }
       , API.postStake (StakeFinished req) req
@@ -270,15 +276,9 @@ update msg model =
         }
       , Cmd.none
       )
-    Resolve widgetState req ->
-      ( { model | predictionWidget = widgetState }
-      , API.postResolve (ResolveFinished req) req
-      )
-    ResolveFinished req res ->
-      ( { model | globals = model.globals |> Globals.handleResolveResponse req res
-                , predictionWidget = model.predictionWidget |> PredictionWidget.handleResolveResponse res
-        }
-      , Cmd.none
+    Copy s ->
+      ( model
+      , copy s
       )
     Ignore ->
       ( model , Cmd.none )
