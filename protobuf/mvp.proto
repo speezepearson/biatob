@@ -74,8 +74,8 @@ message GenericUserInfo {
   }
 }
 message Relationship {
-  bool trusted = 1;
-  bool trusting = 2;
+  bool trusts_you = 1;
+  bool trusted_by_you = 2;
 }
 
 message UsernameInfo {

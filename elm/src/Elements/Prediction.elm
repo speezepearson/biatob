@@ -89,16 +89,7 @@ view model =
           , predictionId = model.predictionId
           , prediction = prediction
           , httpOrigin = model.globals.httpOrigin
-          , creatorRelationship =
-              if not (Globals.isLoggedIn model.globals) then
-                PredictionWidget.LoggedOut
-              else if Globals.isSelf model.globals prediction.creator then
-                PredictionWidget.Self
-              else case Globals.getRelationship model.globals prediction.creator |> Maybe.map (\r -> (r.trusting, r.trusted)) |> Maybe.withDefault (False, False) of
-                (True, True) -> PredictionWidget.Friends
-                (True, False) -> PredictionWidget.TrustedByOwner
-                (False, True) -> PredictionWidget.TrustsOwner
-                (False, False) -> PredictionWidget.NoRelation
+          , creatorRelationship = Globals.getTrustRelationship model.globals prediction.creator
           , timeZone = model.globals.timeZone
           , now = model.globals.now
           }

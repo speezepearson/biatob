@@ -153,7 +153,7 @@ class WebServer:
         auth_success = self._get_auth_success(auth)
         username = req.match_info['username']
         relationship = None if (auth_success is None) else auth_success.user_info.relationships.get(username)
-        if (relationship is not None) and relationship.trusting:
+        if (relationship is not None) and relationship.trusts_you:
             list_predictions_resp = self._servicer.ListPredictions(auth, mvp_pb2.ListPredictionsRequest(creator=username))
             predictions: Optional[mvp_pb2.PredictionsById] = list_predictions_resp.ok  # TODO: error handling
         else:

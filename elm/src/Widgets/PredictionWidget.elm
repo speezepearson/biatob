@@ -14,6 +14,7 @@ import Utils exposing (Cents, PredictionId, Username, b)
 import Widgets.CopyWidget as CopyWidget
 import Widgets.SmallInvitationWidget as SmallInvitationWidget
 import API
+import Globals
 
 epsilon : Float
 epsilon = 0.0000001 -- 🎵 I hate floating-point arithmetic 🎶
@@ -29,7 +30,7 @@ type alias Config msg =
   , predictionId : PredictionId
   , prediction : Pb.UserPredictionView
   , httpOrigin : String
-  , creatorRelationship : CreatorRelationship
+  , creatorRelationship : Globals.TrustRelationship
   , timeZone : Time.Zone
   , now : Time.Posix
   }
@@ -50,7 +51,6 @@ init =
   , notification = H.text ""
   }
 
-type CreatorRelationship = LoggedOut | Self | Friends | TrustsOwner | TrustedByOwner | NoRelation
 viewStakeWidgetOrExcuse : Config msg -> State -> Html msg
 viewStakeWidgetOrExcuse config state =
   if Utils.resolutionIsTerminal (Utils.currentResolution config.prediction) then
@@ -59,13 +59,13 @@ viewStakeWidgetOrExcuse config state =
     H.text <| "This prediction closed on " ++ Utils.dateStr config.timeZone (Utils.predictionClosesTime config.prediction) ++ "."
   else
     case config.creatorRelationship of
-      LoggedOut ->
+      Globals.LoggedOut ->
         H.div []
           [ H.text "You must be logged in to bet on this prediction!"
           ]
-      Self -> H.text ""
-      Friends -> viewStakeWidget config state
-      NoRelation ->
+      Globals.Self -> H.text ""
+      Globals.Friends -> viewStakeWidget config state
+      Globals.NoRelation ->
         H.div []
           [ H.text "You and "
           , Utils.renderUser config.prediction.creator
@@ -74,7 +74,7 @@ viewStakeWidgetOrExcuse config state =
           , H.text " trust each other to pay your debts, send them an invitation! "
           , config.invitationWidget
           ]
-      TrustedByOwner ->
+      Globals.TrustsCurrentUser ->
         H.div []
           [ H.text "You don't trust "
           , Utils.renderUser config.prediction.creator
@@ -83,7 +83,7 @@ viewStakeWidgetOrExcuse config state =
           , H.text " trust them to pay their debts, send them an invitation link: "
           , config.invitationWidget
           ]
-      TrustsOwner ->
+      Globals.TrustedByCurrentUser ->
         H.div []
           [ Utils.renderUser config.prediction.creator, H.text " hasn't marked you as trusted! If you think that, in real life, they "
           , Utils.i "do"
@@ -267,8 +267,8 @@ viewWinnings config _ =
     ifRes res =
       let creatorWinnings = creatorWinningsByBettor res config.prediction.yourTrades in
       case config.creatorRelationship of
-        Self -> enumerateWinnings creatorWinnings
-        LoggedOut -> H.text ""
+        Globals.Self -> enumerateWinnings creatorWinnings
+        Globals.LoggedOut -> H.text ""
         _ -> creatorWinnings |> D.values |> List.sum |> (\n -> -n) |> stateWinnings config.prediction.creator
   in
   if List.isEmpty config.prediction.yourTrades then H.text "" else
@@ -298,7 +298,7 @@ viewCreationParams config _ =
   H.p []
     [ H.text <| "On " ++ Utils.dateStr config.timeZone openTime ++ ", "
     , case config.creatorRelationship of
-        Self -> Utils.b "you"
+        Globals.Self -> Utils.b "you"
         _ -> Utils.renderUser config.prediction.creator
     , H.text " assigned this a "
     , certainty.low |> (*) 100 |> round |> String.fromInt |> H.text
@@ -317,7 +317,7 @@ viewCreationParams config _ =
 viewResolveButtons : Config msg -> State -> Html msg
 viewResolveButtons config state =
   case config.creatorRelationship of
-    Self ->
+    Globals.Self ->
       H.div []
       [ let
           mistakeDetails =

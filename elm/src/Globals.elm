@@ -4,6 +4,8 @@ module Globals exposing
   , getUserInfo
   , isLoggedIn
   , isSelf
+  , TrustRelationship(..)
+  , getTrustRelationship
   , getRelationship
   , ServerState
   , globalsDecoder
@@ -49,6 +51,19 @@ type alias ServerState =
   { settings : Maybe Pb.GenericUserInfo
   , predictions : Dict PredictionId Pb.UserPredictionView
   }
+
+type TrustRelationship = LoggedOut | Self | Friends | TrustsCurrentUser | TrustedByCurrentUser | NoRelation
+getTrustRelationship : Globals -> Username -> TrustRelationship
+getTrustRelationship globals who =
+  if not (isLoggedIn globals) then
+    LoggedOut
+  else if isSelf globals who then
+    Self
+  else case getRelationship globals who |> Maybe.map (\r -> (r.trustsYou, r.trustedByYou)) |> Maybe.withDefault (False, False) of
+    (True, True) -> Friends
+    (True, False) -> TrustsCurrentUser
+    (False, True) -> TrustedByCurrentUser
+    (False, False) -> NoRelation
 
 handleWhoamiResponse : Pb.WhoamiRequest -> Result Http.Error Pb.WhoamiResponse -> Globals -> Globals
 handleWhoamiResponse _ _ globals = globals

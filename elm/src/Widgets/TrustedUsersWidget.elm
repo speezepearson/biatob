@@ -94,7 +94,7 @@ view config state =
         <| List.map (\(u, rel) -> H.li []
             [ Utils.renderUser u
             , H.text ": "
-            , if rel.trusted then
+            , if rel.trustedByYou then
                 H.span []
                   [ H.text "trusted "
                   , H.button

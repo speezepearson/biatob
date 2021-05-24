@@ -62,8 +62,8 @@ init flags =
     , acceptNotification = H.text ""
     }
   , case globals.serverState.settings |> Maybe.map .relationships |> Maybe.andThen (Dict.get invitationId.inviter) |> Maybe.andThen identity of
-      Just {trusted, trusting} ->
-        if trusted && trusting then
+      Just {trustsYou, trustedByYou} ->
+        if trustsYou && trustedByYou then
           navigate destination
         else
           Cmd.none

@@ -177,8 +177,8 @@ type alias GenericUserInfo =
 {-| `Relationship` message
 -}
 type alias Relationship =
-    { trusted : Bool
-    , trusting : Bool
+    { trustsYou : Bool
+    , trustedByYou : Bool
     }
 
 
@@ -1024,8 +1024,8 @@ genericUserInfoDecoder =
 relationshipDecoder : Decode.Decoder Relationship
 relationshipDecoder =
     Decode.message (Relationship False False)
-        [ Decode.optional 1 Decode.bool setTrusted
-        , Decode.optional 2 Decode.bool setTrusting
+        [ Decode.optional 1 Decode.bool setTrustsYou
+        , Decode.optional 2 Decode.bool setTrustedByYou
         ]
 
 
@@ -1927,8 +1927,8 @@ toGenericUserInfoEncoder model =
 toRelationshipEncoder : Relationship -> Encode.Encoder
 toRelationshipEncoder model =
     Encode.message
-        [ ( 1, Encode.bool model.trusted )
-        , ( 2, Encode.bool model.trusting )
+        [ ( 1, Encode.bool model.trustsYou )
+        , ( 2, Encode.bool model.trustedByYou )
         ]
 
 
@@ -2926,14 +2926,14 @@ setLoginType value model =
     { model | loginType = value }
 
 
-setTrusted : a -> { b | trusted : a } -> { b | trusted : a }
-setTrusted value model =
-    { model | trusted = value }
+setTrustsYou : a -> { b | trustsYou : a } -> { b | trustsYou : a }
+setTrustsYou value model =
+    { model | trustsYou = value }
 
 
-setTrusting : a -> { b | trusting : a } -> { b | trusting : a }
-setTrusting value model =
-    { model | trusting = value }
+setTrustedByYou : a -> { b | trustedByYou : a } -> { b | trustedByYou : a }
+setTrustedByYou value model =
+    { model | trustedByYou = value }
 
 
 setInfo : a -> { b | info : a } -> { b | info : a }
@@ -3184,6 +3184,11 @@ setWhoDepr value model =
 setWho : a -> { b | who : a } -> { b | who : a }
 setWho value model =
     { model | who = value }
+
+
+setTrusted : a -> { b | trusted : a } -> { b | trusted : a }
+setTrusted value model =
+    { model | trusted = value }
 
 
 setSetTrustedResult : a -> { b | setTrustedResult : a } -> { b | setTrustedResult : a }

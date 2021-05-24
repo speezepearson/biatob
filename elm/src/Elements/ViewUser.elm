@@ -17,6 +17,7 @@ import Widgets.SmallInvitationWidget as SmallInvitationWidget
 import Widgets.ViewPredictionsWidget as ViewPredictionsWidget
 import Globals
 import Time
+import Dict exposing (Dict)
 
 port copy : String -> Cmd msg
 port navigate : Maybe String -> Cmd msg
@@ -136,7 +137,6 @@ update msg model =
     Ignore ->
       ( model , Cmd.none )
 
-
 view : Model -> Browser.Document Msg
 view model =
   {title=model.who, body=
@@ -152,51 +152,52 @@ view model =
     , H.main_ []
     [ H.h2 [] [H.text model.who]
     , H.br [] []
-    , if Globals.isSelf model.globals model.who then
-        H.div []
-          [ H.text "This is you! You might have meant to visit "
-          , H.a [HA.href "/settings"] [H.text "your settings"]
-          , H.text "?"
-          ]
-      else case model.globals.serverState.settings of
-        Nothing -> H.text "Log in to see your relationship with this user."
-        Just _ ->
-          H.div []
-            [ if Globals.getRelationship model.globals model.who |> Maybe.map .trusting |> Maybe.withDefault False then
-                H.text "This user trusts you! :)"
-              else
-                H.div []
-                  [ H.text "This user hasn't marked you as trusted! If you think that, in real life, they "
-                  , Utils.i "do"
-                  , H.text " trust you, send them an invitation: "
-                  , SmallInvitationWidget.view
-                      { setState = SetInvitationWidget
-                      , createInvitation = CreateInvitation
-                      , copy = Copy
-                      , destination = Just <| "/username/" ++ model.who
-                      , httpOrigin = model.globals.httpOrigin
-                      }
-                      model.invitationWidget
-                  ]
+    , case Globals.getTrustRelationship model.globals model.who of
+        Globals.Self ->
+          H.p []
+            [ H.text "This is you! You might have meant to visit "
+            , H.a [HA.href "/settings"] [H.text "your settings"]
+            , H.text "?"
+            ]
+        Globals.LoggedOut ->
+          H.text "Log in to see your relationship with this user."
+        Globals.NoRelation ->
+          H.p []
+            [ H.text "You have no relationship with this user! If, in real life, you trust them to pay their debts, and they trust you too,"
+            , H.text " then send them an invitation!"
+            , viewInvitationWidget model
+            ]
+        Globals.TrustsCurrentUser ->
+          H.p []
+            [ H.text "This user trusts you, but you don't trust them back! If, in real life, you ", Utils.i "do", H.text " trust them to pay their debts,"
+            , H.text " then send them an invitation!"
+            , viewInvitationWidget model
+            ]
+        Globals.TrustedByCurrentUser ->
+          H.p []
+            [ H.text "You trust this user, but they don't trust you back! If, in real life, you think they ", Utils.i "do", H.text " trust you to pay your debts,"
+            , H.text " then send them an invitation!"
+            , viewInvitationWidget model
             , H.br [] []
-            , if Globals.getRelationship model.globals model.who |> Maybe.map .trusted |> Maybe.withDefault False then
-                H.div []
-                  [ H.text "You trust this user. "
-                  , H.button [HA.disabled model.working, HE.onClick (SetTrusted False)] [H.text "Mark untrusted"]
-                  ]
-              else
-                H.div []
-                  [ H.text "You don't trust this user. "
-                  , H.button [HA.disabled model.working, HE.onClick (SetTrusted True)] [H.text "Mark trusted"]
-                  ]
+            , H.text "...or, if you ", Utils.i "don't", H.text " trust them anymore, you can"
+            , H.button [HA.disabled model.working, HE.onClick (SetTrusted False)] [H.text "mark this user untrusted"]
             , model.notification |> H.map never
+            ]
+        Globals.Friends ->
+          H.p []
+            [ H.text "You and this user trust each other! Aww, how nice!"
             , H.br [] []
-            , if Globals.getRelationship model.globals model.who |> Maybe.map .trusting |> Maybe.withDefault False then
+            , H.text "...but, if you ", Utils.i "don't", H.text " trust them anymore, you can"
+            , H.button [HA.disabled model.working, HE.onClick (SetTrusted False)] [H.text "mark this user untrusted"]
+            , model.notification |> H.map never
+            ]
+            , H.br [] []
+            , if Globals.getRelationship model.globals model.who |> Maybe.map .trustsYou |> Maybe.withDefault False then
                 H.div []
                   [ H.h3 [] [H.text "Predictions"]
                   , ViewPredictionsWidget.view
                       { setState = SetPredictionsWidget
-                      , predictions = model.globals.serverState.predictions
+                      , predictions = Dict.filter (\_ pred -> pred.creator == model.who) model.globals.serverState.predictions
                       , allowFilterByOwner = False
                       , self = model.globals.authToken |> Maybe.map .owner |> Maybe.withDefault "TODO"
                       , now = model.globals.now
@@ -207,7 +208,18 @@ view model =
               else
                 H.text ""
             ]
-  ]]}
+  ]}
+
+viewInvitationWidget : Model -> Html Msg
+viewInvitationWidget model =
+  SmallInvitationWidget.view
+    { setState = SetInvitationWidget
+    , createInvitation = CreateInvitation
+    , copy = Copy
+    , destination = Just <| "/username/" ++ model.who
+    , httpOrigin = model.globals.httpOrigin
+    }
+    model.invitationWidget
 
 subscriptions : Model -> Sub Msg
 subscriptions _ = Sub.none

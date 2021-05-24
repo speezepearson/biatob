@@ -553,7 +553,7 @@ view model =
                     , predictionId = 12345
                     , prediction = prediction
                     , httpOrigin = model.globals.httpOrigin
-                    , creatorRelationship = PredictionWidget.Friends
+                    , creatorRelationship = Globals.Friends
                     , timeZone = model.globals.timeZone
                     , now = model.globals.now
                     }

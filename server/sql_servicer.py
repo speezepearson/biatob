@@ -1,28 +1,18 @@
 #! /usr/bin/env python3
 
-import argparse
+from __future__ import annotations
+
 import asyncio
-import base64
 import contextlib
-import copy
 import datetime
-import filelock  # type: ignore
 import functools
-import hashlib
-import hmac
-import io
 import json
 from pathlib import Path
 import random
-import re
 import secrets
-import string
-import sys
-import tempfile
 import time
-from typing import overload, Any, Awaitable, Mapping, Iterator, Optional, Container, MutableMapping, MutableSequence, NewType, NoReturn, Callable, NoReturn, Tuple, Iterable, Sequence, TypeVar, MutableSequence
+from typing import Any, Awaitable, Mapping, Optional, MutableMapping, MutableSequence, NoReturn, Callable, NoReturn, Iterable, Sequence, MutableSequence
 from typing_extensions import TypedDict
-import argparse
 import logging
 import os
 from email.message import EmailMessage
@@ -106,7 +96,13 @@ class SqlConn:
     if a == b:
       return True
 
-    row = self._conn.execute(sqlalchemy.select([schema.relationships.c.trusted]).where(sqlalchemy.and_(schema.relationships.c.subject_username == a, schema.relationships.c.object_username == b))).first()
+    row = self._conn.execute(
+      sqlalchemy.select([schema.relationships.c.trusted])
+      .where(sqlalchemy.and_(
+        schema.relationships.c.subject_username == a,
+        schema.relationships.c.object_username == b,
+      ))
+    ).first()
     if row is None:
       return False
 
@@ -433,6 +429,7 @@ class SqlConn:
       .where(sqlalchemy.and_(
         schema.relationships.c.subject_username.in_({row['object_username'] for row in outgoing_relationships}),
         schema.relationships.c.object_username == user,
+        schema.relationships.c.trusted,
       ))
     )}
     return mvp_pb2.GenericUserInfo(
@@ -441,8 +438,8 @@ class SqlConn:
       email=mvp_pb2.EmailFlowState.FromString(row['email_flow_state']),
       relationships={
         row['object_username']: mvp_pb2.Relationship(
-          trusted=row['trusted'],
-          trusting=row['object_username'] in trusting_users,
+          trusted_by_you=row['trusted'],
+          trusts_you=row['object_username'] in trusting_users,
         )
         for row in outgoing_relationships
       },
@@ -873,8 +870,8 @@ class SqlServicer(Servicer):
         return mvp_pb2.GetUserResponse(error=mvp_pb2.GetUserResponse.Error(catchall='no such user'))
 
       return mvp_pb2.GetUserResponse(ok=mvp_pb2.Relationship(
-        trusted=self._conn.trusts(token_owner(token), Username(request.who)) if (token is not None) else False,
-        trusting=self._conn.trusts(Username(request.who), token_owner(token)) if (token is not None) else False,
+        trusted_by_you=self._conn.trusts(token_owner(token), Username(request.who)) if (token is not None) else False,
+        trusts_you=self._conn.trusts(Username(request.who), token_owner(token)) if (token is not None) else False,
       ))
 
     @transactional
@@ -996,7 +993,7 @@ class SqlServicer(Servicer):
       invitation = mvp_pb2.Invitation(
         created_unixtime=round(now.timestamp()),
         notes=request.notes,
-        accepted_by=None,
+        accepted_by="",
       )
       return mvp_pb2.CreateInvitationResponse(ok=mvp_pb2.CreateInvitationResponse.Result(
           id=mvp_pb2.InvitationId(inviter=token_owner(token), nonce=nonce),

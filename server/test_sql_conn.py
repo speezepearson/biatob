@@ -100,25 +100,37 @@ class TestSettings:
     conn.register_username(ALICE, 'password', password_id='alicepwid')
     conn.register_username(BOB, 'password', password_id='bobpwid')
     conn.set_trusted(ALICE, BOB, True)
-    assert must(conn.get_settings(ALICE)).relationships == {BOB: mvp_pb2.Relationship(trusted=True)}
+    assert must(conn.get_settings(ALICE)).relationships == {BOB: mvp_pb2.Relationship(trusted_by_you=True)}
 
   def test_get_settings_includes_mutually_trusting_users(self, conn: SqlConn):
     conn.register_username(ALICE, 'password', password_id='alicepwid')
     conn.register_username(BOB, 'password', password_id='bobpwid')
     conn.set_trusted(ALICE, BOB, True)
     conn.set_trusted(BOB, ALICE, True)
-    assert must(conn.get_settings(ALICE)).relationships == {BOB: mvp_pb2.Relationship(trusted=True, trusting=True)}
+    assert must(conn.get_settings(ALICE)).relationships == {BOB: mvp_pb2.Relationship(trusted_by_you=True, trusts_you=True)}
 
   def test_get_settings_includes_explicitly_untrusted_users(self, conn: SqlConn):
     conn.register_username(ALICE, 'password', password_id='alicepwid')
     conn.register_username(BOB, 'password', password_id='bobpwid')
     conn.set_trusted(ALICE, BOB, False)
-    assert must(conn.get_settings(ALICE)).relationships == {BOB: mvp_pb2.Relationship(trusted=False)}
+    assert must(conn.get_settings(ALICE)).relationships == {BOB: mvp_pb2.Relationship(trusted_by_you=False)}
 
-  def test_get_settings_excludes_unrequitedly_trusting_users(self, conn: SqlConn):
+  @pytest.mark.parametrize('a_trusts_b', [True, False])
+  @pytest.mark.parametrize('b_trusts_a', [True, False, None])
+  def test_get_settings_reports_trust_correctly(self, conn: SqlConn, a_trusts_b: bool, b_trusts_a: Optional[bool]):
     conn.register_username(ALICE, 'password', password_id='alicepwid')
     conn.register_username(BOB, 'password', password_id='bobpwid')
-    conn.set_trusted(BOB, ALICE, True)
+    conn.set_trusted(ALICE, BOB, a_trusts_b)
+    if b_trusts_a is not None:
+      conn.set_trusted(BOB, ALICE, b_trusts_a)
+    assert must(conn.get_settings(ALICE)).relationships == {BOB: mvp_pb2.Relationship(trusted_by_you=a_trusts_b or False, trusts_you=b_trusts_a or False)}
+
+  @pytest.mark.parametrize('b_trusts_a', [True, False, None])
+  def test_get_settings_ignores_unacknowledged_users(self, conn: SqlConn, b_trusts_a: Optional[bool]):
+    conn.register_username(ALICE, 'password', password_id='alicepwid')
+    conn.register_username(BOB, 'password', password_id='bobpwid')
+    if b_trusts_a is not None:
+      conn.set_trusted(BOB, ALICE, b_trusts_a)
     assert must(conn.get_settings(ALICE)).relationships == {}
 
   def test_get_settings_includes_open_invitations(self, conn: SqlConn):
