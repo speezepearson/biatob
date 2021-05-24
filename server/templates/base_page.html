@@ -19,7 +19,7 @@
       authSuccessPbB64: {% if auth_success_pb_b64 is defined %} {{ auth_success_pb_b64 | tojson }} {% else %} null {% endif %},
       timeZoneOffsetMinutes: new Date().getTimezoneOffset(),
       httpOrigin: window.origin,
-      initUnixtime: +(new Date()),
+      initUnixtime: +(new Date()) / 1000,
       timeZoneOffsetMinutes: new Date().getTimezoneOffset(),
     };
     console.log('global flags', window.elmGlobalFlags);
