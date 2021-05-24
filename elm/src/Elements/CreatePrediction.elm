@@ -258,6 +258,21 @@ update msg model =
     Ignore ->
       (model, Cmd.none)
 
+rationalApprox : {x: Float, tolerance: Float} -> (Int, Int)
+rationalApprox {x, tolerance} =
+  let
+    help : Int -> Int -> (Int, Int)
+    help num denom =
+      let ratio = toFloat num / toFloat denom in
+      if abs (ratio - x) < tolerance then
+        (num, denom)
+      else if ratio > x then
+        help num (denom+1)
+      else
+        help (num+1) denom
+  in
+    help 0 1
+
 viewForm : Model -> Html Msg
 viewForm model =
   let
@@ -303,7 +318,7 @@ viewForm model =
                 ]
           ]
         , H.li []
-            [ H.text "I think this has at least a"
+            [ H.text "I think that this has at least a "
             , H.input
                 [ HA.type_ "number", HA.min "0", HA.max "100", HA.step "any"
                 , HA.style "width" "5em"
@@ -311,22 +326,92 @@ viewForm model =
                 , HE.onInput SetLowPField
                 , HA.value model.lowPField
                 ] []
-            , H.text "% chance of happening,"
+            , H.text "% chance of happening (i.e. about "
+            , let
+                (num, denom) = case parseLowProbability model of
+                  Err _ -> ("???", "???")
+                  Ok lowP -> let (n,d) = rationalApprox {x=lowP, tolerance=0.1 * min lowP (1-lowP)} in (String.fromInt n, String.fromInt d)
+              in
+                H.text <| num ++ " out of " ++ denom
+            , H.text ")."
             , H.br [] []
-            , H.text "but not more than a "
-            , H.input
-                [ HA.type_ "number", HA.min (String.toFloat model.lowPField |> Maybe.withDefault 0 |> String.fromFloat), HA.max "100", HA.step "any"
-                , HA.style "width" "5em"
-                , HA.disabled disabled
-                , HE.onInput SetHighPField
-                , HA.value model.highPField
-                ] []
-              |> Utils.appendValidationError (case parseLowProbability model of
-                  Err _ -> Nothing
-                  Ok lowP -> case parseHighProbability model of
-                    Ok highP -> if highP < lowP then Just "can't be less than your low prob" else Nothing
-                    Err e -> Just e)
-            , H.text "% chance."
+            , H.details []
+              [ H.summary [HA.style "text-align" "right"] [H.text "Set upper bound too?"]
+              , H.text "...but I think that it would be overconfident to assign it more than a "
+              , H.input
+                  [ HA.type_ "number", HA.min (String.toFloat model.lowPField |> Maybe.withDefault 0 |> String.fromFloat), HA.max "100", HA.step "any"
+                  , HA.style "width" "5em"
+                  , HA.disabled disabled
+                  , HE.onInput SetHighPField
+                  , HA.value model.highPField
+                  ] []
+                |> Utils.appendValidationError (case parseLowProbability model of
+                    Err _ -> Nothing
+                    Ok lowP -> case parseHighProbability model of
+                      Ok highP -> if highP < lowP then Just "can't be less than your low prob" else Nothing
+                      Err e -> Just e)
+              , H.text "% chance."
+            , H.details []
+                [ H.summary [HA.style "text-align" "right"] [H.text "Confusing?"]
+
+                , H.p [] [H.text "Yeah, this is startlingly difficult to think about! Here are some roughly equivalent statements:"]
+                , H.ul []
+                  [ H.li []
+                    [ H.text "I think a significant number of my friends assign this a probability below "
+                    , Utils.b <| model.lowPField ++ "%"
+                    , H.text ", and I'm pretty sure that they're being too hasty to dismiss this."
+                    , case parseHighProbability model of
+                        Ok highP ->
+                          if highP > 0.9999 then H.text "" else
+                          H.span []
+                          [ H.text " And other friends assign this a probability higher than "
+                          , Utils.b <| model.highPField ++ "%"
+                          , H.text " -- I think they're overconfident that this will happen."
+                          ]
+                        Err _ -> H.text ""
+                    ]
+                  , H.li []
+                    [ H.text "I'm pretty sure that, if I researched this question pretty carefully, and at the end of the day I had to put a single number on it,"
+                    , H.text " I would end up assigning it a probability between "
+                    , Utils.b <| model.lowPField ++ "%"
+                    , case parseHighProbability model of
+                        Ok highP ->
+                          if highP > 0.9999 then H.text "" else
+                          H.span []
+                          [ H.text " and "
+                          , Utils.b <| model.highPField ++ "%"
+                          ]
+                        Err _ -> H.text ""
+                    , H.text ". If I assigned a number outside that range, I must have learned something really surprising, something that changed my mind significantly!"
+                    ]
+                  , H.li []
+                    [ H.text "I would pay one of my friends about "
+                    , Utils.b <| "$" ++ model.lowPField
+                    , H.text " for an \"IOU $100 if [this prediction comes true]\" note"
+                    , case parseHighProbability model of
+                        Ok highP ->
+                          if highP > 0.9999 then H.text "" else
+                          H.span []
+                          [ H.text ", or sell them such an IOU for about "
+                          , Utils.b <| "$" ++ model.highPField
+                          ]
+                        Err _ -> H.text ""
+                    , H.text "."
+                    ]
+                  ]
+                , H.p [] [H.text <| "You can think of the spread as being a measurement of how confident you are:"
+                    ++ " a small spread, like 70-73%, means you've thought about this ", i "really carefully,", H.text <| " and"
+                    ++ " you don't expect your opinion to be budged by any of your friends' bets or any new information that comes out"
+                    ++ " before betting closes; a wide spread, like 30-95%, is sort of off-the-cuff, you just want to throw it out there that"
+                    ++ " it's ", i "pretty likely", H.text <| " but you haven't thought ", i "that", H.text <| " hard about it."
+                    ++ " Predictions don't have to be effortful, painstakingly researched things!"
+                    ++ " It's okay to throw out half-formed thoughts with wide spreads."
+                    ]
+                , H.p [] [H.text <| "If you still confused, hey, don't worry about it! This is really remarkably counterintuitive stuff."
+                    ++ " Just leave the high probability at 100%."
+                    ]
+                ]
+              ]
             , case parseLowProbability model of
                 Ok lowP ->
                   if lowP == 0 then
@@ -334,37 +419,11 @@ viewForm model =
                       [ H.text "A low probability of 0 means you're actually only willing to bet "
                       , i "against"
                       , H.text <| " your prediction, which might be confusing to your friends."
-                        ++ " Consider negating your prediction (\"I predict X\" -> \"I predict NOT X\") to make things clearer."
+                        ++ " Consider negating your prediction (\"there will be at least 40k gun deaths\" -> \"there will be fewer than 40k gun deaths\") to make things clearer."
                       ]
                   else
                     H.text ""
                 _ -> H.text ""
-            , H.details []
-                [ H.summary [HA.style "text-align" "right"] [H.text "Confusing?"]
-                , H.p [] [H.text "\"Why do I need to enter ", i "two", H.text <| " probabilities?\" It's a way to protect yourself from making bets you'll immediately regret!"]
-                , H.p [] [H.text <| "An example: imagine you post a prediction about an election outcome,"
-                    ++ " saying that Howell is 70% likely to win."
-                    ++ " The next day, your cleverest, best-informed friend, Nate, bets heavily that Howell will lose."
-                    ++ " You probably think: \"Aw, drat. Nate knows a lot about politics, he's probably right, I should've posted lower odds.\""
-                    ++ " But if Nate had instead bet heavily that Howell would ", i "win,", H.text <| " you would think:"
-                    ++ " \"Aw, drat. I should've posted ", i "higher", H.text <| " odds.\" You can't win! No matter what odds you offer,"
-                    ++ " as soon as Nate bets against you, you'll regret it."]
-                , H.p [] [H.text <| "But maybe you think that ", i "even Nate", H.text <| " would be crazy to assign Howell less than a 40% chance,"
-                    ++ " or more than a 90% chance. Then, you could publish \"40-90%\" odds: your $4 against $6 that Howell will win, or your $1 against $9 that Howell will lose."
-                    ++ " Then, even Nate betting against you won't shift your probability estimate so much that you regret offering the wager."
-                    ]
-                , H.p [] [H.text <| "You can think of the spread as being a measurement of how confident you are:"
-                    ++ " a small spread, like 70-73%, means you've thought about this ", i "really carefully,", H.text <| " and"
-                    ++ " you don't expect your opinion to be budged by any of your friends' bets or any new information that comes out"
-                    ++ " before betting closes; a wide spread, like 30-95%, is sort of off-the-cuff, you just want to throw it out there that"
-                    ++ " it's ", i "pretty likely", H.text <| " but you haven't thought ", i "that", H.text <| " hard about it."
-                    ++ " Predictions don't have to be effortful, painstakingly researched things!"
-                    ++ " It's okay to throw out half-formed thoughts with wide spreads!"
-                    ]
-                , H.p [] [H.text <| "If you still confused, hey, don't worry about it! This is really remarkably counterintuitive stuff."
-                    ++ " Just leave the high probability at 100%."
-                    ]
-                ]
             ]
         , H.li []
             [ H.text "I'm willing to bet up to $"
@@ -422,9 +481,10 @@ viewForm model =
             , H.text "."
             , H.details []
                 [ H.summary [HA.style "text-align" "right"] [H.text "Confusing?"]
-                , H.text <| "If it's 2021-01-01, and you're betting on whether [some thing] will happen by 2022-01-01,"
-                    ++ " you don't want people to be able to wait until 2021-12-31 before betting against you."
-                    ++ " You might say \"This offer is only open for 2 weeks,\" to give your friends time to bet,"
+                , H.text <| "If it's Jan 1, and you're betting about how many book reviews Scott Alexander will have published by Dec 31,"
+                    ++ " you don't want people to be able to wait until Dec 30 before betting against you --"
+                    ++ " the question is essentially already answered at that point!"
+                    ++ " So, you might only accept bets for a week or two, to give your friends time to bet against you,"
                     ++ " without letting them get ", Utils.i "too much", H.text " extra information."
                 ]
             ]
