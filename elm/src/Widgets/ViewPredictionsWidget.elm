@@ -166,7 +166,7 @@ view config state =
               , created = H.text <| Utils.dateStr config.timeZone (Utils.unixtimeToTime prediction.createdUnixtime)
               , creator = if config.allowFilterByOwner then Just (H.text prediction.creator) else Nothing
               , resolves = H.text <| Utils.dateStr config.timeZone (Utils.unixtimeToTime prediction.resolvesAtUnixtime)
-              , prediction = H.a [HA.href <| "/p/" ++ String.fromInt id] [H.text prediction.prediction]
+              , prediction = H.a [HA.href <| Utils.pathToPrediction id] [H.text prediction.prediction]
               , resolution = case List.head (List.reverse prediction.resolutions) |> Maybe.map .resolution of
                   Nothing -> H.text ""
                   Just Pb.ResolutionNoneYet -> H.text ""

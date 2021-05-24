@@ -353,7 +353,7 @@ view config state =
     [ H.h2 [] [
         let text = H.text <| "Prediction: by " ++ (String.left 10 <| Iso8601.fromTime <| Utils.unixtimeToTime config.prediction.resolvesAtUnixtime) ++ ", " ++ config.prediction.prediction in
         if config.linkTitle then
-          H.a [HA.href <| "/p/" ++ String.fromInt config.predictionId] [text]
+          H.a [HA.href <| Utils.pathToPrediction config.predictionId] [text]
         else
           text
         ]
@@ -377,8 +377,8 @@ view config state =
 viewEmbedInfo : Config msg -> State -> Html msg
 viewEmbedInfo config _ =
   let
-    linkUrl = config.httpOrigin ++ "/p/" ++ String.fromInt config.predictionId  -- TODO(P0): needs origin to get stuck in text field
-    imgUrl = config.httpOrigin ++ "/p/" ++ String.fromInt config.predictionId ++ "/embed.png"
+    linkUrl = config.httpOrigin ++ Utils.pathToPrediction config.predictionId  -- TODO(P0): needs origin to get stuck in text field
+    imgUrl = config.httpOrigin ++ Utils.pathToPrediction config.predictionId ++ "/embed.png"
     imgStyles = [("max-height","1.5ex"), ("border-bottom","1px solid #008800")]
     imgCode =
       "<a href=\"" ++ linkUrl ++ "\">"

@@ -238,6 +238,10 @@ predictionCreatedTime prediction = unixtimeToTime prediction.createdUnixtime
 predictionClosesTime : Pb.UserPredictionView -> Time.Posix
 predictionClosesTime prediction = unixtimeToTime prediction.closesUnixtime
 
+pathToPrediction : PredictionId -> String
+pathToPrediction predictionId =
+  "/p/" ++ String.fromInt predictionId
+
 pathToUserPage : Username -> String
 pathToUserPage user =
   "/username/" ++ user

@@ -115,7 +115,7 @@ viewInvitationWidget model =
     { setState = SetInvitationWidget
     , createInvitation = CreateInvitation
     , copy = Copy
-    , destination = Just <| "/p/" ++ String.fromInt model.predictionId
+    , destination = Just <| Utils.pathToPrediction model.predictionId
     , httpOrigin = model.globals.httpOrigin
     }
     model.invitationWidget
@@ -123,8 +123,8 @@ viewEmbedInfo : Model -> Html Msg
 viewEmbedInfo model =
   let
     prediction = Utils.must "must have loaded prediction being viewed" <| Dict.get model.predictionId model.globals.serverState.predictions
-    linkUrl = model.globals.httpOrigin ++ "/p/" ++ String.fromInt model.predictionId  -- TODO(P0): needs origin to get stuck in text field
-    imgUrl = model.globals.httpOrigin ++ "/p/" ++ String.fromInt model.predictionId ++ "/embed.png"
+    linkUrl = model.globals.httpOrigin ++ Utils.pathToPrediction model.predictionId  -- TODO(P0): needs origin to get stuck in text field
+    imgUrl = model.globals.httpOrigin ++ Utils.pathToPrediction model.predictionId ++ "/embed.png"
     imgStyles = [("max-height","1.5ex"), ("border-bottom","1px solid #008800")]
     imgCode =
       "<a href=\"" ++ linkUrl ++ "\">"
