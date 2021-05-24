@@ -11,6 +11,7 @@ import Utils
 import Utils
 import Widgets.CopyWidget as CopyWidget
 import API
+import Utils exposing (InvitationNonce)
 
 type alias Config msg =
   { setState : State -> msg
@@ -22,13 +23,13 @@ type alias Config msg =
 type State
   = Unstarted
   | AwaitingResponse
-  | Succeeded Pb.InvitationId
+  | Succeeded InvitationNonce
   | Failed String
 
 handleCreateInvitationResponse : Result Http.Error Pb.CreateInvitationResponse -> State -> State
 handleCreateInvitationResponse res _ =
   case API.simplifyCreateInvitationResponse res of
-    Ok resp -> Succeeded <| Utils.must "every CreateInvitationResponse should return an id" resp.id
+    Ok resp -> Succeeded resp.nonce
     Err e -> Failed e
 
 init : State
@@ -49,8 +50,8 @@ view config model =
   in
   H.span []
     [ case model of
-        Succeeded id ->
-          CopyWidget.view config.copy (config.httpOrigin ++ Utils.invitationPath id ++ case config.destination of
+        Succeeded nonce ->
+          CopyWidget.view config.copy (config.httpOrigin ++ Utils.invitationPath nonce ++ case config.destination of
              Just d -> "?dest="++d
              Nothing -> "" )
         _ -> H.text ""

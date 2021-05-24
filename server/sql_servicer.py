@@ -484,18 +484,19 @@ class SqlConn:
       )
     )
 
-  def is_invitation_open(self, nonce: str) -> bool:
-    return (
-      self._conn.execute(
-        sqlalchemy.select([schema.invitations.c.inviter])
-        .where(schema.invitations.c.nonce == nonce)
-      ).fetchone() is not None
-      and
-      self._conn.execute(
-        sqlalchemy.select(schema.invitation_acceptances.c)
-        .where(schema.invitation_acceptances.c.invitation_nonce == nonce)
-      ).fetchone() is None
-    )
+  InvitationInfo = TypedDict('InvitationInfo', {'inviter': Username, 'is_open': bool})
+  def get_invitation_info(self, nonce: str) -> Optional[InvitationInfo]:
+    invitation_row = self._conn.execute(
+      sqlalchemy.select([schema.invitations.c.inviter])
+      .where(schema.invitations.c.nonce == nonce)
+    ).fetchone()
+    if invitation_row is None:
+      return None
+    acceptance_row = self._conn.execute(
+      sqlalchemy.select(schema.invitation_acceptances.c)
+      .where(schema.invitation_acceptances.c.invitation_nonce == nonce)
+    ).fetchone()
+    return {'inviter': invitation_row['inviter'], 'is_open': acceptance_row is None}
 
   def accept_invitation(self, nonce: str, accepter: Username, now: datetime.datetime) -> None:
     self._conn.execute(
@@ -996,8 +997,7 @@ class SqlServicer(Servicer):
         accepted_by="",
       )
       return mvp_pb2.CreateInvitationResponse(ok=mvp_pb2.CreateInvitationResponse.Result(
-          id=mvp_pb2.InvitationId(inviter=token_owner(token), nonce=nonce),
-          invitation=invitation,
+          nonce=nonce,
           user_info=self._conn.get_settings(token_owner(token)),
       ))
 
@@ -1005,11 +1005,14 @@ class SqlServicer(Servicer):
     @checks_token
     @log_action
     def CheckInvitation(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.CheckInvitationRequest) -> mvp_pb2.CheckInvitationResponse:
-      if not (request.HasField('invitation_id') and request.invitation_id.inviter):
+      if not request.nonce:
         logger.warn('malformed CheckInvitationRequest')
         return mvp_pb2.CheckInvitationResponse(error=mvp_pb2.CheckInvitationResponse.Error(catchall='malformed invitation'))
 
-      return mvp_pb2.CheckInvitationResponse(is_open=self._conn.is_invitation_open(nonce=request.invitation_id.nonce))
+      info = self._conn.get_invitation_info(nonce=request.nonce)
+      if info is None:
+        return mvp_pb2.CheckInvitationResponse(error=mvp_pb2.CheckInvitationResponse.Error(catchall='no such invitation'))
+      return mvp_pb2.CheckInvitationResponse(ok=mvp_pb2.CheckInvitationResponse.Result(inviter=info['inviter'], is_open=info['is_open']))
 
     @transactional
     @checks_token
@@ -1023,15 +1026,12 @@ class SqlServicer(Servicer):
         logger.warn('invalid AcceptInvitationRequest', problems=problems)
         return mvp_pb2.AcceptInvitationResponse(error=mvp_pb2.AcceptInvitationResponse.Error(catchall=problems))
 
-      if (not request.HasField('invitation_id')) or (not request.invitation_id.inviter):
-        logger.warn('malformed attempt to accept invitation', possible_malice=True)
-        return mvp_pb2.AcceptInvitationResponse(error=mvp_pb2.AcceptInvitationResponse.Error(catchall='malformed invitation'))
-
-      if not self._conn.is_invitation_open(request.invitation_id.nonce):
+      info = self._conn.get_invitation_info(nonce=request.nonce)
+      if (info is None) or not info['is_open']:
         logger.info('attempt to accept non-open invitation')
         return mvp_pb2.AcceptInvitationResponse(error=mvp_pb2.AcceptInvitationResponse.Error(catchall='invitation is non-existent or already used'))
 
-      self._conn.accept_invitation(request.invitation_id.nonce, token_owner(token), self._clock())
+      self._conn.accept_invitation(request.nonce, token_owner(token), self._clock())
       logger.info('accepted invitation')
       return mvp_pb2.AcceptInvitationResponse(ok=self._conn.get_settings(token_owner(token)))
 

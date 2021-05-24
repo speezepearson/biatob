@@ -83,8 +83,8 @@ def describe_SetEmailRequest_problems(request: mvp_pb2.SetEmailRequest) -> Optio
 
 def describe_AcceptInvitationRequest_problems(request: mvp_pb2.AcceptInvitationRequest) -> Optional[str]:
     problems = []
-    if not request.HasField('invitation_id'):
-        problems.append('no invitation id given')
+    if not request.nonce:
+        problems.append('no nonce given')
     return '; '.join(problems) if problems else None
 
 

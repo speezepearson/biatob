@@ -165,11 +165,11 @@ class TestInvitations:
     conn.register_username(ALICE, 'password', password_id='alicepwid')
     conn.register_username(BOB, 'password', password_id='bobpwid')
 
-    assert not conn.is_invitation_open(nonce='mynonce')
+    assert conn.get_invitation_info(nonce='mynonce') is None
     conn.create_invitation(nonce='mynonce', inviter=ALICE, now=T0, notes='')
-    assert conn.is_invitation_open(nonce='mynonce')
+    assert must(conn.get_invitation_info(nonce='mynonce'))['is_open']
     conn.accept_invitation(nonce='mynonce', accepter=BOB, now=T1)
-    assert not conn.is_invitation_open(nonce='mynonce')
+    assert not must(conn.get_invitation_info(nonce='mynonce'))['is_open']
 
   def test_no_accepting_closed_invitation(self, conn: SqlConn):
     conn.register_username(ALICE, 'password', password_id='alicepwid')

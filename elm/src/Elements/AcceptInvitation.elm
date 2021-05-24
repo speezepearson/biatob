@@ -12,18 +12,19 @@ import Biatob.Proto.Mvp as Pb
 import Utils
 
 import Widgets.AuthWidget as AuthWidget
-import Utils
 import Globals
 import API
 import Widgets.Navbar as Navbar
 import Time
+import Utils exposing (InvitationNonce, Username)
 
 port navigate : Maybe String -> Cmd msg
 
 type alias Model =
   { globals : Globals.Globals
   , navbarAuth : AuthWidget.State
-  , invitationId : Pb.InvitationId
+  , inviter : Username
+  , nonce : InvitationNonce
   , invitationIsOpen : Bool
   , destination : Maybe String
   , authWidget : AuthWidget.State
@@ -49,11 +50,13 @@ init : JD.Value -> (Model, Cmd Msg)
 init flags =
   let
     globals = JD.decodeValue Globals.globalsDecoder flags |> Utils.mustResult "flags"
-    invitationId = Utils.mustDecodePbFromFlags Pb.invitationIdDecoder "invitationIdPbB64" flags
+    nonce = Utils.mustDecodeFromFlags JD.string "nonce" flags
+    inviter = Utils.mustDecodeFromFlags JD.string "inviter" flags
     destination = Utils.mustDecodeFromFlags (JD.nullable JD.string) "destination" flags
   in
   ( { globals = globals
-    , invitationId = invitationId
+    , inviter = inviter
+    , nonce = nonce
     , destination = destination
     , invitationIsOpen = Utils.mustDecodeFromFlags JD.bool "invitationIsOpen" flags
     , navbarAuth = AuthWidget.init
@@ -61,7 +64,7 @@ init flags =
     , working = False
     , acceptNotification = H.text ""
     }
-  , case globals.serverState.settings |> Maybe.map .relationships |> Maybe.andThen (Dict.get invitationId.inviter) |> Maybe.andThen identity of
+  , case globals.serverState.settings |> Maybe.map .relationships |> Maybe.andThen (Dict.get inviter) |> Maybe.andThen identity of
       Just {trustsYou, trustedByYou} ->
         if trustsYou && trustedByYou then
           navigate destination
@@ -84,7 +87,7 @@ update msg model =
       ( updateAuthWidget loc (always widgetState) model , Cmd.none )
     AcceptInvitation ->
       ( { model | working = True , acceptNotification = H.text "" }
-      , API.postAcceptInvitation (AcceptInvitationFinished {invitationId=Just model.invitationId}) {invitationId=Just model.invitationId}
+      , API.postAcceptInvitation (AcceptInvitationFinished {nonce=model.nonce}) {nonce=model.nonce}
       )
     AcceptInvitationFinished req res ->
       ( { model | globals = model.globals |> Globals.handleAcceptInvitationResponse req res
@@ -134,12 +137,6 @@ update msg model =
     Ignore ->
       ( model , Cmd.none )
 
-isOwnInvitation : Globals.Globals -> Pb.InvitationId -> Bool
-isOwnInvitation globals invitationId =
-  case Globals.getAuth globals of
-    Nothing -> False
-    Just token -> token.owner == invitationId.inviter
-
 view : Model -> Browser.Document Msg
 view model =
   { title = "Accept Invitation"
@@ -155,12 +152,12 @@ view model =
         model.navbarAuth
     ,
     H.main_ [HA.style "text-align" "justify"] <|
-    if isOwnInvitation model.globals model.invitationId then
+    if (model.globals.authToken |> Maybe.map .owner) == Just model.inviter then
       [H.text "This is your own invitation!"]
     else if not model.invitationIsOpen then
       [H.text "This invitation has been used up already!"]
     else
-      [ H.h2 [] [H.text "Invitation from ", Utils.renderUser model.invitationId.inviter]
+      [ H.h2 [] [H.text "Invitation from ", Utils.renderUser model.inviter]
       , H.p []
         [ H.text <| "The person who sent you this link is interested in betting against you regarding real-world events,"
           ++ " with real money, upheld by the honor system!"
@@ -208,7 +205,7 @@ view model =
           , H.text <| " so you don't have to provide a credit card or anything, but you ", Utils.i  "do"
           , H.text <| " have to tell the site who you trust, so that it knows who's allowed to bet against you."
           ++ " (Honor systems only work where there is honor.)"]
-      , H.p [] [Utils.renderUser model.invitationId.inviter, H.text <|
+      , H.p [] [Utils.renderUser model.inviter, H.text <|
           " thinks you might be interested in gambling against them, and trusts you to pay any debts you incur when you lose;"
           ++ " if you feel likewise, accept their invitation!"]
       ]

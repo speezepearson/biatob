@@ -189,20 +189,18 @@ class WebServer:
     async def get_invitation(self, req: web.Request) -> web.Response:
         auth = self._token_glue.parse_cookie(req)
         auth_success = self._get_auth_success(auth)
-        invitation_id = mvp_pb2.InvitationId(
-            inviter=req.match_info['username'],
-            nonce=req.match_info['nonce'],
-        )
-        check_invitation_resp = self._servicer.CheckInvitation(auth, mvp_pb2.CheckInvitationRequest(invitation_id=invitation_id))
+        nonce = str(req.match_info['nonce'])
+        check_invitation_resp = self._servicer.CheckInvitation(auth, mvp_pb2.CheckInvitationRequest(nonce=nonce))
         if check_invitation_resp.WhichOneof('check_invitation_result') == 'error':
             return web.HTTPBadRequest(reason=str(check_invitation_resp.error))
-        assert check_invitation_resp.WhichOneof('check_invitation_result') == 'is_open'
+        assert check_invitation_resp.WhichOneof('check_invitation_result') == 'ok'
         return web.Response(
             content_type='text/html',
             body=self._jinja.get_template('AcceptInvitationPage.html').render(
                 auth_success_pb_b64=pb_b64(auth_success),
-                invitation_is_open=check_invitation_resp.is_open,
-                invitation_id_pb_b64=pb_b64(invitation_id),
+                invitation_is_open=check_invitation_resp.ok.is_open,
+                nonce=nonce,
+                inviter=check_invitation_resp.ok.inviter,
             ))
 
     def add_to_app(self, app: web.Application) -> None:
@@ -221,7 +219,8 @@ class WebServer:
         app.router.add_get('/username/{username:[a-zA-Z0-9_-]+}', self.get_username)
         app.router.add_get('/settings', self.get_settings)
         app.router.add_get('/login', self.get_login)
-        app.router.add_get('/invitation/{username}/{nonce}', self.get_invitation)
+        app.router.add_get('/invitation/{username}/{nonce}', self.get_invitation) # legacy path; new invitations are identified entirely by nonce
+        app.router.add_get('/invitation/{nonce}', self.get_invitation)
 
 
 def pb_b64(message: Optional[Message]) -> Optional[str]:

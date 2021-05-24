@@ -53,7 +53,7 @@ viewInvitation config nonce invitation =
   case invitation.acceptedBy of
     "" ->
       H.li []
-        [ CopyWidget.view config.copy (config.httpOrigin ++ Utils.invitationPath {inviterDepr=Nothing, inviter=config.auth.owner, nonce=nonce})
+        [ CopyWidget.view config.copy (config.httpOrigin ++ Utils.invitationPath nonce)
         , H.text <| " (created " ++ Utils.dateStr config.timeZone (Utils.unixtimeToTime invitation.createdUnixtime) ++ ")"
         ]
     accepter ->
