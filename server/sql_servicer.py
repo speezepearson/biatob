@@ -22,7 +22,7 @@ import sqlalchemy
 from .api_server import *
 from .core import *
 from .emailer import *
-from .http import *
+from .http_glue import *
 from .web_server import *
 from .protobuf import mvp_pb2
 from . import sql_schema as schema

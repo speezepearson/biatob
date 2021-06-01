@@ -4,7 +4,7 @@ import pytest
 
 from .protobuf import mvp_pb2
 from .web_server import WebServer
-from .http import HttpTokenGlue
+from .http_glue import HttpTokenGlue
 from .test_utils import *
 from .test_api_server import post_proto, api_server
 

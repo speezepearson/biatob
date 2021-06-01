@@ -10,7 +10,7 @@ from google.protobuf.message import Message as PbMessage
 from .api_server import _Req, _Resp
 from .protobuf import mvp_pb2
 from .api_server import ApiServer
-from .http import HttpTokenGlue
+from .http_glue import HttpTokenGlue
 from .test_utils import *
 
 SECRET_KEY = b'secret for testing'

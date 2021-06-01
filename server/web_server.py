@@ -12,7 +12,7 @@ from PIL import Image, ImageDraw, ImageFont  # type: ignore
 import structlog
 
 from .core import Servicer
-from .http import HttpTokenGlue
+from .http_glue import HttpTokenGlue
 from .protobuf import mvp_pb2
 
 logger = structlog.get_logger()

@@ -5,7 +5,7 @@ from aiohttp import web
 from google.protobuf.message import Message
 
 from .core import Servicer
-from .http import HttpTokenGlue
+from .http_glue import HttpTokenGlue
 from .protobuf import mvp_pb2
 
 _Req = TypeVar('_Req', bound=Message)

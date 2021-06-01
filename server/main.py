@@ -15,7 +15,7 @@ import google.protobuf.text_format  # type: ignore
 from .api_server import *
 from .core import *
 from .emailer import *
-from .http import *
+from .http_glue import *
 from .web_server import *
 from .protobuf import mvp_pb2
 from .sql_servicer import *
