@@ -11,7 +11,6 @@ import Http
 
 import API
 import Utils
-import Utils exposing (Password, Username)
 
 type alias Config msg =
   { setState : State -> msg
