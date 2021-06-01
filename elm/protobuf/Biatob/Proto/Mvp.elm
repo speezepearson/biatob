@@ -12,7 +12,7 @@ module Biatob.Proto.Mvp exposing
 This module was generated automatically using
 
   - [`protoc-gen-elm`](https://www.npmjs.com/package/protoc-gen-elm) 1.0.0-beta-2
-  - `protoc` unknown version
+  - `protoc` 3.6.1
   - the following specification file: `protobuf/mvp.proto`
 
 To run it use [`elm-protocol-buffers`](https://package.elm-lang.org/packages/eriktim/elm-protocol-buffers/1.1.0) version 1.1.0 or higher.

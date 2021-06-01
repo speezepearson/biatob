@@ -20,6 +20,7 @@ import Globals
 import API
 
 port navigate : Maybe String -> Cmd msg
+port authWidgetExternallyChanged : (AuthWidget.DomModification -> msg) -> Sub msg
 
 maxLegalStakeCents = 500000
 epsilon = 0.000001
@@ -60,6 +61,7 @@ type Msg
   | SignOut AuthWidget.State Pb.SignOutRequest
   | SignOutFinished Pb.SignOutRequest (Result Http.Error Pb.SignOutResponse)
   | Tick Time.Posix
+  | AuthWidgetExternallyModified AuthWidget.DomModification
   | Ignore
 
 
@@ -259,6 +261,10 @@ update msg model =
       )
     Tick now ->
       ( { model | globals = model.globals |> Globals.tick now }
+      , Cmd.none
+      )
+    AuthWidgetExternallyModified mod ->
+      ( { model | navbarAuth = model.navbarAuth |> AuthWidget.handleDomModification mod }
       , Cmd.none
       )
     Ignore ->
@@ -520,6 +526,7 @@ view model =
         , signOut = SignOut
         , ignore = Ignore
         , auth = Globals.getAuth model.globals
+        , id = "navbar-auth"
         }
         model.navbarAuth
     , H.main_ []
@@ -587,6 +594,6 @@ previewPrediction {request, creatorName, createdAt} =
   }
 
 subscriptions : Model -> Sub Msg
-subscriptions _ = Sub.none
+subscriptions _ = authWidgetExternallyChanged AuthWidgetExternallyModified
 
 main = Browser.document {init=init, view=view, update=update, subscriptions=subscriptions}

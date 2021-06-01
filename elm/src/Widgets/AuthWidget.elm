@@ -11,6 +11,7 @@ import Http
 
 import API
 import Utils
+import Utils exposing (Password, Username)
 
 type alias Config msg =
   { setState : State -> msg
@@ -19,6 +20,7 @@ type alias Config msg =
   , signOut : State -> Pb.SignOutRequest -> msg
   , ignore : msg
   , auth : Maybe Pb.AuthToken
+  , id : String
   }
 type alias State =
   { usernameField : String
@@ -27,6 +29,18 @@ type alias State =
   , notification : Html Never
   }
 
+type alias DomModification =
+  { authWidgetId : String
+  , field : String
+  , newValue : String
+  }
+
+handleDomModification : DomModification -> State -> State
+handleDomModification mod state =
+  case (Debug.log "handling external AuthWidget modification" mod).field of
+     "username" -> { state | usernameField = mod.newValue }
+     "password" -> { state | passwordField = mod.newValue }
+     _ -> Debug.todo <| "invalid DomModification event; expected 'field' = 'username' or 'password', got '" ++ mod.field ++ "'"
 
 handleLogInUsernameResponse : Result Http.Error Pb.LogInUsernameResponse -> State -> State
 handleLogInUsernameResponse res state =
@@ -77,15 +91,17 @@ view config state =
           (Ok _, Ok _) -> False
           _ -> True
       in
-      H.div []
+      H.div
+        [ HA.id config.id
+        , HA.class "auth-widget"
+        ]
         [ H.input
             [ HA.disabled state.working
             , HA.style "width" "8em"
+            , HA.name "username"
             , HA.type_ "text"
             , HA.placeholder "username"
             , HA.class "username-field"
-            , HA.class "watch-for-password-manager-fill"
-            , HA.attribute "data-password-manager-target" "username"
             , HA.attribute "data-elm-value" state.usernameField
             , HE.onInput (\s -> config.setState {state | usernameField=s})
             , HA.value state.usernameField
@@ -94,10 +110,9 @@ view config state =
         , H.input
             [ HA.disabled state.working
             , HA.style "width" "8em"
+            , HA.name "password"
             , HA.type_ "password"
             , HA.placeholder "password"
-            , HA.class "watch-for-password-manager-fill"
-            , HA.attribute "data-password-manager-target" "password"
             , HA.attribute "data-elm-value" state.passwordField
             , HE.onInput (\s -> config.setState {state | passwordField=s})
             , HA.value state.passwordField

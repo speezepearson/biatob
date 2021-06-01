@@ -19,6 +19,7 @@ import Time
 import Utils exposing (InvitationNonce, Username)
 
 port navigate : Maybe String -> Cmd msg
+port authWidgetExternallyChanged : (AuthWidget.DomModification -> msg) -> Sub msg
 
 type alias Model =
   { globals : Globals.Globals
@@ -44,6 +45,7 @@ type Msg
   | SignOut AuthWidgetLoc AuthWidget.State Pb.SignOutRequest
   | SignOutFinished AuthWidgetLoc Pb.SignOutRequest (Result Http.Error Pb.SignOutResponse)
   | Tick Time.Posix
+  | AuthWidgetExternallyModified AuthWidget.DomModification
   | Ignore
 
 init : JD.Value -> (Model, Cmd Msg)
@@ -134,6 +136,17 @@ update msg model =
       ( { model | globals = model.globals |> Globals.tick now }
       , Cmd.none
       )
+    AuthWidgetExternallyModified mod ->
+      ( updateAuthWidget
+          (case mod.authWidgetId of
+             "navbar-auth" -> Navbar
+             "inline-auth" -> Inline
+             _ -> Debug.todo "unknown auth widget id"
+          )
+          (AuthWidget.handleDomModification mod)
+          model
+      , Cmd.none
+      )
     Ignore ->
       ( model , Cmd.none )
 
@@ -148,6 +161,7 @@ view model =
         , signOut = SignOut Navbar
         , ignore = Ignore
         , auth = Globals.getAuth model.globals
+        , id = "navbar-auth"
         }
         model.navbarAuth
     ,
@@ -182,6 +196,7 @@ view model =
                   , signOut = SignOut Inline
                   , ignore = Ignore
                   , auth = Globals.getAuth model.globals
+                  , id = "inline-auth"
                   }
                   model.authWidget
               ]
@@ -212,6 +227,6 @@ view model =
   ]}
 
 subscriptions : Model -> Sub Msg
-subscriptions _ = Sub.none
+subscriptions _ = authWidgetExternallyChanged AuthWidgetExternallyModified
 
 main = Browser.document {init=init, view=view, update=update, subscriptions=subscriptions}

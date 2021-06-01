@@ -17,6 +17,7 @@ import API
 import Time
 
 port navigate : Maybe String -> Cmd msg
+port authWidgetExternallyChanged : (AuthWidget.DomModification -> msg) -> Sub msg
 
 type alias Model =
   { globals : Globals.Globals
@@ -33,6 +34,7 @@ type Msg
   | SignOut AuthWidget.State Pb.SignOutRequest
   | SignOutFinished Pb.SignOutRequest (Result Http.Error Pb.SignOutResponse)
   | Tick Time.Posix
+  | AuthWidgetExternallyModified AuthWidget.DomModification
   | Ignore
 
 init : JD.Value -> ( Model, Cmd Msg )
@@ -55,6 +57,7 @@ view model =
         , signOut = SignOut
         , ignore = Ignore
         , auth = Globals.getAuth model.globals
+        , id = "navbar-auth"
         }
         model.navbarAuth
     , H.main_ []
@@ -119,11 +122,14 @@ update msg model =
       ( { model | globals = model.globals |> Globals.tick now }
       , Cmd.none
       )
+    AuthWidgetExternallyModified mod ->
+      ( { model | navbarAuth = model.navbarAuth |> AuthWidget.handleDomModification mod }
+      , Cmd.none
+      )
     Ignore ->
       ( model , Cmd.none )
 
 subscriptions : Model -> Sub Msg
-subscriptions model =
-    Sub.none
+subscriptions _ = authWidgetExternallyChanged AuthWidgetExternallyModified
 
 main = Browser.document {init=init, view=view, update=update, subscriptions=subscriptions}

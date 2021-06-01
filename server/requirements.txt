@@ -11,3 +11,6 @@ sqlalchemy
 # testing
 pytest-aiohttp
 pytest
+mypy
+mypy-protobuf
+sqlalchemy-stubs
