@@ -68,7 +68,7 @@ async def test_CreatePrediction_and_GetPrediction(aiohttp_client, app, clock):
   assert register_resp.WhichOneof('register_username_result') == 'ok', register_resp
 
   (http_resp, create_pb_resp) = await post_proto(cli, '/api/CreatePrediction', create_pb_req, mvp_pb2.CreatePredictionResponse)
-  assert create_pb_resp.new_prediction_id > 0, create_pb_resp
+  assert create_pb_resp.new_prediction_id, create_pb_resp
 
   (http_resp, get_pb_resp) = await post_proto(cli, '/api/GetPrediction', mvp_pb2.GetPredictionRequest(prediction_id=create_pb_resp.new_prediction_id), mvp_pb2.GetPredictionResponse)
   returned_prediction = get_pb_resp.prediction

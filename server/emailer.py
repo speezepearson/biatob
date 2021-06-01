@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import datetime
 from email.message import EmailMessage
 import json
@@ -80,7 +82,7 @@ class Emailer:
         bccs: Iterable[str],
         prediction_id: PredictionId,
         prediction_text: str,
-        resolution: mvp_pb2.Resolution,
+        resolution: mvp_pb2.Resolution.V,
     ) -> None:
         await self._send_bccs(
             bccs=bccs,

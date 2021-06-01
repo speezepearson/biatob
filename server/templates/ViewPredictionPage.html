@@ -4,9 +4,9 @@
   <script type="text/javascript" src="/elm/Prediction.js"></script>
   <script type="text/javascript">
 
-    var predictionPbB64 = {{ prediction_pb_b64 | tojson }};
+    var predictionsPbB64 = {{ predictions_pb_b64 | tojson }};
     var predictionId = {{ prediction_id | tojson }};
 
-    main({elmApp: Elm.Elements.Prediction, flags: {predictionPbB64, predictionId}});
+    main({elmApp: Elm.Elements.Prediction, flags: {predictionsPbB64, predictionId}});
   </script>
 {% endblock %}

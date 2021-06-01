@@ -31,11 +31,6 @@ message CredentialsConfig {
   }
 }
 
-message InvitationId {
-  UserId inviter_depr = 1;
-  string inviter = 3;
-  string nonce = 2;
-}
 message Invitation {
   double created_unixtime = 6;
   string notes = 3;
@@ -74,13 +69,8 @@ message GenericUserInfo {
   }
 }
 message Relationship {
-  bool trusted = 1;
-  repeated SidePayment side_payments = 2;
-}
-message SidePayment {
-  double unixtime = 1;
-  uint32 received_cents = 2;
-  string notes = 3;
+  bool trusts_you = 1;
+  bool trusted_by_you = 2;
 }
 
 message UsernameInfo {
@@ -91,50 +81,6 @@ message UsernameInfo {
 message EmailAttempt {
   double unixtime = 1;
   bool succeeded = 2;
-}
-
-// For MVP purposes, we're just gonna store the entire worldstate in a protobuf blob. "Data base"? Huh?
-// TODO(P3): ^ stop doing that
-message WorldState {
-
-  map<string, UsernameInfo> username_users_depr = 1;
-  map<string, GenericUserInfo> user_settings = 5;
-  // map<string, GoogleOauthInfo> google_oauth_users = 5;
-  // map<string, FacebookOauthInfo> facebook_oauth_users = 6;
-
-  map<uint32, Prediction> predictions = 2;
-
-  double email_reminders_sent_up_to_unixtime_depr = 4;
-
-  // message GoogleOauthInfo {
-  //   GenericUserInfo info = 1;
-  // }
-  // message FacebookOauthInfo {
-  //   GenericUserInfo info = 1;
-  // }
-  message Prediction {
-    // Set upon creation, never changed
-    string prediction = 1;
-    CertaintyRange certainty = 2;
-    uint32 maximum_stake_cents = 3;
-    double created_unixtime = 12;
-    double closes_unixtime = 13;
-    double resolves_at_unixtime = 14;
-    string special_rules = 6;
-    UserId creator_depr = 7;
-    string creator = 15;
-
-    // Append-only
-    repeated Trade trades = 8;
-    repeated ResolutionEvent resolutions = 10;
-
-    // Fully mutable
-    ResolutionReminderHistory resolution_reminder_history = 16;
-  }
-  message ResolutionReminderHistory {
-    bool skipped = 1;
-    repeated EmailAttempt attempts = 2;
-  }
 }
 
 message ResolutionEvent {
@@ -221,7 +167,7 @@ message CreatePredictionRequest {
 }
 message CreatePredictionResponse {
   oneof create_prediction_result {
-    uint32 new_prediction_id = 1;
+    string new_prediction_id = 1;
     Error error = 2;
   }
   message Error {
@@ -230,7 +176,7 @@ message CreatePredictionResponse {
 }
 
 message GetPredictionRequest {
-  uint32 prediction_id = 2;
+  string prediction_id = 2;
 }
 message GetPredictionResponse {
   oneof get_prediction_result {
@@ -251,15 +197,10 @@ message UserPredictionView {
   double created_unixtime = 13;
   double closes_unixtime = 14;
   string special_rules = 8;
-  UserUserView creator = 9;
+  string creator = 9;
   repeated ResolutionEvent resolutions = 10;
   repeated Trade your_trades = 11;
   double resolves_at_unixtime = 15;
-}
-message UserUserView {
-  string username = 1;
-  bool is_trusted = 3;
-  bool trusts_you = 4;
 }
 
 message ListMyStakesRequest {
@@ -274,7 +215,7 @@ message ListMyStakesResponse {
   }
 }
 message PredictionsById {
-  map<uint32, UserPredictionView> predictions = 1;
+  map<string, UserPredictionView> predictions = 1;
 }
 
 message ListPredictionsRequest {
@@ -292,7 +233,7 @@ message ListPredictionsResponse {
 }
 
 message StakeRequest {
-  uint32 prediction_id = 2;
+  string prediction_id = 2;
   bool bettor_is_a_skeptic = 3;
   uint32 bettor_stake_cents = 4;
 }
@@ -307,7 +248,7 @@ message StakeResponse {
 }
 
 message ResolveRequest {
-  uint32 prediction_id = 1;
+  string prediction_id = 1;
   Resolution resolution = 2;
   string notes = 3;
 }
@@ -342,7 +283,7 @@ message GetUserRequest {
 }
 message GetUserResponse {
   oneof get_user_result {
-    UserUserView ok = 1;
+    Relationship ok = 1;
     Error error = 2;
   }
   message Error {
@@ -426,8 +367,7 @@ message CreateInvitationResponse {
     Error error = 2;
   }
   message Result {
-    InvitationId id = 1;
-    Invitation invitation = 2;
+    string nonce = 1;
     GenericUserInfo user_info = 3;
   }
   message Error {
@@ -436,12 +376,16 @@ message CreateInvitationResponse {
 }
 
 message CheckInvitationRequest {
-  InvitationId invitation_id = 1;
+  string nonce = 1;
 }
 message CheckInvitationResponse {
   oneof check_invitation_result {
-    bool is_open = 1;
+    Result ok = 1;
     Error error = 2;
+  }
+  message Result {
+    bool is_open = 1;
+    string inviter = 2;
   }
   message Error {
     string catchall = 1;
@@ -449,7 +393,7 @@ message CheckInvitationResponse {
 }
 
 message AcceptInvitationRequest {
-  InvitationId invitation_id = 1;
+  string nonce = 1;
 }
 message AcceptInvitationResponse {
   oneof accept_invitation_result {

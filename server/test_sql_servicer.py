@@ -28,7 +28,7 @@ class TestFindInvariantViolations:
       conn = SqlConn(raw_conn)
       conn.register_username(ALICE, 'secret', 'alice_pwid')
       conn.register_username(BOB, 'secret', 'bob_pwid')
-      predid = PredictionId(123)
+      predid = PredictionId('my_pred')
       conn.create_prediction(now, predid, ALICE, some_create_prediction_request(
         maximum_stake_cents=100,
         certainty=mvp_pb2.CertaintyRange(low=0.5, high=1.0),
@@ -38,7 +38,7 @@ class TestFindInvariantViolations:
 
       assert find_invariant_violations(raw_conn) == [{
         'type': 'exposure exceeded',
-        'prediction_id': 123,
+        'prediction_id': predid,
         'maximum_stake_cents': 100,
         'actual_exposure': 150,
       }]

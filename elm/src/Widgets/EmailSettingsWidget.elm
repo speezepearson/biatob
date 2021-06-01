@@ -1,51 +1,47 @@
 module Widgets.EmailSettingsWidget exposing (..)
 
-import Browser
 import Html as H exposing (Html)
 import Html.Attributes as HA
 import Html.Events as HE
 import Http
-import Json.Decode as JD
 
 import Biatob.Proto.Mvp as Pb
-import Utils
+import Utils exposing (EmailAddress)
 
-import Field exposing (Field)
-import Page
-import Parser exposing (Parser, (|.), (|=))
+import API
+import Parser exposing ((|.), (|=))
 import Set
 
-type Msg
-  = Ignore
-  | SetEmailField String
-  | SetCodeField String
-  | SetEmailResolutionNotifications Bool
-  | SetEmailRemindersToResolve Bool
-  | UpdateSettingsFinished (Result Http.Error Pb.UpdateSettingsResponse)
-  | DissociateEmail
-  | SetEmail
-  | SetEmailFinished (Result Http.Error Pb.SetEmailResponse)
-  | VerifyEmail
-  | VerifyEmailFinished (Result Http.Error Pb.VerifyEmailResponse)
-type alias Model =
-  { emailField : Field () String
-  , codeField : Field () String
+type alias Config msg =
+  { setState : State -> msg
+  , ignore : msg
+  , setEmail : State -> Pb.SetEmailRequest -> msg
+  , verifyEmail : State -> Pb.VerifyEmailRequest -> msg
+  , updateSettings : State -> Pb.UpdateSettingsRequest -> msg
+  , userInfo : Pb.GenericUserInfo
+  }
+type alias State =
+  { emailField : String
+  , codeField : String
   , working : Bool
   , notification : Html Never
   }
 
-init : Model
+parseEmailAddress : State -> Result String EmailAddress
+parseEmailAddress state =
+  case Parser.run emailParser state.emailField of
+    Ok s -> Ok s
+    Err _ -> Err "doesn't look valid, sorry"
+
+init : State
 init =
-  { emailField = Field.okIfEmpty <| Field.init "" <| \() s ->
-      case Parser.run emailParser s of
-        Ok _ -> Ok s
-        Err _ -> Err "doesn't look valid, sorry"
-  , codeField = Field.init "" <| \() s -> if String.isEmpty s then Err "enter code" else Ok s
+  { emailField = ""
+  , codeField = ""
   , working = False
   , notification = H.text ""
   }
 
-emailParser : Parser.Parser String
+emailParser : Parser.Parser EmailAddress
 emailParser =
   let
     validNameChars = Set.fromList <| String.toList "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-+."
@@ -57,166 +53,113 @@ emailParser =
     |= Parser.variable {start=\c -> Set.member c validDomainChars, inner=\c -> Set.member c validDomainChars, reserved=Set.empty}
     |. Parser.end
 
-update : Msg -> Model -> ( Model , Page.Command Msg )
-update msg model =
-  case msg of
-    Ignore -> ( model , Page.NoCmd )
-    SetEmailField s -> ( { model | emailField = model.emailField |> Field.setStr s } , Page.NoCmd )
-    SetCodeField s -> ( { model | codeField = model.codeField |> Field.setStr s } , Page.NoCmd )
-    SetEmailRemindersToResolve value ->
-      ( { model | working = True , notification = H.text "" }
-      , Page.RequestCmd <| Page.UpdateSettingsRequest UpdateSettingsFinished {emailRemindersToResolve=Just {value=value}, emailResolutionNotifications=Nothing}
-      )
-    SetEmailResolutionNotifications value ->
-      ( { model | working = True , notification = H.text "" }
-      , Page.RequestCmd <| Page.UpdateSettingsRequest UpdateSettingsFinished {emailRemindersToResolve=Nothing, emailResolutionNotifications=Just {value=value}}
-      )
-    UpdateSettingsFinished res ->
-      ( case res of
-        Err e ->
-          { model | working = False , notification = Utils.redText (Debug.toString e) }
-        Ok resp ->
-          case resp.updateSettingsResult of
-            Just (Pb.UpdateSettingsResultOk _) ->
-              { model | working = False , notification = H.text "" }
-            Just (Pb.UpdateSettingsResultError e) ->
-              { model | working = False , notification = Utils.redText (Debug.toString e) }
-            Nothing ->
-              { model | working = False , notification = Utils.redText "Invalid server response (neither Ok nor Error in protobuf)" }
-      , Page.NoCmd
-      )
+handleUpdateSettingsResponse : Result Http.Error Pb.UpdateSettingsResponse -> State -> State
+handleUpdateSettingsResponse res state =
+  { state | working = False
+          , notification = case API.simplifyUpdateSettingsResponse res of
+              Ok _ -> H.text ""
+              Err e -> Utils.redText e
+  }
 
-    DissociateEmail ->
-      ( { model | working = True , notification = H.text "" }
-      , Page.RequestCmd <| Page.SetEmailRequest SetEmailFinished {email=""}
-      )
-    SetEmail ->
-      case Field.parse () model.emailField of
-        Err _ -> ( model , Page.NoCmd )
-        Ok email ->
-          ( { model | working = True , notification = H.text "" }
-          , Page.RequestCmd <| Page.SetEmailRequest SetEmailFinished {email=email}
-          )
-    SetEmailFinished res ->
-      ( case res of
-        Err e ->
-          { model | working = False , notification = Utils.redText (Debug.toString e) }
-        Ok resp ->
-          case resp.setEmailResult of
-            Just (Pb.SetEmailResultOk _) ->
-              { model | working = False , notification = H.text "" }
-            Just (Pb.SetEmailResultError e) ->
-              { model | working = False , notification = Utils.redText (Debug.toString e) }
-            Nothing ->
-              { model | working = False , notification = Utils.redText "Invalid server response (neither Ok nor Error in protobuf)" }
-      , Page.NoCmd
-      )
+handleSetEmailResponse : Result Http.Error Pb.SetEmailResponse -> State -> State
+handleSetEmailResponse res state =
+  { state | working = False
+          , notification = case API.simplifySetEmailResponse res of
+              Ok _ -> H.text ""
+              Err e -> Utils.redText e
+  }
 
-    VerifyEmail ->
-      case Field.parse () model.codeField of
-        Err _ -> ( model , Page.NoCmd )
-        Ok code ->
-          ( { model | working = True , notification = H.text "" }
-          , Page.RequestCmd <| Page.VerifyEmailRequest VerifyEmailFinished {code=code}
-          )
-    VerifyEmailFinished res ->
-      ( case res of
-        Err e ->
-          { model | working = False , notification = Utils.redText (Debug.toString e) }
-        Ok resp ->
-          case resp.verifyEmailResult of
-            Just (Pb.VerifyEmailResultOk _) ->
-              { model | working = False , notification = H.text "" }
-            Just (Pb.VerifyEmailResultError e) ->
-              { model | working = False , notification = Utils.redText (Debug.toString e) }
-            Nothing ->
-              { model | working = False , notification = Utils.redText "Invalid server response (neither Ok nor Error in protobuf)" }
-      , Page.NoCmd
-      )
+handleVerifyEmailResponse : Result Http.Error Pb.VerifyEmailResponse -> State -> State
+handleVerifyEmailResponse res state =
+  { state | working = False
+          , notification = case API.simplifyVerifyEmailResponse res of
+              Ok _ -> H.text ""
+              Err e -> Utils.redText e
+  }
 
-view : Page.Globals -> Model -> Html Msg
-view globals model =
-  case Page.getUserInfo globals of
-    Nothing -> H.text "(Log in to view your email settings!)"
-    Just userInfo ->
-      let
-        emailFlowState : Pb.EmailFlowStateKind
-        emailFlowState = userInfo |> Utils.mustUserInfoEmail |> Utils.mustEmailFlowStateKind
+view : Config msg -> State -> Html msg
+view config state =
+  let
+    emailFlowState : Pb.EmailFlowStateKind
+    emailFlowState = config.userInfo |> Utils.mustUserInfoEmail |> Utils.mustEmailFlowStateKind
 
-        isRegistered : Bool
-        isRegistered = case emailFlowState of
-          Pb.EmailFlowStateKindUnstarted _ -> False
-          Pb.EmailFlowStateKindCodeSent _ -> False
-          Pb.EmailFlowStateKindVerified _ -> True
-        registrationBlock : Html Msg
-        registrationBlock =
-          case userInfo |> Utils.mustUserInfoEmail |> Utils.mustEmailFlowStateKind of
-            Pb.EmailFlowStateKindUnstarted _ ->
-              H.div []
-                [ H.text "Register an email address for notifications: "
-                , Field.inputFor SetEmailField () model.emailField
-                    H.input
-                    [ HA.type_ "email"
-                    , HA.disabled <| model.working
-                    , HA.placeholder "email@ddre.ss"
-                    , Utils.onEnter SetEmail Ignore
-                    ] []
-                , H.button
-                    [ HE.onClick SetEmail
-                    , HA.disabled <| model.working || Result.toMaybe (Field.parse () model.emailField) == Nothing
-                    ] [H.text "Send verification"]
-                , model.notification |> H.map never
-                ]
-            Pb.EmailFlowStateKindCodeSent {email} ->
-              H.div []
-                [ H.text "I sent a verification code to "
-                , Utils.b email
-                , H.text ". Enter it here: "
-                , Field.inputFor SetCodeField () model.codeField
-                    H.input
-                    [ HA.disabled <| model.working
-                    , HA.placeholder "code"
-                    , Utils.onEnter VerifyEmail Ignore
-                    ] []
-                , H.button
-                    [ HE.onClick VerifyEmail
-                    , HA.disabled <| model.working || Result.toMaybe (Field.parse () model.codeField) == Nothing
-                    ] [H.text "Verify code"]
-                  -- TODO: "Resend email"
-                , model.notification |> H.map never
-                , H.text " (Or, "
-                , H.button [HE.onClick DissociateEmail] [H.text "delete email"]
-                , H.text ")"
-                ]
-            Pb.EmailFlowStateKindVerified email ->
-              H.div []
-                [ H.text "Your email address is: "
-                , H.strong [] [H.text email]
-                , H.text ". "
-                , H.button [HE.onClick DissociateEmail] [H.text "delete?"]
-                , H.br [] []
-                , model.notification |> H.map never
-                ]
-      in
-        H.div []
-          [ registrationBlock
-          , H.div []
-              [ H.input
-                  [ HA.type_ "checkbox", HA.checked userInfo.emailRemindersToResolve
-                  , HA.disabled (model.working || not isRegistered)
-                  , HE.onInput (\_ -> SetEmailRemindersToResolve (not userInfo.emailRemindersToResolve))
-                  ] []
-              , H.text " Email reminders to resolve your predictions, when it's time?"
-              ]
-          , H.div []
-              [ H.input
-                  [ HA.type_ "checkbox", HA.checked userInfo.emailResolutionNotifications
-                  , HA.disabled (model.working || not isRegistered)
-                  , HE.onInput (\_ -> SetEmailResolutionNotifications (not userInfo.emailResolutionNotifications))
-                  ] []
-              , H.text " Email notifications when predictions you've bet on resolve?"
-              ]
+    isRegistered : Bool
+    isRegistered = case emailFlowState of
+      Pb.EmailFlowStateKindUnstarted _ -> False
+      Pb.EmailFlowStateKindCodeSent _ -> False
+      Pb.EmailFlowStateKindVerified _ -> True
+    registrationBlock : Html msg
+    registrationBlock =
+      case config.userInfo |> Utils.mustUserInfoEmail |> Utils.mustEmailFlowStateKind of
+        Pb.EmailFlowStateKindUnstarted _ ->
+          H.div []
+            [ H.text "Register an email address for notifications: "
+            , H.input
+                [ HA.type_ "email"
+                , HA.disabled <| state.working
+                , HA.placeholder "email@ddre.ss"
+                , HE.onInput (\s -> config.setState {state | emailField=s})
+                , HA.value state.emailField
+                , Utils.onEnter (config.setEmail {state | working=True, notification=H.text ""} {email=state.emailField}) config.ignore
+                ] []
+              |> Utils.appendValidationError (if state.emailField == "" then Nothing else Utils.resultToErr (parseEmailAddress state))
+            , H.button
+                [ HE.onClick (config.setEmail {state | working=True, notification=H.text ""} {email=state.emailField})
+                , HA.disabled <| state.working || Result.toMaybe (parseEmailAddress state) == Nothing
+                ] [H.text "Send verification"]
+            , state.notification |> H.map never
+            ]
+        Pb.EmailFlowStateKindCodeSent {email} ->
+          H.div []
+            [ H.text "I sent a verification code to "
+            , Utils.b email
+            , H.text ". Enter it here: "
+            , H.input
+                [ HA.disabled <| state.working
+                , HA.placeholder "code"
+                , Utils.onEnter (config.verifyEmail {state | working=True, notification=H.text ""} {code=state.codeField}) config.ignore
+                , HE.onInput (\s -> config.setState {state | codeField=s})
+                , HA.value state.codeField
+                ] []
+            , H.button
+                [ HE.onClick (config.verifyEmail {state | working=True, notification=H.text ""} {code=state.codeField})
+                , HA.disabled <| state.working || state.codeField == ""
+                ] [H.text "Verify code"]
+              -- TODO: "Resend email"
+            , state.notification |> H.map never
+            , H.text " (Or, "
+            , H.button [HE.onClick (config.setEmail {state | working=True, notification=H.text ""} {email=""})] [H.text "delete email"]
+            , H.text ")"
+            ]
+        Pb.EmailFlowStateKindVerified email ->
+          H.div []
+            [ H.text "Your email address is: "
+            , Utils.b email
+            , H.text ". "
+            , H.button [HE.onClick (config.setEmail {state | working=True, notification=H.text ""} {email=""})] [H.text "delete?"]
+            , H.br [] []
+            , state.notification |> H.map never
+            ]
+  in
+    H.div []
+      [ registrationBlock
+      , H.div []
+          [ H.input
+              [ HA.type_ "checkbox", HA.checked config.userInfo.emailRemindersToResolve
+              , HA.disabled (state.working || not isRegistered)
+              , HE.onInput (\_ -> config.updateSettings {state | working=True, notification=H.text ""} {emailRemindersToResolve=Just {value=not config.userInfo.emailRemindersToResolve}, emailResolutionNotifications=Nothing})
+              ] []
+          , H.text " Email reminders to resolve your predictions, when it's time?"
           ]
+      , H.div []
+          [ H.input
+              [ HA.type_ "checkbox", HA.checked config.userInfo.emailResolutionNotifications
+              , HA.disabled (state.working || not isRegistered)
+              , HE.onInput (\_ -> config.updateSettings {state | working=True, notification=H.text ""} {emailRemindersToResolve=Nothing, emailResolutionNotifications=Just {value=not config.userInfo.emailResolutionNotifications}})
+              ] []
+          , H.text " Email notifications when predictions you've bet on resolve?"
+          ]
+      ]
 
-subscriptions : Model -> Sub Msg
+subscriptions : State -> Sub msg
 subscriptions _ = Sub.none

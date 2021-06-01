@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import copy
 from sys import prefix
 from typing import Any, Mapping, overload, Optional
@@ -8,6 +10,8 @@ from .protobuf import mvp_pb2
 from .core import Servicer
 from .emailer import Emailer
 from .test_utils import *
+
+PRED_ID_1 = PredictionId('my_pred_id_1')
 
 def Whoami(servicer: Servicer, token: Optional[mvp_pb2.AuthToken]) -> mvp_pb2.AuthToken:
   return servicer.Whoami(token, mvp_pb2.WhoamiRequest()).auth
@@ -26,13 +30,13 @@ def LogInUsernameErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], use
   return assert_oneof(servicer.LogInUsername(token, mvp_pb2.LogInUsernameRequest(username=username, password=password)), 'log_in_username_result', 'error', mvp_pb2.LogInUsernameResponse.Error)
 
 def CreatePredictionOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], request_kwargs: Mapping[str, Any]) -> PredictionId:
-  return PredictionId(assert_oneof(servicer.CreatePrediction(token, some_create_prediction_request(**request_kwargs)), 'create_prediction_result', 'new_prediction_id', int))
+  return PredictionId(assert_oneof(servicer.CreatePrediction(token, some_create_prediction_request(**request_kwargs)), 'create_prediction_result', 'new_prediction_id', str))
 def CreatePredictionErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], request_kwargs: Mapping[str, Any]) -> mvp_pb2.CreatePredictionResponse.Error:
   return assert_oneof(servicer.CreatePrediction(token, some_create_prediction_request(**request_kwargs)), 'create_prediction_result', 'error', mvp_pb2.CreatePredictionResponse.Error)
 
-def GetPredictionOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], prediction_id: int) -> mvp_pb2.UserPredictionView:
+def GetPredictionOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], prediction_id: str) -> mvp_pb2.UserPredictionView:
   return assert_oneof(servicer.GetPrediction(token, mvp_pb2.GetPredictionRequest(prediction_id=prediction_id)), 'get_prediction_result', 'prediction', mvp_pb2.UserPredictionView)
-def GetPredictionErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], prediction_id: int) -> mvp_pb2.GetPredictionResponse.Error:
+def GetPredictionErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], prediction_id: str) -> mvp_pb2.GetPredictionResponse.Error:
   return assert_oneof(servicer.GetPrediction(token, mvp_pb2.GetPredictionRequest(prediction_id=prediction_id)), 'get_prediction_result', 'error', mvp_pb2.GetPredictionResponse.Error)
 
 def ListMyStakesOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken]) -> mvp_pb2.PredictionsById:
@@ -50,9 +54,9 @@ def StakeOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], request: mvp
 def StakeErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.StakeRequest) -> mvp_pb2.StakeResponse.Error:
   return assert_oneof(servicer.Stake(token, request), 'stake_result', 'error', mvp_pb2.StakeResponse.Error)
 
-def ResolveOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], prediction_id: int, resolution: mvp_pb2.Resolution, notes: str = '') -> mvp_pb2.UserPredictionView:
+def ResolveOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], prediction_id: str, resolution: mvp_pb2.Resolution.V, notes: str = '') -> mvp_pb2.UserPredictionView:
   return assert_oneof(servicer.Resolve(token, mvp_pb2.ResolveRequest(prediction_id=prediction_id, resolution=resolution, notes=notes)), 'resolve_result', 'ok', mvp_pb2.UserPredictionView)
-def ResolveErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], prediction_id: int, resolution: mvp_pb2.Resolution, notes: str = '') -> mvp_pb2.ResolveResponse.Error:
+def ResolveErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], prediction_id: str, resolution: mvp_pb2.Resolution.V, notes: str = '') -> mvp_pb2.ResolveResponse.Error:
   return assert_oneof(servicer.Resolve(token, mvp_pb2.ResolveRequest(prediction_id=prediction_id, resolution=resolution, notes=notes)), 'resolve_result', 'error', mvp_pb2.ResolveResponse.Error)
 
 def SetTrustedOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], who: str, trusted: bool) -> mvp_pb2.GenericUserInfo:
@@ -60,8 +64,8 @@ def SetTrustedOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], who: st
 def SetTrustedErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], who: str, trusted: bool) -> mvp_pb2.SetTrustedResponse.Error:
   return assert_oneof(servicer.SetTrusted(token, mvp_pb2.SetTrustedRequest(who=who, trusted=trusted)), 'set_trusted_result', 'error', mvp_pb2.SetTrustedResponse.Error)
 
-def GetUserOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], who: str) -> mvp_pb2.UserUserView:
-  return assert_oneof(servicer.GetUser(token, mvp_pb2.GetUserRequest(who=who)), 'get_user_result', 'ok', mvp_pb2.UserUserView)
+def GetUserOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], who: str) -> mvp_pb2.Relationship:
+  return assert_oneof(servicer.GetUser(token, mvp_pb2.GetUserRequest(who=who)), 'get_user_result', 'ok', mvp_pb2.Relationship)
 def GetUserErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], who: str) -> mvp_pb2.GetUserResponse.Error:
   return assert_oneof(servicer.GetUser(token, mvp_pb2.GetUserRequest(who=who)), 'get_user_result', 'error', mvp_pb2.GetUserResponse.Error)
 
@@ -95,15 +99,15 @@ def CreateInvitationOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], n
 def CreateInvitationErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], notes: str = '') -> mvp_pb2.CreateInvitationResponse.Error:
   return assert_oneof(servicer.CreateInvitation(token, mvp_pb2.CreateInvitationRequest(notes=notes)), 'create_invitation_result', 'error', mvp_pb2.CreateInvitationResponse.Error)
 
-def CheckInvitationOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], invitation_id: Optional[mvp_pb2.InvitationId]) -> bool:
-  return assert_oneof(servicer.CheckInvitation(token, mvp_pb2.CheckInvitationRequest(invitation_id=invitation_id)), 'check_invitation_result', 'is_open', bool)
-def CheckInvitationErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], invitation_id: Optional[mvp_pb2.InvitationId]) -> mvp_pb2.CheckInvitationResponse.Error:
-  return assert_oneof(servicer.CheckInvitation(token, mvp_pb2.CheckInvitationRequest(invitation_id=invitation_id)), 'check_invitation_result', 'error', mvp_pb2.CheckInvitationResponse.Error)
+def CheckInvitationOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], nonce: str) -> mvp_pb2.CheckInvitationResponse.Result:
+  return assert_oneof(servicer.CheckInvitation(token, mvp_pb2.CheckInvitationRequest(nonce=nonce)), 'check_invitation_result', 'ok', mvp_pb2.CheckInvitationResponse.Result)
+def CheckInvitationErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], nonce: str) -> mvp_pb2.CheckInvitationResponse.Error:
+  return assert_oneof(servicer.CheckInvitation(token, mvp_pb2.CheckInvitationRequest(nonce=nonce)), 'check_invitation_result', 'error', mvp_pb2.CheckInvitationResponse.Error)
 
-def AcceptInvitationOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], invitation_id: Optional[mvp_pb2.InvitationId]) -> mvp_pb2.GenericUserInfo:
-  return assert_oneof(servicer.AcceptInvitation(token, mvp_pb2.AcceptInvitationRequest(invitation_id=invitation_id)), 'accept_invitation_result', 'ok', mvp_pb2.GenericUserInfo)
-def AcceptInvitationErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], invitation_id: Optional[mvp_pb2.InvitationId]) -> mvp_pb2.AcceptInvitationResponse.Error:
-  return assert_oneof(servicer.AcceptInvitation(token, mvp_pb2.AcceptInvitationRequest(invitation_id=invitation_id)), 'accept_invitation_result', 'error', mvp_pb2.AcceptInvitationResponse.Error)
+def AcceptInvitationOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], nonce: str) -> mvp_pb2.GenericUserInfo:
+  return assert_oneof(servicer.AcceptInvitation(token, mvp_pb2.AcceptInvitationRequest(nonce=nonce)), 'accept_invitation_result', 'ok', mvp_pb2.GenericUserInfo)
+def AcceptInvitationErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], nonce: str) -> mvp_pb2.AcceptInvitationResponse.Error:
+  return assert_oneof(servicer.AcceptInvitation(token, mvp_pb2.AcceptInvitationRequest(nonce=nonce)), 'accept_invitation_result', 'error', mvp_pb2.AcceptInvitationResponse.Error)
 
 
 class TestCUJs:
@@ -118,18 +122,16 @@ class TestCUJs:
         open_seconds=3600,
       ))
 
-    invitation_id = CreateInvitationOk(any_servicer, creator_token).id
+    nonce = CreateInvitationOk(any_servicer, creator_token).nonce
 
-    assert assert_oneof(
-      any_servicer.CheckInvitation(None, mvp_pb2.CheckInvitationRequest(invitation_id=invitation_id)),
-      'check_invitation_result', 'is_open', bool)
+    assert CheckInvitationOk(any_servicer, None, nonce=nonce).is_open
 
     friend_token = RegisterUsernameOk(any_servicer, None, 'friend', 'secret').token
 
     friend_settings = assert_oneof(
-      any_servicer.AcceptInvitation(friend_token, mvp_pb2.AcceptInvitationRequest(invitation_id=invitation_id)),
+      any_servicer.AcceptInvitation(friend_token, mvp_pb2.AcceptInvitationRequest(nonce=nonce)),
       'accept_invitation_result', 'ok', mvp_pb2.GenericUserInfo)
-    assert friend_settings.relationships[creator_token.owner].trusted
+    assert friend_settings.relationships[creator_token.owner].trusted_by_you
 
     prediction = StakeOk(any_servicer, friend_token, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_is_a_skeptic=True, bettor_stake_cents=6_00))
     assert list(prediction.your_trades) == [mvp_pb2.Trade(
@@ -244,6 +246,11 @@ class TestCreatePrediction:
     for prediction_id in ids:
       GetPredictionOk(any_servicer, token, prediction_id)
 
+  async def test_returns_urlsafe_ids(self, any_servicer: Servicer):
+    token = new_user_token(any_servicer, 'rando')
+    ids = {CreatePredictionOk(any_servicer, token, {}) for _ in range(30)}
+    assert all(id.isalnum() for id in ids)
+
 
 class TestGetPrediction:
 
@@ -279,7 +286,7 @@ class TestGetPrediction:
       closes_unixtime=create_time + req.open_seconds,
       resolves_at_unixtime=req.resolves_at_unixtime,
       special_rules=req.special_rules,
-      creator=mvp_pb2.UserUserView(username='Alice', is_trusted=True, trusts_you=True),
+      creator='Alice',
       resolutions=[mvp_pb2.ResolutionEvent(unixtime=resolve_time, resolution=mvp_pb2.RESOLUTION_YES)],
       your_trades=[mvp_pb2.Trade(bettor=bob_token.owner, bettor_is_a_skeptic=True, bettor_stake_cents=1_00, creator_stake_cents=1_00, transacted_unixtime=stake_time)],
     )
@@ -294,7 +301,7 @@ class TestGetPrediction:
     GetPredictionOk(any_servicer, new_user_token(any_servicer, 'otherrando'), prediction_id)
 
   async def test_error_if_no_such_prediction(self, any_servicer: Servicer):
-    assert 'no such prediction' in str(GetPredictionErr(any_servicer, new_user_token(any_servicer, 'otherrando'), 12345))
+    assert 'no such prediction' in str(GetPredictionErr(any_servicer, new_user_token(any_servicer, 'otherrando'), PredictionId('12345')))
 
 class TestListMyStakes:
 
@@ -474,7 +481,7 @@ class TestResolve:
   async def test_error_if_no_such_prediction(self, any_servicer: Servicer):
     rando_token = new_user_token(any_servicer, 'rando')
     prediction_id = CreatePredictionOk(any_servicer, rando_token, {})
-    assert 'no such prediction' in str(ResolveErr(any_servicer, rando_token, prediction_id+1, mvp_pb2.RESOLUTION_YES))
+    assert 'no such prediction' in str(ResolveErr(any_servicer, rando_token, 'not_'+prediction_id, mvp_pb2.RESOLUTION_YES))
 
   async def test_error_if_notes_too_long(self, any_servicer: Servicer):
     rando_token = new_user_token(any_servicer, 'rando')
@@ -484,7 +491,7 @@ class TestResolve:
   async def test_error_if_invalid_resolution(self, any_servicer: Servicer):
     rando_token = new_user_token(any_servicer, 'rando')
     prediction_id = CreatePredictionOk(any_servicer, rando_token, {})
-    bad_resolution_value: mvp_pb2.Resolution = 99  # type: ignore
+    bad_resolution_value: mvp_pb2.Resolution.V = 99  # type: ignore
     assert 'unrecognized resolution' in str(ResolveErr(any_servicer, rando_token, prediction_id, bad_resolution_value))
 
   async def test_error_if_not_creator(self, any_servicer: Servicer):
@@ -532,12 +539,12 @@ class TestSetTrusted:
     new_user_token(any_servicer, 'other')
 
     alice_view_of_bob = GetUserOk(any_servicer, alice_token, 'Bob')
-    assert alice_view_of_bob.is_trusted
+    assert alice_view_of_bob.trusted_by_you
 
     SetTrustedOk(any_servicer, alice_token, 'Bob', False)
 
     alice_view_of_bob = GetUserOk(any_servicer, alice_token, 'Bob')
-    assert not alice_view_of_bob.is_trusted
+    assert not alice_view_of_bob.trusted_by_you
 
 
 
@@ -550,12 +557,12 @@ class TestGetUser:
   async def test_success_when_self(self, any_servicer: Servicer):
     token = new_user_token(any_servicer, 'rando')
     resp = GetUserOk(any_servicer, token, token.owner)
-    assert resp == mvp_pb2.UserUserView(username='rando', is_trusted=True, trusts_you=True)
+    assert resp == mvp_pb2.Relationship(trusted_by_you=True, trusts_you=True)
 
   async def test_success_when_friend(self, any_servicer: Servicer):
     alice_token, bob_token = alice_bob_tokens(any_servicer)
     resp = GetUserOk(any_servicer, alice_token, bob_token.owner)
-    assert resp == mvp_pb2.UserUserView(username='Bob', is_trusted=True, trusts_you=True)
+    assert resp == mvp_pb2.Relationship(trusted_by_you=True, trusts_you=True)
 
   async def test_shows_trust_correctly_when_logged_in(self, any_servicer: Servicer):
     token = new_user_token(any_servicer, 'rando')
@@ -564,14 +571,14 @@ class TestGetUser:
     trusted_token = new_user_token(any_servicer, 'trusted')
     SetTrustedOk(any_servicer, token, trusted_token.owner, True)
     resp = GetUserOk(any_servicer, token, truster_token.owner)
-    assert resp == mvp_pb2.UserUserView(username='truster', is_trusted=False, trusts_you=True)
+    assert resp == mvp_pb2.Relationship(trusted_by_you=False, trusts_you=True)
     resp = GetUserOk(any_servicer, token, trusted_token.owner)
-    assert resp == mvp_pb2.UserUserView(username='trusted', is_trusted=True, trusts_you=False)
+    assert resp == mvp_pb2.Relationship(trusted_by_you=True, trusts_you=False)
 
   async def test_no_trust_when_logged_out(self, any_servicer: Servicer):
     new_user_token(any_servicer, 'rando')
     resp = GetUserOk(any_servicer, None, 'rando')
-    assert resp == mvp_pb2.UserUserView(username='rando', is_trusted=False, trusts_you=False)
+    assert resp == mvp_pb2.Relationship(trusted_by_you=False, trusts_you=False)
 
 
 class TestChangePassword:
@@ -687,7 +694,7 @@ class TestGetSettings:
   async def test_happy_path(self, emailer: Emailer, any_servicer: Servicer):
     alice_token, bob_token = alice_bob_tokens(any_servicer)
     geninfo = GetSettingsOk(any_servicer, alice_token)
-    assert dict(geninfo.relationships) == {'Bob': mvp_pb2.Relationship(trusted=True)}
+    assert dict(geninfo.relationships) == {'Bob': mvp_pb2.Relationship(trusted_by_you=True, trusts_you=True)}
 
 
 class TestUpdateSettings:
@@ -720,8 +727,8 @@ class TestCreateInvitation:
 
   async def test_success_if_logged_in(self, any_servicer: Servicer, clock: MockClock):
     token = new_user_token(any_servicer, 'rando')
-    invitation_id = CreateInvitationOk(any_servicer, token).id
-    assert GetSettingsOk(any_servicer, token).invitations[invitation_id.nonce] == mvp_pb2.Invitation(
+    nonce = CreateInvitationOk(any_servicer, token).nonce
+    assert GetSettingsOk(any_servicer, token).invitations[nonce] == mvp_pb2.Invitation(
         created_unixtime=clock.now().timestamp(),
       )
 
@@ -730,45 +737,49 @@ class TestCheckInvitation:
 
   async def test_error_when_no_such_invitation(self, any_servicer: Servicer):
     new_user_token(any_servicer, 'rando')
-    assert not CheckInvitationOk(any_servicer, None, mvp_pb2.InvitationId(inviter='rando', nonce='asdf'))
+    assert 'no such invitation' in str(CheckInvitationErr(any_servicer, None, 'asdf'))
+
+  async def test_returns_inviter(self, any_servicer: Servicer):
+    nonce = CreateInvitationOk(any_servicer, new_user_token(any_servicer, 'inviter')).nonce
+    assert CheckInvitationOk(any_servicer, None, nonce).inviter == 'inviter'
 
   async def test_returns_true_when_open(self, any_servicer: Servicer):
-    invitation_id = CreateInvitationOk(any_servicer, new_user_token(any_servicer, 'inviter')).id
-    assert CheckInvitationOk(any_servicer, None, invitation_id)
+    nonce = CreateInvitationOk(any_servicer, new_user_token(any_servicer, 'inviter')).nonce
+    assert CheckInvitationOk(any_servicer, None, nonce).is_open
 
   async def test_returns_false_when_closed(self, any_servicer: Servicer):
-    invitation_id = CreateInvitationOk(any_servicer, new_user_token(any_servicer, 'inviter')).id
+    nonce = CreateInvitationOk(any_servicer, new_user_token(any_servicer, 'inviter')).nonce
     accepter_token = new_user_token(any_servicer, 'accepter')
-    AcceptInvitationOk(any_servicer, accepter_token, invitation_id)
-    assert not CheckInvitationOk(any_servicer, None, invitation_id)
+    AcceptInvitationOk(any_servicer, accepter_token, nonce)
+    assert not CheckInvitationOk(any_servicer, None, nonce).is_open
 
 
 class TestAcceptInvitation:
 
   async def test_error_if_logged_out(self, any_servicer: Servicer):
     token = new_user_token(any_servicer, 'inviter')
-    invitation_id = CreateInvitationOk(any_servicer, token).id
-    assert 'must log in' in str(AcceptInvitationErr(any_servicer, None, invitation_id))
-    assert CheckInvitationOk(any_servicer, None, invitation_id)
+    nonce = CreateInvitationOk(any_servicer, token).nonce
+    assert 'must log in' in str(AcceptInvitationErr(any_servicer, None, nonce))
+    assert CheckInvitationOk(any_servicer, None, nonce).is_open
 
   async def test_error_if_request_malformed(self, any_servicer: Servicer):
     accepter_token = new_user_token(any_servicer, 'accepter')
-    assert 'no invitation id given' in str(AcceptInvitationErr(any_servicer, accepter_token, None))
+    assert 'no nonce given' in str(AcceptInvitationErr(any_servicer, accepter_token, ''))
 
   async def test_happy_path(self, any_servicer: Servicer, clock: MockClock):
     inviter_token = new_user_token(any_servicer, 'inviter')
-    invitation_id = CreateInvitationOk(any_servicer, inviter_token).id
+    nonce = CreateInvitationOk(any_servicer, inviter_token).nonce
     invited_at = clock.now().timestamp()
 
     clock.tick()
 
     accepter_token = new_user_token(any_servicer, 'accepter')
-    AcceptInvitationOk(any_servicer, accepter_token, invitation_id)
+    AcceptInvitationOk(any_servicer, accepter_token, nonce)
     accepted_at = clock.now().timestamp()
 
-    assert not CheckInvitationOk(any_servicer, None, invitation_id)
+    assert not CheckInvitationOk(any_servicer, None, nonce).is_open
 
-    assert GetSettingsOk(any_servicer, inviter_token).invitations[invitation_id.nonce] == mvp_pb2.Invitation(
+    assert GetSettingsOk(any_servicer, inviter_token).invitations[nonce] == mvp_pb2.Invitation(
         created_unixtime=invited_at,
         accepted_by='accepter',
         accepted_unixtime=accepted_at,
@@ -778,14 +789,14 @@ class TestAcceptInvitation:
     non_inviter_token = new_user_token(any_servicer, 'rando')
     accepter_token = new_user_token(any_servicer, 'accepter')
     with assert_user_unchanged(any_servicer, non_inviter_token, 'rando password'):
-      assert 'invitation is non-existent or already used' in str(AcceptInvitationErr(any_servicer, accepter_token, mvp_pb2.InvitationId(inviter='rando', nonce='asdf')))
+      assert 'invitation is non-existent or already used' in str(AcceptInvitationErr(any_servicer, accepter_token, nonce='asdf'))
 
   async def test_error_when_invitation_is_closed(self, any_servicer: Servicer):
     inviter_token = new_user_token(any_servicer, 'inviter')
-    invitation_id = CreateInvitationOk(any_servicer, inviter_token).id
+    nonce = CreateInvitationOk(any_servicer, inviter_token).nonce
 
     accepter_token = new_user_token(any_servicer, 'accepter')
-    AcceptInvitationOk(any_servicer, accepter_token, invitation_id)
+    AcceptInvitationOk(any_servicer, accepter_token, nonce)
 
     with assert_user_unchanged(any_servicer, inviter_token, 'inviter password'):
-      assert 'invitation is non-existent or already used' in str(AcceptInvitationErr(any_servicer, accepter_token, mvp_pb2.InvitationId(inviter='rando', nonce=invitation_id.nonce)))
+      assert 'invitation is non-existent or already used' in str(AcceptInvitationErr(any_servicer, accepter_token, nonce=nonce))

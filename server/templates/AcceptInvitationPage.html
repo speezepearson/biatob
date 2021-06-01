@@ -4,11 +4,12 @@
   <script type="text/javascript" src="/elm/AcceptInvitation.js"></script>
   <script type="text/javascript">
 
-    var invitationIdPbB64 = {{ invitation_id_pb_b64 | tojson }};
+    var inviter = {{ inviter | tojson }};
+    var nonce = {{ nonce | tojson }};
     var invitationIsOpen = {{ invitation_is_open | tojson }};
-    var destination = (() => { var m = (/[?&]dest=([^&]+)/).exec(window.location.search); return m ? m[1] : null})();
+    var destination = (() => { var m = (/[?&]dest=([^&]+)/).exec(window.location.search); return m ? m[1] : "/"})();
     console.log({invitationIsOpen});
 
-    main({elmApp: Elm.Elements.AcceptInvitation, flags: {invitationIsOpen, invitationIdPbB64, destination}});
+    main({elmApp: Elm.Elements.AcceptInvitation, flags: {invitationIsOpen, inviter, nonce, destination}});
   </script>
 {% endblock %}

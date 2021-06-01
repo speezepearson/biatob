@@ -1,28 +1,18 @@
 #! /usr/bin/env python3
 
-import argparse
+from __future__ import annotations
+
 import asyncio
-import base64
 import contextlib
-import copy
 import datetime
-import filelock  # type: ignore
 import functools
-import hashlib
-import hmac
-import io
 import json
 from pathlib import Path
 import random
-import re
 import secrets
-import string
-import sys
-import tempfile
 import time
-from typing import overload, Any, Awaitable, Mapping, Iterator, Optional, Container, MutableMapping, MutableSequence, NewType, NoReturn, Callable, NoReturn, Tuple, Iterable, Sequence, TypeVar, MutableSequence
+from typing import Any, Awaitable, Mapping, Optional, MutableMapping, MutableSequence, NoReturn, Callable, NoReturn, Iterable, Sequence, MutableSequence
 from typing_extensions import TypedDict
-import argparse
 import logging
 import os
 from email.message import EmailMessage
@@ -106,7 +96,13 @@ class SqlConn:
     if a == b:
       return True
 
-    row = self._conn.execute(sqlalchemy.select([schema.relationships.c.trusted]).where(sqlalchemy.and_(schema.relationships.c.subject_username == a, schema.relationships.c.object_username == b))).first()
+    row = self._conn.execute(
+      sqlalchemy.select([schema.relationships.c.trusted])
+      .where(sqlalchemy.and_(
+        schema.relationships.c.subject_username == a,
+        schema.relationships.c.object_username == b,
+      ))
+    ).first()
     if row is None:
       return False
 
@@ -159,11 +155,7 @@ class SqlConn:
       closes_unixtime=row['closes_at_unixtime'],
       resolves_at_unixtime=row['resolves_at_unixtime'],
       special_rules=row['special_rules'],
-      creator=mvp_pb2.UserUserView(
-        username=row['creator'],
-        is_trusted=self.trusts(viewer, Username(row['creator'])) if (viewer is not None) else False,
-        trusts_you=self.trusts(Username(row['creator']), viewer) if (viewer is not None) else False,
-      ),
+      creator=row['creator'],
       resolutions=[
         mvp_pb2.ResolutionEvent(
           unixtime=r['resolved_at_unixtime'],
@@ -428,19 +420,28 @@ class SqlConn:
     ).first()
     if row is None:
       return None
+    outgoing_relationships = self._conn.execute(
+      sqlalchemy.select(schema.relationships.c)
+      .where(schema.relationships.c.subject_username == user)
+    ).fetchall()
+    trusting_users = {row['subject_username'] for row in self._conn.execute(
+      sqlalchemy.select(schema.relationships.c)
+      .where(sqlalchemy.and_(
+        schema.relationships.c.subject_username.in_({row['object_username'] for row in outgoing_relationships}),
+        schema.relationships.c.object_username == user,
+        schema.relationships.c.trusted,
+      ))
+    )}
     return mvp_pb2.GenericUserInfo(
       email_reminders_to_resolve=row['email_reminders_to_resolve'],
       email_resolution_notifications=row['email_resolution_notifications'],
       email=mvp_pb2.EmailFlowState.FromString(row['email_flow_state']),
       relationships={
         row['object_username']: mvp_pb2.Relationship(
-          trusted=row['trusted'],
-          # TODO(P2): side payments
+          trusted_by_you=row['trusted'],
+          trusts_you=row['object_username'] in trusting_users,
         )
-        for row in self._conn.execute(
-          sqlalchemy.select(schema.relationships.c)
-          .where(schema.relationships.c.subject_username == user)
-        )
+        for row in outgoing_relationships
       },
       invitations={
         row['nonce']: mvp_pb2.Invitation(
@@ -483,18 +484,19 @@ class SqlConn:
       )
     )
 
-  def is_invitation_open(self, nonce: str) -> bool:
-    return (
-      self._conn.execute(
-        sqlalchemy.select([schema.invitations.c.inviter])
-        .where(schema.invitations.c.nonce == nonce)
-      ).fetchone() is not None
-      and
-      self._conn.execute(
-        sqlalchemy.select(schema.invitation_acceptances.c)
-        .where(schema.invitation_acceptances.c.invitation_nonce == nonce)
-      ).fetchone() is None
-    )
+  InvitationInfo = TypedDict('InvitationInfo', {'inviter': Username, 'is_open': bool})
+  def get_invitation_info(self, nonce: str) -> Optional[InvitationInfo]:
+    invitation_row = self._conn.execute(
+      sqlalchemy.select([schema.invitations.c.inviter])
+      .where(schema.invitations.c.nonce == nonce)
+    ).fetchone()
+    if invitation_row is None:
+      return None
+    acceptance_row = self._conn.execute(
+      sqlalchemy.select(schema.invitation_acceptances.c)
+      .where(schema.invitation_acceptances.c.invitation_nonce == nonce)
+    ).fetchone()
+    return {'inviter': invitation_row['inviter'], 'is_open': acceptance_row is None}
 
   def accept_invitation(self, nonce: str, accepter: Username, now: datetime.datetime) -> None:
     self._conn.execute(
@@ -687,7 +689,7 @@ class SqlServicer(Servicer):
       if problems is not None:
         return mvp_pb2.CreatePredictionResponse(error=mvp_pb2.CreatePredictionResponse.Error(catchall=problems))
 
-      prediction_id = PredictionId(self._rng.randrange(2**32)) # TODO(P0): make this a string
+      prediction_id = PredictionId(str(self._rng.randrange(2**64)))
       logger.debug('creating prediction', prediction_id=prediction_id, request=request)
       self._conn.create_prediction(
         now=now,
@@ -718,7 +720,7 @@ class SqlServicer(Servicer):
 
       prediction_ids = self._conn.list_stakes(token_owner(token))
 
-      predictions_by_id: MutableMapping[int, mvp_pb2.UserPredictionView] = {}
+      predictions_by_id: MutableMapping[str, mvp_pb2.UserPredictionView] = {}
       for prediction_id in prediction_ids:
         view = self._conn.view_prediction(token_owner(token), prediction_id)
         assert view is not None
@@ -739,7 +741,7 @@ class SqlServicer(Servicer):
 
       prediction_ids = self._conn.list_predictions_created(creator)
 
-      predictions_by_id: MutableMapping[int, mvp_pb2.UserPredictionView] = {}
+      predictions_by_id: MutableMapping[str, mvp_pb2.UserPredictionView] = {}
       for prediction_id in prediction_ids:
         view = self._conn.view_prediction(token_owner(token), prediction_id)
         assert view is not None
@@ -868,9 +870,8 @@ class SqlServicer(Servicer):
         logger.info('attempting to view nonexistent user', who=request.who)
         return mvp_pb2.GetUserResponse(error=mvp_pb2.GetUserResponse.Error(catchall='no such user'))
 
-      return mvp_pb2.GetUserResponse(ok=mvp_pb2.UserUserView(
-        username=request.who,
-        is_trusted=self._conn.trusts(token_owner(token), Username(request.who)) if (token is not None) else False,
+      return mvp_pb2.GetUserResponse(ok=mvp_pb2.Relationship(
+        trusted_by_you=self._conn.trusts(token_owner(token), Username(request.who)) if (token is not None) else False,
         trusts_you=self._conn.trusts(Username(request.who), token_owner(token)) if (token is not None) else False,
       ))
 
@@ -993,11 +994,10 @@ class SqlServicer(Servicer):
       invitation = mvp_pb2.Invitation(
         created_unixtime=round(now.timestamp()),
         notes=request.notes,
-        accepted_by=None,
+        accepted_by="",
       )
       return mvp_pb2.CreateInvitationResponse(ok=mvp_pb2.CreateInvitationResponse.Result(
-          id=mvp_pb2.InvitationId(inviter=token_owner(token), nonce=nonce),
-          invitation=invitation,
+          nonce=nonce,
           user_info=self._conn.get_settings(token_owner(token)),
       ))
 
@@ -1005,11 +1005,14 @@ class SqlServicer(Servicer):
     @checks_token
     @log_action
     def CheckInvitation(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.CheckInvitationRequest) -> mvp_pb2.CheckInvitationResponse:
-      if not (request.HasField('invitation_id') and request.invitation_id.inviter):
+      if not request.nonce:
         logger.warn('malformed CheckInvitationRequest')
         return mvp_pb2.CheckInvitationResponse(error=mvp_pb2.CheckInvitationResponse.Error(catchall='malformed invitation'))
 
-      return mvp_pb2.CheckInvitationResponse(is_open=self._conn.is_invitation_open(nonce=request.invitation_id.nonce))
+      info = self._conn.get_invitation_info(nonce=request.nonce)
+      if info is None:
+        return mvp_pb2.CheckInvitationResponse(error=mvp_pb2.CheckInvitationResponse.Error(catchall='no such invitation'))
+      return mvp_pb2.CheckInvitationResponse(ok=mvp_pb2.CheckInvitationResponse.Result(inviter=info['inviter'], is_open=info['is_open']))
 
     @transactional
     @checks_token
@@ -1023,15 +1026,12 @@ class SqlServicer(Servicer):
         logger.warn('invalid AcceptInvitationRequest', problems=problems)
         return mvp_pb2.AcceptInvitationResponse(error=mvp_pb2.AcceptInvitationResponse.Error(catchall=problems))
 
-      if (not request.HasField('invitation_id')) or (not request.invitation_id.inviter):
-        logger.warn('malformed attempt to accept invitation', possible_malice=True)
-        return mvp_pb2.AcceptInvitationResponse(error=mvp_pb2.AcceptInvitationResponse.Error(catchall='malformed invitation'))
-
-      if not self._conn.is_invitation_open(request.invitation_id.nonce):
+      info = self._conn.get_invitation_info(nonce=request.nonce)
+      if (info is None) or not info['is_open']:
         logger.info('attempt to accept non-open invitation')
         return mvp_pb2.AcceptInvitationResponse(error=mvp_pb2.AcceptInvitationResponse.Error(catchall='invitation is non-existent or already used'))
 
-      self._conn.accept_invitation(request.invitation_id.nonce, token_owner(token), self._clock())
+      self._conn.accept_invitation(request.nonce, token_owner(token), self._clock())
       logger.info('accepted invitation')
       return mvp_pb2.AcceptInvitationResponse(ok=self._conn.get_settings(token_owner(token)))
 

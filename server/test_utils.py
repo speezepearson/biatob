@@ -72,7 +72,7 @@ def assert_user_unchanged(servicer: Servicer, token: mvp_pb2.AuthToken, password
 @contextlib.contextmanager
 def assert_prediction_unchanged(servicer: Servicer, prediction_id: PredictionId, creator_token: mvp_pb2.AuthToken) -> Iterator[None]:
   old = assert_oneof(servicer.GetPrediction(creator_token, mvp_pb2.GetPredictionRequest(prediction_id=prediction_id)), 'get_prediction_result', 'prediction', mvp_pb2.UserPredictionView)
-  assert old.creator.username == creator_token.owner
+  assert old.creator == creator_token.owner
   yield
   new = assert_oneof(servicer.GetPrediction(creator_token, mvp_pb2.GetPredictionRequest(prediction_id=prediction_id)), 'get_prediction_result', 'prediction', mvp_pb2.UserPredictionView)
   assert old == new

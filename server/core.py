@@ -10,7 +10,7 @@ from typing import overload, Optional, Container, NewType, Callable
 
 from .protobuf import mvp_pb2
 
-PredictionId = NewType('PredictionId', int)
+PredictionId = NewType('PredictionId', str)
 Username = NewType('Username', str)
 
 MAX_LEGAL_STAKE_CENTS = 5_000_00
@@ -83,8 +83,8 @@ def describe_SetEmailRequest_problems(request: mvp_pb2.SetEmailRequest) -> Optio
 
 def describe_AcceptInvitationRequest_problems(request: mvp_pb2.AcceptInvitationRequest) -> Optional[str]:
     problems = []
-    if not request.HasField('invitation_id'):
-        problems.append('no invitation id given')
+    if not request.nonce:
+        problems.append('no nonce given')
     return '; '.join(problems) if problems else None
 
 

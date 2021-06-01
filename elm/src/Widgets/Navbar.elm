@@ -2,23 +2,13 @@ module Widgets.Navbar exposing (..)
 
 import Html as H exposing (Html)
 import Html.Attributes as HA
-import Http
 
 import Widgets.AuthWidget as AuthWidget
-import Page
-import Biatob.Proto.Mvp as Pb
 
-type alias Model = { authWidget : AuthWidget.Model }
-type Msg
-  = AuthWidgetMsg AuthWidget.Msg
-
-init : Model
-init = { authWidget = AuthWidget.init }
-
-view : Page.Globals -> Model -> Html Msg
-view globals model =
+view : AuthWidget.Config msg -> AuthWidget.State -> Html msg
+view config state =
   let
-    loggedInItems : List (Html Msg)
+    loggedInItems : List (Html msg)
     loggedInItems =
       [ H.li [] [H.a [HA.href "/new"] [H.text "New prediction"]]
       , H.li [] [H.a [HA.href "/my_stakes"] [H.text "My stakes"]]
@@ -27,17 +17,9 @@ view globals model =
   in
   H.nav [HA.class "navbar-wrapper"]
     [ H.ul [] <|
-        [H.li [] [H.a [HA.href "/"] [H.text "Home"]]]
-        ++ (if Page.isLoggedIn globals then loggedInItems else [])
-        ++ [H.li [] [AuthWidget.view globals model.authWidget |> H.map AuthWidgetMsg]]
+        H.li [] [H.a [HA.href "/"] [H.text "Home"]]
+        :: (if config.auth == Nothing then [] else loggedInItems)
+        ++ [H.li []
+            [ AuthWidget.view config state
+            ]]
     ]
-
-update : Msg -> Model -> ( Model , Page.Command Msg )
-update msg model =
-  case msg of
-    AuthWidgetMsg widgetMsg ->
-      let (newWidget, innerCmd) = AuthWidget.update widgetMsg model.authWidget in
-      ( { model | authWidget = newWidget } , Page.mapCmd AuthWidgetMsg innerCmd )
-
-subscriptions : Model -> Sub Msg
-subscriptions model = AuthWidget.subscriptions model.authWidget |> Sub.map AuthWidgetMsg

@@ -1,89 +1,76 @@
 module Widgets.ChangePasswordWidget exposing (..)
 
-import Browser
 import Html as H exposing (Html)
 import Html.Attributes as HA
 import Html.Events as HE
 import Http
+import Utils exposing (Password)
 
 import Biatob.Proto.Mvp as Pb
 
 import Biatob.Proto.Mvp exposing (StakeResult(..))
-import Field exposing (Field)
-import Page
+import API
 
-type alias Model =
-  { oldPasswordField : Field () String
-  , newPasswordField : Field () String
+type alias Config msg =
+  { setState : State -> msg
+  , changePassword : State -> Pb.ChangePasswordRequest -> msg
+  }
+type alias State =
+  { oldPasswordField : String
+  , newPasswordField : String
   , working : Bool
-  , error : Maybe String
+  , notification : Html Never
   }
 
 type Msg
-  = SetOldPasswordField String
-  | SetNewPasswordField String
+  = SetOldPasswordField Password
+  | SetNewPasswordField Password
   | ChangePassword
   | ChangePasswordFinished (Result Http.Error Pb.ChangePasswordResponse)
 
-init : Model
+init : State
 init =
-  { oldPasswordField = Field.okIfEmpty <| Field.init "" <| \() s -> if s=="" then Err "" else Ok s
-  , newPasswordField = Field.okIfEmpty <| Field.init "" <| \() s -> if s=="" then Err "" else Ok s
+  { oldPasswordField = ""
+  , newPasswordField = ""
   , working = False
-  , error = Nothing
+  , notification = H.text ""
   }
 
-update : Msg -> Model -> (Model, Page.Command Msg)
-update msg model =
-  case msg of
-    SetOldPasswordField s -> ( { model | oldPasswordField = model.oldPasswordField |> Field.setStr s } , Page.NoCmd)
-    SetNewPasswordField s -> ( { model | newPasswordField = model.newPasswordField |> Field.setStr s } , Page.NoCmd)
-    ChangePassword ->
-      ( { model | working = True , error = Nothing }
-      , case (Field.parse () model.oldPasswordField, Field.parse () model.newPasswordField) of
-          (Ok old, Ok new) -> Page.RequestCmd <| Page.ChangePasswordRequest ChangePasswordFinished {oldPassword=old, newPassword=new}
-          _ -> Page.NoCmd
-      )
-    ChangePasswordFinished (Err e) ->
-      ( { model | working = False , error = Just (Debug.toString e) }
-      , Page.NoCmd
-      )
-    ChangePasswordFinished (Ok resp) ->
-      case resp.changePasswordResult of
-        Just (Pb.ChangePasswordResultOk _) ->
-          ( init , Page.NoCmd )
-        Just (Pb.ChangePasswordResultError e) ->
-          ( { model | working = False , error = Just (Debug.toString e) }
-          , Page.NoCmd
-          )
-        Nothing ->
-          ( { model | working = False , error = Just "Invalid server response (neither Ok nor Error in protobuf)" }
-          , Page.NoCmd
-          )
+handleChangePasswordResponse : Result Http.Error Pb.ChangePasswordResponse -> State -> State
+handleChangePasswordResponse res state =
+  case API.simplifyChangePasswordResponse res of
+    Ok _ ->
+      { state | working = False
+              , notification = H.text ""
+              , oldPasswordField = ""
+              , newPasswordField = ""
+      }
+    Err e ->
+      { state | working = False
+              , notification = Utils.redText e
+      }
 
-view : Model -> Html Msg
-view model =
-  let
-    disableButton = not (Field.isValid () model.oldPasswordField && Field.isValid () model.newPasswordField)
-  in
+view : Config msg -> State -> Html msg
+view config state =
   H.div []
-    [ Field.inputFor SetOldPasswordField () model.oldPasswordField
-        H.input
+    [ H.input
         [ HA.type_ "password"
-        , HA.disabled <| model.working
+        , HA.disabled <| state.working
         , HA.placeholder "old password"
+        , HE.onInput (\s -> config.setState {state | oldPasswordField=s})
+        , HA.value state.oldPasswordField
         ] []
-    , Field.inputFor SetNewPasswordField () model.newPasswordField
-        H.input
+    , H.input
         [ HA.type_ "password"
-        , HA.disabled <| model.working
+        , HA.disabled <| state.working
         , HA.placeholder "new password"
+        , HE.onInput (\s -> config.setState {state | newPasswordField=s})
+        , HA.value state.newPasswordField
         ] []
-    , H.button [HA.disabled <| model.working || disableButton, HE.onClick ChangePassword] [H.text <| if model.working then "Changing..." else "Change password"]
-    , case model.error of
-        Just e -> H.span [HA.style "color" "red"] [H.text e]
-        Nothing -> H.text ""
+    , H.button
+        [ HA.disabled <| state.working || state.oldPasswordField == "" || (Utils.isErr <| Utils.parsePassword state.newPasswordField)
+        , HE.onClick (config.changePassword {state | working=True, notification=H.text ""} {oldPassword=state.oldPasswordField, newPassword=state.newPasswordField})
+        ]
+        [ H.text <| if state.working then "Changing..." else "Change password" ]
+    , state.notification |> H.map never
     ]
-
-subscriptions : Model -> Sub Msg
-subscriptions _ = Sub.none

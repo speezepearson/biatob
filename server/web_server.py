@@ -100,7 +100,7 @@ class WebServer:
     async def get_view_prediction_page(self, req: web.Request) -> web.Response:
         auth = self._token_glue.parse_cookie(req)
         auth_success = self._get_auth_success(auth)
-        prediction_id = int(req.match_info['prediction_id'])
+        prediction_id = str(req.match_info['prediction_id'])
         get_prediction_resp = self._servicer.GetPrediction(auth, mvp_pb2.GetPredictionRequest(prediction_id=prediction_id))
         if get_prediction_resp.WhichOneof('get_prediction_result') == 'error':
             return web.Response(status=404, body=str(get_prediction_resp.error))
@@ -111,14 +111,14 @@ class WebServer:
             body=self._jinja.get_template('ViewPredictionPage.html').render(
                 title=f'Biatob - Prediction: by {datetime.datetime.fromtimestamp(get_prediction_resp.prediction.resolves_at_unixtime).strftime("%Y-%m-%d")}, {get_prediction_resp.prediction.prediction}',
                 auth_success_pb_b64=pb_b64(auth_success),
-                prediction_pb_b64=pb_b64(get_prediction_resp.prediction),
+                predictions_pb_b64=pb_b64(mvp_pb2.PredictionsById(predictions={prediction_id: get_prediction_resp.prediction})),
                 prediction_id=prediction_id,
             ))
 
     async def get_prediction_img_embed(self, req: web.Request) -> web.Response:
         auth = self._token_glue.parse_cookie(req)
         auth_success = self._get_auth_success(auth)
-        prediction_id = int(req.match_info['prediction_id'])
+        prediction_id = str(req.match_info['prediction_id'])
         get_prediction_resp = self._servicer.GetPrediction(auth, mvp_pb2.GetPredictionRequest(prediction_id=prediction_id))
         if get_prediction_resp.WhichOneof('get_prediction_result') == 'error':
             return web.Response(status=404, body=str(get_prediction_resp.error))
@@ -136,11 +136,7 @@ class WebServer:
         auth = self._token_glue.parse_cookie(req)
         auth_success = self._get_auth_success(auth)
         if auth is None:
-            return web.Response(
-                content_type='text/html',
-                body=self._jinja.get_template('LoginPage.html').render(
-                    auth_success_pb_b64=pb_b64(auth_success),
-                ))
+            return web.HTTPTemporaryRedirect('/login?dest=/my_stakes')
         list_my_stakes_resp = self._servicer.ListMyStakes(auth, mvp_pb2.ListMyStakesRequest())
         if list_my_stakes_resp.WhichOneof('list_my_stakes_result') == 'error':
             return web.Response(status=400, body=str(list_my_stakes_resp.error))
@@ -156,11 +152,8 @@ class WebServer:
         auth = self._token_glue.parse_cookie(req)
         auth_success = self._get_auth_success(auth)
         username = req.match_info['username']
-        get_user_resp = self._servicer.GetUser(auth, mvp_pb2.GetUserRequest(who=username))
-        if get_user_resp.WhichOneof('get_user_result') == 'error':
-            return web.Response(status=400, body=str(get_user_resp.error))
-        assert get_user_resp.WhichOneof('get_user_result') == 'ok'
-        if get_user_resp.ok.trusts_you:
+        relationship = None if (auth_success is None) else auth_success.user_info.relationships.get(username)
+        if (relationship is not None) and relationship.trusts_you:
             list_predictions_resp = self._servicer.ListPredictions(auth, mvp_pb2.ListPredictionsRequest(creator=username))
             predictions: Optional[mvp_pb2.PredictionsById] = list_predictions_resp.ok  # TODO: error handling
         else:
@@ -169,7 +162,7 @@ class WebServer:
             content_type='text/html',
             body=self._jinja.get_template('ViewUserPage.html').render(
                 auth_success_pb_b64=pb_b64(auth_success),
-                user_view_pb_b64=pb_b64(get_user_resp.ok),
+                who=username,
                 predictions_pb_b64=pb_b64(predictions),
             ))
 
@@ -177,34 +170,37 @@ class WebServer:
         auth = self._token_glue.parse_cookie(req)
         auth_success = self._get_auth_success(auth)
         if auth is None:
-            return web.Response(
-                content_type='text/html',
-                body=self._jinja.get_template('LoginPage.html').render(
-                    auth_success_pb_b64=pb_b64(auth_success),
-                ))
+            return web.HTTPTemporaryRedirect('/login?dest=/settings')
         return web.Response(
             content_type='text/html',
             body=self._jinja.get_template('SettingsPage.html').render(
                 auth_success_pb_b64=pb_b64(auth_success),
             ))
 
+    async def get_login(self, req: web.Request) -> web.Response:
+        auth = self._token_glue.parse_cookie(req)
+        auth_success = self._get_auth_success(auth)
+        return web.Response(
+            content_type='text/html',
+            body=self._jinja.get_template('LoginPage.html').render(
+                auth_success_pb_b64=pb_b64(auth_success),
+            ))
+
     async def get_invitation(self, req: web.Request) -> web.Response:
         auth = self._token_glue.parse_cookie(req)
         auth_success = self._get_auth_success(auth)
-        invitation_id = mvp_pb2.InvitationId(
-            inviter=req.match_info['username'],
-            nonce=req.match_info['nonce'],
-        )
-        check_invitation_resp = self._servicer.CheckInvitation(auth, mvp_pb2.CheckInvitationRequest(invitation_id=invitation_id))
+        nonce = str(req.match_info['nonce'])
+        check_invitation_resp = self._servicer.CheckInvitation(auth, mvp_pb2.CheckInvitationRequest(nonce=nonce))
         if check_invitation_resp.WhichOneof('check_invitation_result') == 'error':
             return web.HTTPBadRequest(reason=str(check_invitation_resp.error))
-        assert check_invitation_resp.WhichOneof('check_invitation_result') == 'is_open'
+        assert check_invitation_resp.WhichOneof('check_invitation_result') == 'ok'
         return web.Response(
             content_type='text/html',
             body=self._jinja.get_template('AcceptInvitationPage.html').render(
                 auth_success_pb_b64=pb_b64(auth_success),
-                invitation_is_open=check_invitation_resp.is_open,
-                invitation_id_pb_b64=pb_b64(invitation_id),
+                invitation_is_open=check_invitation_resp.ok.is_open,
+                nonce=nonce,
+                inviter=check_invitation_resp.ok.inviter,
             ))
 
     def add_to_app(self, app: web.Application) -> None:
@@ -222,7 +218,9 @@ class WebServer:
         app.router.add_get('/my_stakes', self.get_my_stakes)
         app.router.add_get('/username/{username:[a-zA-Z0-9_-]+}', self.get_username)
         app.router.add_get('/settings', self.get_settings)
-        app.router.add_get('/invitation/{username}/{nonce}', self.get_invitation)
+        app.router.add_get('/login', self.get_login)
+        app.router.add_get('/invitation/{username}/{nonce}', self.get_invitation) # legacy path; new invitations are identified entirely by nonce
+        app.router.add_get('/invitation/{nonce}', self.get_invitation)
 
 
 def pb_b64(message: Optional[Message]) -> Optional[str]:

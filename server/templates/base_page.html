@@ -39,27 +39,33 @@
       });
       var usernameField = document.getElementsByClassName('username-field')[0];
       if (usernameField) usernameField.focus();
-      app.ports.pageCopy.subscribe(s => {
+      [app.ports.copy, app.ports.pageCopy].forEach(port => {if (port) port.subscribe(s => {
         var e = document.createElement('input');
         e.value = s;
         document.body.appendChild(e);
         e.select();
         document.execCommand('copy');
         e.remove();
-      })
-      app.ports.navigate.subscribe(dest => {if (dest) {window.location=dest} else window.location.reload()});
+      })})
+      if (app.ports.navigate) app.ports.navigate.subscribe(dest => {console.log('navigating', {dest}); if (dest) {window.location=dest} else window.location.reload()});
 
       // Elm doesn't watch for external DOM modification, so when password managers fill things in,
       // we need to notify Elm.
       // https://discourse.elm-lang.org/t/password-manager-and-external-form-filling/6043
       setInterval(
         () => {
-          Array.from(document.getElementsByClassName('watch-for-password-manager-fill')).forEach(elem => {
-            var elmValue = elem.getAttribute('data-elm-value');
-            var domValue = elem.value;
-            if (elmValue !== undefined && elmValue !== domValue) {
-              app.ports.passwordManagerFilled.send({target: elem.getAttribute('data-password-manager-target'), value: domValue});
-            }
+          Array.from(document.getElementsByClassName('auth-widget')).forEach(authWidget => {
+            Array.from(authWidget.getElementsByTagName('input')).forEach(input => {
+              var elmValue = input.getAttribute('data-elm-value');
+              var domValue = input.value;
+              if (elmValue !== undefined && elmValue !== domValue) {
+                app.ports.authWidgetExternallyChanged.send({
+                  authWidgetId: authWidget.getAttribute('id'),
+                  field: input.getAttribute('name'),
+                  newValue: domValue,
+                });
+              }
+            })
           });
         },
         500,
@@ -121,6 +127,18 @@
       padding: 0.5ex 1ex;
     }
 
+    .prediction-list-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .prediction-list-table th, .prediction-list-table td {
+      border: 1px solid gray;
+      padding: 0 0.3em;
+      text-align: center;
+    }
+    .prediction-list-table th {
+      background-color: #ddffff;
+    }
 
   </style>
 </head>
