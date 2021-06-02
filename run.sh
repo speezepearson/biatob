@@ -19,7 +19,7 @@ pip install -r server/requirements.txt
 python -m server.main \
   --host=0.0.0.0 \
   --port=8080 \
-  --state-path=/home/protected/server.WorldState.pb \
+  --state-path=/home/protected/biatob.sqlite3.db \
   --credentials-path=/home/protected/server.CredentialsConfig.textproto \
   "$@"
 # e.g. --email-daily-backups-to=somebody@example.com
