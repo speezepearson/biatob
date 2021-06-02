@@ -1066,20 +1066,6 @@ def find_invariant_violations(conn: sqlalchemy.engine.base.Connection) -> Sequen
   return violations
 
 
-async def email_invariant_violations_forever(conn: sqlalchemy.engine.base.Connection, emailer: Emailer, recipient_email: str):
-  while True:
-    now = datetime.datetime.now()
-    next_hour = datetime.datetime.fromtimestamp(3600 * (1 + now.timestamp()//3600))
-    await asyncio.sleep((next_hour - now).total_seconds())
-    logger.info('checking invariants')
-    violations = find_invariant_violations(conn)
-    if violations:
-      await emailer.send_invariant_violations(
-        to=recipient_email,
-        now=next_hour,
-        violations=violations,
-      )
-
 ###################################################################################
 ## Below this line are email-related very-nice-to-haves (TODO(P1)) that are hard to port from the Protobuf world.
 
@@ -1145,8 +1131,10 @@ async def email_invariant_violations(
 ):
   logger.info('seeking invariant violations')
   violations = find_invariant_violations(conn)
-  await emailer.send_invariant_violations(
-    to=recipient_email,
-    now=now,
-    violations=violations,
-  )
+  if violations:
+    logger.warn('found violations', violations=violations)
+    await emailer.send_invariant_violations(
+      to=recipient_email,
+      now=now,
+      violations=violations,
+    )
