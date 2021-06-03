@@ -9,14 +9,12 @@ import Dict as D
 import Biatob.Proto.Mvp as Pb
 import Utils
 
-import Widgets.SmallInvitationWidget as SmallInvitationWidget
 import Widgets.CopyWidget as CopyWidget
 import API
 import Time
 
 type alias Config msg =
   { setState : State -> msg
-  , createInvitation : State -> Pb.CreateInvitationRequest -> msg
   , setTrusted : State -> Pb.SetTrustedRequest -> msg
   , copy : String -> msg
   , auth : Pb.AuthToken
@@ -25,21 +23,16 @@ type alias Config msg =
   , httpOrigin : String
   }
 type alias State =
-  { invitationWidget : SmallInvitationWidget.State
-  , working : Bool
+  { working : Bool
   , notification : Html Never
   }
 
 init : State
 init =
-  { invitationWidget = SmallInvitationWidget.init
-  , working = False
+  { working = False
   , notification = H.text ""
   }
 
-handleCreateInvitationResponse : Result Http.Error Pb.CreateInvitationResponse -> State -> State
-handleCreateInvitationResponse res state =
-  { state | invitationWidget = state.invitationWidget |> SmallInvitationWidget.handleCreateInvitationResponse res }
 handleSetTrustedResponse : Result Http.Error Pb.SetTrustedResponse -> State -> State
 handleSetTrustedResponse res state =
   { state | working = False
@@ -47,39 +40,6 @@ handleSetTrustedResponse res state =
               Ok _ -> H.text ""
               Err e -> Utils.redText e
   }
-
-viewInvitation : Config msg -> String -> Pb.Invitation -> Html msg
-viewInvitation config nonce invitation =
-  case invitation.acceptedBy of
-    "" ->
-      H.li []
-        [ CopyWidget.view config.copy (config.httpOrigin ++ Utils.invitationPath nonce)
-        , H.text <| " (created " ++ Utils.dateStr config.timeZone (Utils.unixtimeToTime invitation.createdUnixtime) ++ ")"
-        ]
-    accepter ->
-      H.li []
-        [ H.text "Accepted by "
-        , Utils.renderUser accepter
-        , H.text <| " on " ++ Utils.dateStr config.timeZone (Utils.unixtimeToTime invitation.createdUnixtime)
-        , H.text <| " (created " ++ Utils.dateStr config.timeZone (Utils.unixtimeToTime invitation.createdUnixtime) ++ ")"
-        ]
-
-viewInvitations : Config msg -> (Pb.Invitation -> Bool) -> Html msg
-viewInvitations config filter =
-  let
-    matches =
-      config.userInfo.invitations
-      |> Utils.mustMapValues
-      |> D.filter (always filter)
-      |> D.toList
-      |> List.sortBy (\(_, invitation) -> -invitation.createdUnixtime)
-  in
-    if List.isEmpty matches then
-      H.text " none yet!"
-    else
-      matches
-      |> List.map (\(nonce, invitation) -> H.li [] [viewInvitation config nonce invitation])
-      |> H.ul []
 
 view : Config msg -> State -> Html msg
 view config state =
@@ -106,16 +66,4 @@ view config state =
                 H.text " untrusted"
             ])
         <| D.toList relationships
-    , H.br [] []
-    , Utils.b "Invitations: "
-    , SmallInvitationWidget.view
-        { setState = \s -> config.setState {state | invitationWidget=s}
-        , createInvitation = \s -> config.createInvitation {state | invitationWidget=s}
-        , copy = config.copy
-        , destination = Nothing
-        , httpOrigin = config.httpOrigin
-        }
-        state.invitationWidget
-    , H.div [] [H.text "Outstanding:", viewInvitations config (\inv -> inv.acceptedByDepr == Nothing) ]
-    , H.div [] [H.text "Past:",        viewInvitations config (\inv -> inv.acceptedByDepr /= Nothing) ]
     ]

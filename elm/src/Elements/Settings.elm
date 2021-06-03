@@ -35,8 +35,6 @@ type Msg
   | SetTrustedUsersWidget TrustedUsersWidget.State
   | ChangePassword ChangePasswordWidget.State Pb.ChangePasswordRequest
   | ChangePasswordFinished Pb.ChangePasswordRequest (Result Http.Error Pb.ChangePasswordResponse)
-  | CreateInvitation TrustedUsersWidget.State Pb.CreateInvitationRequest
-  | CreateInvitationFinished Pb.CreateInvitationRequest (Result Http.Error Pb.CreateInvitationResponse)
   | LogInUsername AuthWidget.State Pb.LogInUsernameRequest
   | LogInUsernameFinished Pb.LogInUsernameRequest (Result Http.Error Pb.LogInUsernameResponse)
   | RegisterUsername AuthWidget.State Pb.RegisterUsernameRequest
@@ -85,16 +83,6 @@ update msg model =
     ChangePasswordFinished req res ->
       ( { model | globals = model.globals |> Globals.handleChangePasswordResponse req res
                 , changePasswordWidget = model.changePasswordWidget |> ChangePasswordWidget.handleChangePasswordResponse res
-        }
-      , Cmd.none
-      )
-    CreateInvitation widgetState req ->
-      ( { model | trustedUsersWidget = widgetState }
-      , API.postCreateInvitation (CreateInvitationFinished req) req
-      )
-    CreateInvitationFinished req res ->
-      ( { model | globals = model.globals |> Globals.handleCreateInvitationResponse req res
-                , trustedUsersWidget = model.trustedUsersWidget |> TrustedUsersWidget.handleCreateInvitationResponse res
         }
       , Cmd.none
       )
@@ -226,7 +214,6 @@ view model =
           , H.h3 [] [H.text "Trust"]
           , TrustedUsersWidget.view
               { setState = SetTrustedUsersWidget
-              , createInvitation = CreateInvitation
               , setTrusted = SetTrusted
               , copy = Copy
               , auth = model.globals.authToken |> Utils.must "should condense Globals.auth and .serverState.settings into a single type, since they Nothing together"

@@ -10,7 +10,6 @@ import Time
 import Utils
 
 import Widgets.AuthWidget as AuthWidget
-import Widgets.SmallInvitationWidget as SmallInvitationWidget
 import Widgets.EmailSettingsWidget as EmailSettingsWidget
 import Globals
 import API
@@ -25,7 +24,6 @@ type alias Model =
   { globals : Globals.Globals
   , navbarAuth : AuthWidget.State
   , authWidget : AuthWidget.State
-  , invitationWidget : SmallInvitationWidget.State
   , emailSettingsWidget : EmailSettingsWidget.State
   }
 
@@ -33,9 +31,6 @@ type AuthWidgetLoc = Navbar | Inline
 type Msg
   = SetAuthWidget AuthWidgetLoc AuthWidget.State
   | SetEmailWidget EmailSettingsWidget.State
-  | SetInvitationWidget SmallInvitationWidget.State
-  | CreateInvitation SmallInvitationWidget.State Pb.CreateInvitationRequest
-  | CreateInvitationFinished Pb.CreateInvitationRequest (Result Http.Error Pb.CreateInvitationResponse)
   | LogInUsername AuthWidgetLoc AuthWidget.State Pb.LogInUsernameRequest
   | LogInUsernameFinished AuthWidgetLoc Pb.LogInUsernameRequest (Result Http.Error Pb.LogInUsernameResponse)
   | RegisterUsername AuthWidgetLoc AuthWidget.State Pb.RegisterUsernameRequest
@@ -58,7 +53,6 @@ init flags =
   ( { globals = JD.decodeValue Globals.globalsDecoder flags |> Utils.mustResult "flags"
     , navbarAuth = AuthWidget.init
     , authWidget = AuthWidget.init
-    , invitationWidget = SmallInvitationWidget.init
     , emailSettingsWidget = EmailSettingsWidget.init
     }
   , Cmd.none
@@ -77,18 +71,6 @@ update msg model =
       ( updateAuthWidget loc (always widgetState) model , Cmd.none )
     SetEmailWidget widgetState ->
       ( { model | emailSettingsWidget = widgetState } , Cmd.none )
-    SetInvitationWidget widgetState ->
-      ( { model | invitationWidget = widgetState } , Cmd.none )
-    CreateInvitation widgetState req ->
-      ( { model | invitationWidget = widgetState }
-      , API.postCreateInvitation (CreateInvitationFinished req) req
-      )
-    CreateInvitationFinished req res ->
-      ( { model | globals = model.globals |> Globals.handleCreateInvitationResponse req res
-                , invitationWidget = model.invitationWidget |> SmallInvitationWidget.handleCreateInvitationResponse res
-        }
-      , Cmd.none
-      )
     LogInUsername loc widgetState req ->
       ( updateAuthWidget loc (always widgetState) model
       , API.postLogInUsername (LogInUsernameFinished loc req) req
@@ -272,22 +254,6 @@ view model =
             ]
         , H.li [HA.style "margin-bottom" "1em"]
             [ H.text " Advertise your bet -- post the link on Facebook, include a cute little embeddable image in your blog, whatever. "
-            ]
-        , H.li [HA.style "margin-bottom" "1em"]
-            [ H.text " Send your friends invitation links so I know who you trust to bet against you:   "
-            , H.div [HA.style "border" "1px solid gray", HA.style "padding" "0.5em", HA.style "margin" "0.5em"]
-                [ if Globals.isLoggedIn model.globals then
-                    SmallInvitationWidget.view
-                      { setState = SetInvitationWidget
-                      , createInvitation = CreateInvitation
-                      , copy = Copy
-                      , destination = Nothing
-                      , httpOrigin = model.globals.httpOrigin
-                      }
-                      model.invitationWidget
-                  else
-                    H.text "(first, log in)"
-                ]
             ]
         , H.li [HA.style "margin-bottom" "1em"]
             [ H.text " Consider adding an email address, so I can remind you to resolve your prediction when the time comes:   "

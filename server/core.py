@@ -81,12 +81,6 @@ def describe_SetEmailRequest_problems(request: mvp_pb2.SetEmailRequest) -> Optio
         problems.append('invalid-looking email address')
     return '; '.join(problems) if problems else None
 
-def describe_AcceptInvitationRequest_problems(request: mvp_pb2.AcceptInvitationRequest) -> Optional[str]:
-    problems = []
-    if not request.nonce:
-        problems.append('no nonce given')
-    return '; '.join(problems) if problems else None
-
 
 @overload
 def token_owner(token: mvp_pb2.AuthToken) -> Username: pass
@@ -114,9 +108,6 @@ class Servicer(abc.ABC):
     def VerifyEmail(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.VerifyEmailRequest) -> mvp_pb2.VerifyEmailResponse: pass
     def GetSettings(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.GetSettingsRequest) -> mvp_pb2.GetSettingsResponse: pass
     def UpdateSettings(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.UpdateSettingsRequest) -> mvp_pb2.UpdateSettingsResponse: pass
-    def CreateInvitation(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.CreateInvitationRequest) -> mvp_pb2.CreateInvitationResponse: pass
-    def CheckInvitation(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.CheckInvitationRequest) -> mvp_pb2.CheckInvitationResponse: pass
-    def AcceptInvitation(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.AcceptInvitationRequest) -> mvp_pb2.AcceptInvitationResponse: pass
 
 
 class TokenMint:

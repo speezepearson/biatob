@@ -12,7 +12,6 @@ import Biatob.Proto.Mvp as Pb
 import Utils exposing (Cents, PredictionId, Username, b)
 
 import Widgets.CopyWidget as CopyWidget
-import Widgets.SmallInvitationWidget as SmallInvitationWidget
 import API
 import Globals
 
@@ -24,7 +23,6 @@ type alias Config msg =
   , copy : String -> msg
   , stake : State -> Pb.StakeRequest -> msg
   , resolve : State -> Pb.ResolveRequest -> msg
-  , invitationWidget : Html msg
   , linkTitle : Bool
   , disableCommit : Bool
   , predictionId : PredictionId
@@ -33,11 +31,11 @@ type alias Config msg =
   , creatorRelationship : Globals.TrustRelationship
   , timeZone : Time.Zone
   , now : Time.Posix
+  , ownUsername : Maybe Username
   }
 type alias State =
   { believerStakeField : String
   , skepticStakeField : String
-  , invitationWidget : SmallInvitationWidget.State
   , working : Bool
   , notification : Html Never
   }
@@ -46,7 +44,6 @@ init : State
 init =
   { believerStakeField = "0"
   , skepticStakeField = "0"
-  , invitationWidget = SmallInvitationWidget.init
   , working = False
   , notification = H.text ""
   }
@@ -71,32 +68,34 @@ viewStakeWidgetOrExcuse config state =
             Just <| H.div []
               [ H.text "You and "
               , Utils.renderUser config.prediction.creator
-              , H.text " don't trust each other! If, in real life, you "
+              , H.text " haven't told me that you trust each other! If, in real life, you "
               , Utils.i "do"
-              , H.text " trust each other to pay your debts, send them an invitation! "
-              , config.invitationWidget
-              , H.br [] []
-              , H.text "Once they accept it, I'll know you trust each other, and I'll let you bet against each other."
+              , H.text " trust each other to pay your debts, then: (a) visit "
+              , H.a [HA.href <| Utils.pathToUserPage config.prediction.creator] [H.text "their user page"]
+              , H.text " and mark them as trusted; and (b) send them a link (via text/email/whatever) to "
+              , H.a [HA.href <| Utils.pathToUserPage (Utils.must "TODO" config.ownUsername)] [Utils.i "your", H.text " user page"]
+              , H.text " and ask them to mark ", Utils.i "you", H.text " as trusted."
+              , H.text "Then I'll know that you both trust each other, and I'll let you bet against each other."
               ]
           Globals.TrustsCurrentUser ->
             Just <| H.div []
-              [ H.text "You don't trust "
+              [ H.text "You haven't told me that you trust "
               , Utils.renderUser config.prediction.creator
-              , H.text " to pay their debts, so you probably don't want to bet on this prediction. If you actually "
+              , H.text " to pay their debts, so you probably don't want to bet against them. If you actually "
               , Utils.i "do"
-              , H.text " trust them to pay their debts, send them an invitation link: "
-              , config.invitationWidget
-              , H.br [] []
-              , H.text "Once they accept it, I'll know you trust each other, and I'll let you bet against each other."
+              , H.text " trust them to pay their debts, then visit "
+              , H.a [HA.href <| Utils.pathToUserPage config.prediction.creator] [H.text "their user page"]
+              , H.text "and mark them as trusted. Then I'll know you both trust each other, and I'll let you bet against each other."
               ]
           Globals.TrustedByCurrentUser ->
             Just <| H.div []
               [ Utils.renderUser config.prediction.creator, H.text " hasn't marked you as trusted! If you think that, in real life, they "
               , Utils.i "do"
-              , H.text " trust you to pay your debts, send them an invitation link: "
-              , config.invitationWidget
+              , H.text " trust you to pay your debts,  then send them a link (via text/email/whatever) to "
+              , H.a [HA.href <| Utils.pathToUserPage (Utils.must "TODO" config.ownUsername)] [H.text "your user page"]
+              , H.text " and ask them to mark ", Utils.i "you", H.text " as trusted."
               , H.br [] []
-              , H.text "Once they accept it, I'll know you trust each other, and I'll let you bet against each other."
+              , H.text "Then I'll know you both trust each other, and I'll let you bet against each other."
               ]
   in
     case explanationWhyNotBettable of
@@ -377,7 +376,7 @@ view : Config msg -> State -> Html msg
 view config state =
   H.div []
     [ H.h2 [] [
-        let text = H.text <| "Prediction: by " ++ (String.left 10 <| Iso8601.fromTime <| Utils.unixtimeToTime config.prediction.resolvesAtUnixtime) ++ ", " ++ config.prediction.prediction in
+        let text = H.text <| "Prediction: by " ++ (Utils.dateStr config.timeZone <| Utils.unixtimeToTime config.prediction.resolvesAtUnixtime) ++ ", " ++ config.prediction.prediction in
         if config.linkTitle then
           H.a [HA.href <| Utils.pathToPrediction config.predictionId] [text]
         else

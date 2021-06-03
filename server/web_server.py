@@ -11,7 +11,7 @@ import jinja2
 from PIL import Image, ImageDraw, ImageFont  # type: ignore
 import structlog
 
-from .core import Servicer
+from .core import Servicer, Username
 from .http_glue import HttpTokenGlue
 from .protobuf import mvp_pb2
 
@@ -52,10 +52,10 @@ class WebServer:
         )
         self._jinja.undefined = jinja2.StrictUndefined  # raise exception if a template uses an undefined variable; adapted from https://stackoverflow.com/a/39127941/8877656
 
-    def _get_auth_success(self, auth: Optional[mvp_pb2.AuthToken]) -> Optional[mvp_pb2.AuthSuccess]:
+    def _get_auth_success(self, auth: Optional[mvp_pb2.AuthToken], req: mvp_pb2.GetSettingsRequest = mvp_pb2.GetSettingsRequest()) -> Optional[mvp_pb2.AuthSuccess]:
         if auth is None:
             return None
-        get_settings_response = self._servicer.GetSettings(auth, mvp_pb2.GetSettingsRequest())
+        get_settings_response = self._servicer.GetSettings(auth, req)
         if get_settings_response.WhichOneof('get_settings_result') != 'ok':
             logger.error('failed to get settings for valid-looking user', data_loss=True, auth=auth, get_settings_response=get_settings_response)
             return None
@@ -158,8 +158,8 @@ class WebServer:
 
     async def get_username(self, req: web.Request) -> web.Response:
         auth = self._token_glue.parse_cookie(req)
-        auth_success = self._get_auth_success(auth)
-        username = req.match_info['username']
+        username = Username(str(req.match_info['username']))
+        auth_success = self._get_auth_success(auth, req=mvp_pb2.GetSettingsRequest(include_relationships_with_users=[username]))
         relationship = None if (auth_success is None) else auth_success.user_info.relationships.get(username)
         if (relationship is not None) and relationship.trusts_you:
             list_predictions_resp = self._servicer.ListPredictions(auth, mvp_pb2.ListPredictionsRequest(creator=username))
@@ -194,23 +194,6 @@ class WebServer:
                 auth_success_pb_b64=pb_b64(auth_success),
             ))
 
-    async def get_invitation(self, req: web.Request) -> web.Response:
-        auth = self._token_glue.parse_cookie(req)
-        auth_success = self._get_auth_success(auth)
-        nonce = str(req.match_info['nonce'])
-        check_invitation_resp = self._servicer.CheckInvitation(auth, mvp_pb2.CheckInvitationRequest(nonce=nonce))
-        if check_invitation_resp.WhichOneof('check_invitation_result') == 'error':
-            return web.HTTPBadRequest(reason=str(check_invitation_resp.error))
-        assert check_invitation_resp.WhichOneof('check_invitation_result') == 'ok'
-        return web.Response(
-            content_type='text/html',
-            body=self._jinja.get_template('AcceptInvitationPage.html').render(
-                auth_success_pb_b64=pb_b64(auth_success),
-                invitation_is_open=check_invitation_resp.ok.is_open,
-                nonce=nonce,
-                inviter=check_invitation_resp.ok.inviter,
-            ))
-
     def add_to_app(self, app: web.Application) -> None:
 
         self._token_glue.add_to_app(app)
@@ -227,8 +210,6 @@ class WebServer:
         app.router.add_get('/username/{username:[a-zA-Z0-9_-]+}', self.get_username)
         app.router.add_get('/settings', self.get_settings)
         app.router.add_get('/login', self.get_login)
-        app.router.add_get('/invitation/{username}/{nonce}', self.get_invitation) # legacy path; new invitations are identified entirely by nonce
-        app.router.add_get('/invitation/{nonce}', self.get_invitation)
 
 
 def pb_b64(message: Optional[Message]) -> Optional[str]:

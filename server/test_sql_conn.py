@@ -135,18 +135,6 @@ class TestSettings:
       conn.set_trusted(BOB, ALICE, b_trusts_a)
     assert must(conn.get_settings(ALICE)).relationships == {}
 
-  def test_get_settings_includes_open_invitations(self, conn: SqlConn):
-    conn.register_username(ALICE, 'password', password_id='alicepwid')
-    conn.create_invitation('nonce', ALICE, T0, 'notes')
-    assert must(conn.get_settings(ALICE)).invitations == {'nonce': mvp_pb2.Invitation(created_unixtime=T0.timestamp(), notes='notes')}
-
-  def test_get_settings_includes_closed_invitations(self, conn: SqlConn):
-    conn.register_username(ALICE, 'password', password_id='alicepwid')
-    conn.register_username(BOB, 'password', password_id='bobpwid')
-    conn.create_invitation('nonce', ALICE, T0, 'notes')
-    conn.accept_invitation('nonce', BOB, T1)
-    assert must(conn.get_settings(ALICE)).invitations == {'nonce': mvp_pb2.Invitation(created_unixtime=T0.timestamp(), notes='notes', accepted_by=BOB, accepted_unixtime=T1.timestamp())}
-
   def test_persists_updated_settings(self, conn: SqlConn):
     conn.register_username(ALICE, 'password', password_id='alicepwid')
     conn.update_settings(ALICE, mvp_pb2.UpdateSettingsRequest(email_resolution_notifications=mvp_pb2.MaybeBool(value=True)))
@@ -159,30 +147,6 @@ class TestSettings:
     assert must(conn.get_settings(ALICE)).email == efs
 
 
-
-class TestInvitations:
-  def test_invitation_is_open_between_create_and_accept(self, conn: SqlConn):
-    conn.register_username(ALICE, 'password', password_id='alicepwid')
-    conn.register_username(BOB, 'password', password_id='bobpwid')
-
-    assert conn.get_invitation_info(nonce='mynonce') is None
-    conn.create_invitation(nonce='mynonce', inviter=ALICE, now=T0, notes='')
-    assert must(conn.get_invitation_info(nonce='mynonce'))['is_open']
-    conn.accept_invitation(nonce='mynonce', accepter=BOB, now=T1)
-    assert not must(conn.get_invitation_info(nonce='mynonce'))['is_open']
-
-  def test_no_accepting_closed_invitation(self, conn: SqlConn):
-    conn.register_username(ALICE, 'password', password_id='alicepwid')
-    conn.register_username(BOB, 'password', password_id='bobpwid')
-
-    with pytest.raises(sqlalchemy.exc.IntegrityError):
-      conn.accept_invitation(nonce='mynonce', accepter=BOB, now=T1)
-
-    conn.create_invitation(nonce='mynonce', inviter=ALICE, now=T0, notes='')
-    conn.accept_invitation(nonce='mynonce', accepter=BOB, now=T1)
-
-    with pytest.raises(sqlalchemy.exc.IntegrityError):
-      conn.accept_invitation(nonce='mynonce', accepter=BOB, now=T1)
 
 class TestPredictions:
   def test_view_contains_all_creation_fields(self, conn: SqlConn):

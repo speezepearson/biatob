@@ -57,19 +57,3 @@ async def test_smoke_for_prediction_paths(aiohttp_client, app, api_server, any_s
 
   resp = await cli.get(path.format(prediction_id=prediction_id))
   assert resp.status == 200
-
-@pytest.mark.parametrize('logged_in', [True, False])
-@pytest.mark.parametrize('path', [
-  '/invitation/{nonce}',
-])
-async def test_smoke_for_invitation_paths(aiohttp_client, app, api_server, any_servicer, path: str, logged_in: bool):
-  api_server.add_to_app(app)
-  nonce = any_servicer.CreateInvitation(new_user_token(any_servicer, 'rando'), mvp_pb2.CreateInvitationRequest()).ok.nonce
-  assert nonce
-
-  cli = await aiohttp_client(app)
-  if logged_in:
-    await post_proto(cli, '/api/RegisterUsername', mvp_pb2.RegisterUsernameRequest(username='alice', password='alice'), mvp_pb2.RegisterUsernameResponse)
-
-  resp = await cli.get(path.format(nonce=nonce))
-  assert resp.status == 200

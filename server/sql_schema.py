@@ -95,25 +95,6 @@ email_attempts = Table(
 Index('email_attempts_by_email_id', email_attempts.c.email_id)
 
 
-invitations = Table(
-  'invitations',
-  metadata,
-  Column('nonce', String(64), primary_key=True, nullable=False),
-  Column('inviter', ForeignKey('users.username'), nullable=False),
-  Column('created_at_unixtime', REAL(), nullable=False),
-  Column('notes', String(65535), nullable=False, default=''),
-)
-Index('invitations_by_inviter', invitations.c.inviter)
-
-invitation_acceptances = Table(
-  'invitation_acceptances',
-  metadata,
-  Column('invitation_nonce', ForeignKey('invitations.nonce'), primary_key=True, nullable=False),
-  Column('accepted_at_unixtime', REAL(), nullable=False),
-  Column('accepted_by', ForeignKey('users.username'), nullable=False),
-)
-
-
 # Adapted from https://docs.sqlalchemy.org/en/14/dialects/sqlite.html#foreign-key-support
 def set_sqlite_pragma(dbapi_connection, connection_record):
   cursor = dbapi_connection.cursor()

@@ -66,10 +66,6 @@ class ApiServer:
         return proto_response(self._servicer.GetSettings(token=self._token_glue.parse_cookie(http_req), request=await parse_proto(http_req, mvp_pb2.GetSettingsRequest)))
     async def UpdateSettings(self, http_req: web.Request) -> web.Response:
         return proto_response(self._servicer.UpdateSettings(token=self._token_glue.parse_cookie(http_req), request=await parse_proto(http_req, mvp_pb2.UpdateSettingsRequest)))
-    async def CreateInvitation(self, http_req: web.Request) -> web.Response:
-        return proto_response(self._servicer.CreateInvitation(token=self._token_glue.parse_cookie(http_req), request=await parse_proto(http_req, mvp_pb2.CreateInvitationRequest)))
-    async def AcceptInvitation(self, http_req: web.Request) -> web.Response:
-        return proto_response(self._servicer.AcceptInvitation(token=self._token_glue.parse_cookie(http_req), request=await parse_proto(http_req, mvp_pb2.AcceptInvitationRequest)))
 
     def add_to_app(self, app: web.Application) -> None:
         app.router.add_post('/api/Whoami', self.Whoami)
@@ -87,7 +83,5 @@ class ApiServer:
         app.router.add_post('/api/VerifyEmail', self.VerifyEmail)
         app.router.add_post('/api/GetSettings', self.GetSettings)
         app.router.add_post('/api/UpdateSettings', self.UpdateSettings)
-        app.router.add_post('/api/CreateInvitation', self.CreateInvitation)
-        app.router.add_post('/api/AcceptInvitation', self.AcceptInvitation)
         self._token_glue.add_to_app(app)
 

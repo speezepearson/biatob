@@ -54,10 +54,6 @@ postGetSettings : (Result Http.Error Pb.GetSettingsResponse -> msg) -> Pb.GetSet
 postGetSettings = hit {url="/api/GetSettings", encoder=Pb.toGetSettingsRequestEncoder, decoder=Pb.getSettingsResponseDecoder}
 postUpdateSettings : (Result Http.Error Pb.UpdateSettingsResponse -> msg) -> Pb.UpdateSettingsRequest -> Cmd msg
 postUpdateSettings = hit {url="/api/UpdateSettings", encoder=Pb.toUpdateSettingsRequestEncoder, decoder=Pb.updateSettingsResponseDecoder}
-postCreateInvitation : (Result Http.Error Pb.CreateInvitationResponse -> msg) -> Pb.CreateInvitationRequest -> Cmd msg
-postCreateInvitation = hit {url="/api/CreateInvitation", encoder=Pb.toCreateInvitationRequestEncoder, decoder=Pb.createInvitationResponseDecoder}
-postAcceptInvitation : (Result Http.Error Pb.AcceptInvitationResponse -> msg) -> Pb.AcceptInvitationRequest -> Cmd msg
-postAcceptInvitation = hit {url="/api/AcceptInvitation", encoder=Pb.toAcceptInvitationRequestEncoder, decoder=Pb.acceptInvitationResponseDecoder}
 
 simplifyLogInUsernameResponse : Result Http.Error Pb.LogInUsernameResponse -> Result String Pb.AuthSuccess
 simplifyLogInUsernameResponse res =
@@ -90,32 +86,6 @@ simplifySignOutResponse res =
   case res of
     Err e -> Err (Debug.toString e)
     Ok {} -> Ok ()
-
-simplifyCreateInvitationResponse : Result Http.Error Pb.CreateInvitationResponse -> Result String Pb.CreateInvitationResponseResult
-simplifyCreateInvitationResponse res =
-  case res of
-    Err e -> Err (Debug.toString e)
-    Ok resp ->
-      case resp.createInvitationResult of
-        Just (Pb.CreateInvitationResultOk result) ->
-          Ok result
-        Just (Pb.CreateInvitationResultError e) ->
-          Err (Debug.toString e)
-        Nothing ->
-          Err "Invalid server response (neither Ok nor Error in protobuf)"
-
-simplifyAcceptInvitationResponse : Result Http.Error Pb.AcceptInvitationResponse -> Result String Pb.GenericUserInfo
-simplifyAcceptInvitationResponse res =
-  case res of
-    Err e -> Err (Debug.toString e)
-    Ok resp ->
-      case resp.acceptInvitationResult of
-        Just (Pb.AcceptInvitationResultOk result) ->
-          Ok result
-        Just (Pb.AcceptInvitationResultError e) ->
-          Err (Debug.toString e)
-        Nothing ->
-          Err "Invalid server response (neither Ok nor Error in protobuf)"
 
 simplifyCreatePredictionResponse : Result Http.Error Pb.CreatePredictionResponse -> Result String PredictionId
 simplifyCreatePredictionResponse res =

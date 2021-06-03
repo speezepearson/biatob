@@ -560,7 +560,6 @@ view model =
                     , copy = \_ -> Ignore
                     , stake = \_ _ -> Ignore
                     , resolve = \_ _ -> Ignore
-                    , invitationWidget = H.text "TODO"
                     , linkTitle = False
                     , disableCommit = True
                     , predictionId = "12345"
@@ -569,6 +568,7 @@ view model =
                     , creatorRelationship = Globals.Friends
                     , timeZone = model.globals.timeZone
                     , now = model.globals.now
+                    , ownUsername = Just "nobody"
                     }
                     PredictionWidget.init
                     |> H.map (always Ignore))

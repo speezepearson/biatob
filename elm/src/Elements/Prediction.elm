@@ -13,7 +13,6 @@ import Widgets.CopyWidget as CopyWidget
 import Widgets.AuthWidget as AuthWidget
 import Widgets.Navbar as Navbar
 import Widgets.PredictionWidget as PredictionWidget
-import Widgets.SmallInvitationWidget as SmallInvitationWidget
 import Globals
 import API
 import Biatob.Proto.Mvp as Pb
@@ -29,15 +28,11 @@ type alias Model =
   , navbarAuth : AuthWidget.State
   , predictionId : PredictionId
   , predictionWidget : PredictionWidget.State
-  , invitationWidget : SmallInvitationWidget.State
   }
 
 type Msg
   = SetAuthWidget AuthWidget.State
-  | SetInvitationWidget SmallInvitationWidget.State
   | SetPredictionWidget PredictionWidget.State
-  | CreateInvitation SmallInvitationWidget.State Pb.CreateInvitationRequest
-  | CreateInvitationFinished Pb.CreateInvitationRequest (Result Http.Error Pb.CreateInvitationResponse)
   | LogInUsername AuthWidget.State Pb.LogInUsernameRequest
   | LogInUsernameFinished Pb.LogInUsernameRequest (Result Http.Error Pb.LogInUsernameResponse)
   | RegisterUsername AuthWidget.State Pb.RegisterUsernameRequest
@@ -59,15 +54,17 @@ init flags =
     , navbarAuth = AuthWidget.init
     , predictionId = Utils.mustDecodeFromFlags JD.string "predictionId" flags
     , predictionWidget = PredictionWidget.init
-    , invitationWidget = SmallInvitationWidget.init
     }
   , Cmd.none
   )
 
 view : Model -> Browser.Document Msg
 view model =
-  let prediction = Utils.must "must have loaded prediction being viewed" <| Dict.get model.predictionId model.globals.serverState.predictions in
-  { title = "My stakes"
+  let
+    prediction = Utils.must "must have loaded prediction being viewed" <| Dict.get model.predictionId model.globals.serverState.predictions
+    title = "Prediction: by " ++ Utils.dateStr model.globals.timeZone (Utils.unixtimeToTime prediction.resolvesAtUnixtime) ++ ", " ++ prediction.prediction
+  in
+  { title = title
   , body =
     [ Navbar.view
         { setState = SetAuthWidget
@@ -80,13 +77,11 @@ view model =
         }
         model.navbarAuth
     , H.main_ []
-      [ H.h2 [] [H.text "My Stakes"]
-      , PredictionWidget.view
+      [ PredictionWidget.view
           { setState = SetPredictionWidget
           , copy = Copy
           , stake = Stake
           , resolve = Resolve
-          , invitationWidget = viewInvitationWidget model
           , linkTitle = False
           , disableCommit = True
           , predictionId = model.predictionId
@@ -95,6 +90,7 @@ view model =
           , creatorRelationship = Globals.getTrustRelationship model.globals prediction.creator
           , timeZone = model.globals.timeZone
           , now = model.globals.now
+          , ownUsername = model.globals.authToken |> Maybe.map .owner
           }
           model.predictionWidget
     , if not (Globals.isLoggedIn model.globals) then
@@ -107,8 +103,6 @@ view model =
         [ H.hr [HA.style "margin" "2em 0"] []
         , H.text "If you want to link to your prediction, here are some snippets of HTML you could copy-paste:"
         , viewEmbedInfo model
-        , H.text "If there are people you want to participate, but you haven't already established trust with them in Biatob, send them invitations: "
-        , viewInvitationWidget model
         ]
       else
         H.text ""
@@ -116,16 +110,6 @@ view model =
     ]
   }
 
-viewInvitationWidget : Model -> Html Msg
-viewInvitationWidget model =
-  SmallInvitationWidget.view
-    { setState = SetInvitationWidget
-    , createInvitation = CreateInvitation
-    , copy = Copy
-    , destination = Just <| Utils.pathToPrediction model.predictionId
-    , httpOrigin = model.globals.httpOrigin
-    }
-    model.invitationWidget
 viewEmbedInfo : Model -> Html Msg
 viewEmbedInfo model =
   let
@@ -214,18 +198,8 @@ update msg model =
   case msg of
     SetAuthWidget widgetState ->
       ( { model | navbarAuth = widgetState } , Cmd.none )
-    SetInvitationWidget widgetState ->
-      ( { model | invitationWidget = widgetState } , Cmd.none )
     SetPredictionWidget widgetState ->
       ( { model | predictionWidget = widgetState } , Cmd.none )
-    CreateInvitation widgetState req ->
-      ( { model | invitationWidget = widgetState }
-      , API.postCreateInvitation (CreateInvitationFinished req) req
-      )
-    CreateInvitationFinished req res ->
-      ( { model | globals = model.globals |> Globals.handleCreateInvitationResponse req res , invitationWidget = model.invitationWidget |> SmallInvitationWidget.handleCreateInvitationResponse res }
-      , Cmd.none
-      )
     LogInUsername widgetState req ->
       ( { model | navbarAuth = widgetState }
       , API.postLogInUsername (LogInUsernameFinished req) req

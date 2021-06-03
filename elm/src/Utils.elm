@@ -18,7 +18,6 @@ type alias Password = String
 type alias EmailAddress = String
 type alias Cents = Int
 type alias PredictionId = String
-type alias InvitationNonce = String
 
 illegalUsernameCharacters : String -> Set.Set Char
 illegalUsernameCharacters s =
@@ -165,10 +164,6 @@ resolutionIsTerminal res =
     Pb.ResolutionNoneYet -> False
     Pb.ResolutionInvalid -> True
     Pb.ResolutionUnrecognized_ _ -> Debug.todo "unrecognized resolution"
-
-invitationPath : InvitationNonce -> String
-invitationPath nonce =
-  "/invitation/" ++ nonce
 
 unixtimeToTime : Float -> Time.Posix
 unixtimeToTime n = Time.millisToPosix <| round <| n*1000

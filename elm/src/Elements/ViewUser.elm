@@ -13,7 +13,6 @@ import Utils exposing (Username)
 
 import Widgets.AuthWidget as AuthWidget
 import Widgets.Navbar as Navbar
-import Widgets.SmallInvitationWidget as SmallInvitationWidget
 import Widgets.ViewPredictionsWidget as ViewPredictionsWidget
 import Globals
 import Time
@@ -30,15 +29,11 @@ type alias Model =
   , predictionsWidget : ViewPredictionsWidget.State
   , working : Bool
   , notification : Html Never
-  , invitationWidget : SmallInvitationWidget.State
   }
 
 type Msg
   = SetAuthWidget AuthWidget.State
-  | SetInvitationWidget SmallInvitationWidget.State
   | SetPredictionsWidget ViewPredictionsWidget.State
-  | CreateInvitation SmallInvitationWidget.State Pb.CreateInvitationRequest
-  | CreateInvitationFinished Pb.CreateInvitationRequest (Result Http.Error Pb.CreateInvitationResponse)
   | LogInUsername AuthWidget.State Pb.LogInUsernameRequest
   | LogInUsernameFinished Pb.LogInUsernameRequest (Result Http.Error Pb.LogInUsernameResponse)
   | RegisterUsername AuthWidget.State Pb.RegisterUsernameRequest
@@ -60,7 +55,6 @@ init flags =
     , predictionsWidget = ViewPredictionsWidget.init
     , working = False
     , notification = H.text ""
-    , invitationWidget = SmallInvitationWidget.init
     }
   , Cmd.none
   )
@@ -70,20 +64,8 @@ update msg model =
   case msg of
     SetAuthWidget widgetState ->
       ( { model | navbarAuth = widgetState } , Cmd.none )
-    SetInvitationWidget widgetState ->
-      ( { model | invitationWidget = widgetState } , Cmd.none )
     SetPredictionsWidget widgetState ->
       ( { model | predictionsWidget = widgetState } , Cmd.none )
-    CreateInvitation widgetState req ->
-      ( { model | invitationWidget = widgetState }
-      , API.postCreateInvitation (CreateInvitationFinished req) req
-      )
-    CreateInvitationFinished req res ->
-      ( { model | globals = model.globals |> Globals.handleCreateInvitationResponse req res
-                , invitationWidget = model.invitationWidget |> SmallInvitationWidget.handleCreateInvitationResponse res
-        }
-      , Cmd.none
-      )
     LogInUsername widgetState req ->
       ( { model | navbarAuth = widgetState }
       , API.postLogInUsername (LogInUsernameFinished req) req
@@ -176,32 +158,51 @@ view model =
           H.text "Log in to see your relationship with this user."
         Globals.NoRelation ->
           H.p []
-            [ H.text "You have no relationship with this user! If, in real life, you trust them to pay their debts, and they trust you too,"
-            , H.text " then send them an invitation!"
-            , viewInvitationWidget model
+            [ H.text "You have no relationship with this user!"
+            , H.ul []
+              [ H.li []
+                [ H.text " If, in real life, you trust them to pay their debts, then click "
+                , H.button [HA.disabled model.working, HE.onClick (SetTrusted True)] [H.text "I trust this user"]
+                , H.text ". ("
+                , Utils.b "Note, though,", H.text " that ", Utils.i "anybody"
+                , H.text " could have registered this username; it's only as trustworthy as the links you clicked to get to this page.)"
+                ]
+              , H.li []
+                [ H.text " If you think they trust you too,"
+                , H.text " then send them a link to "
+                , H.a [HA.href <| Utils.pathToUserPage (Utils.must "TODO" model.globals.authToken).owner] [H.text "your user page"]
+                , H.text " and ask them to mark you as trusted!"
+                , H.text " Once they do, I'll know you both trust each other, and I'll let you bet against each other."
+                ]
+              ]
             ]
         Globals.TrustsCurrentUser ->
           H.p []
             [ H.text "This user trusts you, but you don't trust them back! If, in real life, you ", Utils.i "do", H.text " trust them to pay their debts,"
-            , H.text " then send them an invitation!"
-            , viewInvitationWidget model
+            , H.text " then click "
+            , H.button [HA.disabled model.working, HE.onClick (SetTrusted True)] [H.text "I trust this user"]
+            , H.text ". ("
+            , Utils.b "Note, though,", H.text " that ", Utils.i "anybody"
+            , H.text " could have registered this username; it's only as trustworthy as the links you clicked to get to this page.)"
             ]
         Globals.TrustedByCurrentUser ->
           H.p []
             [ H.text "You trust this user, but they don't trust you back! If, in real life, you think they ", Utils.i "do", H.text " trust you to pay your debts,"
-            , H.text " then send them an invitation!"
-            , viewInvitationWidget model
+            , H.text " then send them a link to "
+            , H.a [HA.href <| Utils.pathToUserPage (Utils.must "TODO" model.globals.authToken).owner] [H.text "your user page"]
+            , H.text " and ask them to mark you as trusted!"
+            , H.text " Once they do, I'll know you both trust each other, and I'll let you bet against each other."
             , H.br [] []
-            , H.text "...or, if you ", Utils.i "don't", H.text " trust them anymore, you can"
-            , H.button [HA.disabled model.working, HE.onClick (SetTrusted False)] [H.text "mark this user untrusted"]
+            , H.text "...or, if you ", Utils.i "don't", H.text " trust them anymore, then click "
+            , H.button [HA.disabled model.working, HE.onClick (SetTrusted False)] [H.text "I don't trust this user anymore :("]
             , model.notification |> H.map never
             ]
         Globals.Friends ->
           H.p []
             [ H.text "You and this user trust each other! Aww, how nice!"
             , H.br [] []
-            , H.text "...but, if you ", Utils.i "don't", H.text " trust them anymore, you can"
-            , H.button [HA.disabled model.working, HE.onClick (SetTrusted False)] [H.text "mark this user untrusted"]
+            , H.text "...but, if you ", Utils.i "don't", H.text " trust them anymore, then click "
+            , H.button [HA.disabled model.working, HE.onClick (SetTrusted False)] [H.text "I don't trust this user anymore :("]
             , model.notification |> H.map never
             ]
             , H.br [] []
@@ -222,17 +223,6 @@ view model =
                 H.text ""
             ]
   ]}
-
-viewInvitationWidget : Model -> Html Msg
-viewInvitationWidget model =
-  SmallInvitationWidget.view
-    { setState = SetInvitationWidget
-    , createInvitation = CreateInvitation
-    , copy = Copy
-    , destination = Nothing
-    , httpOrigin = model.globals.httpOrigin
-    }
-    model.invitationWidget
 
 subscriptions : Model -> Sub Msg
 subscriptions _ = authWidgetExternallyChanged AuthWidgetExternallyModified
