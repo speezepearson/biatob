@@ -98,14 +98,18 @@ view model =
           }
           model.predictionWidget
     , if not (Globals.isLoggedIn model.globals) then
-        viewWhatIsThis prediction
+        H.div []
+        [ H.hr [] []
+        , viewWhatIsThis prediction
+        ]
       else if Globals.isSelf model.globals prediction.creator then
         H.div []
-          [ H.text "If you want to link to your prediction, here are some snippets of HTML you could copy-paste:"
-          , viewEmbedInfo model
-          , H.text "If there are people you want to participate, but you haven't already established trust with them in Biatob, send them invitations: "
-          , viewInvitationWidget model
-          ]
+        [ H.hr [] []
+        , H.text "If you want to link to your prediction, here are some snippets of HTML you could copy-paste:"
+        , viewEmbedInfo model
+        , H.text "If there are people you want to participate, but you haven't already established trust with them in Biatob, send them invitations: "
+        , viewInvitationWidget model
+        ]
       else
         H.text ""
       ]

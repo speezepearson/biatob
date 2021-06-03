@@ -53,51 +53,64 @@ init =
 
 viewStakeWidgetOrExcuse : Config msg -> State -> Html msg
 viewStakeWidgetOrExcuse config state =
-  if Utils.resolutionIsTerminal (Utils.currentResolution config.prediction) then
-    H.text "This prediction has resolved, so cannot be bet in."
-  else if config.prediction.closesUnixtime < Utils.timeToUnixtime config.now then
-    H.text <| "This prediction closed on " ++ Utils.dateStr config.timeZone (Utils.predictionClosesTime config.prediction) ++ "."
-  else
-    case config.creatorRelationship of
-      Globals.LoggedOut ->
+  let
+    explanationWhyNotBettable =
+      if Utils.resolutionIsTerminal (Utils.currentResolution config.prediction) then
+        Just <| H.text "This prediction has resolved, so cannot be bet in."
+      else if config.prediction.closesUnixtime < Utils.timeToUnixtime config.now then
+        Just <| H.text <| "This prediction closed on " ++ Utils.dateStr config.timeZone (Utils.predictionClosesTime config.prediction) ++ "."
+      else
+        case config.creatorRelationship of
+          Globals.LoggedOut ->
+            Just <| H.text "You have to log in to bet on predictions!"
+          Globals.Self ->
+            Just <| H.text "(You can't bet on your own predictions.)"
+          Globals.Friends ->
+            Nothing
+          Globals.NoRelation ->
+            Just <| H.div []
+              [ H.text "You and "
+              , Utils.renderUser config.prediction.creator
+              , H.text " don't trust each other! If, in real life, you "
+              , Utils.i "do"
+              , H.text " trust each other to pay your debts, send them an invitation! "
+              , config.invitationWidget
+              ]
+          Globals.TrustsCurrentUser ->
+            Just <| H.div []
+              [ H.text "You don't trust "
+              , Utils.renderUser config.prediction.creator
+              , H.text " to pay their debts, so you probably don't want to bet on this prediction. If you actually"
+              , Utils.i "do"
+              , H.text " trust them to pay their debts, send them an invitation link: "
+              , config.invitationWidget
+              ]
+          Globals.TrustedByCurrentUser ->
+            Just <| H.div []
+              [ Utils.renderUser config.prediction.creator, H.text " hasn't marked you as trusted! If you think that, in real life, they "
+              , Utils.i "do"
+              , H.text " trust you to pay your debts, send them an invitation link: "
+              , config.invitationWidget
+              ]
+  in
+    case explanationWhyNotBettable of
+      Nothing ->
+        viewStakeWidget BettingEnabled config state
+      Just expl ->
         H.div []
-          [ H.text "You must be logged in to bet on this prediction!"
-          ]
-      Globals.Self -> H.text ""
-      Globals.Friends -> viewStakeWidget config state
-      Globals.NoRelation ->
-        H.div []
-          [ H.text "You and "
-          , Utils.renderUser config.prediction.creator
-          , H.text " don't trust each other! If, in real life, you "
-          , Utils.i "do"
-          , H.text " trust each other to pay your debts, send them an invitation! "
-          , config.invitationWidget
-          ]
-      Globals.TrustsCurrentUser ->
-        H.div []
-          [ H.text "You don't trust "
-          , Utils.renderUser config.prediction.creator
-          , H.text " to pay their debts, so you probably don't want to bet on this prediction. If you actually"
-          , Utils.i "do"
-          , H.text " trust them to pay their debts, send them an invitation link: "
-          , config.invitationWidget
-          ]
-      Globals.TrustedByCurrentUser ->
-        H.div []
-          [ Utils.renderUser config.prediction.creator, H.text " hasn't marked you as trusted! If you think that, in real life, they "
-          , Utils.i "do"
-          , H.text " trust you to pay your debts, send them an invitation link: "
-          , config.invitationWidget
+          [ H.div [HA.class "vertical-fadeout"] [viewStakeWidget BettingDisabled config state]
+          , H.div [HA.style "margin" "0 10%"] [expl]
           ]
 
-viewStakeWidget : Config msg -> State -> Html msg
-viewStakeWidget config state =
+type Bettability = BettingEnabled | BettingDisabled
+viewStakeWidget : Bettability -> Config msg -> State -> Html msg
+viewStakeWidget bettability config state =
   let
     certainty = Utils.mustPredictionCertainty config.prediction
 
-    isClosed = Utils.timeToUnixtime config.now > config.prediction.closesUnixtime
-    disableInputs = isClosed || Utils.resolutionIsTerminal (Utils.currentResolution config.prediction)
+    disableInputs = case bettability of
+      BettingEnabled -> False
+      BettingDisabled -> True
     creatorStakeFactorVsBelievers = (1 - certainty.high) / certainty.high
     creatorStakeFactorVsSkeptics = certainty.low / (1 - certainty.low)
     maxBelieverStakeCents = if creatorStakeFactorVsBelievers == 0 then 0 else toFloat config.prediction.remainingStakeCentsVsBelievers / creatorStakeFactorVsBelievers + 0.001 |> floor
@@ -123,7 +136,9 @@ viewStakeWidget config state =
       , H.button
           (case skepticStakeCents of
             Ok stake ->
-              [ HE.onClick (config.stake {state | working=True, notification=H.text ""} {predictionId=config.predictionId, bettorIsASkeptic=True, bettorStakeCents=stake}) ]
+              [ HA.disabled disableInputs
+              , HE.onClick (config.stake {state | working=True, notification=H.text ""} {predictionId=config.predictionId, bettorIsASkeptic=True, bettorStakeCents=stake})
+              ]
             Err _ ->
               [ HA.disabled True ]
           )
@@ -148,7 +163,9 @@ viewStakeWidget config state =
       , H.button
           (case believerStakeCents of
             Ok stake ->
-              [ HE.onClick (config.stake {state | working=True, notification=H.text ""} {predictionId=config.predictionId, bettorIsASkeptic=False, bettorStakeCents=stake}) ]
+              [ HA.disabled disableInputs
+              , HE.onClick (config.stake {state | working=True, notification=H.text ""} {predictionId=config.predictionId, bettorIsASkeptic=False, bettorStakeCents=stake})
+              ]
             Err _ ->
               [ HA.disabled True ]
           )
@@ -195,7 +212,7 @@ viewPredictionState config _ =
     auditLog =
       if List.isEmpty config.prediction.resolutions then H.text "" else
       H.details [HA.style "opacity" "50%"]
-        [ H.summary [] [H.text "Details"]
+        [ H.summary [] [H.text "History"]
         , config.prediction.resolutions
           |> List.map (\event -> H.li []
               [ H.text <| "[" ++ Utils.isoStr config.timeZone (Utils.unixtimeToTime event.unixtime) ++ "] "
@@ -245,7 +262,10 @@ viewPredictionState config _ =
             )
       Pb.ResolutionUnrecognized_ _ ->
         H.span [HA.style "color" "red"]
-          [H.text "Oh dear, something has gone very strange with this prediction. Please email TODO with this URL to report it!"]
+          [ H.text "Oh dear, something has gone very strange with this prediction. Please "
+          , H.a [HA.href "mailto:bugs@biatob.com"] [H.text "email bugs@biatob.com"]
+          , H.text " with this URL to report it!"
+          ]
     , auditLog
     ]
 
