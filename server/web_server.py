@@ -33,6 +33,13 @@ def render_text(text: str, file_format: str = 'png') -> bytes:
     return buf.getvalue()
 
 
+def stupid_file_response(path: Path) -> web.Response:
+    '''For some reason, web.FileResponse sometimes results in a 404 even when the file exists. Dodge that.'''
+    if path.is_file():
+        return web.Response(status=200, body=path.read_bytes())
+    return web.Response(status=404)
+
+
 class WebServer:
     def __init__(self, servicer: Servicer, elm_dist: Path, token_glue: HttpTokenGlue) -> None:
         self._servicer = servicer
@@ -58,19 +65,20 @@ class WebServer:
         filename = req.match_info['filename']
         if (not filename) or filename.startswith('.'):
             raise web.HTTPBadRequest()
-        return web.FileResponse(_HERE/'static'/filename)
+        return stupid_file_response(_HERE/'static'/filename)
 
     async def get_wellknown(self, req: web.Request) -> web.StreamResponse:
         path = Path(req.match_info['path'])
         root = Path('/home/public/.well-known')
         try:
-            return web.FileResponse(root / ((root/path).absolute().relative_to(root)))
+            return stupid_file_response(root / ((root/path).absolute().relative_to(root)))
         except Exception:
             raise web.HTTPBadRequest()
 
     async def get_elm_module(self, req: web.Request) -> web.StreamResponse:
         module = req.match_info['module']
-        return web.FileResponse(_HERE.parent/f'elm/dist/{module}.js')
+        filepath = (_HERE.parent/f'elm/dist/{module}.js').resolve()
+        return stupid_file_response(filepath)
 
     async def get_index(self, req: web.Request) -> web.StreamResponse:
         auth = self._token_glue.parse_cookie(req)
