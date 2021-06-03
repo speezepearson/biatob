@@ -22,10 +22,9 @@ def proto_response(pb_resp: _Resp) -> web.Response:
 
 class ApiServer:
 
-    def __init__(self, token_glue: HttpTokenGlue, servicer: Servicer, clock: Callable[[], float] = time.time) -> None:
+    def __init__(self, token_glue: HttpTokenGlue, servicer: Servicer) -> None:
         self._token_glue = token_glue
         self._servicer = servicer
-        self._clock = clock
 
     async def Whoami(self, http_req: web.Request) -> web.Response:
         return proto_response(self._servicer.Whoami(token=self._token_glue.parse_cookie(http_req), request=await parse_proto(http_req, mvp_pb2.WhoamiRequest)))

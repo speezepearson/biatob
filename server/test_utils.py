@@ -17,7 +17,7 @@ class MockClock:
     self._unixtime = 1000000000
   def now(self) -> datetime.datetime:
     return datetime.datetime.fromtimestamp(self._unixtime)
-  def tick(self, seconds=1) -> None:
+  def tick(self, seconds: float = 1) -> None:
     self._unixtime += seconds
 
 @pytest.fixture

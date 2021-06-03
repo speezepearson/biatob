@@ -16,8 +16,8 @@ from .test_utils import *
 SECRET_KEY = b'secret for testing'
 
 @pytest.fixture
-def api_server(any_servicer, token_mint, clock):
-  return ApiServer(token_glue=HttpTokenGlue(token_mint), servicer=any_servicer, clock=clock.now)
+def api_server(any_servicer: Servicer, token_mint: TokenMint):
+  return ApiServer(token_glue=HttpTokenGlue(token_mint), servicer=any_servicer)
 
 @pytest.fixture
 def app(loop, api_server):

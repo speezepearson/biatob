@@ -47,7 +47,7 @@ parser.add_argument("--email-daily-backups-to", help='send daily backups to this
 parser.add_argument("--email-invariant-violations-to", help='send notifications of invariant violations to this email address')
 parser.add_argument("-v", "--verbose", action="count", default=0)
 
-async def main(args):
+async def main(args: argparse.Namespace):
     logging.basicConfig(level=logging.INFO if args.verbose==0 else logging.DEBUG)
     if args.verbose < 2:
         logging.getLogger('filelock').setLevel(logging.WARN)
@@ -87,7 +87,10 @@ async def main(args):
         lambda now: email_resolution_reminders(conn, emailer, now),
     ))
     if args.email_daily_backups_to is not None:
-        asyncio.get_running_loop().create_task(email_daily_backups_forever(conn=conn, emailer=emailer, recipient_email=args.email_daily_backups_to))
+        asyncio.get_running_loop().create_task(forever(
+            datetime.timedelta(hours=24),
+            lambda now: email_daily_backups(conn=raw_conn, emailer=emailer, recipient_email=args.email_daily_backups_to, now=now)
+        ))
     if args.email_invariant_violations_to is not None:
         asyncio.get_running_loop().create_task(forever(
             datetime.timedelta(hours=1),

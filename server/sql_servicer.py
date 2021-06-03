@@ -11,7 +11,7 @@ from pathlib import Path
 import random
 import secrets
 import time
-from typing import Any, Awaitable, Mapping, Optional, MutableMapping, MutableSequence, NoReturn, Callable, NoReturn, Iterable, Sequence, MutableSequence
+from typing import Any, Awaitable, Iterator, Mapping, Optional, MutableMapping, MutableSequence, NoReturn, Callable, NoReturn, Iterable, Sequence, MutableSequence
 from typing_extensions import TypedDict
 import logging
 import os
@@ -37,7 +37,7 @@ class SqlConn:
     self._conn = conn
 
   @contextlib.contextmanager
-  def transaction(self):
+  def transaction(self) -> Iterator[None]:
     with self._conn.begin():
       yield
 
@@ -1080,17 +1080,18 @@ def _backup_text(conn: sqlalchemy.engine.Connection) -> str:
     default=lambda x: {'__type__': str(type(x)), '__repr__': repr(x)},
   )
 
-async def email_daily_backups_forever(conn: sqlalchemy.engine.Connection, emailer: Emailer, recipient_email: str):
-  while True:
-    now = datetime.datetime.now()
-    next_day = datetime.datetime.fromtimestamp(86400 * (1 + now.timestamp()//86400))
-    await asyncio.sleep((next_day - now).total_seconds())
-    logger.info('emailing backups')
-    await emailer.send_backup(
-      to=recipient_email,
-      now=next_day,
-      body=_backup_text(conn),
-    )
+async def email_daily_backups(
+  conn: sqlalchemy.engine.Connection,
+  emailer: Emailer,
+  recipient_email: str,
+  now: datetime.datetime,
+):
+  logger.info('emailing backups')
+  await emailer.send_backup(
+    to=recipient_email,
+    now=now,
+    body=_backup_text(conn),
+  )
 
 
 async def forever(
