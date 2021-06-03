@@ -99,12 +99,12 @@ view model =
           model.predictionWidget
     , if not (Globals.isLoggedIn model.globals) then
         H.div []
-        [ H.hr [] []
+        [ H.hr [HA.style "margin" "2em 0"] []
         , viewWhatIsThis prediction
         ]
       else if Globals.isSelf model.globals prediction.creator then
         H.div []
-        [ H.hr [] []
+        [ H.hr [HA.style "margin" "2em 0"] []
         , H.text "If you want to link to your prediction, here are some snippets of HTML you could copy-paste:"
         , viewEmbedInfo model
         , H.text "If there are people you want to participate, but you haven't already established trust with them in Biatob, send them invitations: "
@@ -168,8 +168,7 @@ viewEmbedInfo model =
 viewWhatIsThis : Pb.UserPredictionView -> Html msg
 viewWhatIsThis prediction =
   H.div []
-  [ H.hr [HA.style "margin" "4em 0"] []
-  , H.h3 [] [H.text "Huh? What is this?"]
+  [ H.h3 [] [H.text "Huh? What is this?"]
   , H.p []
       [ H.text "This site is a tool that helps people make friendly wagers, thereby clarifying and concretizing their beliefs and making the world a better, saner place."
       ]
