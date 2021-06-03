@@ -100,7 +100,7 @@ view model =
     , if not (Globals.isLoggedIn model.globals) then
         H.div []
         [ H.hr [HA.style "margin" "2em 0"] []
-        , viewWhatIsThis prediction
+        , viewWhatIsThis model.predictionId prediction
         ]
       else if Globals.isSelf model.globals prediction.creator then
         H.div []
@@ -165,8 +165,8 @@ viewEmbedInfo model =
         ]
       ]
 
-viewWhatIsThis : Pb.UserPredictionView -> Html msg
-viewWhatIsThis prediction =
+viewWhatIsThis : PredictionId -> Pb.UserPredictionView -> Html msg
+viewWhatIsThis predictionId prediction =
   H.div []
   [ H.h3 [] [H.text "Huh? What is this?"]
   , H.p []
@@ -179,8 +179,9 @@ viewWhatIsThis prediction =
       ]
   , H.p []
       [ H.text "If you know and trust ", Utils.renderUser prediction.creator
-      , H.text <| ", and they know and trust you, and you want to bet against them on this prediction,"
-          ++ " then message them however you normally do, and ask them for an invitation to this market!"
+      , H.text <| ", and they know and trust you, and you want to bet against them on this prediction, then "
+      , H.a [HA.href <| "/login?dest=" ++ Utils.pathToPrediction predictionId] [H.text "log in"]
+      , H.text ", create an invitation, and send it to them over email/text/whatever! Once they accept it, I'll know you trust each other, and I'll let you bet against each other."
       ]
   , H.hr [] []
   , H.h3 [] [H.text "But... why would you do this?"]

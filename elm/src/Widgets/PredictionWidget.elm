@@ -75,15 +75,19 @@ viewStakeWidgetOrExcuse config state =
               , Utils.i "do"
               , H.text " trust each other to pay your debts, send them an invitation! "
               , config.invitationWidget
+              , H.br [] []
+              , H.text "Once they accept it, I'll know you trust each other, and I'll let you bet against each other."
               ]
           Globals.TrustsCurrentUser ->
             Just <| H.div []
               [ H.text "You don't trust "
               , Utils.renderUser config.prediction.creator
-              , H.text " to pay their debts, so you probably don't want to bet on this prediction. If you actually"
+              , H.text " to pay their debts, so you probably don't want to bet on this prediction. If you actually "
               , Utils.i "do"
               , H.text " trust them to pay their debts, send them an invitation link: "
               , config.invitationWidget
+              , H.br [] []
+              , H.text "Once they accept it, I'll know you trust each other, and I'll let you bet against each other."
               ]
           Globals.TrustedByCurrentUser ->
             Just <| H.div []
@@ -91,6 +95,8 @@ viewStakeWidgetOrExcuse config state =
               , Utils.i "do"
               , H.text " trust you to pay your debts, send them an invitation link: "
               , config.invitationWidget
+              , H.br [] []
+              , H.text "Once they accept it, I'll know you trust each other, and I'll let you bet against each other."
               ]
   in
     case explanationWhyNotBettable of
