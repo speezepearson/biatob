@@ -20,7 +20,7 @@
       timeZoneOffsetMinutes: new Date().getTimezoneOffset(),
       httpOrigin: window.origin,
       initUnixtime: +(new Date()) / 1000,
-      timeZoneOffsetMinutes: new Date().getTimezoneOffset(),
+      timeZoneOffsetMinutes: -(new Date().getTimezoneOffset()), // JS/Elm appear to disagree on the sign of this
     };
     console.log('global flags', window.elmGlobalFlags);
 
