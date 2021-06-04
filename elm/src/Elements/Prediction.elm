@@ -166,8 +166,8 @@ viewEmbedInfo model =
 
 viewWhatIsThis : PredictionId -> Pb.UserPredictionView -> Html msg
 viewWhatIsThis predictionId prediction =
-  H.div []
-  [ H.h3 [] [H.text "Huh? What is this?"]
+  H.details []
+  [ H.summary [] [Utils.b "Huh? What is this?"]
   , H.p []
       [ H.text "This site is a tool that helps people make friendly wagers, thereby clarifying and concretizing their beliefs and making the world a better, saner place."
       ]
