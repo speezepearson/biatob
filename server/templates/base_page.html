@@ -127,12 +127,23 @@
       padding: 0.5ex 1ex;
     }
 
-    .prediction-list-table {
-      width: 100%;
+    table {
       border-collapse: collapse;
     }
+    th, td {
+      padding: 0 0.3em;
+      text-align: center;
+      border: 1px solid lightgray;
+    }
+
+    .all-trades-details-table, .winnings-by-bettor-table, .prediction-summary-table {
+      margin: 1em auto;
+    }
+
+    .prediction-list-table {
+      width: 100%;
+    }
     .prediction-list-table th, .prediction-list-table td {
-      border: 1px solid gray;
       padding: 0 0.3em;
       text-align: center;
     }
