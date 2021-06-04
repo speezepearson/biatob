@@ -1156,9 +1156,14 @@ global___VerifyEmailResponse = VerifyEmailResponse
 
 class GetSettingsRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor = ...
+    INCLUDE_RELATIONSHIPS_WITH_USERS_FIELD_NUMBER: builtins.int
+    include_relationships_with_users: google.protobuf.internal.containers.RepeatedScalarFieldContainer[typing.Text] = ...
 
     def __init__(self,
+        *,
+        include_relationships_with_users : typing.Optional[typing.Iterable[typing.Text]] = ...,
         ) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal[u"include_relationships_with_users",b"include_relationships_with_users"]) -> None: ...
 global___GetSettingsRequest = GetSettingsRequest
 
 class GetSettingsResponse(google.protobuf.message.Message):

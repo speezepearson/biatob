@@ -11,7 +11,7 @@ import jinja2
 from PIL import Image, ImageDraw, ImageFont  # type: ignore
 import structlog
 
-from .core import Servicer
+from .core import Servicer, Username
 from .http_glue import HttpTokenGlue
 from .protobuf import mvp_pb2
 
@@ -52,10 +52,10 @@ class WebServer:
         )
         self._jinja.undefined = jinja2.StrictUndefined  # raise exception if a template uses an undefined variable; adapted from https://stackoverflow.com/a/39127941/8877656
 
-    def _get_auth_success(self, auth: Optional[mvp_pb2.AuthToken]) -> Optional[mvp_pb2.AuthSuccess]:
+    def _get_auth_success(self, auth: Optional[mvp_pb2.AuthToken], req: mvp_pb2.GetSettingsRequest = mvp_pb2.GetSettingsRequest()) -> Optional[mvp_pb2.AuthSuccess]:
         if auth is None:
             return None
-        get_settings_response = self._servicer.GetSettings(auth, mvp_pb2.GetSettingsRequest())
+        get_settings_response = self._servicer.GetSettings(auth, req)
         if get_settings_response.WhichOneof('get_settings_result') != 'ok':
             logger.error('failed to get settings for valid-looking user', data_loss=True, auth=auth, get_settings_response=get_settings_response)
             return None
@@ -107,19 +107,20 @@ class WebServer:
 
     async def get_view_prediction_page(self, req: web.Request) -> web.Response:
         auth = self._token_glue.parse_cookie(req)
-        auth_success = self._get_auth_success(auth)
         prediction_id = str(req.match_info['prediction_id'])
         get_prediction_resp = self._servicer.GetPrediction(auth, mvp_pb2.GetPredictionRequest(prediction_id=prediction_id))
         if get_prediction_resp.WhichOneof('get_prediction_result') == 'error':
             return web.Response(status=404, body=str(get_prediction_resp.error))
 
         assert get_prediction_resp.WhichOneof('get_prediction_result') == 'prediction'
+        prediction = get_prediction_resp.prediction
+        auth_success = self._get_auth_success(auth, mvp_pb2.GetSettingsRequest(include_relationships_with_users=[prediction.creator]))
         return web.Response(
             content_type='text/html',
             body=self._jinja.get_template('ViewPredictionPage.html').render(
-                title=f'Biatob - Prediction: by {datetime.datetime.fromtimestamp(get_prediction_resp.prediction.resolves_at_unixtime).strftime("%Y-%m-%d")}, {get_prediction_resp.prediction.prediction}',
+                title=f'Biatob - Prediction: by {datetime.datetime.fromtimestamp(prediction.resolves_at_unixtime).strftime("%Y-%m-%d")}, {prediction.prediction}',
                 auth_success_pb_b64=pb_b64(auth_success),
-                predictions_pb_b64=pb_b64(mvp_pb2.PredictionsById(predictions={prediction_id: get_prediction_resp.prediction})),
+                predictions_pb_b64=pb_b64(mvp_pb2.PredictionsById(predictions={prediction_id: prediction})),
                 prediction_id=prediction_id,
             ))
 
@@ -158,8 +159,8 @@ class WebServer:
 
     async def get_username(self, req: web.Request) -> web.Response:
         auth = self._token_glue.parse_cookie(req)
-        auth_success = self._get_auth_success(auth)
-        username = req.match_info['username']
+        username = Username(str(req.match_info['username']))
+        auth_success = self._get_auth_success(auth, req=mvp_pb2.GetSettingsRequest(include_relationships_with_users=[username]))
         relationship = None if (auth_success is None) else auth_success.user_info.relationships.get(username)
         if (relationship is not None) and relationship.trusts_you:
             list_predictions_resp = self._servicer.ListPredictions(auth, mvp_pb2.ListPredictionsRequest(creator=username))

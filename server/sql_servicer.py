@@ -413,7 +413,7 @@ class SqlConn:
 
     return result
 
-  def get_settings(self, user: Username) -> Optional[mvp_pb2.GenericUserInfo]:
+  def get_settings(self, user: Username, include_relationships_with_users: Iterable[Username] = ()) -> Optional[mvp_pb2.GenericUserInfo]:
     row = self._conn.execute(
       sqlalchemy.select(schema.users.c)
       .where(schema.users.c.username == user)
@@ -424,10 +424,12 @@ class SqlConn:
       sqlalchemy.select(schema.relationships.c)
       .where(schema.relationships.c.subject_username == user)
     ).fetchall()
+    include_relationships_with_users = set(include_relationships_with_users) | {row['object_username'] for row in outgoing_relationships}
+    outgoing_relationships_by_name = {row['object_username']: row for row in outgoing_relationships}
     trusting_users = {row['subject_username'] for row in self._conn.execute(
       sqlalchemy.select(schema.relationships.c)
       .where(sqlalchemy.and_(
-        schema.relationships.c.subject_username.in_({row['object_username'] for row in outgoing_relationships}),
+        schema.relationships.c.subject_username.in_(include_relationships_with_users),
         schema.relationships.c.object_username == user,
         schema.relationships.c.trusted,
       ))
@@ -437,11 +439,11 @@ class SqlConn:
       email_resolution_notifications=row['email_resolution_notifications'],
       email=mvp_pb2.EmailFlowState.FromString(row['email_flow_state']),
       relationships={
-        row['object_username']: mvp_pb2.Relationship(
-          trusted_by_you=row['trusted'],
-          trusts_you=row['object_username'] in trusting_users,
+        who: mvp_pb2.Relationship(
+          trusted_by_you=outgoing_relationships_by_name[who]['trusted'] if who in outgoing_relationships_by_name else False,
+          trusts_you=who in trusting_users,
         )
-        for row in outgoing_relationships
+        for who in include_relationships_with_users
       },
       invitations={
         row['nonce']: mvp_pb2.Invitation(
@@ -961,7 +963,7 @@ class SqlServicer(Servicer):
         logger.info('not logged in')
         return mvp_pb2.GetSettingsResponse(error=mvp_pb2.GetSettingsResponse.Error(catchall='must log in to see your settings'))
 
-      info = self._conn.get_settings(token_owner(token))
+      info = self._conn.get_settings(token_owner(token), include_relationships_with_users=[Username(u) for u in request.include_relationships_with_users])
       if info is None:
         raise ForgottenTokenError(token)
       return mvp_pb2.GetSettingsResponse(ok=info)

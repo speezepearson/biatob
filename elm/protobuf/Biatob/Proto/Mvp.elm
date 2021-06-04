@@ -660,7 +660,8 @@ type alias VerifyEmailResponseError =
 {-| `GetSettingsRequest` message
 -}
 type alias GetSettingsRequest =
-    {}
+    { includeRelationshipsWithUsers : List String
+    }
 
 
 {-| GetSettingsResult
@@ -1505,8 +1506,9 @@ verifyEmailResponseErrorDecoder =
 -}
 getSettingsRequestDecoder : Decode.Decoder GetSettingsRequest
 getSettingsRequestDecoder =
-    Decode.message GetSettingsRequest
-        []
+    Decode.message (GetSettingsRequest [])
+        [ Decode.repeated 1 Decode.string .includeRelationshipsWithUsers setIncludeRelationshipsWithUsers
+        ]
 
 
 {-| `GetSettingsResponse` decoder
@@ -2445,7 +2447,8 @@ toVerifyEmailResponseErrorEncoder model =
 toGetSettingsRequestEncoder : GetSettingsRequest -> Encode.Encoder
 toGetSettingsRequestEncoder model =
     Encode.message
-        []
+        [ ( 1, Encode.list Encode.string model.includeRelationshipsWithUsers )
+        ]
 
 
 toGetSettingsResultEncoder : GetSettingsResult -> ( Int, Encode.Encoder )
@@ -3052,6 +3055,11 @@ setSetEmailResult value model =
 setVerifyEmailResult : a -> { b | verifyEmailResult : a } -> { b | verifyEmailResult : a }
 setVerifyEmailResult value model =
     { model | verifyEmailResult = value }
+
+
+setIncludeRelationshipsWithUsers : a -> { b | includeRelationshipsWithUsers : a } -> { b | includeRelationshipsWithUsers : a }
+setIncludeRelationshipsWithUsers value model =
+    { model | includeRelationshipsWithUsers = value }
 
 
 setGetSettingsResult : a -> { b | getSettingsResult : a } -> { b | getSettingsResult : a }

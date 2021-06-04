@@ -135,6 +135,14 @@ class TestSettings:
       conn.set_trusted(BOB, ALICE, b_trusts_a)
     assert must(conn.get_settings(ALICE)).relationships == {}
 
+  @pytest.mark.parametrize('b_trusts_a', [True, False, None])
+  def test_get_settings_includes_unacknowledged_users_if_explicitly_requested(self, conn: SqlConn, b_trusts_a: Optional[bool]):
+    conn.register_username(ALICE, 'password', password_id='alicepwid')
+    conn.register_username(BOB, 'password', password_id='bobpwid')
+    if b_trusts_a is not None:
+      conn.set_trusted(BOB, ALICE, b_trusts_a)
+    assert must(conn.get_settings(ALICE, include_relationships_with_users=[BOB])).relationships == {BOB: mvp_pb2.Relationship(trusts_you=b_trusts_a or False)}
+
   def test_get_settings_includes_open_invitations(self, conn: SqlConn):
     conn.register_username(ALICE, 'password', password_id='alicepwid')
     conn.create_invitation('nonce', ALICE, T0, 'notes')

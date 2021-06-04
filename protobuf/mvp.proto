@@ -332,6 +332,7 @@ message VerifyEmailResponse {
 }
 
 message GetSettingsRequest {
+  repeated string include_relationships_with_users = 1;
 }
 message GetSettingsResponse {
   oneof get_settings_result {
