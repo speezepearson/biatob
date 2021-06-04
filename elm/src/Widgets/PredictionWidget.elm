@@ -450,7 +450,7 @@ view config state =
     , H.table [HA.class "prediction-summary-table"]
       [ H.tr []
         [ H.td [] [Utils.b "Prediction by:"]
-        , H.td [] [H.text <| config.prediction.creator]
+        , H.td [] [Utils.renderUser config.prediction.creator]
         ]
       , H.tr []
         [ H.td [] [Utils.b "Confidence:"]
