@@ -67,7 +67,7 @@ init flags =
 view : Model -> Browser.Document Msg
 view model =
   let prediction = Utils.must "must have loaded prediction being viewed" <| Dict.get model.predictionId model.globals.serverState.predictions in
-  { title = "My stakes"
+  { title = "Prediction: by " ++ Utils.dateStr model.globals.timeZone (Utils.unixtimeToTime prediction.resolvesAtUnixtime) ++ ", " ++ prediction.prediction
   , body =
     [ Navbar.view
         { setState = SetAuthWidget
@@ -80,8 +80,7 @@ view model =
         }
         model.navbarAuth
     , H.main_ []
-      [ H.h2 [] [H.text "My Stakes"]
-      , PredictionWidget.view
+      [ PredictionWidget.view
           { setState = SetPredictionWidget
           , copy = Copy
           , stake = Stake
