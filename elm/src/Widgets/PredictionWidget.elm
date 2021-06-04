@@ -377,7 +377,7 @@ view : Config msg -> State -> Html msg
 view config state =
   H.div []
     [ H.h2 [] [
-        let text = H.text <| "Prediction: by " ++ (String.left 10 <| Iso8601.fromTime <| Utils.unixtimeToTime config.prediction.resolvesAtUnixtime) ++ ", " ++ config.prediction.prediction in
+        let text = H.text <| "Prediction: by " ++ (Utils.dateStr config.timeZone <| Utils.unixtimeToTime config.prediction.resolvesAtUnixtime) ++ ", " ++ config.prediction.prediction in
         if config.linkTitle then
           H.a [HA.href <| Utils.pathToPrediction config.predictionId] [text]
         else
