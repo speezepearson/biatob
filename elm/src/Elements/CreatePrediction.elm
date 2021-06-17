@@ -99,7 +99,7 @@ parsePrediction model =
 
 parseResolvesAt : Time.Posix -> Model -> Result String Time.Posix
 parseResolvesAt now model =
-    case Iso8601.toTime (Debug.log "raw field" model.resolvesAtField) |> Debug.log "parsed" of
+    case Iso8601.toTime model.resolvesAtField of
       Err _ -> Err ""
       Ok t -> if Utils.timeToUnixtime t < Utils.timeToUnixtime now then Err "must be in the future" else Ok t
 
@@ -456,13 +456,11 @@ viewForm model =
                       betVsSkeptics : Maybe String
                       betVsSkeptics =
                         parseLowProbability model
-                        |> Debug.log "low p is"
                         |> Result.toMaybe
                         |> Maybe.andThen (\lowP -> if lowP == 0 then Nothing else Just <| Utils.formatCents stakeCents ++ " against " ++ Utils.formatCents (round <| toFloat stakeCents * (1-lowP)/lowP))
                       betVsBelievers : Maybe String
                       betVsBelievers =
                         parseHighProbability model
-                        |> Debug.log "high prob is"
                         |> Result.toMaybe
                         |> Maybe.andThen (\highP -> if highP == 1 then Nothing else Just <| Utils.formatCents stakeCents ++ " against " ++ Utils.formatCents (round <| toFloat stakeCents * highP/(1-highP)))
                     in
