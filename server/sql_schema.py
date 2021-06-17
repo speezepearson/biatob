@@ -10,6 +10,7 @@ users = Table(
   Column('username', String(64), primary_key=True, nullable=False),
   Column('email_reminders_to_resolve', BOOLEAN(), nullable=False, default=False),
   Column('email_resolution_notifications', BOOLEAN(), nullable=False, default=False),
+  Column('allow_email_invitations', BOOLEAN(), nullable=False, default=False),
   Column('login_password_id', ForeignKey('passwords.password_id'), nullable=False),  # will be nullable someday, if we add OAuth or something
   Column('email_flow_state', BINARY(), nullable=False),
 )
@@ -113,6 +114,18 @@ invitation_acceptances = Table(
   Column('accepted_by', ForeignKey('users.username'), nullable=False),
 )
 
+migrations = Table(
+  'migrations',
+  metadata,
+  Column('id', Integer(), primary_key=True, nullable=False),
+  Column('stmt', String(4096), nullable=False),
+)
+
+_MIGRATION_STMTS = [
+  'ALTER TABLE users ADD COLUMN allow_email_invitations BOOLEAN NOT NULL DEFAULT 0'
+]
+_N_MIGRATIONS = len(_MIGRATION_STMTS)
+
 
 # Adapted from https://docs.sqlalchemy.org/en/14/dialects/sqlite.html#foreign-key-support
 def set_sqlite_pragma(dbapi_connection, connection_record):
@@ -124,5 +137,29 @@ def set_sqlite_pragma(dbapi_connection, connection_record):
 def create_sqlite_engine(database: str) -> sqlalchemy.engine.Engine:
   engine = sqlalchemy.create_engine(f'sqlite+pysqlite:///{database}')
   event.listen(engine, "connect", set_sqlite_pragma)
-  metadata.create_all(engine)
+
+  if sqlalchemy.inspect(engine).has_table('migrations'):
+    with engine.connect() as conn:
+      existing_migration_rows = list(conn.execute(sqlalchemy.select(migrations.c).order_by(migrations.c.id.asc())).fetchall())
+      if len(existing_migration_rows) > _N_MIGRATIONS:
+        raise RuntimeError(f'I only know about {_N_MIGRATIONS} migrations, but the DB has records of {len(existing_migration_rows)}; I have no idea what\'s going on')
+
+      for id, migration_stmt in enumerate(_MIGRATION_STMTS):
+        if id < len(existing_migration_rows):
+          row = existing_migration_rows[id]
+          if id != row['id']:
+            raise RuntimeError(f'migration {id} (0-indexed) should have id {id}, but has id {row["id"]}')
+          if row['stmt'] != migration_stmt:
+            raise RuntimeError(f'migration with id {id} should have had statement {migration_stmt!r}, but DB records it as {row["stmt"]!r} instead; I have no idea what\'s going on')
+        else:
+          with conn.begin():
+            conn.execute(sqlalchemy.text(migration_stmt))
+            conn.execute(sqlalchemy.insert(migrations).values(id=id, stmt=migration_stmt))
+  else:
+    metadata.create_all(engine)
+    with engine.connect() as conn:
+      for id, migration_stmt in enumerate(_MIGRATION_STMTS):
+        # all migrations have already been applied in the sqlalchemy defns
+        conn.execute(sqlalchemy.insert(migrations).values(id=id, stmt=migration_stmt))
+
   return engine
