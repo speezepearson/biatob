@@ -65,14 +65,14 @@ def describe_CreatePredictionRequest_problems(request: mvp_pb2.CreatePredictionR
         problems.append('must have a prediction field')
     if not request.certainty:
         problems.append('must have a certainty')
-    if not (request.certainty.low <= request.certainty.high):
-        problems.append('certainty must have low <= high')
+    if not (0 < request.certainty.low <= request.certainty.high <= 1):
+        problems.append('must have 0 < lowProb <= highProb <= 1')
     if not (request.maximum_stake_cents <= MAX_LEGAL_STAKE_CENTS):
         problems.append(f'stake must not exceed ${MAX_LEGAL_STAKE_CENTS//100}')
     if not (request.open_seconds > 0):
         problems.append(f'prediction must be open for a positive number of seconds')
-    if not (request.resolves_at_unixtime > now):
-        problems.append(f'prediction must resolve in the future')
+    if not (request.resolves_at_unixtime > now + request.open_seconds):
+        problems.append(f'prediction must resolve after betting closes')
     return '; '.join(problems) if problems else None
 
 def describe_SetEmailRequest_problems(request: mvp_pb2.SetEmailRequest) -> Optional[str]:

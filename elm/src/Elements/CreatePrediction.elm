@@ -122,6 +122,10 @@ parseLowProbability model =
         in
           if lowP < 0 || lowP > 1 then
             Err "must be a number 0-100"
+          else if lowP == 0 then
+            Err "must be positive (else your \"prediction\" is bland and meaningless)"
+          else if lowP == 1 then
+            Err "assigning something a probability of \"at least 100%\" is insanely overconfident! Please, settle for 99.999%!"
           else
             Ok lowP
 
@@ -136,8 +140,7 @@ parseHighProbability model =
         in
           if highP > 1 then
             Err "must be a number 0-100"
-          else
-          if highP < minAllowed - epsilon then
+          else if highP < minAllowed - epsilon then
             Err "can't be less than your low prob"
           else if highP < minAllowed then
             Ok minAllowed
@@ -338,6 +341,7 @@ viewForm model =
                 , HE.onInput SetLowPField
                 , HA.value model.lowPField
                 ] []
+              |> Utils.appendValidationError (Utils.resultToErr (parseLowProbability model))
             , H.text "% chance of happening (i.e. about "
             , let
                 (num, denom) = case parseLowProbability model of
@@ -357,11 +361,7 @@ viewForm model =
                   , HE.onInput SetHighPField
                   , HA.value model.highPField
                   ] []
-                |> Utils.appendValidationError (case parseLowProbability model of
-                    Err _ -> Nothing
-                    Ok lowP -> case parseHighProbability model of
-                      Ok highP -> if highP < lowP then Just "can't be less than your low prob" else Nothing
-                      Err e -> Just e)
+                |> Utils.appendValidationError (Utils.resultToErr (parseHighProbability model))
               , H.text "% chance."
             , H.details []
                 [ H.summary [HA.style "text-align" "right"] [H.text "Confusing?"]
@@ -374,7 +374,7 @@ viewForm model =
                     , H.text ", and I'm pretty sure that they're being too hasty to dismiss this."
                     , case parseHighProbability model of
                         Ok highP ->
-                          if highP > 0.9999 then H.text "" else
+                          if highP == 1 then H.text "" else
                           H.span []
                           [ H.text " And other friends assign this a probability higher than "
                           , Utils.b <| model.highPField ++ "%"
@@ -388,7 +388,7 @@ viewForm model =
                     , Utils.b <| model.lowPField ++ "%"
                     , case parseHighProbability model of
                         Ok highP ->
-                          if highP > 0.9999 then H.text "" else
+                          if highP == 1 then H.text "" else
                           H.span []
                           [ H.text " and "
                           , Utils.b <| model.highPField ++ "%"
@@ -424,18 +424,6 @@ viewForm model =
                     ]
                 ]
               ]
-            , case parseLowProbability model of
-                Ok lowP ->
-                  if lowP == 0 then
-                    H.div [HA.style "opacity" "50%"]
-                      [ H.text "A low probability of 0 means you're actually only willing to bet "
-                      , i "against"
-                      , H.text <| " your prediction, which might be confusing to your friends."
-                        ++ " Consider negating your prediction (\"there will be at least 40k gun deaths\" -> \"there will be fewer than 40k gun deaths\") to make things clearer."
-                      ]
-                  else
-                    H.text ""
-                _ -> H.text ""
             ]
         , H.li []
             [ H.text "I'm willing to bet up to $"

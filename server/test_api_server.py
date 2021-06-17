@@ -55,7 +55,7 @@ async def test_CreatePrediction_and_GetPrediction(aiohttp_client, app, clock):
     prediction="Is 1 > 2?",
     certainty=mvp_pb2.CertaintyRange(low=0.90, high=1.00),
     maximum_stake_cents=100_00,
-    open_seconds=60*60*24*7,
+    open_seconds=60*60,
     resolves_at_unixtime=int(clock.now().timestamp() + 86400),
     special_rules="special rules string",
   )
@@ -97,7 +97,7 @@ async def test_CreatePrediction_enforces_future_resolution(aiohttp_client, app, 
   assert register_resp.WhichOneof('register_username_result') == 'ok', register_resp
 
   (http_resp, create_pb_resp) = await post_proto(cli, '/api/CreatePrediction', create_pb_req, mvp_pb2.CreatePredictionResponse)
-  assert 'must resolve in the future' in str(create_pb_resp.error), create_pb_resp
+  assert 'must resolve after betting closes' in str(create_pb_resp.error), create_pb_resp
 
 
 

@@ -58,8 +58,6 @@ isBettorASkeptic config state =
   let certainty = config.prediction |> Utils.mustPredictionCertainty in
   if certainty.high == 1.0 then
     True
-  else if certainty.low == 0.0 then
-    False
   else
     case state.bettorSkepticismField of
       Skeptic -> True
@@ -70,8 +68,6 @@ viewWillWontDropdown config state =
   let certainty = config.prediction |> Utils.mustPredictionCertainty in
   if certainty.high == 1.0 then
     H.text "won't"
-  else if certainty.low == 0.0 then
-    H.text "will"
   else
     H.select
       [ HE.onInput (\s -> config.setState { state | bettorSkepticismField = case s of
