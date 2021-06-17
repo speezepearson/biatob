@@ -342,14 +342,16 @@ viewForm model =
                 , HA.value model.lowPField
                 ] []
               |> Utils.appendValidationError (Utils.resultToErr (parseLowProbability model))
-            , H.text "% chance of happening (i.e. about "
-            , let
-                (num, denom) = case parseLowProbability model of
-                  Err _ -> ("???", "???")
-                  Ok lowP -> let (n,d) = rationalApprox {x=lowP, tolerance=0.1 * min lowP (1-lowP)} in (String.fromInt n, String.fromInt d)
-              in
-                H.text <| num ++ " out of " ++ denom
-            , H.text ")."
+            , H.text "% chance of happening"
+            , H.text <| case parseLowProbability model of
+                Err _ -> " (i.e. about ??? out of ???)"
+                Ok lowP ->
+                  if lowP < 0.01 || lowP > 0.99 then
+                    "" -- telling the user that 99.8 is "about 454 out of 455" is not helpful
+                  else
+                    let (n,d) = rationalApprox {x=lowP, tolerance=0.1 * min lowP (1-lowP)} in
+                    " (i.e. about " ++ String.fromInt n ++ " out of " ++ String.fromInt d ++ ")"
+            , H.text "."
             , H.br [] []
             , H.details []
               [ H.summary [HA.style "text-align" "right"] [H.text "Set upper bound too?"]
