@@ -86,57 +86,49 @@ viewWillWontDropdown config state =
 
 viewStakeWidgetOrExcuse : Config msg -> State -> Html msg
 viewStakeWidgetOrExcuse config state =
-  let
-    explanationWhyNotBettable =
-      if Utils.resolutionIsTerminal (Utils.currentResolution config.prediction) then
-        Just <| H.text "This prediction has resolved, so cannot be bet in."
-      else if config.prediction.closesUnixtime < Utils.timeToUnixtime config.now then
-        Just <| H.text <| "This prediction closed on " ++ Utils.dateStr config.timeZone (Utils.predictionClosesTime config.prediction) ++ "."
-      else
-        case config.creatorRelationship of
-          Globals.LoggedOut ->
-            Just <| H.span []
-              [ H.text "You'll need to "
-              , H.a [HA.href <| "/login?dest=" ++ Utils.pathToPrediction config.predictionId] [H.text "log in"]
-              , H.text " if you want to bet on this prediction!"
-              ]
-          Globals.Self ->
-            Just <| H.text "(You can't bet on your own predictions.)"
-          Globals.Friends ->
-            Nothing
-          Globals.NoRelation ->
-            Just <| H.span []
-              [ H.text "You can't bet on this prediction yet, because you and "
-              , Utils.renderUser config.prediction.creator
-              , H.text " haven't told me that you trust each other to pay up if you lose! If, in real life, you "
-              , Utils.i "do"
-              , H.text " trust each other to pay your debts, send them an invitation! "
-              , config.invitationWidget
-              ]
-          Globals.TrustsCurrentUser ->
-            Just <| H.span []
-              [ H.text "You don't trust "
-              , Utils.renderUser config.prediction.creator
-              , H.text " to pay their debts, so you probably don't want to bet on this prediction. If you actually "
-              , Utils.i "do"
-              , H.text " trust them to pay their debts, send them an invitation link: "
-              , config.invitationWidget
-              ]
-          Globals.TrustedByCurrentUser ->
-            Just <| H.span []
-              [ Utils.renderUser config.prediction.creator, H.text " hasn't told me that they trust you! If you think that, in real life, they "
-              , Utils.i "do"
-              , H.text " trust you to pay your debts, send them an invitation link: "
-              , config.invitationWidget
-              , H.br [] []
-              , H.text "Once they accept it, I'll know you trust each other, and I'll let you bet against each other."
-              ]
-  in
-    case explanationWhyNotBettable of
-      Nothing ->
+  if Utils.resolutionIsTerminal (Utils.currentResolution config.prediction) then
+    H.text "This prediction has resolved, so cannot be bet in."
+  else if config.prediction.closesUnixtime < Utils.timeToUnixtime config.now then
+    H.text <| "This prediction closed on " ++ Utils.dateStr config.timeZone (Utils.predictionClosesTime config.prediction) ++ "."
+  else
+    case config.creatorRelationship of
+      Globals.LoggedOut ->
+        H.span []
+          [ H.text "You'll need to "
+          , H.a [HA.href <| "/login?dest=" ++ Utils.pathToPrediction config.predictionId] [H.text "log in"]
+          , H.text " if you want to bet on this prediction!"
+          ]
+      Globals.Self ->
+        H.text "(You can't bet on your own predictions.)"
+      Globals.Friends ->
         viewStakeWidget BettingEnabled config state
-      Just expl ->
-        expl
+      Globals.NoRelation ->
+        H.span []
+          [ H.text "You can't bet on this prediction yet, because you and "
+          , Utils.renderUser config.prediction.creator
+          , H.text " haven't told me that you trust each other to pay up if you lose! If, in real life, you "
+          , Utils.i "do"
+          , H.text " trust each other to pay your debts, send them an invitation! "
+          , config.invitationWidget
+          ]
+      Globals.TrustsCurrentUser ->
+        H.span []
+          [ H.text "You don't trust "
+          , Utils.renderUser config.prediction.creator
+          , H.text " to pay their debts, so you probably don't want to bet on this prediction. If you actually "
+          , Utils.i "do"
+          , H.text " trust them to pay their debts, send them an invitation link: "
+          , config.invitationWidget
+          ]
+      Globals.TrustedByCurrentUser ->
+        H.span []
+          [ Utils.renderUser config.prediction.creator, H.text " hasn't told me that they trust you! If you think that, in real life, they "
+          , Utils.i "do"
+          , H.text " trust you to pay your debts, send them an invitation link: "
+          , config.invitationWidget
+          , H.br [] []
+          , H.text "Once they accept it, I'll know you trust each other, and I'll let you bet against each other."
+          ]
 
 type Bettability = BettingEnabled | BettingDisabled
 viewStakeWidget : Bettability -> Config msg -> State -> Html msg
