@@ -565,15 +565,17 @@ view model =
           ]
     , viewForm model
     , let
-        hasEmail = case model.globals.serverState.settings |> Maybe.andThen .email |> Maybe.andThen .emailFlowStateKind of
-          Just (Pb.EmailFlowStateKindVerified _) -> True
-          _ -> False
+        allowsEmailInvitation = case model.globals.serverState.settings of
+          Just settings -> settings.allowEmailInvitations && (case settings.email |> Maybe.andThen .emailFlowStateKind of
+            Just (Pb.EmailFlowStateKindVerified _) -> True
+            _ -> False)
+          Nothing -> False
       in
-      if hasEmail || not (Globals.isLoggedIn model.globals) then
+      if allowsEmailInvitation || not (Globals.isLoggedIn model.globals) then
         H.text ""
       else
         H.div [HA.class "pre-creation-plea-for-email"]
-        [ H.text "Hey! It'll be annoying and awkward for new people to bet against you unless you register an email address so I can ask you if you trust them. I won't force you to, but I strongly recommend it!"
+        [ H.text "Hey! It'll be annoying and awkward for new people to bet against you unless I can ask you if you trust them. This requires emailing you. I won't force you to sign up for this, but I strongly recommend it!"
         , H.details []
           [ H.ul []
             [ H.li [] [H.text "Since bets are all honor-system, people can only bet against each other if they trust each other to pay up."]
