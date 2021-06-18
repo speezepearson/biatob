@@ -208,8 +208,8 @@ class WebServer:
             body=self._jinja.get_template('AcceptInvitationPage.html').render(
                 auth_success_pb_b64=pb_b64(auth_success),
                 recipient=check_invitation_resp.ok.recipient,
-                inviter_username=check_invitation_resp.ok.inviter,
-                recipient_username=check_invitation_resp.ok.recipient,
+                inviter=check_invitation_resp.ok.inviter,
+                nonce=nonce,
             ))
 
     def add_to_app(self, app: web.Application) -> None:

@@ -93,7 +93,7 @@ view config state =
       case config.userInfo |> Utils.mustUserInfoEmail |> Utils.mustEmailFlowStateKind of
         Pb.EmailFlowStateKindUnstarted _ ->
           H.div []
-            [ H.text "Register an email address for notifications: "
+            [ H.text "Register an email address: "
             , H.input
                 [ HA.type_ "email"
                 , HA.disabled <| state.working

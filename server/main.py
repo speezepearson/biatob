@@ -6,7 +6,6 @@ from pathlib import Path
 import sys
 import argparse
 import logging
-import os
 from email.message import EmailMessage
 
 from aiohttp import web
@@ -46,6 +45,7 @@ parser.add_argument("--credentials-path", type=Path, required=True)
 parser.add_argument("--email-daily-backups-to", help='send daily backups to this email address')
 parser.add_argument("--email-invariant-violations-to", help='send notifications of invariant violations to this email address')
 parser.add_argument("-v", "--verbose", action="count", default=0)
+parser.add_argument("--mock-out-emails", action="store_true")
 
 async def main(args: argparse.Namespace):
     logging.basicConfig(level=logging.INFO if args.verbose==0 else logging.DEBUG)
@@ -56,14 +56,20 @@ async def main(args: argparse.Namespace):
 
     credentials = google.protobuf.text_format.Parse(args.credentials_path.read_text(), mvp_pb2.CredentialsConfig())
 
-    # from unittest.mock import Mock
+    _aiosmtplib_override = None
+    if args.mock_out_emails:
+        from unittest.mock import Mock
+        async def _mock_send(message, *args, **kwargs):
+            print(message.as_string(), args, kwargs)
+            await asyncio.sleep(0)
+        _aiosmtplib_override = Mock(send=_mock_send)
     emailer = Emailer(
         hostname=credentials.smtp.hostname,
         port=credentials.smtp.port,
         username=credentials.smtp.username,
         password=credentials.smtp.password,
         from_addr=credentials.smtp.from_addr,
-        # aiosmtplib_for_testing=Mock(send=lambda message, *args, **kwargs: (print(message.as_string(), args, kwargs), asyncio.sleep(0))[1])
+        aiosmtplib_for_testing=_aiosmtplib_override
     )
     token_mint = TokenMint(secret_key=credentials.token_signing_secret)
     token_glue = HttpTokenGlue(token_mint=token_mint)

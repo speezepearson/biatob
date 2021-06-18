@@ -14,6 +14,7 @@ import Utils exposing (i, Cents)
 import Elements.Prediction as Prediction
 
 import Widgets.AuthWidget as AuthWidget
+import Widgets.EmailSettingsWidget as EmailSettingsWidget
 import Widgets.Navbar as Navbar
 import Utils
 import Globals
@@ -28,6 +29,7 @@ epsilon = 0.000001
 type alias Model =
   { globals : Globals.Globals
   , navbarAuth : AuthWidget.State
+  , emailSettingsWidget : EmailSettingsWidget.State
   , predictionField : String
   , resolvesAtField : String
   , stakeField : String
@@ -50,6 +52,7 @@ type Msg
   | SetOpenForSecondsField String
   | SetSpecialRulesField String
   | SetAuthWidget AuthWidget.State
+  | SetEmailWidget EmailSettingsWidget.State
   | Create
   | CreateFinished Pb.CreatePredictionRequest (Result Http.Error Pb.CreatePredictionResponse)
   | LogInUsername AuthWidget.State Pb.LogInUsernameRequest
@@ -58,6 +61,12 @@ type Msg
   | RegisterUsernameFinished Pb.RegisterUsernameRequest (Result Http.Error Pb.RegisterUsernameResponse)
   | SignOut AuthWidget.State Pb.SignOutRequest
   | SignOutFinished Pb.SignOutRequest (Result Http.Error Pb.SignOutResponse)
+  | SetEmail EmailSettingsWidget.State Pb.SetEmailRequest
+  | SetEmailFinished Pb.SetEmailRequest (Result Http.Error Pb.SetEmailResponse)
+  | UpdateSettings EmailSettingsWidget.State Pb.UpdateSettingsRequest
+  | UpdateSettingsFinished Pb.UpdateSettingsRequest (Result Http.Error Pb.UpdateSettingsResponse)
+  | VerifyEmail EmailSettingsWidget.State Pb.VerifyEmailRequest
+  | VerifyEmailFinished Pb.VerifyEmailRequest (Result Http.Error Pb.VerifyEmailResponse)
   | Tick Time.Posix
   | AuthWidgetExternallyModified AuthWidget.DomModification
   | Ignore
@@ -173,6 +182,7 @@ init : JD.Value -> ( Model , Cmd Msg )
 init flags =
   ( { globals = JD.decodeValue Globals.globalsDecoder flags |> Utils.mustResult "flags"
     , navbarAuth = AuthWidget.init
+    , emailSettingsWidget = EmailSettingsWidget.init
     , predictionField = ""
     , resolvesAtField = ""
     , stakeField = "20"
@@ -200,6 +210,8 @@ update msg model =
     SetSpecialRulesField s -> ( { model | specialRulesField = s } , Cmd.none )
     SetAuthWidget widgetState ->
       ( { model | navbarAuth = widgetState } , Cmd.none )
+    SetEmailWidget widgetState ->
+      ( { model | emailSettingsWidget = widgetState } , Cmd.none )
     Create ->
       case buildCreateRequest model of
         Just req ->
@@ -256,6 +268,36 @@ update msg model =
       , case API.simplifySignOutResponse res of
           Ok _ -> navigate Nothing
           Err _ -> Cmd.none
+      )
+    SetEmail widgetState req ->
+      ( { model | emailSettingsWidget = widgetState }
+      , API.postSetEmail (SetEmailFinished req) req
+      )
+    SetEmailFinished req res ->
+      ( { model | globals = model.globals |> Globals.handleSetEmailResponse req res
+                , emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleSetEmailResponse res
+        }
+      , Cmd.none
+      )
+    UpdateSettings widgetState req ->
+      ( { model | emailSettingsWidget = widgetState }
+      , API.postUpdateSettings (UpdateSettingsFinished req) req
+      )
+    UpdateSettingsFinished req res ->
+      ( { model | globals = model.globals |> Globals.handleUpdateSettingsResponse req res
+                , emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleUpdateSettingsResponse res
+        }
+      , Cmd.none
+      )
+    VerifyEmail widgetState req ->
+      ( { model | emailSettingsWidget = widgetState }
+      , API.postVerifyEmail (VerifyEmailFinished req) req
+      )
+    VerifyEmailFinished req res ->
+      ( { model | globals = model.globals |> Globals.handleVerifyEmailResponse req res
+                , emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleVerifyEmailResponse res
+        }
+      , Cmd.none
       )
     Tick now ->
       ( { model | globals = model.globals |> Globals.tick now }
@@ -522,6 +564,28 @@ view model =
           , H.hr [] []
           ]
     , viewForm model
+    , let
+        hasEmail = case model.globals.serverState.settings |> Maybe.andThen .email |> Maybe.andThen .emailFlowStateKind of
+          Just (Pb.EmailFlowStateKindVerified _) -> True
+          _ -> False
+      in
+      if hasEmail || not (Globals.isLoggedIn model.globals) then
+        H.text ""
+      else
+        H.div [HA.class "pre-creation-plea-for-email"]
+        [ H.text "Hey! It'll be annoying and awkward for new people to bet against you unless you register an email address so I can ask you if you trust them. I won't force you to, but I strongly recommend it!"
+        , H.hr [] []
+        , EmailSettingsWidget.view
+            { setState = SetEmailWidget
+            , ignore = Ignore
+            , setEmail = SetEmail
+            , verifyEmail = VerifyEmail
+            , updateSettings = UpdateSettings
+            , userInfo = Utils.must "checked that user is logged in" model.globals.serverState.settings
+            }
+            model.emailSettingsWidget
+        ]
+
     , H.div [HA.style "text-align" "center", HA.style "margin-bottom" "2em"]
         [ H.button
             [ HE.onClick Create
@@ -558,6 +622,7 @@ previewPrediction {request, creatorName, createdAt} =
   , resolutions = []
   , yourTrades = []
   , resolvesAtUnixtime = request.resolvesAtUnixtime
+  , allowEmailInvitations = False
   }
 
 subscriptions : Model -> Sub Msg

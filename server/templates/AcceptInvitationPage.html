@@ -4,9 +4,10 @@
   <script type="text/javascript" src="/elm/AcceptInvitation.js"></script>
   <script type="text/javascript">
 
-    var inviter = {{ inviter_username | tojson }};
-    var recipient = {{ recipient_username | tojson }};
+    var inviter = {{ inviter | tojson }};
+    var recipient = {{ recipient | tojson }};
+    var nonce = {{ nonce | tojson }};
 
-    main({elmApp: Elm.Elements.AcceptInvitation, flags: {inviter, inviterEmail, recipient}});
+    main({elmApp: Elm.Elements.AcceptInvitation, flags: {inviter, recipient, nonce}});
   </script>
 {% endblock %}

@@ -115,6 +115,16 @@ class SqlConn:
 
     creator_is_viewer = (viewer == row['creator'])
 
+    creator_settings_row = self._conn.execute(
+      sqlalchemy.select(schema.users.c)
+      .where(schema.users.c.username == row['creator'])
+    ).fetchone()
+    assert creator_settings_row is not None  # else the "prediction.creator -> user.username" integrity constraint is broken
+    allow_email_invitations = (
+      creator_settings_row['allow_email_invitations'] and
+      mvp_pb2.EmailFlowState.FromString(creator_settings_row['email_flow_state']).WhichOneof('email_flow_state_kind') == 'verified'
+    )
+
     resolution_rows = self._conn.execute(
       sqlalchemy.select(schema.resolutions.c)
       .where(schema.resolutions.c.prediction_id == prediction_id)
@@ -156,6 +166,7 @@ class SqlConn:
       resolves_at_unixtime=row['resolves_at_unixtime'],
       special_rules=row['special_rules'],
       creator=row['creator'],
+      allow_email_invitations=allow_email_invitations,
       resolutions=[
         mvp_pb2.ResolutionEvent(
           unixtime=r['resolved_at_unixtime'],
@@ -446,7 +457,14 @@ class SqlConn:
         )
         for who in include_relationships_with_users
       },
-    )
+      invitations={
+        row['recipient']: mvp_pb2.GenericUserInfo.Invitation()
+        for row in self._conn.execute(
+          sqlalchemy.select([schema.email_invitations.c.recipient])
+          .where(schema.email_invitations.c.inviter == user)
+        )
+      },
+)
 
   def update_settings(self, user: Username, request: mvp_pb2.UpdateSettingsRequest) -> None:
     update_kwargs = {}

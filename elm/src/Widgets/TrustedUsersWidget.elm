@@ -44,22 +44,6 @@ handleSetTrustedResponse res state =
               Err e -> Utils.redText e
   }
 
-viewInvitation : Config msg -> String -> Pb.Invitation -> Html msg
-viewInvitation config nonce invitation =
-  case invitation.acceptedBy of
-    "" ->
-      H.li []
-        [ CopyWidget.view config.copy (config.httpOrigin ++ Utils.invitationPath nonce)
-        , H.text <| " (created " ++ Utils.dateStr config.timeZone (Utils.unixtimeToTime invitation.createdUnixtime) ++ ")"
-        ]
-    accepter ->
-      H.li []
-        [ H.text "Accepted by "
-        , Utils.renderUser accepter
-        , H.text <| " on " ++ Utils.dateStr config.timeZone (Utils.unixtimeToTime invitation.createdUnixtime)
-        , H.text <| " (created " ++ Utils.dateStr config.timeZone (Utils.unixtimeToTime invitation.createdUnixtime) ++ ")"
-        ]
-
 view : Config msg -> State -> Html msg
 view config state =
   H.div []

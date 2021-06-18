@@ -140,7 +140,8 @@ view model =
         model.navbarAuth
     , H.main_ [HA.style "text-align" "justify"]
       [ case model.requestStatus of
-          AwaitingResponse -> Debug.todo ""
+          AwaitingResponse ->
+            H.text "Working..."
           Failed e ->
             H.div []
             [ H.text "Oof, sorry, I'm having trouble accepting "

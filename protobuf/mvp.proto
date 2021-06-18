@@ -31,14 +31,6 @@ message CredentialsConfig {
   }
 }
 
-message Invitation {
-  double created_unixtime = 6;
-  string notes = 3;
-  UserId accepted_by_depr = 4;
-  string accepted_by = 8;
-  double accepted_unixtime = 7;
-}
-
 message EmailFlowState {
   oneof email_flow_state_kind {
     Void unstarted = 1;
@@ -62,11 +54,14 @@ message GenericUserInfo {
   bool email_reminders_to_resolve = 3;
   bool email_resolution_notifications = 4;
   bool allow_email_invitations = 8;
+  map<string, Invitation> invitations = 5;
   map<string, Relationship> relationships = 6;
 
   oneof login_type {
     HashedPassword login_password = 7;
   }
+
+  message Invitation {}
 }
 message Relationship {
   bool trusts_you = 1;
@@ -201,6 +196,7 @@ message UserPredictionView {
   repeated ResolutionEvent resolutions = 10;
   repeated Trade your_trades = 11;
   double resolves_at_unixtime = 15;
+  bool allow_email_invitations = 16;
 }
 
 message ListMyStakesRequest {

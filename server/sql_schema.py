@@ -8,9 +8,9 @@ users = Table(
   "users",
   metadata,
   Column('username', String(64), primary_key=True, nullable=False),
-  Column('email_reminders_to_resolve', BOOLEAN(), nullable=False, default=False),
-  Column('email_resolution_notifications', BOOLEAN(), nullable=False, default=False),
-  Column('allow_email_invitations', BOOLEAN(), nullable=False, default=False),
+  Column('email_reminders_to_resolve', BOOLEAN(), nullable=False, default=True),
+  Column('email_resolution_notifications', BOOLEAN(), nullable=False, default=True),
+  Column('allow_email_invitations', BOOLEAN(), nullable=False, default=True),
   Column('login_password_id', ForeignKey('passwords.password_id'), nullable=False),  # will be nullable someday, if we add OAuth or something
   Column('email_flow_state', BINARY(), nullable=False),
 )
@@ -112,7 +112,7 @@ migrations = Table(
 )
 
 _MIGRATION_STMTS = [
-  'ALTER TABLE users ADD COLUMN allow_email_invitations BOOLEAN NOT NULL DEFAULT 0',
+  'ALTER TABLE users ADD COLUMN allow_email_invitations BOOLEAN NOT NULL DEFAULT 1',
   'DROP TABLE invitations',
   'DROP TABLE invitation_acceptances',
 ]

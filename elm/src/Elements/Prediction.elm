@@ -13,12 +13,14 @@ import Utils
 import Widgets.CopyWidget as CopyWidget
 import Widgets.AuthWidget as AuthWidget
 import Widgets.Navbar as Navbar
+import Widgets.EmailSettingsWidget as EmailSettingsWidget
 import Widgets.SmallInvitationWidget as SmallInvitationWidget
 import Globals
 import API
 import Biatob.Proto.Mvp as Pb
 import Utils exposing (Cents, PredictionId, Username)
 import Time
+import Bytes.Encode
 
 epsilon : Float
 epsilon = 0.0000001 -- 🎵 I hate floating-point arithmetic 🎶
@@ -32,19 +34,22 @@ type alias Model =
   , navbarAuth : AuthWidget.State
   , predictionId : PredictionId
   , invitationWidget : SmallInvitationWidget.State
-  , resolveStatus : ResolveRequestStatus
+  , emailSettingsWidget : EmailSettingsWidget.State
+  , resolveStatus : RequestStatus
   , stakeField : String
   , bettorIsASkeptic : Bool
-  , stakeStatus : StakeRequestStatus
+  , stakeStatus : RequestStatus
+  , sendInvitationStatus : RequestStatus
+  , setTrustedStatus : RequestStatus
   }
 
-type ResolveRequestStatus = ResolveUnstarted | ResolveAwaitingResponse | ResolveSucceeded | ResolveFailed String
-type StakeRequestStatus = StakeUnstarted | StakeAwaitingResponse | StakeSucceeded | StakeFailed String
+type RequestStatus = Unstarted | AwaitingResponse | Succeeded | Failed String
 
 type Msg
   = SetAuthWidget AuthWidget.State
+  | SetEmailWidget EmailSettingsWidget.State
   | SetInvitationWidget SmallInvitationWidget.State
-  | SendInvitation SmallInvitationWidget.State Pb.SendInvitationRequest
+  | SendInvitation
   | SendInvitationFinished Pb.SendInvitationRequest (Result Http.Error Pb.SendInvitationResponse)
   | LogInUsername AuthWidget.State Pb.LogInUsernameRequest
   | LogInUsernameFinished Pb.LogInUsernameRequest (Result Http.Error Pb.LogInUsernameResponse)
@@ -52,10 +57,18 @@ type Msg
   | RegisterUsernameFinished Pb.RegisterUsernameRequest (Result Http.Error Pb.RegisterUsernameResponse)
   | Resolve Pb.Resolution
   | ResolveFinished Pb.ResolveRequest (Result Http.Error Pb.ResolveResponse)
+  | SetCreatorTrusted
+  | SetCreatorTrustedFinished Pb.SetTrustedRequest (Result Http.Error Pb.SetTrustedResponse)
+  | SetEmail EmailSettingsWidget.State Pb.SetEmailRequest
+  | SetEmailFinished Pb.SetEmailRequest (Result Http.Error Pb.SetEmailResponse)
   | SignOut AuthWidget.State Pb.SignOutRequest
   | SignOutFinished Pb.SignOutRequest (Result Http.Error Pb.SignOutResponse)
   | Stake Cents
   | StakeFinished Pb.StakeRequest (Result Http.Error Pb.StakeResponse)
+  | UpdateSettings EmailSettingsWidget.State Pb.UpdateSettingsRequest
+  | UpdateSettingsFinished Pb.UpdateSettingsRequest (Result Http.Error Pb.UpdateSettingsResponse)
+  | VerifyEmail EmailSettingsWidget.State Pb.VerifyEmailRequest
+  | VerifyEmailFinished Pb.VerifyEmailRequest (Result Http.Error Pb.VerifyEmailResponse)
   | SetBettorIsASkeptic Bool
   | SetStakeField String
   | Copy String
@@ -69,9 +82,12 @@ init flags =
     , navbarAuth = AuthWidget.init
     , predictionId = Utils.mustDecodeFromFlags JD.string "predictionId" flags
     , invitationWidget = SmallInvitationWidget.init
-    , resolveStatus = ResolveUnstarted
-    , stakeStatus = StakeUnstarted
-    , stakeField = ""
+    , emailSettingsWidget = EmailSettingsWidget.init
+    , resolveStatus = Unstarted
+    , stakeStatus = Unstarted
+    , setTrustedStatus = Unstarted
+    , sendInvitationStatus = Unstarted
+    , stakeField = "0"
     , bettorIsASkeptic = True
     }
   , Cmd.none
@@ -104,20 +120,103 @@ view model =
 
 viewBodyMockup : Globals.Globals -> Pb.UserPredictionView -> Html ()
 viewBodyMockup globals prediction =
+  let
+    emptyBytes = Bytes.Encode.encode <| Bytes.Encode.sequence []
+    mockToken : Pb.AuthToken
+    mockToken =
+      { owner="__previewer__"
+      , ownerDepr=Nothing
+      , mintedUnixtime=0
+      , expiresUnixtime=0
+      , hmacOfRest=emptyBytes
+      }
+    mockSettings : Pb.GenericUserInfo
+    mockSettings =
+      { email = Just {emailFlowStateKind=Just (Pb.EmailFlowStateKindUnstarted Pb.Void)}
+      , allowEmailInvitations = True
+      , emailRemindersToResolve = True
+      , emailResolutionNotifications = True
+      , invitations = Dict.empty
+      , loginType = Just (Pb.LoginTypeLoginPassword {salt=emptyBytes, scrypt=emptyBytes})
+      , relationships = Dict.singleton prediction.creator (Just {trustsYou=True, trustedByYou=True})
+      , trustedUsersDepr = []
+      }
+  in
   viewBody
     { globals = globals
         |> Globals.handleGetPredictionResponse {predictionId="12345"} (Ok {getPredictionResult=Just <| Pb.GetPredictionResultPrediction prediction})
         |> Globals.handleSignOutResponse {} (Ok {})
+        |> Globals.handleLogInUsernameResponse {username="__previewer__", password=""} (Ok {logInUsernameResult=Just <| Pb.LogInUsernameResultOk {token=Just mockToken, userInfo=Just mockSettings}})
     , navbarAuth = AuthWidget.init
     , predictionId = "12345"
     , invitationWidget = SmallInvitationWidget.init
-    , resolveStatus = ResolveUnstarted
-    , stakeStatus = StakeUnstarted
-    , stakeField = ""
+    , emailSettingsWidget = EmailSettingsWidget.init
+    , resolveStatus = Unstarted
+    , stakeStatus = Unstarted
+    , setTrustedStatus = Unstarted
+    , sendInvitationStatus = Unstarted
+    , stakeField = "0"
     , bettorIsASkeptic = True
     }
   |> H.div []
   |> H.map (\_ -> ())
+
+predictionAllowsEmailInvitation : Model -> Bool
+predictionAllowsEmailInvitation model =
+  (mustPrediction model).allowEmailInvitations
+
+pendingEmailInvitation : Model -> Bool
+pendingEmailInvitation model =
+  case model.globals.serverState.settings of
+    Just settings ->
+      Dict.member
+        (mustPrediction model).creator
+        settings.invitations
+    _ -> False
+    
+
+userHasEmailAddress : Model -> Bool
+userHasEmailAddress model =
+  case model.globals.serverState.settings of
+    Just settings -> case settings.email of
+      Just efs -> case efs.emailFlowStateKind of
+        Just (Pb.EmailFlowStateKindVerified _) -> True
+        _ -> False
+      _ -> False
+    _ -> False
+
+type PrereqsForStaking
+  = CanAlreadyStake
+  | IsCreator
+  | NeedsAccount
+  | NeedsToSetTrusted
+  | NeedsEmailAddress
+  | NeedsToSendEmailInvitation
+  | NeedsToWaitForInvitation
+  | NeedsToTextUserPageLink
+
+getPrereqsForStaking : Model -> PrereqsForStaking
+getPrereqsForStaking model =
+  let
+    creator = (mustPrediction model).creator
+  in
+  if Globals.isSelf model.globals creator then
+    IsCreator
+  else if not (Globals.isLoggedIn model.globals) then
+    NeedsAccount
+  else if Globals.getTrustRelationship model.globals creator == Globals.Friends then
+    CanAlreadyStake
+  else if Globals.getTrustRelationship model.globals creator == Globals.TrustsCurrentUser then
+    NeedsToSetTrusted
+  else if predictionAllowsEmailInvitation model then
+    if pendingEmailInvitation model then
+      NeedsToWaitForInvitation
+    else if userHasEmailAddress model then
+      NeedsToSendEmailInvitation
+    else
+      NeedsEmailAddress
+  else
+    NeedsToTextUserPageLink
 
 viewBody : Model -> List (Html Msg)
 viewBody model =
@@ -138,18 +237,107 @@ viewBody model =
         else
           viewTradesAsBettor model.globals.timeZone prediction
       ]
-  , if isOwnPrediction then
-      H.div []
-      [ H.hr [] []
-      , viewResolveButtons model
-      , H.hr [HA.style "margin" "2em 0"] []
-      , H.text "If you want to link to your prediction, here are some snippets of HTML you could copy-paste:"
-      , viewEmbedInfo model
-      , H.text "If there are people you want to participate, but you haven't already established trust with them in Biatob, send them invitations: "
-      , viewInvitationWidget model
-      ]
-    else
-      viewStakeWidgetOrExcuse model
+  , H.hr [] []
+  , case getPrereqsForStaking model of
+      IsCreator ->
+        H.div []
+        [ viewResolveButtons model
+        , H.hr [HA.style "margin" "2em 0"] []
+        , H.text "If you want to link to your prediction, here are some snippets of HTML you could copy-paste:"
+        , viewEmbedInfo model
+        ]
+      NeedsAccount ->
+        H.div []
+        [ Utils.b "Make a bet:"
+        , H.text " Before I let you bet against "
+        , Utils.renderUser prediction.creator
+        , H.text ", I have to make sure that they trust you to pay up if you lose!"
+        , H.br [] []
+        , H.text "Could I trouble you to "
+        , H.a [HA.href <| "/login?dest=" ++ Utils.pathToPrediction model.predictionId] [H.text "log in or sign up"]
+        , H.text " so I have some idea who you are?"
+        ]
+      CanAlreadyStake ->
+        H.div []
+        [ Utils.b "Make a bet:"
+        , H.text " "
+        , viewStakeWidget BettingEnabled model
+        ]
+      NeedsToSetTrusted ->
+        H.div []
+        [ Utils.b "Make a bet:"
+        , H.text " Before I let you bet against "
+        , Utils.renderUser prediction.creator
+        , H.text ", I have to make sure that you trust them to pay up if they lose!"
+        , H.br [] []
+        , H.text "If you know who this account belongs to, and you trust them to pay up if they lose, then click "
+        , H.button
+          [ HA.disabled (model.setTrustedStatus == AwaitingResponse)
+          , HE.onClick SetCreatorTrusted
+          ]
+          [ H.text <| "I trust '" ++ prediction.creator ++ "'" ]
+        , case model.setTrustedStatus of
+            Unstarted -> H.text ""
+            AwaitingResponse -> H.text ""
+            Succeeded -> Utils.greenText "(success!)"
+            Failed e -> Utils.redText e
+        , H.text " and then I'll let you bet on this!"
+        ]
+      NeedsToWaitForInvitation ->
+        H.div []
+        [ Utils.b "Make a bet:"
+        , H.text " Before I let you bet against "
+        , Utils.renderUser prediction.creator
+        , H.text ", I have to make sure that they trust you to pay up if you lose!"
+        , H.br [] []
+        , H.text "I've sent them an email asking whether they trust you; you'll have to wait for them to say yes before you can bet on their predictions!"
+        ]
+      NeedsToSendEmailInvitation ->
+        H.div []
+        [ Utils.b "Make a bet:"
+        , H.text " Before I let you bet against "
+        , Utils.renderUser prediction.creator
+        , H.text ", I have to make sure that they trust you to pay up if you lose!"
+        , H.br [] []
+        , H.text "May I share your email address with them so that they know who you are? "
+        , H.button
+          [ HA.disabled (model.sendInvitationStatus == AwaitingResponse)
+          , HE.onClick SendInvitation
+          ]
+          [ H.text <| "I trust '" ++ prediction.creator ++ "'; ask them if they trust me" ]
+        , H.br [] []
+        , H.text "After they tell me that they trust you, I'll let you bet on this prediction!"
+        ]
+      NeedsEmailAddress ->
+        H.div []
+        [ Utils.b "Make a bet:"
+        , H.text " Before I let you bet against "
+        , Utils.renderUser prediction.creator
+        , H.text ", I have to make sure that they trust you to pay up if you lose!"
+        , H.br [] []
+        , H.text "I can ask them if they trust you, but first, could I trouble you to add an email address to your account, as a way to identify you to them?"
+        , EmailSettingsWidget.view
+            { setState = SetEmailWidget
+            , ignore = Ignore
+            , setEmail = SetEmail
+            , verifyEmail = VerifyEmail
+            , updateSettings = UpdateSettings
+            , userInfo = Utils.must "checked that user is logged in" model.globals.serverState.settings
+            }
+            model.emailSettingsWidget
+        ]
+      NeedsToTextUserPageLink ->
+        H.div []
+        [ Utils.b "Make a bet:"
+        , H.text " Before I let you bet against "
+        , Utils.renderUser prediction.creator
+        , H.text ", I have to make sure that they trust you to pay up if you lose!"
+        , H.br [] []
+        , H.text "Normally, I'd offer to ask them for you, but they've disabled that feature! You'll need to send them a link to "
+        , H.a [HA.href <| Utils.pathToUserPage <| .owner <| Utils.must "checked user is logged in" model.globals.authToken] [H.text "your user page"]
+        , H.text ", over SMS/IM/email/whatever, and ask them to mark you as trusted."
+        ]
+
   , if not (Globals.isLoggedIn model.globals) then
       H.div []
       [ H.hr [HA.style "margin" "2em 0"] []
@@ -159,15 +347,6 @@ viewBody model =
       H.text ""
   ]
 
-viewInvitationWidget : Model -> Html Msg
-viewInvitationWidget model =
-  SmallInvitationWidget.view
-    { setState = SetInvitationWidget
-    , sendInvitation = SendInvitation
-    , recipient = (mustPrediction model).creator
-    }
-    model.invitationWidget
-
 viewResolveButtons : Model -> Html Msg
 viewResolveButtons model =
   let
@@ -176,7 +355,7 @@ viewResolveButtons model =
       H.span [HA.style "color" "gray"]
         [ H.text " Mistake? You can always "
         , H.button
-          [ HA.disabled (model.resolveStatus == ResolveAwaitingResponse)
+          [ HA.disabled (model.resolveStatus == AwaitingResponse)
           , HE.onClick <| Resolve Pb.ResolutionNoneYet
           ]
           [ H.text "un-resolve it." ]
@@ -193,9 +372,9 @@ viewResolveButtons model =
           mistakeInfo
         Pb.ResolutionNoneYet ->
           H.span []
-          [ H.button [HA.disabled (model.resolveStatus == ResolveAwaitingResponse), HE.onClick <| Resolve Pb.ResolutionYes    ] [H.text "Resolve YES"]
-          , H.button [HA.disabled (model.resolveStatus == ResolveAwaitingResponse), HE.onClick <| Resolve Pb.ResolutionNo     ] [H.text "Resolve NO"]
-          , H.button [HA.disabled (model.resolveStatus == ResolveAwaitingResponse), HE.onClick <| Resolve Pb.ResolutionInvalid] [H.text "Resolve INVALID"]
+          [ H.button [HA.disabled (model.resolveStatus == AwaitingResponse), HE.onClick <| Resolve Pb.ResolutionYes    ] [H.text "Resolve YES"]
+          , H.button [HA.disabled (model.resolveStatus == AwaitingResponse), HE.onClick <| Resolve Pb.ResolutionNo     ] [H.text "Resolve NO"]
+          , H.button [HA.disabled (model.resolveStatus == AwaitingResponse), HE.onClick <| Resolve Pb.ResolutionInvalid] [H.text "Resolve INVALID"]
           ]
         Pb.ResolutionUnrecognized_ _ ->
           H.span []
@@ -204,10 +383,10 @@ viewResolveButtons model =
           ]
     , H.text " "
     , case model.resolveStatus of
-        ResolveUnstarted -> H.text ""
-        ResolveAwaitingResponse -> H.text ""
-        ResolveSucceeded -> Utils.greenText "Resolved!"
-        ResolveFailed e -> Utils.redText e
+        Unstarted -> H.text ""
+        AwaitingResponse -> H.text ""
+        Succeeded -> Utils.greenText "Resolved!"
+        Failed e -> Utils.redText e
     ]
 
 viewWillWontDropdown : Model -> Html Msg
@@ -226,53 +405,6 @@ viewWillWontDropdown model =
       [ H.option [HA.value "won't", HA.selected <| model.bettorIsASkeptic] [H.text "won't"]
       , H.option [HA.value "will", HA.selected <| not <| model.bettorIsASkeptic] [H.text "will"]
       ]
-
-viewStakeWidgetOrExcuse : Model -> Html Msg
-viewStakeWidgetOrExcuse model =
-  let prediction = mustPrediction model in
-  if Utils.resolutionIsTerminal (Utils.currentResolution prediction) then
-    H.text "This prediction has resolved, so cannot be bet in."
-  else if prediction.closesUnixtime < Utils.timeToUnixtime model.globals.now then
-    H.text <| "This prediction closed on " ++ Utils.dateStr model.globals.timeZone (Utils.predictionClosesTime prediction) ++ "."
-  else
-    case Globals.getTrustRelationship model.globals prediction.creator of
-      Globals.LoggedOut ->
-        H.span []
-          [ H.text "You'll need to "
-          , H.a [HA.href <| "/login?dest=" ++ Utils.pathToPrediction model.predictionId] [H.text "log in"]
-          , H.text " if you want to bet on this prediction!"
-          ]
-      Globals.Self ->
-        H.text "(You can't bet on your own predictions.)"
-      Globals.Friends ->
-        viewStakeWidget BettingEnabled model
-      Globals.NoRelation ->
-        H.span []
-          [ H.text "You can't bet on this prediction yet, because you and "
-          , Utils.renderUser prediction.creator
-          , H.text " haven't told me that you trust each other to pay up if you lose! If, in real life, you "
-          , Utils.i "do"
-          , H.text " trust each other to pay your debts, send them an invitation! "
-          , viewInvitationWidget model
-          ]
-      Globals.TrustsCurrentUser ->
-        H.span []
-          [ H.text "You don't trust "
-          , Utils.renderUser prediction.creator
-          , H.text " to pay their debts, so you probably don't want to bet on this prediction. If you actually "
-          , Utils.i "do"
-          , H.text " trust them to pay their debts, send them an invitation link: "
-          , viewInvitationWidget model
-          ]
-      Globals.TrustedByCurrentUser ->
-        H.span []
-          [ Utils.renderUser prediction.creator, H.text " hasn't told me that they trust you! If you think that, in real life, they "
-          , Utils.i "do"
-          , H.text " trust you to pay your debts, send them an invitation link: "
-          , viewInvitationWidget model
-          , H.br [] []
-          , H.text "Once they accept it, I'll know you trust each other, and I'll let you bet against each other."
-          ]
 
 type Bettability = BettingEnabled | BettingDisabled
 viewStakeWidget : Bettability -> Model -> Html Msg
@@ -330,10 +462,10 @@ viewStakeWidget bettability model =
         )
         [H.text "Commit"]
     , case model.stakeStatus of
-        StakeUnstarted -> H.text ""
-        StakeAwaitingResponse -> H.text ""
-        StakeSucceeded -> Utils.greenText "Success!"
-        StakeFailed e -> Utils.redText e
+        Unstarted -> H.text ""
+        AwaitingResponse -> H.text ""
+        Succeeded -> Utils.greenText "Success!"
+        Failed e -> Utils.redText e
     , if model.bettorIsASkeptic then
         if prediction.remainingStakeCentsVsSkeptics /= prediction.maximumStakeCents then
           H.div [HA.style "opacity" "50%"] [H.text <| "(only " ++ Utils.formatCents prediction.remainingStakeCentsVsSkeptics ++ " of ", Utils.renderUser prediction.creator, H.text <| "'s initial stake remains, since they've already accepted some bets)"]
@@ -690,11 +822,13 @@ update msg model =
   case msg of
     SetAuthWidget widgetState ->
       ( { model | navbarAuth = widgetState } , Cmd.none )
+    SetEmailWidget widgetState ->
+      ( { model | emailSettingsWidget = widgetState } , Cmd.none )
     SetInvitationWidget widgetState ->
       ( { model | invitationWidget = widgetState } , Cmd.none )
-    SendInvitation widgetState req ->
-      ( { model | invitationWidget = widgetState }
-      , API.postSendInvitation (SendInvitationFinished req) req
+    SendInvitation ->
+      ( { model | sendInvitationStatus = AwaitingResponse }
+      , let req = {recipient=(mustPrediction model).creator} in API.postSendInvitation (SendInvitationFinished req) req
       )
     SendInvitationFinished req res ->
       ( { model | globals = model.globals |> Globals.handleSendInvitationResponse req res , invitationWidget = model.invitationWidget |> SmallInvitationWidget.handleSendInvitationResponse res }
@@ -725,14 +859,36 @@ update msg model =
           Err _ -> Cmd.none
       )
     Resolve resolution ->
-      ( { model | resolveStatus = ResolveAwaitingResponse }
+      ( { model | resolveStatus = AwaitingResponse }
       , let req = {predictionId=model.predictionId, resolution=resolution, notes=""} in API.postResolve (ResolveFinished req) req
       )
     ResolveFinished req res ->
       ( { model | globals = model.globals |> Globals.handleResolveResponse req res
                 , resolveStatus = case API.simplifyResolveResponse res of
-                    Ok _ -> ResolveSucceeded
-                    Err e -> ResolveFailed e
+                    Ok _ -> Succeeded
+                    Err e -> Failed e
+        }
+      , Cmd.none
+      )
+    SetCreatorTrusted ->
+      ( { model | setTrustedStatus = AwaitingResponse }
+      , let req = {whoDepr=Nothing, who=(mustPrediction model).creator, trusted=True} in API.postSetTrusted (SetCreatorTrustedFinished req) req
+      )
+    SetCreatorTrustedFinished req res ->
+      ( { model | globals = model.globals |> Globals.handleSetTrustedResponse req res
+                , setTrustedStatus = case API.simplifySetTrustedResponse res of
+                    Ok _ -> Succeeded
+                    Err e -> Failed e
+        }
+      , Cmd.none
+      )
+    SetEmail widgetState req ->
+      ( { model | emailSettingsWidget = widgetState }
+      , API.postSetEmail (SetEmailFinished req) req
+      )
+    SetEmailFinished req res ->
+      ( { model | globals = model.globals |> Globals.handleSetEmailResponse req res
+                , emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleSetEmailResponse res
         }
       , Cmd.none
       )
@@ -749,17 +905,37 @@ update msg model =
           Err _ -> Cmd.none
       )
     Stake cents ->
-      ( { model | stakeStatus = StakeAwaitingResponse }
+      ( { model | stakeStatus = AwaitingResponse }
       , let req = {predictionId=model.predictionId, bettorIsASkeptic=model.bettorIsASkeptic, bettorStakeCents=cents} in API.postStake (StakeFinished req) req
       )
     StakeFinished req res ->
       ( { model | globals = model.globals |> Globals.handleStakeResponse req res
                 , stakeStatus = case API.simplifyStakeResponse res of
-                    Ok _ -> StakeSucceeded
-                    Err e -> StakeFailed e
+                    Ok _ -> Succeeded
+                    Err e -> Failed e
                 , stakeField = case API.simplifyStakeResponse res of
                     Ok _ -> "0"
                     Err _ -> model.stakeField
+        }
+      , Cmd.none
+      )
+    UpdateSettings widgetState req ->
+      ( { model | emailSettingsWidget = widgetState }
+      , API.postUpdateSettings (UpdateSettingsFinished req) req
+      )
+    UpdateSettingsFinished req res ->
+      ( { model | globals = model.globals |> Globals.handleUpdateSettingsResponse req res
+                , emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleUpdateSettingsResponse res
+        }
+      , Cmd.none
+      )
+    VerifyEmail widgetState req ->
+      ( { model | emailSettingsWidget = widgetState }
+      , API.postVerifyEmail (VerifyEmailFinished req) req
+      )
+    VerifyEmailFinished req res ->
+      ( { model | globals = model.globals |> Globals.handleVerifyEmailResponse req res
+                , emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleVerifyEmailResponse res
         }
       , Cmd.none
       )
