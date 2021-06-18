@@ -304,7 +304,7 @@ viewBody model =
           [ HA.disabled (model.sendInvitationStatus == AwaitingResponse)
           , HE.onClick SendInvitation
           ]
-          [ H.text <| "I trust '" ++ prediction.creator ++ "'; ask them if they trust me" ]
+          [ H.text <| "I trust '" ++ prediction.creator ++ "', and I'm pretty sure they trust me too" ]
         , H.br [] []
         , H.text "After they tell me that they trust you, I'll let you bet on this prediction!"
         ]

@@ -574,6 +574,14 @@ view model =
       else
         H.div [HA.class "pre-creation-plea-for-email"]
         [ H.text "Hey! It'll be annoying and awkward for new people to bet against you unless you register an email address so I can ask you if you trust them. I won't force you to, but I strongly recommend it!"
+        , H.details []
+          [ H.ul []
+            [ H.li [] [H.text "Since bets are all honor-system, people can only bet against each other if they trust each other to pay up."]
+            , H.li [] [H.text "If you register an email address, I'll be able to email you to ask you whether you trust potential bettors."]
+            , H.li [] [H.text "Otherwise, potential bettors will have to text/email/... you themselves to ask you to click buttons to tell me you trust them."]
+            , H.li [] [H.text "(Don't worry, I won't share your email address with anyone unless you ask me to.)"]
+            ]
+          ]
         , H.hr [] []
         , EmailSettingsWidget.view
             { setState = SetEmailWidget
