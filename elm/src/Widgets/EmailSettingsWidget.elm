@@ -151,7 +151,7 @@ view config state =
               ] []
           , H.text " Email notifications when new people want to bet against you? (Highly recommended! This will make it "
           , Utils.i "way"
-          , H.text " smoother when one of your friends wants to bet against you for the first time."
+          , H.text " smoother when one of your friends wants to bet against you for the first time.)"
           ]
       , H.div []
           [ H.input
