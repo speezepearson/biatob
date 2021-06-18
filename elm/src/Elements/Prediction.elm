@@ -787,9 +787,9 @@ viewWhatIsThis predictionId prediction =
       ]
   , H.p []
       [ H.text "If you know and trust ", Utils.renderUser prediction.creator
-      , H.text <| ", and they know and trust you, and you want to bet against them on this prediction, then "
+      , H.text <| ", and they know and trust you, and you disagree with them on this prediction, then "
       , H.a [HA.href <| "/login?dest=" ++ Utils.pathToPrediction predictionId] [H.text "log in"]
-      , H.text ", create an invitation, and send it to them over email/text/whatever! Once they accept it, I'll know you trust each other, and I'll let you bet against each other."
+      , H.text " to bet against them!"
       ]
   , H.hr [] []
   , H.h3 [] [H.text "But... why would you do this?"]
