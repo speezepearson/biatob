@@ -113,8 +113,8 @@ migrations = Table(
 
 _MIGRATION_STMTS = [
   'ALTER TABLE users ADD COLUMN allow_email_invitations BOOLEAN NOT NULL DEFAULT 1',
-  'DROP TABLE invitations',
   'DROP TABLE invitation_acceptances',
+  'DROP TABLE invitations',
 ]
 _N_MIGRATIONS = len(_MIGRATION_STMTS)
 

@@ -56,20 +56,22 @@ async def main(args: argparse.Namespace):
 
     credentials = google.protobuf.text_format.Parse(args.credentials_path.read_text(), mvp_pb2.CredentialsConfig())
 
-    _aiosmtplib_override = None
     if args.mock_out_emails:
         from unittest.mock import Mock
         async def _mock_send(message, *args, **kwargs):
             print(message.as_string(), args, kwargs)
             await asyncio.sleep(0)
-        _aiosmtplib_override = Mock(send=_mock_send)
+        testing_overrides = {'aiosmtplib_for_testing': Mock(send=_mock_send)}
+    else:
+        testing_overrides = {}
+
     emailer = Emailer(
         hostname=credentials.smtp.hostname,
         port=credentials.smtp.port,
         username=credentials.smtp.username,
         password=credentials.smtp.password,
         from_addr=credentials.smtp.from_addr,
-        aiosmtplib_for_testing=_aiosmtplib_override
+        **testing_overrides,
     )
     token_mint = TokenMint(secret_key=credentials.token_signing_secret)
     token_glue = HttpTokenGlue(token_mint=token_mint)

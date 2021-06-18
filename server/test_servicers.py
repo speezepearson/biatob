@@ -156,10 +156,10 @@ class TestCUJs:
 
     assert VerifyEmailOk(any_servicer, token, code).verified == 'nobody@example.com'
 
+    assert not UpdateSettingsOk(any_servicer, token, email_reminders_to_resolve=False).email_reminders_to_resolve
     assert not GetSettingsOk(any_servicer, token).email_reminders_to_resolve
 
     assert UpdateSettingsOk(any_servicer, token, email_reminders_to_resolve=True).email_reminders_to_resolve
-
     assert GetSettingsOk(any_servicer, token).email_reminders_to_resolve
 
 
@@ -705,18 +705,21 @@ class TestUpdateSettings:
 
   async def test_notification_settings_are_persisted(self, any_servicer: Servicer):
     token = new_user_token(any_servicer, 'rando')
+    UpdateSettingsOk(any_servicer, token, email_resolution_notifications=False)
     assert not GetSettingsOk(any_servicer, token).email_resolution_notifications
     UpdateSettingsOk(any_servicer, token, email_resolution_notifications=True)
     assert GetSettingsOk(any_servicer, token).email_resolution_notifications
 
   async def test_reminder_settings_are_persisted(self, any_servicer: Servicer):
     token = new_user_token(any_servicer, 'rando')
+    UpdateSettingsOk(any_servicer, token, email_reminders_to_resolve=False)
     assert not GetSettingsOk(any_servicer, token).email_reminders_to_resolve
     UpdateSettingsOk(any_servicer, token, email_reminders_to_resolve=True)
     assert GetSettingsOk(any_servicer, token).email_reminders_to_resolve
 
   async def test_email_invitation_settings_are_persisted(self, any_servicer: Servicer):
     token = new_user_token(any_servicer, 'rando')
+    UpdateSettingsOk(any_servicer, token, allow_email_invitations=False)
     assert not GetSettingsOk(any_servicer, token).allow_email_invitations
     UpdateSettingsOk(any_servicer, token, allow_email_invitations=True)
     assert GetSettingsOk(any_servicer, token).allow_email_invitations

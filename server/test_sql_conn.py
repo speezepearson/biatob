@@ -255,6 +255,7 @@ class TestResolutionReminders:
   def test_requires_preferences(self, conn: SqlConn):
     create_user(conn, ALICE, email_address='alice@example.com')
     conn.create_prediction(now=T0, prediction_id=PRED_ID, creator=ALICE, request=some_create_prediction_request(resolves_at_unixtime=T1.timestamp()))
+    conn.update_settings(ALICE, mvp_pb2.UpdateSettingsRequest(email_reminders_to_resolve=mvp_pb2.MaybeBool(value=False)))
     assert [r['prediction_id'] for r in conn.get_predictions_needing_resolution_reminders(now=T2)] == []
     conn.update_settings(ALICE, mvp_pb2.UpdateSettingsRequest(email_reminders_to_resolve=mvp_pb2.MaybeBool(value=True)))
     assert [r['prediction_id'] for r in conn.get_predictions_needing_resolution_reminders(now=T2)] == [PRED_ID]
