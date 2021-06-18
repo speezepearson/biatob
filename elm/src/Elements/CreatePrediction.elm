@@ -11,10 +11,10 @@ import Iso8601
 
 import Biatob.Proto.Mvp as Pb
 import Utils exposing (i, Cents)
+import Elements.Prediction as Prediction
 
 import Widgets.AuthWidget as AuthWidget
 import Widgets.Navbar as Navbar
-import Widgets.PredictionWidget as PredictionWidget
 import Utils
 import Globals
 import API
@@ -36,7 +36,6 @@ type alias Model =
   , openForUnitField : String
   , openForSecondsField : String
   , specialRulesField : String
-  , previewWidget : PredictionWidget.State
   , working : Bool
   , createError : Maybe String
   }
@@ -51,7 +50,6 @@ type Msg
   | SetOpenForSecondsField String
   | SetSpecialRulesField String
   | SetAuthWidget AuthWidget.State
-  | SetPreviewWidget PredictionWidget.State
   | Create
   | CreateFinished Pb.CreatePredictionRequest (Result Http.Error Pb.CreatePredictionResponse)
   | LogInUsername AuthWidget.State Pb.LogInUsernameRequest
@@ -183,7 +181,6 @@ init flags =
     , openForUnitField = "weeks"
     , openForSecondsField = "2"
     , specialRulesField = ""
-    , previewWidget = PredictionWidget.init
     , working = False
     , createError = Nothing
     }
@@ -203,8 +200,6 @@ update msg model =
     SetSpecialRulesField s -> ( { model | specialRulesField = s } , Cmd.none )
     SetAuthWidget widgetState ->
       ( { model | navbarAuth = widgetState } , Cmd.none )
-    SetPreviewWidget widgetState ->
-      ( { model | previewWidget = widgetState } , Cmd.none )
     Create ->
       case buildCreateRequest model of
         Just req ->
@@ -543,23 +538,7 @@ view model =
         [ case buildCreateRequest model of
             Just req ->
               previewPrediction {request=req, creatorName=Globals.getAuth model.globals |> Maybe.map .owner |> Maybe.withDefault "you", createdAt=model.globals.now}
-              |> (\prediction -> PredictionWidget.view
-                    { setState = SetPreviewWidget
-                    , copy = \_ -> Ignore
-                    , stake = \_ _ -> Ignore
-                    , resolve = \_ _ -> Ignore
-                    , invitationWidget = H.text "TODO"
-                    , linkTitle = False
-                    , disableCommit = True
-                    , predictionId = "12345"
-                    , prediction = prediction
-                    , httpOrigin = model.globals.httpOrigin
-                    , creatorRelationship = Globals.Friends
-                    , timeZone = model.globals.timeZone
-                    , now = model.globals.now
-                    }
-                    PredictionWidget.init
-                    |> H.map (always Ignore))
+              |> (\prediction -> Prediction.viewBodyMockup model.globals prediction |> H.map (always Ignore))
             Nothing ->
               H.span [HA.style "color" "red"] [H.text "(invalid prediction)"]
         ]
