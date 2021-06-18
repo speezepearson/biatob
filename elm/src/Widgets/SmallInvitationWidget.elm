@@ -9,34 +9,31 @@ import Biatob.Proto.Mvp as Pb
 import Utils
 
 import Utils
-import Widgets.CopyWidget as CopyWidget
 import API
-import Utils exposing (InvitationNonce)
+import Utils exposing (Username)
 
 type alias Config msg =
   { setState : State -> msg
-  , createInvitation : State -> Pb.CreateInvitationRequest -> msg
-  , copy : String -> msg
-  , destination : Maybe String
-  , httpOrigin : String
+  , sendInvitation : State -> Pb.SendInvitationRequest -> msg
+  , recipient : Username
   }
 type State
   = Unstarted
   | AwaitingResponse
-  | Succeeded InvitationNonce
+  | Succeeded
   | Failed String
 
-handleCreateInvitationResponse : Result Http.Error Pb.CreateInvitationResponse -> State -> State
-handleCreateInvitationResponse res _ =
-  case API.simplifyCreateInvitationResponse res of
-    Ok resp -> Succeeded resp.nonce
+handleSendInvitationResponse : Result Http.Error Pb.SendInvitationResponse -> State -> State
+handleSendInvitationResponse res _ =
+  case API.simplifySendInvitationResponse res of
+    Ok _ -> Succeeded
     Err e -> Failed e
 
 init : State
 init = Unstarted
 
 view : Config msg -> State -> Html msg
-view config model =
+view config state =
   let
     help : Html msg
     help =
@@ -49,26 +46,18 @@ view config model =
         ]
   in
   H.span []
-    [ case model of
-        Succeeded nonce ->
-          CopyWidget.view config.copy (config.httpOrigin ++ Utils.invitationPath nonce ++ case config.destination of
-             Just d -> "?dest="++d
-             Nothing -> "" )
-        _ -> H.text ""
-    , H.button
-        [ HA.disabled (model == AwaitingResponse)
-        , HE.onClick (config.createInvitation AwaitingResponse {notes=""})
-        ]
-        [ H.text <| case model of
-            Unstarted -> "Create invitation"
-            AwaitingResponse -> "Creating..."
-            Succeeded _ -> "Create another"
-            Failed _ -> "Try again"
-        ]
-    , H.text " "
-    , case model of
-        Failed e -> Utils.redText e
-        _ -> H.text ""
+    [ case state of
+        Unstarted ->
+          H.button [ HE.onClick <| config.sendInvitation AwaitingResponse {recipient=config.recipient} ] [ H.text <| "Invite " ++ config.recipient ]
+        AwaitingResponse ->
+          H.button [HA.disabled True] [H.text "Sending invitation..."]
+        Succeeded ->
+          H.button [HA.disabled True] [H.text "Invitation sent!"]
+        Failed e ->
+          H.span []
+          [ Utils.redText e
+          , H.button [ HE.onClick <| config.sendInvitation AwaitingResponse {recipient=config.recipient} ] [ H.text "Try again?" ]
+          ]
     , H.text " "
     , help
     ]

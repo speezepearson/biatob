@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import copy
-from sys import prefix
-from typing import Any, Mapping, overload, Optional
+from typing import Any, Mapping, Optional
 from typing_extensions import Literal
 from unittest.mock import ANY
 
@@ -89,15 +87,15 @@ def GetSettingsOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken]) -> mvp
 def GetSettingsErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken]) -> mvp_pb2.GetSettingsResponse.Error:
   return assert_oneof(servicer.GetSettings(token, mvp_pb2.GetSettingsRequest()), 'get_settings_result', 'error', mvp_pb2.GetSettingsResponse.Error)
 
-def UpdateSettingsOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], *, email_resolution_notifications: Optional[bool] = None, email_reminders_to_resolve: Optional[bool] = None) -> mvp_pb2.GenericUserInfo:
-  return assert_oneof(servicer.UpdateSettings(token, mvp_pb2.UpdateSettingsRequest(email_resolution_notifications=None if email_resolution_notifications is None else mvp_pb2.MaybeBool(value=email_resolution_notifications), email_reminders_to_resolve=None if email_reminders_to_resolve is None else mvp_pb2.MaybeBool(value=email_reminders_to_resolve))), 'update_settings_result', 'ok', mvp_pb2.GenericUserInfo)
-def UpdateSettingsErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], *, email_resolution_notifications: Optional[bool] = None, email_reminders_to_resolve: Optional[bool] = None) -> mvp_pb2.UpdateSettingsResponse.Error:
-  return assert_oneof(servicer.UpdateSettings(token, mvp_pb2.UpdateSettingsRequest(email_resolution_notifications=None if email_resolution_notifications is None else mvp_pb2.MaybeBool(value=email_resolution_notifications), email_reminders_to_resolve=None if email_reminders_to_resolve is None else mvp_pb2.MaybeBool(value=email_reminders_to_resolve))), 'update_settings_result', 'error', mvp_pb2.UpdateSettingsResponse.Error)
+def UpdateSettingsOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], *, email_resolution_notifications: Optional[bool] = None, email_reminders_to_resolve: Optional[bool] = None, allow_email_invitations: Optional[bool] = None) -> mvp_pb2.GenericUserInfo:
+  return assert_oneof(servicer.UpdateSettings(token, mvp_pb2.UpdateSettingsRequest(email_resolution_notifications=None if email_resolution_notifications is None else mvp_pb2.MaybeBool(value=email_resolution_notifications), email_reminders_to_resolve=None if email_reminders_to_resolve is None else mvp_pb2.MaybeBool(value=email_reminders_to_resolve), allow_email_invitations=None if allow_email_invitations is None else mvp_pb2.MaybeBool(value=allow_email_invitations))), 'update_settings_result', 'ok', mvp_pb2.GenericUserInfo)
+def UpdateSettingsErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], *, email_resolution_notifications: Optional[bool] = None, email_reminders_to_resolve: Optional[bool] = None, allow_email_invitations: Optional[bool] = None) -> mvp_pb2.UpdateSettingsResponse.Error:
+  return assert_oneof(servicer.UpdateSettings(token, mvp_pb2.UpdateSettingsRequest(email_resolution_notifications=None if email_resolution_notifications is None else mvp_pb2.MaybeBool(value=email_resolution_notifications), email_reminders_to_resolve=None if email_reminders_to_resolve is None else mvp_pb2.MaybeBool(value=email_reminders_to_resolve), allow_email_invitations=None if allow_email_invitations is None else mvp_pb2.MaybeBool(value=allow_email_invitations))), 'update_settings_result', 'error', mvp_pb2.UpdateSettingsResponse.Error)
 
-def CreateInvitationOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], notes: str = '') -> mvp_pb2.CreateInvitationResponse.Result:
-  return assert_oneof(servicer.CreateInvitation(token, mvp_pb2.CreateInvitationRequest(notes=notes)), 'create_invitation_result', 'ok', mvp_pb2.CreateInvitationResponse.Result)
-def CreateInvitationErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], notes: str = '') -> mvp_pb2.CreateInvitationResponse.Error:
-  return assert_oneof(servicer.CreateInvitation(token, mvp_pb2.CreateInvitationRequest(notes=notes)), 'create_invitation_result', 'error', mvp_pb2.CreateInvitationResponse.Error)
+def SendInvitationOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], recipient: str) -> object:
+  return assert_oneof(servicer.SendInvitation(token, mvp_pb2.SendInvitationRequest(recipient=recipient)), 'send_invitation_result', 'ok', int)
+def SendInvitationErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], recipient: str) -> mvp_pb2.SendInvitationResponse.Error:
+  return assert_oneof(servicer.SendInvitation(token, mvp_pb2.SendInvitationRequest(recipient=recipient)), 'send_invitation_result', 'error', mvp_pb2.SendInvitationResponse.Error)
 
 def CheckInvitationOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], nonce: str) -> mvp_pb2.CheckInvitationResponse.Result:
   return assert_oneof(servicer.CheckInvitation(token, mvp_pb2.CheckInvitationRequest(nonce=nonce)), 'check_invitation_result', 'ok', mvp_pb2.CheckInvitationResponse.Result)
@@ -111,8 +109,13 @@ def AcceptInvitationErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], 
 
 
 class TestCUJs:
-  async def test_cuj__register__create__invite__accept__stake__resolve(self, any_servicer: Servicer, clock: MockClock):
+  async def test_cuj__register__create__invite__accept__stake__resolve(self, any_servicer: Servicer, emailer: Emailer, clock: MockClock):
     creator_token = RegisterUsernameOk(any_servicer, None, 'creator', 'secret').token
+    set_and_verify_email(any_servicer, emailer, creator_token, 'creator@example.com')
+    UpdateSettingsOk(any_servicer, creator_token, allow_email_invitations=True)
+
+    friend_token = RegisterUsernameOk(any_servicer, None, 'friend', 'secret').token
+    set_and_verify_email(any_servicer, emailer, friend_token, 'friend@example.com')
 
     prediction_id = CreatePredictionOk(any_servicer, creator_token, dict(
         prediction='a thing will happen',
@@ -122,16 +125,13 @@ class TestCUJs:
         open_seconds=3600,
       ))
 
-    nonce = CreateInvitationOk(any_servicer, creator_token).nonce
+    SendInvitationOk(any_servicer, friend_token, 'creator')
+    AcceptInvitationOk(any_servicer, None, get_call_kwarg(emailer.send_invitation, 'nonce'))
 
-    assert CheckInvitationOk(any_servicer, None, nonce=nonce).is_open
-
-    friend_token = RegisterUsernameOk(any_servicer, None, 'friend', 'secret').token
-
-    friend_settings = assert_oneof(
-      any_servicer.AcceptInvitation(friend_token, mvp_pb2.AcceptInvitationRequest(nonce=nonce)),
-      'accept_invitation_result', 'ok', mvp_pb2.GenericUserInfo)
-    assert friend_settings.relationships[creator_token.owner].trusted_by_you
+    assert GetSettingsOk(any_servicer, creator_token).relationships['friend'].trusts_you
+    assert GetSettingsOk(any_servicer, creator_token).relationships['friend'].trusted_by_you
+    assert GetSettingsOk(any_servicer, friend_token).relationships['creator'].trusts_you
+    assert GetSettingsOk(any_servicer, friend_token).relationships['creator'].trusted_by_you
 
     prediction = StakeOk(any_servicer, friend_token, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_is_a_skeptic=True, bettor_stake_cents=6_00))
     assert list(prediction.your_trades) == [mvp_pb2.Trade(
@@ -504,9 +504,7 @@ class TestResolve:
 
   async def test_sends_notifications(self, emailer: Emailer, any_servicer: Servicer):
     token = new_user_token(any_servicer, 'rando')
-    SetEmailOk(any_servicer, token, 'nobody@example.com')
-    code = emailer.send_email_verification.call_args[1]['code']  # type: ignore
-    VerifyEmailOk(any_servicer, token, code)
+    set_and_verify_email(any_servicer, emailer, token, 'nobody@example.com')
     assert_oneof(any_servicer.UpdateSettings(token=token, request=mvp_pb2.UpdateSettingsRequest(email_resolution_notifications=mvp_pb2.MaybeBool(value=True))),
       'update_settings_result', 'ok', mvp_pb2.GenericUserInfo)
 
@@ -624,9 +622,7 @@ class TestSetEmail:
 
   async def test_works_in_verified_state(self, emailer: Emailer, any_servicer: Servicer):
     token = new_user_token(any_servicer, 'rando')
-    SetEmailOk(any_servicer, token, 'old@old.old')
-    code: str = emailer.send_email_verification.call_args[1]['code']  # type: ignore
-    VerifyEmailOk(any_servicer, token, code)
+    set_and_verify_email(any_servicer, emailer, token, 'old@old.old')
     SetEmailOk(any_servicer, token, 'new@new.new')
     assert GetSettingsOk(any_servicer, token).email.code_sent.email == 'new@new.new'
     emailer.send_email_verification.assert_called_with(to='new@new.new', code=ANY)  # type: ignore
@@ -702,6 +698,11 @@ class TestUpdateSettings:
   async def test_error_if_logged_out(self, any_servicer: Servicer):
     assert 'must log in' in str(UpdateSettingsErr(any_servicer, None))
 
+  async def test_noop_if_no_args_given(self, any_servicer: Servicer):
+    token = new_user_token(any_servicer, 'rando')
+    with assert_user_unchanged(any_servicer, token, 'rando password'):
+      UpdateSettingsOk(any_servicer, token)
+
   async def test_notification_settings_are_persisted(self, any_servicer: Servicer):
     token = new_user_token(any_servicer, 'rando')
     assert not GetSettingsOk(any_servicer, token).email_resolution_notifications
@@ -714,89 +715,152 @@ class TestUpdateSettings:
     UpdateSettingsOk(any_servicer, token, email_reminders_to_resolve=True)
     assert GetSettingsOk(any_servicer, token).email_reminders_to_resolve
 
+  async def test_email_invitation_settings_are_persisted(self, any_servicer: Servicer):
+    token = new_user_token(any_servicer, 'rando')
+    assert not GetSettingsOk(any_servicer, token).allow_email_invitations
+    UpdateSettingsOk(any_servicer, token, allow_email_invitations=True)
+    assert GetSettingsOk(any_servicer, token).allow_email_invitations
+
   async def test_response_has_new_settings(self, any_servicer: Servicer):
     token = new_user_token(any_servicer, 'rando')
     resp = UpdateSettingsOk(any_servicer, token, email_reminders_to_resolve=True)
     assert resp == GetSettingsOk(any_servicer, token)
 
 
-class TestCreateInvitation:
+class TestSendInvitation:
 
   async def test_error_if_logged_out(self, any_servicer: Servicer):
-    assert 'must log in' in str(CreateInvitationErr(any_servicer, None))
+    assert 'must log in' in str(SendInvitationErr(any_servicer, None, 'anybody'))
 
-  async def test_success_if_logged_in(self, any_servicer: Servicer, clock: MockClock):
-    token = new_user_token(any_servicer, 'rando')
-    nonce = CreateInvitationOk(any_servicer, token).nonce
-    assert GetSettingsOk(any_servicer, token).invitations[nonce] == mvp_pb2.Invitation(
-        created_unixtime=clock.now().timestamp(),
-      )
+  async def test_error_if_inviter_has_no_email(self, any_servicer: Servicer, emailer: Emailer):
+    recipient_token = new_user_token(any_servicer, 'recipient')
+    set_and_verify_email(any_servicer, emailer, recipient_token, 'recipient@example.com')
+    inviter_token = new_user_token(any_servicer, 'inviter')
+
+    assert 'you need to add an email address before you can send invitations' in str(SendInvitationErr(any_servicer, inviter_token, 'recipient'))
+
+  async def test_error_if_recipient_has_no_email(self, any_servicer: Servicer, emailer: Emailer):
+    recipient_token = new_user_token(any_servicer, 'recipient')
+    inviter_token = new_user_token(any_servicer, 'inviter')
+    set_and_verify_email(any_servicer, emailer, inviter_token, 'inviter@example.com')
+
+    assert 'does not accept email invitations' in str(SendInvitationErr(any_servicer, inviter_token, 'recipient'))
+
+  async def test_error_if_recipient_disabled_email_invitations(self, any_servicer: Servicer, emailer: Emailer):
+    recipient_token = new_user_token(any_servicer, 'recipient')
+    set_and_verify_email(any_servicer, emailer, recipient_token, 'recipient@example.com')
+    UpdateSettingsOk(any_servicer, recipient_token, allow_email_invitations=False)
+    inviter_token = new_user_token(any_servicer, 'inviter')
+    set_and_verify_email(any_servicer, emailer, inviter_token, 'inviter@example.com')
+
+    assert 'does not accept email invitations' in str(SendInvitationErr(any_servicer, inviter_token, 'recipient'))
+
+  async def test_sends_email(self, any_servicer: Servicer, emailer: Emailer):
+    recipient_token = new_user_token(any_servicer, 'recipient')
+    set_and_verify_email(any_servicer, emailer, recipient_token, 'recipient@example.com')
+    UpdateSettingsOk(any_servicer, recipient_token, allow_email_invitations=True)
+    inviter_token = new_user_token(any_servicer, 'inviter')
+    set_and_verify_email(any_servicer, emailer, inviter_token, 'inviter@example.com')
+
+    SendInvitationOk(any_servicer, inviter_token, 'recipient')
+
+    emailer.send_invitation.assert_called_once_with(  # type: ignore
+      inviter_username='inviter',
+      inviter_email='inviter@example.com',
+      recipient_username='recipient',
+      recipient_email='recipient@example.com',
+      nonce=ANY,
+    )
 
 
 class TestCheckInvitation:
 
   async def test_error_when_no_such_invitation(self, any_servicer: Servicer):
-    new_user_token(any_servicer, 'rando')
     assert 'no such invitation' in str(CheckInvitationErr(any_servicer, None, 'asdf'))
 
-  async def test_returns_inviter(self, any_servicer: Servicer):
-    nonce = CreateInvitationOk(any_servicer, new_user_token(any_servicer, 'inviter')).nonce
-    assert CheckInvitationOk(any_servicer, None, nonce).inviter == 'inviter'
+  async def test_returns_info_from_send(self, any_servicer: Servicer, emailer: Emailer):
+    recipient_token = new_user_token(any_servicer, 'recipient')
+    set_and_verify_email(any_servicer, emailer, recipient_token, 'recipient@example.com')
+    UpdateSettingsOk(any_servicer, recipient_token, allow_email_invitations=True)
 
-  async def test_returns_true_when_open(self, any_servicer: Servicer):
-    nonce = CreateInvitationOk(any_servicer, new_user_token(any_servicer, 'inviter')).nonce
-    assert CheckInvitationOk(any_servicer, None, nonce).is_open
+    inviter_token = new_user_token(any_servicer, 'inviter')
+    set_and_verify_email(any_servicer, emailer, inviter_token, 'inviter@example.com')
 
-  async def test_returns_false_when_closed(self, any_servicer: Servicer):
-    nonce = CreateInvitationOk(any_servicer, new_user_token(any_servicer, 'inviter')).nonce
-    accepter_token = new_user_token(any_servicer, 'accepter')
-    AcceptInvitationOk(any_servicer, accepter_token, nonce)
-    assert not CheckInvitationOk(any_servicer, None, nonce).is_open
+    SendInvitationOk(any_servicer, inviter_token, 'recipient')
+    resp = CheckInvitationOk(any_servicer, None, get_call_kwarg(emailer.send_invitation, 'nonce'))
+    assert resp.inviter == 'inviter'
+    assert resp.recipient == 'recipient'
 
 
 class TestAcceptInvitation:
 
-  async def test_error_if_logged_out(self, any_servicer: Servicer):
-    token = new_user_token(any_servicer, 'inviter')
-    nonce = CreateInvitationOk(any_servicer, token).nonce
-    assert 'must log in' in str(AcceptInvitationErr(any_servicer, None, nonce))
-    assert CheckInvitationOk(any_servicer, None, nonce).is_open
+  async def test_sets_intended_trust_if_logged_in_as_recipient(self, any_servicer: Servicer, emailer: Emailer, clock: MockClock):
+    recipient_token = new_user_token(any_servicer, 'recipient')
+    set_and_verify_email(any_servicer, emailer, recipient_token, 'recipient@example.com')
+    UpdateSettingsOk(any_servicer, recipient_token, allow_email_invitations=True)
 
-  async def test_error_if_request_malformed(self, any_servicer: Servicer):
-    accepter_token = new_user_token(any_servicer, 'accepter')
-    assert 'no nonce given' in str(AcceptInvitationErr(any_servicer, accepter_token, ''))
-
-  async def test_happy_path(self, any_servicer: Servicer, clock: MockClock):
     inviter_token = new_user_token(any_servicer, 'inviter')
-    nonce = CreateInvitationOk(any_servicer, inviter_token).nonce
-    invited_at = clock.now().timestamp()
+    set_and_verify_email(any_servicer, emailer, inviter_token, 'inviter@example.com')
 
-    clock.tick()
+    SendInvitationOk(any_servicer, inviter_token, 'recipient')
+    AcceptInvitationOk(any_servicer, recipient_token, get_call_kwarg(emailer.send_invitation, 'nonce'))
 
-    accepter_token = new_user_token(any_servicer, 'accepter')
-    AcceptInvitationOk(any_servicer, accepter_token, nonce)
-    accepted_at = clock.now().timestamp()
+    rel = GetSettingsOk(any_servicer, recipient_token).relationships['inviter']
+    assert rel.trusts_you and rel.trusted_by_you
 
-    assert not CheckInvitationOk(any_servicer, None, nonce).is_open
+  async def test_successfully_creates_trust_even_if_logged_out(self, any_servicer: Servicer, emailer: Emailer):
+    recipient_token = new_user_token(any_servicer, 'recipient')
+    set_and_verify_email(any_servicer, emailer, recipient_token, 'recipient@example.com')
+    UpdateSettingsOk(any_servicer, recipient_token, allow_email_invitations=True)
 
-    assert GetSettingsOk(any_servicer, inviter_token).invitations[nonce] == mvp_pb2.Invitation(
-        created_unixtime=invited_at,
-        accepted_by='accepter',
-        accepted_unixtime=accepted_at,
-      )
+    inviter_token = new_user_token(any_servicer, 'inviter')
+    set_and_verify_email(any_servicer, emailer, inviter_token, 'inviter@example.com')
+
+    SendInvitationOk(any_servicer, inviter_token, 'recipient')
+    AcceptInvitationOk(any_servicer, None, get_call_kwarg(emailer.send_invitation, 'nonce'))
+
+    rel = GetSettingsOk(any_servicer, recipient_token).relationships['inviter']
+    assert rel.trusts_you and rel.trusted_by_you
+
+  async def test_sets_intended_trust_if_logged_in_as_other_user(self, any_servicer: Servicer, emailer: Emailer, clock: MockClock):
+    recipient_token = new_user_token(any_servicer, 'recipient')
+    set_and_verify_email(any_servicer, emailer, recipient_token, 'recipient@example.com')
+    UpdateSettingsOk(any_servicer, recipient_token, allow_email_invitations=True)
+
+    inviter_token = new_user_token(any_servicer, 'inviter')
+    set_and_verify_email(any_servicer, emailer, inviter_token, 'inviter@example.com')
+
+    rando_token = new_user_token(any_servicer, 'rando')
+
+    SendInvitationOk(any_servicer, inviter_token, 'recipient')
+    with assert_user_unchanged(any_servicer, rando_token, 'rando password'):
+      AcceptInvitationOk(any_servicer, rando_token, get_call_kwarg(emailer.send_invitation, 'nonce'))
+
+    rel = GetSettingsOk(any_servicer, recipient_token).relationships['inviter']
+    assert rel.trusts_you and rel.trusted_by_you
+
+    rel = GetSettingsOk(any_servicer, rando_token).relationships['inviter']
+    assert not rel.trusts_you and not rel.trusted_by_you
+
+    rel = GetSettingsOk(any_servicer, rando_token).relationships['recipient']
+    assert not rel.trusts_you and not rel.trusted_by_you
 
   async def test_error_when_no_such_invitation(self, any_servicer: Servicer):
-    non_inviter_token = new_user_token(any_servicer, 'rando')
-    accepter_token = new_user_token(any_servicer, 'accepter')
-    with assert_user_unchanged(any_servicer, non_inviter_token, 'rando password'):
-      assert 'invitation is non-existent or already used' in str(AcceptInvitationErr(any_servicer, accepter_token, nonce='asdf'))
+    rando_token = new_user_token(any_servicer, 'rando')
+    with assert_user_unchanged(any_servicer, rando_token, 'rando password'):
+      assert 'no such invitation' in str(AcceptInvitationErr(any_servicer, rando_token, nonce='asdf'))
 
-  async def test_error_when_invitation_is_closed(self, any_servicer: Servicer):
+  async def test_error_when_invitation_is_already_used(self, any_servicer: Servicer, emailer: Emailer):
+    recipient_token = new_user_token(any_servicer, 'recipient')
+    set_and_verify_email(any_servicer, emailer, recipient_token, 'recipient@example.com')
+    UpdateSettingsOk(any_servicer, recipient_token, allow_email_invitations=True)
+
     inviter_token = new_user_token(any_servicer, 'inviter')
-    nonce = CreateInvitationOk(any_servicer, inviter_token).nonce
+    set_and_verify_email(any_servicer, emailer, inviter_token, 'inviter@example.com')
 
-    accepter_token = new_user_token(any_servicer, 'accepter')
-    AcceptInvitationOk(any_servicer, accepter_token, nonce)
+    SendInvitationOk(any_servicer, inviter_token, 'recipient')
+    nonce = get_call_kwarg(emailer.send_invitation, 'nonce')
+    AcceptInvitationOk(any_servicer, recipient_token, nonce)
 
     with assert_user_unchanged(any_servicer, inviter_token, 'inviter password'):
-      assert 'invitation is non-existent or already used' in str(AcceptInvitationErr(any_servicer, accepter_token, nonce=nonce))
+      assert 'no such invitation' in str(AcceptInvitationErr(any_servicer, recipient_token, nonce=nonce))

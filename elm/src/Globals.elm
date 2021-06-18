@@ -27,7 +27,7 @@ module Globals exposing
   , handleVerifyEmailResponse
   , handleGetSettingsResponse
   , handleUpdateSettingsResponse
-  , handleCreateInvitationResponse
+  , handleSendInvitationResponse
   , handleAcceptInvitationResponse
   )
 
@@ -167,13 +167,10 @@ handleUpdateSettingsResponse _ res globals =
       Just (Pb.UpdateSettingsResultOk newInfo) -> globals |> updateUserInfo (always newInfo)
       _ -> globals
     Err _ -> globals
-handleCreateInvitationResponse : Pb.CreateInvitationRequest -> Result Http.Error Pb.CreateInvitationResponse -> Globals -> Globals
-handleCreateInvitationResponse _ res globals =
-  case res of
-    Ok {createInvitationResult} -> case createInvitationResult of
-      Just (Pb.CreateInvitationResultOk result) -> globals |> updateUserInfo (\_ -> Utils.must "TODO" result.userInfo)
-      _ -> globals
-    Err _ -> globals
+handleSendInvitationResponse : Pb.SendInvitationRequest -> Result Http.Error Pb.SendInvitationResponse -> Globals -> Globals
+handleSendInvitationResponse _ res globals =
+  globals
+
 handleAcceptInvitationResponse : Pb.AcceptInvitationRequest -> Result Http.Error Pb.AcceptInvitationResponse -> Globals -> Globals
 handleAcceptInvitationResponse _ res globals =
   case res of

@@ -45,6 +45,7 @@ class Emailer:
         self._EmailVerification_template = jenv.get_template('EmailVerification.html')
         self._Backup_template = jenv.get_template('Backup.html')
         self._InvariantViolations_template = jenv.get_template('InvariantViolations.html')
+        self._Invitation_template = jenv.get_template('Invitation.html')
 
     async def _send(self, *, to: str, subject: str, body: str, headers: Mapping[str, str] = {}) -> None:
         # adapted from https://aiosmtplib.readthedocs.io/en/stable/usage.html#authentication
@@ -133,4 +134,23 @@ class Emailer:
             to=to,
             subject=f'INVARIANT VIOLATIONS for {now:%Y-%m-%dT%H:%M:%S}',
             body=self._InvariantViolations_template.render(violations_json=json.dumps(violations, indent=True)),
+        )
+
+    async def send_invitation(
+        self,
+        nonce: str,
+        inviter_username: Username,
+        inviter_email: str,
+        recipient_username: Username,
+        recipient_email: str,
+    ) -> None:
+        await self._send(
+            to=recipient_email,
+            subject=f'Do you trust {inviter_email!r}?',
+            body=self._Invitation_template.render(
+                inviter_username=inviter_username,
+                inviter_email=inviter_email,
+                recipient_username=recipient_username,
+                nonce=nonce,
+            ),
         )

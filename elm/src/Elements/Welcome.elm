@@ -34,8 +34,6 @@ type Msg
   = SetAuthWidget AuthWidgetLoc AuthWidget.State
   | SetEmailWidget EmailSettingsWidget.State
   | SetInvitationWidget SmallInvitationWidget.State
-  | CreateInvitation SmallInvitationWidget.State Pb.CreateInvitationRequest
-  | CreateInvitationFinished Pb.CreateInvitationRequest (Result Http.Error Pb.CreateInvitationResponse)
   | LogInUsername AuthWidgetLoc AuthWidget.State Pb.LogInUsernameRequest
   | LogInUsernameFinished AuthWidgetLoc Pb.LogInUsernameRequest (Result Http.Error Pb.LogInUsernameResponse)
   | RegisterUsername AuthWidgetLoc AuthWidget.State Pb.RegisterUsernameRequest
@@ -79,16 +77,6 @@ update msg model =
       ( { model | emailSettingsWidget = widgetState } , Cmd.none )
     SetInvitationWidget widgetState ->
       ( { model | invitationWidget = widgetState } , Cmd.none )
-    CreateInvitation widgetState req ->
-      ( { model | invitationWidget = widgetState }
-      , API.postCreateInvitation (CreateInvitationFinished req) req
-      )
-    CreateInvitationFinished req res ->
-      ( { model | globals = model.globals |> Globals.handleCreateInvitationResponse req res
-                , invitationWidget = model.invitationWidget |> SmallInvitationWidget.handleCreateInvitationResponse res
-        }
-      , Cmd.none
-      )
     LogInUsername loc widgetState req ->
       ( updateAuthWidget loc (always widgetState) model
       , API.postLogInUsername (LogInUsernameFinished loc req) req
@@ -272,22 +260,6 @@ view model =
             ]
         , H.li [HA.style "margin-bottom" "1em"]
             [ H.text " Advertise your bet -- post the link on Facebook, include a cute little embeddable image in your blog, whatever. "
-            ]
-        , H.li [HA.style "margin-bottom" "1em"]
-            [ H.text " Send your friends invitation links so I know who you trust to bet against you:   "
-            , H.div [HA.style "border" "1px solid gray", HA.style "padding" "0.5em", HA.style "margin" "0.5em"]
-                [ if Globals.isLoggedIn model.globals then
-                    SmallInvitationWidget.view
-                      { setState = SetInvitationWidget
-                      , createInvitation = CreateInvitation
-                      , copy = Copy
-                      , destination = Nothing
-                      , httpOrigin = model.globals.httpOrigin
-                      }
-                      model.invitationWidget
-                  else
-                    H.text "(first, log in)"
-                ]
             ]
         , H.li [HA.style "margin-bottom" "1em"]
             [ H.text " Consider adding an email address, so I can remind you to resolve your prediction when the time comes:   "

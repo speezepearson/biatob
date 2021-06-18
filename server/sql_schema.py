@@ -95,24 +95,14 @@ email_attempts = Table(
 )
 Index('email_attempts_by_email_id', email_attempts.c.email_id)
 
-
-invitations = Table(
-  'invitations',
+email_invitations = Table(
+  'email_invitations',
   metadata,
   Column('nonce', String(64), primary_key=True, nullable=False),
   Column('inviter', ForeignKey('users.username'), nullable=False),
-  Column('created_at_unixtime', REAL(), nullable=False),
-  Column('notes', String(65535), nullable=False, default=''),
+  Column('recipient', ForeignKey('users.username'), nullable=False),
 )
-Index('invitations_by_inviter', invitations.c.inviter)
-
-invitation_acceptances = Table(
-  'invitation_acceptances',
-  metadata,
-  Column('invitation_nonce', ForeignKey('invitations.nonce'), primary_key=True, nullable=False),
-  Column('accepted_at_unixtime', REAL(), nullable=False),
-  Column('accepted_by', ForeignKey('users.username'), nullable=False),
-)
+Index('email_invitations_by_inviter', email_invitations.c.inviter)
 
 migrations = Table(
   'migrations',
@@ -122,7 +112,9 @@ migrations = Table(
 )
 
 _MIGRATION_STMTS = [
-  'ALTER TABLE users ADD COLUMN allow_email_invitations BOOLEAN NOT NULL DEFAULT 0'
+  'ALTER TABLE users ADD COLUMN allow_email_invitations BOOLEAN NOT NULL DEFAULT 0',
+  'DROP TABLE invitations',
+  'DROP TABLE invitation_acceptances',
 ]
 _N_MIGRATIONS = len(_MIGRATION_STMTS)
 
@@ -161,5 +153,7 @@ def create_sqlite_engine(database: str) -> sqlalchemy.engine.Engine:
       for id, migration_stmt in enumerate(_MIGRATION_STMTS):
         # all migrations have already been applied in the sqlalchemy defns
         conn.execute(sqlalchemy.insert(migrations).values(id=id, stmt=migration_stmt))
+
+  metadata.create_all(engine)
 
   return engine

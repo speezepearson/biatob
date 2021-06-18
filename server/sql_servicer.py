@@ -437,6 +437,7 @@ class SqlConn:
     return mvp_pb2.GenericUserInfo(
       email_reminders_to_resolve=row['email_reminders_to_resolve'],
       email_resolution_notifications=row['email_resolution_notifications'],
+      allow_email_invitations=row['allow_email_invitations'],
       email=mvp_pb2.EmailFlowState.FromString(row['email_flow_state']),
       relationships={
         who: mvp_pb2.Relationship(
@@ -444,21 +445,6 @@ class SqlConn:
           trusts_you=who in trusting_users,
         )
         for who in include_relationships_with_users
-      },
-      invitations={
-        row['nonce']: mvp_pb2.Invitation(
-          created_unixtime=row['created_at_unixtime'],
-          notes=row['notes'],
-          accepted_by=row['accepted_by'],
-          accepted_unixtime=row['accepted_at_unixtime'],
-        )
-        for row in self._conn.execute(
-          sqlalchemy.select([
-            *schema.invitations.c,
-            *schema.invitation_acceptances.c,
-          ]).select_from(schema.invitations.join(schema.invitation_acceptances, isouter=True))
-          .where(schema.invitations.c.inviter == user)
-        )
       },
     )
 
@@ -468,54 +454,53 @@ class SqlConn:
       update_kwargs['email_reminders_to_resolve'] = request.email_reminders_to_resolve.value
     if request.HasField('email_resolution_notifications'):
       update_kwargs['email_resolution_notifications'] = request.email_resolution_notifications.value
+    if request.HasField('allow_email_invitations'):
+      update_kwargs['allow_email_invitations'] = request.allow_email_invitations.value
 
-    self._conn.execute(
-      sqlalchemy.update(schema.users)
-      .values(**update_kwargs)
-      .where(schema.users.c.username == user)
-    )
+    if update_kwargs:
+      self._conn.execute(
+        sqlalchemy.update(schema.users)
+        .values(**update_kwargs)
+        .where(schema.users.c.username == user)
+      )
 
-  def create_invitation(self, nonce: str, inviter: Username, now: datetime.datetime, notes: str) -> None:
+  def create_invitation(self, nonce: str, inviter: Username, recipient: Username) -> None:
     self._conn.execute(
-      sqlalchemy.insert(schema.invitations)
+      sqlalchemy.insert(schema.email_invitations)
       .values(
         nonce=nonce,
         inviter=inviter,
-        created_at_unixtime=round(now.timestamp()),
-        notes=notes,
+        recipient=recipient,
       )
     )
 
-  InvitationInfo = TypedDict('InvitationInfo', {'inviter': Username, 'is_open': bool})
-  def get_invitation_info(self, nonce: str) -> Optional[InvitationInfo]:
-    invitation_row = self._conn.execute(
-      sqlalchemy.select([schema.invitations.c.inviter])
-      .where(schema.invitations.c.nonce == nonce)
-    ).fetchone()
-    if invitation_row is None:
-      return None
-    acceptance_row = self._conn.execute(
-      sqlalchemy.select(schema.invitation_acceptances.c)
-      .where(schema.invitation_acceptances.c.invitation_nonce == nonce)
-    ).fetchone()
-    return {'inviter': invitation_row['inviter'], 'is_open': acceptance_row is None}
-
-  def accept_invitation(self, nonce: str, accepter: Username, now: datetime.datetime) -> None:
+  def check_invitation(self, nonce: str) -> Optional[mvp_pb2.CheckInvitationResponse.Result]:
     self._conn.execute(
-      sqlalchemy.insert(schema.invitation_acceptances)
-      .values(
-        invitation_nonce=nonce,
-        accepted_at_unixtime=round(now.timestamp()),
-        accepted_by=accepter,
-      )
+      sqlalchemy.select(schema.email_invitations.c)
+      .where(schema.email_invitations.c.nonce == nonce)
     )
-    inviter = self._conn.execute(
-      sqlalchemy.select([schema.invitations.c.inviter])
-      .where(schema.invitations.c.nonce == nonce)
-    ).scalar()
-    assert inviter is not None  # else the INSERT should have raised an IntegrityError, referencing a nonexistent invitation
-    self.set_trusted(inviter, accepter, True)
-    self.set_trusted(accepter, inviter, True)
+    row = self._conn.execute(
+      sqlalchemy.select(schema.email_invitations.c)
+      .where(schema.email_invitations.c.nonce == nonce)
+    ).fetchone()
+    if row is None:
+      return None
+    return mvp_pb2.CheckInvitationResponse.Result(
+      inviter=row['inviter'],
+      recipient=row['recipient'],
+    )
+
+  def accept_invitation(self, nonce: str) -> Optional[mvp_pb2.CheckInvitationResponse.Result]:
+    check_resp = self.check_invitation(nonce)
+    if check_resp is None:
+      return None
+    self.set_trusted(Username(check_resp.inviter), Username(check_resp.recipient), True)
+    self.set_trusted(Username(check_resp.recipient), Username(check_resp.inviter), True)
+    self._conn.execute(
+      sqlalchemy.delete(schema.email_invitations)
+      .where(schema.email_invitations.c.nonce == nonce)
+    )
+    return check_resp
 
   ResolutionReminderInfo = TypedDict('ResolutionReminderInfo', {'prediction_id': PredictionId,
                                                                 'prediction_text': str,
@@ -983,59 +968,67 @@ class SqlServicer(Servicer):
     @transactional
     @checks_token
     @log_action
-    def CreateInvitation(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.CreateInvitationRequest) -> mvp_pb2.CreateInvitationResponse:
+    def SendInvitation(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.SendInvitationRequest) -> mvp_pb2.SendInvitationResponse:
       if token is None:
         logger.warn('not logged in')
-        return mvp_pb2.CreateInvitationResponse(error=mvp_pb2.CreateInvitationResponse.Error(catchall='must log in to create an invitation'))
+        return mvp_pb2.SendInvitationResponse(error=mvp_pb2.SendInvitationResponse.Error(catchall='must log in to create an invitation'))
 
-      now = self._clock()
+      inviter_email = self._conn.get_email(token_owner(token))
+      assert inviter_email is not None  # the user _must_ exist: we have a token for them!
+      if inviter_email.WhichOneof('email_flow_state_kind') != 'verified':
+        logger.warn('trying to send email invitation to user without email set')
+        return mvp_pb2.SendInvitationResponse(error=mvp_pb2.SendInvitationResponse.Error(catchall='you need to add an email address before you can send invitations'))
+
+      recipient_settings = self._conn.get_settings(Username(request.recipient))
+      if recipient_settings is None:
+        logger.warn('trying to send email invitation to nonexistent user')
+        return mvp_pb2.SendInvitationResponse(error=mvp_pb2.SendInvitationResponse.Error(catchall='recipient user does not exist'))
+      if not recipient_settings.allow_email_invitations:
+        logger.warn('trying to send email invitation to user without allow_email_invitations set')
+        return mvp_pb2.SendInvitationResponse(error=mvp_pb2.SendInvitationResponse.Error(catchall='recipient user does not accept email invitations'))
+      if recipient_settings.email.WhichOneof('email_flow_state_kind') != 'verified':
+        logger.warn('trying to send email invitation to user without email set')
+        return mvp_pb2.SendInvitationResponse(error=mvp_pb2.SendInvitationResponse.Error(catchall='recipient user does not accept email invitations'))
+
       nonce = secrets.token_urlsafe(16)
 
-      self._conn.create_invitation(nonce=nonce, inviter=token_owner(token), now=now, notes=request.notes)
-
-      invitation = mvp_pb2.Invitation(
-        created_unixtime=round(now.timestamp()),
-        notes=request.notes,
-        accepted_by="",
+      self._conn.create_invitation(
+        nonce=nonce,
+        inviter=token_owner(token),
+        recipient=Username(request.recipient),
       )
-      return mvp_pb2.CreateInvitationResponse(ok=mvp_pb2.CreateInvitationResponse.Result(
-          nonce=nonce,
-          user_info=self._conn.get_settings(token_owner(token)),
+      asyncio.create_task(self._emailer.send_invitation(
+        inviter_username=token_owner(token),
+        inviter_email=inviter_email.verified,
+        recipient_username=Username(request.recipient),
+        recipient_email=recipient_settings.email.verified,
+        nonce=nonce,
       ))
+      return mvp_pb2.SendInvitationResponse(ok=mvp_pb2.VOID)
 
     @transactional
     @checks_token
     @log_action
     def CheckInvitation(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.CheckInvitationRequest) -> mvp_pb2.CheckInvitationResponse:
-      if not request.nonce:
-        logger.warn('malformed CheckInvitationRequest')
-        return mvp_pb2.CheckInvitationResponse(error=mvp_pb2.CheckInvitationResponse.Error(catchall='malformed invitation'))
-
-      info = self._conn.get_invitation_info(nonce=request.nonce)
-      if info is None:
+      result = self._conn.check_invitation(
+        nonce=request.nonce,
+      )
+      if result is None:
+        logger.warn('asking about nonexistent (or completed) invitation')
         return mvp_pb2.CheckInvitationResponse(error=mvp_pb2.CheckInvitationResponse.Error(catchall='no such invitation'))
-      return mvp_pb2.CheckInvitationResponse(ok=mvp_pb2.CheckInvitationResponse.Result(inviter=info['inviter'], is_open=info['is_open']))
+      return mvp_pb2.CheckInvitationResponse(ok=result)
 
     @transactional
     @checks_token
     @log_action
     def AcceptInvitation(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.AcceptInvitationRequest) -> mvp_pb2.AcceptInvitationResponse:
-      if token is None:
-        logger.warn('not logged in')
-        return mvp_pb2.AcceptInvitationResponse(error=mvp_pb2.AcceptInvitationResponse.Error(catchall='must log in to create an invitation'))
-      problems = describe_AcceptInvitationRequest_problems(request)
-      if problems is not None:
-        logger.warn('invalid AcceptInvitationRequest', problems=problems)
-        return mvp_pb2.AcceptInvitationResponse(error=mvp_pb2.AcceptInvitationResponse.Error(catchall=problems))
-
-      info = self._conn.get_invitation_info(nonce=request.nonce)
-      if (info is None) or not info['is_open']:
-        logger.info('attempt to accept non-open invitation')
-        return mvp_pb2.AcceptInvitationResponse(error=mvp_pb2.AcceptInvitationResponse.Error(catchall='invitation is non-existent or already used'))
-
-      self._conn.accept_invitation(request.nonce, token_owner(token), self._clock())
-      logger.info('accepted invitation')
-      return mvp_pb2.AcceptInvitationResponse(ok=self._conn.get_settings(token_owner(token)))
+      result = self._conn.accept_invitation(
+        nonce=request.nonce,
+      )
+      if result is None:
+        logger.warn('trying to accept nonexistent (or completed) invitation')
+        return mvp_pb2.AcceptInvitationResponse(error=mvp_pb2.AcceptInvitationResponse.Error(catchall='no such invitation'))
+      return mvp_pb2.AcceptInvitationResponse(ok=mvp_pb2.GenericUserInfo() if token is None else self._conn.get_settings(token_owner(token)))
 
 
 

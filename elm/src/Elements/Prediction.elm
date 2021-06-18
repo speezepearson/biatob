@@ -44,8 +44,8 @@ type StakeRequestStatus = StakeUnstarted | StakeAwaitingResponse | StakeSucceede
 type Msg
   = SetAuthWidget AuthWidget.State
   | SetInvitationWidget SmallInvitationWidget.State
-  | CreateInvitation SmallInvitationWidget.State Pb.CreateInvitationRequest
-  | CreateInvitationFinished Pb.CreateInvitationRequest (Result Http.Error Pb.CreateInvitationResponse)
+  | SendInvitation SmallInvitationWidget.State Pb.SendInvitationRequest
+  | SendInvitationFinished Pb.SendInvitationRequest (Result Http.Error Pb.SendInvitationResponse)
   | LogInUsername AuthWidget.State Pb.LogInUsernameRequest
   | LogInUsernameFinished Pb.LogInUsernameRequest (Result Http.Error Pb.LogInUsernameResponse)
   | RegisterUsername AuthWidget.State Pb.RegisterUsernameRequest
@@ -158,6 +158,15 @@ viewBody model =
     else
       H.text ""
   ]
+
+viewInvitationWidget : Model -> Html Msg
+viewInvitationWidget model =
+  SmallInvitationWidget.view
+    { setState = SetInvitationWidget
+    , sendInvitation = SendInvitation
+    , recipient = (mustPrediction model).creator
+    }
+    model.invitationWidget
 
 viewResolveButtons : Model -> Html Msg
 viewResolveButtons model =
@@ -593,16 +602,6 @@ makeTable tableAttrs columns xs =
   H.table tableAttrs (headerRow :: dataRows)
 
 
-viewInvitationWidget : Model -> Html Msg
-viewInvitationWidget model =
-  SmallInvitationWidget.view
-    { setState = SetInvitationWidget
-    , createInvitation = CreateInvitation
-    , copy = Copy
-    , destination = Just <| Utils.pathToPrediction model.predictionId
-    , httpOrigin = model.globals.httpOrigin
-    }
-    model.invitationWidget
 viewEmbedInfo : Model -> Html Msg
 viewEmbedInfo model =
   let
@@ -693,12 +692,12 @@ update msg model =
       ( { model | navbarAuth = widgetState } , Cmd.none )
     SetInvitationWidget widgetState ->
       ( { model | invitationWidget = widgetState } , Cmd.none )
-    CreateInvitation widgetState req ->
+    SendInvitation widgetState req ->
       ( { model | invitationWidget = widgetState }
-      , API.postCreateInvitation (CreateInvitationFinished req) req
+      , API.postSendInvitation (SendInvitationFinished req) req
       )
-    CreateInvitationFinished req res ->
-      ( { model | globals = model.globals |> Globals.handleCreateInvitationResponse req res , invitationWidget = model.invitationWidget |> SmallInvitationWidget.handleCreateInvitationResponse res }
+    SendInvitationFinished req res ->
+      ( { model | globals = model.globals |> Globals.handleSendInvitationResponse req res , invitationWidget = model.invitationWidget |> SmallInvitationWidget.handleSendInvitationResponse res }
       , Cmd.none
       )
     LogInUsername widgetState req ->

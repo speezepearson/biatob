@@ -15,7 +15,6 @@ import Widgets.AuthWidget as AuthWidget
 import Globals
 import API
 import Widgets.Navbar as Navbar
-import Time
 import Utils exposing (InvitationNonce, Username)
 
 port navigate : Maybe String -> Cmd msg
@@ -25,26 +24,22 @@ type alias Model =
   { globals : Globals.Globals
   , navbarAuth : AuthWidget.State
   , inviter : Username
+  , recipient : Username
   , nonce : InvitationNonce
-  , invitationIsOpen : Bool
-  , destination : Maybe String
-  , authWidget : AuthWidget.State
-  , working : Bool
-  , acceptNotification : Html Msg
+  , requestStatus : RequestStatus
   }
+type RequestStatus = AwaitingResponse | Succeeded | Failed String
 
-type AuthWidgetLoc = Navbar | Inline
 type Msg
-  = SetAuthWidget AuthWidgetLoc AuthWidget.State
+  = SetAuthWidget AuthWidget.State
   | AcceptInvitation
   | AcceptInvitationFinished Pb.AcceptInvitationRequest (Result Http.Error Pb.AcceptInvitationResponse)
-  | LogInUsername AuthWidgetLoc AuthWidget.State Pb.LogInUsernameRequest
-  | LogInUsernameFinished AuthWidgetLoc Pb.LogInUsernameRequest (Result Http.Error Pb.LogInUsernameResponse)
-  | RegisterUsername AuthWidgetLoc AuthWidget.State Pb.RegisterUsernameRequest
-  | RegisterUsernameFinished AuthWidgetLoc Pb.RegisterUsernameRequest (Result Http.Error Pb.RegisterUsernameResponse)
-  | SignOut AuthWidgetLoc AuthWidget.State Pb.SignOutRequest
-  | SignOutFinished AuthWidgetLoc Pb.SignOutRequest (Result Http.Error Pb.SignOutResponse)
-  | Tick Time.Posix
+  | LogInUsername AuthWidget.State Pb.LogInUsernameRequest
+  | LogInUsernameFinished Pb.LogInUsernameRequest (Result Http.Error Pb.LogInUsernameResponse)
+  | RegisterUsername AuthWidget.State Pb.RegisterUsernameRequest
+  | RegisterUsernameFinished Pb.RegisterUsernameRequest (Result Http.Error Pb.RegisterUsernameResponse)
+  | SignOut AuthWidget.State Pb.SignOutRequest
+  | SignOutFinished Pb.SignOutRequest (Result Http.Error Pb.SignOutResponse)
   | AuthWidgetExternallyModified AuthWidget.DomModification
   | Ignore
 
@@ -52,99 +47,75 @@ init : JD.Value -> (Model, Cmd Msg)
 init flags =
   let
     globals = JD.decodeValue Globals.globalsDecoder flags |> Utils.mustResult "flags"
-    nonce = Utils.mustDecodeFromFlags JD.string "nonce" flags
     inviter = Utils.mustDecodeFromFlags JD.string "inviter" flags
-    destination = Utils.mustDecodeFromFlags (JD.nullable JD.string) "destination" flags
+    recipient = Utils.mustDecodeFromFlags JD.string "recipient" flags
+    nonce = Utils.mustDecodeFromFlags JD.string "nonce" flags
   in
   ( { globals = globals
     , inviter = inviter
+    , recipient = recipient
     , nonce = nonce
-    , destination = destination
-    , invitationIsOpen = Utils.mustDecodeFromFlags JD.bool "invitationIsOpen" flags
     , navbarAuth = AuthWidget.init
-    , authWidget = AuthWidget.init
-    , working = False
-    , acceptNotification = H.text ""
+    , requestStatus = AwaitingResponse
     }
-  , case globals.serverState.settings |> Maybe.map .relationships |> Maybe.andThen (Dict.get inviter) |> Maybe.andThen identity of
-      Just {trustsYou, trustedByYou} ->
-        if trustsYou && trustedByYou then
-          navigate destination
-        else
-          Cmd.none
-      Nothing -> Cmd.none
-
+  , let req = {nonce = nonce} in
+    API.postAcceptInvitation (AcceptInvitationFinished req) req
   )
-
-updateAuthWidget : AuthWidgetLoc -> (AuthWidget.State -> AuthWidget.State) -> Model -> Model
-updateAuthWidget loc f model =
-  case loc of
-    Navbar -> { model | navbarAuth = model.navbarAuth |> f }
-    Inline -> { model | authWidget = model.authWidget |> f }
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
-    SetAuthWidget loc widgetState ->
-      ( updateAuthWidget loc (always widgetState) model , Cmd.none )
+    SetAuthWidget widgetState ->
+      ( { model | navbarAuth = widgetState } , Cmd.none )
     AcceptInvitation ->
-      ( { model | working = True , acceptNotification = H.text "" }
-      , API.postAcceptInvitation (AcceptInvitationFinished {nonce=model.nonce}) {nonce=model.nonce}
+      ( { model | requestStatus = AwaitingResponse }
+      , let req = {nonce = model.nonce} in
+        API.postAcceptInvitation (AcceptInvitationFinished req) req
       )
     AcceptInvitationFinished req res ->
-      ( { model | globals = model.globals |> Globals.handleAcceptInvitationResponse req res
-                , working = False
-                , acceptNotification = case API.simplifyAcceptInvitationResponse res of
-                    Ok _ -> H.text ""
-                    Err e -> Utils.redText e
+      ( case API.simplifyAcceptInvitationResponse res of
+          Ok _ -> { model | requestStatus = Succeeded }
+          Err e -> { model | requestStatus = Failed e }
+      , Cmd.none
+      )
+    LogInUsername widgetState req ->
+      ( { model | navbarAuth = widgetState }
+      , API.postLogInUsername (LogInUsernameFinished req) req
+      )
+    LogInUsernameFinished req res ->
+      ( { model | globals = model.globals |> Globals.handleLogInUsernameResponse req res
+                , navbarAuth = model.navbarAuth |> AuthWidget.handleLogInUsernameResponse res
         }
-      , case API.simplifyAcceptInvitationResponse res of
-          Ok _ -> navigate model.destination
-          Err _ -> Cmd.none
-      )
-    LogInUsername loc widgetState req ->
-      ( updateAuthWidget loc (always widgetState) model
-      , API.postLogInUsername (LogInUsernameFinished loc req) req
-      )
-    LogInUsernameFinished loc req res ->
-      ( updateAuthWidget loc (AuthWidget.handleLogInUsernameResponse res) { model | globals = model.globals |> Globals.handleLogInUsernameResponse req res }
       , case API.simplifyLogInUsernameResponse res of
           Ok _ -> navigate Nothing
           Err _ -> Cmd.none
       )
-    RegisterUsername loc widgetState req ->
-      ( updateAuthWidget loc (always widgetState) model
-      , API.postRegisterUsername (RegisterUsernameFinished loc req) req
+    RegisterUsername widgetState req ->
+      ( { model | navbarAuth = widgetState }
+      , API.postRegisterUsername (RegisterUsernameFinished req) req
       )
-    RegisterUsernameFinished loc req res ->
-      ( updateAuthWidget loc (AuthWidget.handleRegisterUsernameResponse res) { model | globals = model.globals |> Globals.handleRegisterUsernameResponse req res }
+    RegisterUsernameFinished req res ->
+      ( { model | globals = model.globals |> Globals.handleRegisterUsernameResponse req res
+                , navbarAuth = model.navbarAuth |> AuthWidget.handleRegisterUsernameResponse res
+        }
       , case API.simplifyRegisterUsernameResponse res of
           Ok _ -> navigate Nothing
           Err _ -> Cmd.none
       )
-    SignOut loc widgetState req ->
-      ( updateAuthWidget loc (always widgetState) model
-      , API.postSignOut (SignOutFinished loc req) req
+    SignOut widgetState req ->
+      ( { model | navbarAuth = widgetState }
+      , API.postSignOut (SignOutFinished req) req
       )
-    SignOutFinished loc req res ->
-      ( updateAuthWidget loc (AuthWidget.handleSignOutResponse res) { model | globals = model.globals |> Globals.handleSignOutResponse req res }
+    SignOutFinished req res ->
+      ( { model | globals = model.globals |> Globals.handleSignOutResponse req res
+                , navbarAuth = model.navbarAuth |> AuthWidget.handleSignOutResponse res
+        }
       , case API.simplifySignOutResponse res of
           Ok _ -> navigate <| Just "/"
           Err _ -> Cmd.none
       )
-    Tick now ->
-      ( { model | globals = model.globals |> Globals.tick now }
-      , Cmd.none
-      )
     AuthWidgetExternallyModified mod ->
-      ( updateAuthWidget
-          (case mod.authWidgetId of
-             "navbar-auth" -> Navbar
-             "inline-auth" -> Inline
-             _ -> Debug.todo "unknown auth widget id"
-          )
-          (AuthWidget.handleDomModification mod)
-          model
+      ( { model | navbarAuth = model.navbarAuth |> AuthWidget.handleDomModification mod }
       , Cmd.none
       )
     Ignore ->
@@ -152,79 +123,125 @@ update msg model =
 
 view : Model -> Browser.Document Msg
 view model =
-  { title = "Accept Invitation"
-  , body = [
-    Navbar.view
-        { setState = SetAuthWidget Navbar
-        , logInUsername = LogInUsername Navbar
-        , register = RegisterUsername Navbar
-        , signOut = SignOut Navbar
+  { title = case model.requestStatus of
+      AwaitingResponse -> "Accepting invitation"
+      Succeeded -> "Invitation accepted"
+      Failed _ -> "[try again?] Accept invitation"
+  , body =
+    [ Navbar.view
+        { setState = SetAuthWidget
+        , logInUsername = LogInUsername
+        , register = RegisterUsername
+        , signOut = SignOut
         , ignore = Ignore
         , auth = Globals.getAuth model.globals
         , id = "navbar-auth"
         }
         model.navbarAuth
-    ,
-    H.main_ [HA.style "text-align" "justify"] <|
-    if (model.globals.authToken |> Maybe.map .owner) == Just model.inviter then
-      [H.text "This is your own invitation!"]
-    else if not model.invitationIsOpen then
-      [H.text "This invitation has been used up already!"]
-    else
-      [ H.h2 [] [H.text "Invitation from ", Utils.renderUser model.inviter]
-      , H.p []
-        [ H.text <| "The person who sent you this link is interested in betting against you regarding real-world events,"
-          ++ " with real money, upheld by the honor system!"
-          ++ " They trust you to behave honorably and pay your debts, and hope that you trust them back."
-        ]
-      , H.p [] <|
-        if Globals.isLoggedIn model.globals then
-          [ H.text "If you trust them back, click "
-          , H.button [HE.onClick AcceptInvitation, HA.disabled model.working] [H.text "I trust the person who sent me this link"]
-          , model.acceptNotification
-          , H.text "; otherwise, just close this tab."
-          ]
-        else
-          [ H.text "If you trust them back, and you're interested in betting against them:"
-          , H.ul []
-            [ H.li []
-              [ H.text "Authenticate yourself: "
-              , AuthWidget.view
-                  { setState = SetAuthWidget Inline
-                  , logInUsername = LogInUsername Inline
-                  , register = RegisterUsername Inline
-                  , signOut = SignOut Inline
-                  , ignore = Ignore
-                  , auth = Globals.getAuth model.globals
-                  , id = "inline-auth"
-                  }
-                  model.authWidget
-              ]
-            , H.li []
-              [ H.text "...then click "
-              , H.button
-                [ HE.onClick AcceptInvitation
-                , HA.disabled True -- login will trigger reload, and then we'll take the other case branch
-                ] [H.text "I trust the person who sent me this link"]
-              , model.acceptNotification
-              , H.text "."
-              ]
+    , H.main_ [HA.style "text-align" "justify"]
+      [ case model.requestStatus of
+          AwaitingResponse -> Debug.todo ""
+          Failed e ->
+            H.div []
+            [ H.text "Oof, sorry, I'm having trouble accepting "
+            , Utils.renderUser model.inviter
+            , H.text "'s invitation:"
+            , H.div [HA.style "margin" "1em"] [Utils.redText e]
+            , H.text "Would you like to "
+            , H.button [HE.onClick AcceptInvitation] [H.text "try again?"]
             ]
-          ]
-      , H.hr [] []
-      , H.h3 [] [H.text "Huh? What? What is this?"]
-      , H.p [] [H.text "This site is a tool that helps people make concrete predictions and bet on them, thereby clarifying their beliefs and making the world a better, saner place."]
-      , H.p [] [H.text <| "Users can make predictions and say how confident they are;"
-          ++ " then other people can bet real money against them. "
-          , Utils.b "Everything is purely honor-system,"
-          , H.text <| " so you don't have to provide a credit card or anything, but you ", Utils.i  "do"
-          , H.text <| " have to tell the site who you trust, so that it knows who's allowed to bet against you."
-          ++ " (Honor systems only work where there is honor.)"]
-      , H.p [] [Utils.renderUser model.inviter, H.text <|
-          " thinks you might be interested in gambling against them, and trusts you to pay any debts you incur when you lose;"
-          ++ " if you feel likewise, accept their invitation!"]
+          Succeeded ->
+            H.div []
+            [ H.text "Thanks! I now know that you and "
+            , Utils.renderUser model.inviter
+            , H.text " trust each other, and I'll let you bet on each other's predictions!"
+            , case Globals.getAuth model.globals |> Maybe.map .owner of
+                Nothing -> H.text ""
+                Just currentUser ->
+                  if currentUser == model.recipient then
+                    H.text ""
+                  else
+                    H.div []
+                    [ H.strong [] [Utils.redText "Strangely,"]
+                    , H.text " this invitation was destined for user "
+                    , Utils.renderUser model.recipient
+                    , H.text ", but you're logged in as "
+                    , Utils.renderUser currentUser
+                    , H.text ". I... I guess you just have two different accounts?"
+                    , H.br [] []
+                    , H.text "I recorded that "
+                    , Utils.renderUser model.inviter
+                    , H.text " and "
+                    , Utils.renderUser model.recipient
+                    , H.text " trust each other, as "
+                    , Utils.renderUser model.inviter
+                    , H.text " intended, not "
+                    , Utils.renderUser model.inviter
+                    , H.text " and your current account."
+                    ]
+            ]
       ]
-  ]}
+    ]
+  }
+  --   if (model.globals.authToken |> Maybe.map .owner) == Just model.inviter then
+  --     [H.text "This is your own invitation!"]
+  --   else if not model.invitationIsOpen then
+  --     [H.text "This invitation has been used up already!"]
+  --   else
+  --     [ H.h2 [] [H.text "Invitation from ", Utils.renderUser model.inviter]
+  --     , H.p []
+  --       [ H.text <| "The person who sent you this link is interested in betting against you regarding real-world events,"
+  --         ++ " with real money, upheld by the honor system!"
+  --         ++ " They trust you to behave honorably and pay your debts, and hope that you trust them back."
+  --       ]
+  --     , H.p [] <|
+  --       if Globals.isLoggedIn model.globals then
+  --         [ H.text "If you trust them back, click "
+  --         , H.button [HE.onClick AcceptInvitation, HA.disabled model.working] [H.text "I trust the person who sent me this link"]
+  --         , model.acceptNotification
+  --         , H.text "; otherwise, just close this tab."
+  --         ]
+  --       else
+  --         [ H.text "If you trust them back, and you're interested in betting against them:"
+  --         , H.ul []
+  --           [ H.li []
+  --             [ H.text "Authenticate yourself: "
+  --             , AuthWidget.view
+  --                 { setState = SetAuthWidget
+  --                 , logInUsername = LogInUsername
+  --                 , register = RegisterUsername
+  --                 , signOut = SignOut
+  --                 , ignore = Ignore
+  --                 , auth = Globals.getAuth model.globals
+  --                 , id = "inline-auth"
+  --                 }
+  --                 model.authWidget
+  --             ]
+  --           , H.li []
+  --             [ H.text "...then click "
+  --             , H.button
+  --               [ HE.onClick AcceptInvitation
+  --               , HA.disabled True -- login will trigger reload, and then we'll take the other case branch
+  --               ] [H.text "I trust the person who sent me this link"]
+  --             , model.acceptNotification
+  --             , H.text "."
+  --             ]
+  --           ]
+  --         ]
+  --     , H.hr [] []
+  --     , H.h3 [] [H.text "Huh? What? What is this?"]
+  --     , H.p [] [H.text "This site is a tool that helps people make concrete predictions and bet on them, thereby clarifying their beliefs and making the world a better, saner place."]
+  --     , H.p [] [H.text <| "Users can make predictions and say how confident they are;"
+  --         ++ " then other people can bet real money against them. "
+  --         , Utils.b "Everything is purely honor-system,"
+  --         , H.text <| " so you don't have to provide a credit card or anything, but you ", Utils.i  "do"
+  --         , H.text <| " have to tell the site who you trust, so that it knows who's allowed to bet against you."
+  --         ++ " (Honor systems only work where there is honor.)"]
+  --     , H.p [] [Utils.renderUser model.inviter, H.text <|
+  --         " thinks you might be interested in gambling against them, and trusts you to pay any debts you incur when you lose;"
+  --         ++ " if you feel likewise, accept their invitation!"]
+  --     ]
+  -- ]}
 
 subscriptions : Model -> Sub Msg
 subscriptions _ = authWidgetExternallyChanged AuthWidgetExternallyModified

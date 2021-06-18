@@ -195,7 +195,7 @@ class WebServer:
                 auth_success_pb_b64=pb_b64(auth_success),
             ))
 
-    async def get_invitation(self, req: web.Request) -> web.Response:
+    async def accept_invitation(self, req: web.Request) -> web.Response:
         auth = self._token_glue.parse_cookie(req)
         auth_success = self._get_auth_success(auth)
         nonce = str(req.match_info['nonce'])
@@ -207,9 +207,9 @@ class WebServer:
             content_type='text/html',
             body=self._jinja.get_template('AcceptInvitationPage.html').render(
                 auth_success_pb_b64=pb_b64(auth_success),
-                invitation_is_open=check_invitation_resp.ok.is_open,
-                nonce=nonce,
-                inviter=check_invitation_resp.ok.inviter,
+                recipient=check_invitation_resp.ok.recipient,
+                inviter_username=check_invitation_resp.ok.inviter,
+                recipient_username=check_invitation_resp.ok.recipient,
             ))
 
     def add_to_app(self, app: web.Application) -> None:
@@ -228,8 +228,7 @@ class WebServer:
         app.router.add_get('/username/{username:[a-zA-Z0-9_-]+}', self.get_username)
         app.router.add_get('/settings', self.get_settings)
         app.router.add_get('/login', self.get_login)
-        app.router.add_get('/invitation/{username}/{nonce}', self.get_invitation) # legacy path; new invitations are identified entirely by nonce
-        app.router.add_get('/invitation/{nonce}', self.get_invitation)
+        app.router.add_get('/invitation/{nonce}/accept', self.accept_invitation)
 
 
 def pb_b64(message: Optional[Message]) -> Optional[str]:
