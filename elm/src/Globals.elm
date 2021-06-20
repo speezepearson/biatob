@@ -168,8 +168,12 @@ handleUpdateSettingsResponse _ res globals =
       _ -> globals
     Err _ -> globals
 handleSendInvitationResponse : Pb.SendInvitationRequest -> Result Http.Error Pb.SendInvitationResponse -> Globals -> Globals
-handleSendInvitationResponse _ res globals =
-  globals
+handleSendInvitationResponse req res globals =
+  case res of
+    Ok {sendInvitationResult} -> case sendInvitationResult of
+      Just (Pb.SendInvitationResultOk _) -> globals |> updateUserInfo (\u -> {u | invitations = u.invitations |> Dict.insert req.recipient (Just {})})
+      _ -> globals
+    Err _ -> globals
 
 handleAcceptInvitationResponse : Pb.AcceptInvitationRequest -> Result Http.Error Pb.AcceptInvitationResponse -> Globals -> Globals
 handleAcceptInvitationResponse _ res globals =

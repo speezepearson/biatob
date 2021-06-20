@@ -831,7 +831,12 @@ update msg model =
       , let req = {recipient=(mustPrediction model).creator} in API.postSendInvitation (SendInvitationFinished req) req
       )
     SendInvitationFinished req res ->
-      ( { model | globals = model.globals |> Globals.handleSendInvitationResponse req res , invitationWidget = model.invitationWidget |> SmallInvitationWidget.handleSendInvitationResponse res }
+      ( { model | globals = model.globals |> Globals.handleSendInvitationResponse req res
+                , invitationWidget = model.invitationWidget |> SmallInvitationWidget.handleSendInvitationResponse res
+                , sendInvitationStatus = case API.simplifySendInvitationResponse res of
+                    Ok _ -> Succeeded
+                    Err e -> Failed e
+                }
       , Cmd.none
       )
     LogInUsername widgetState req ->
