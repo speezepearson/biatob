@@ -5,11 +5,9 @@
   <script type="text/javascript">
 
     var inviter = {{ inviter | tojson }};
+    var recipient = {{ recipient | tojson }};
     var nonce = {{ nonce | tojson }};
-    var invitationIsOpen = {{ invitation_is_open | tojson }};
-    var destination = (() => { var m = (/[?&]dest=([^&]+)/).exec(window.location.search); return m ? m[1] : "/"})();
-    console.log({invitationIsOpen});
 
-    main({elmApp: Elm.Elements.AcceptInvitation, flags: {invitationIsOpen, inviter, nonce, destination}});
+    main({elmApp: Elm.Elements.AcceptInvitation, flags: {inviter, recipient, nonce}});
   </script>
 {% endblock %}

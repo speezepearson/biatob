@@ -37,8 +37,8 @@ type Msg
   = SetAuthWidget AuthWidget.State
   | SetInvitationWidget SmallInvitationWidget.State
   | SetPredictionsWidget ViewPredictionsWidget.State
-  | CreateInvitation SmallInvitationWidget.State Pb.CreateInvitationRequest
-  | CreateInvitationFinished Pb.CreateInvitationRequest (Result Http.Error Pb.CreateInvitationResponse)
+  | SendInvitation SmallInvitationWidget.State Pb.SendInvitationRequest
+  | SendInvitationFinished Pb.SendInvitationRequest (Result Http.Error Pb.SendInvitationResponse)
   | LogInUsername AuthWidget.State Pb.LogInUsernameRequest
   | LogInUsernameFinished Pb.LogInUsernameRequest (Result Http.Error Pb.LogInUsernameResponse)
   | RegisterUsername AuthWidget.State Pb.RegisterUsernameRequest
@@ -74,13 +74,13 @@ update msg model =
       ( { model | invitationWidget = widgetState } , Cmd.none )
     SetPredictionsWidget widgetState ->
       ( { model | predictionsWidget = widgetState } , Cmd.none )
-    CreateInvitation widgetState req ->
+    SendInvitation widgetState req ->
       ( { model | invitationWidget = widgetState }
-      , API.postCreateInvitation (CreateInvitationFinished req) req
+      , API.postSendInvitation (SendInvitationFinished req) req
       )
-    CreateInvitationFinished req res ->
-      ( { model | globals = model.globals |> Globals.handleCreateInvitationResponse req res
-                , invitationWidget = model.invitationWidget |> SmallInvitationWidget.handleCreateInvitationResponse res
+    SendInvitationFinished req res ->
+      ( { model | globals = model.globals |> Globals.handleSendInvitationResponse req res
+                , invitationWidget = model.invitationWidget |> SmallInvitationWidget.handleSendInvitationResponse res
         }
       , Cmd.none
       )
@@ -227,10 +227,8 @@ viewInvitationWidget : Model -> Html Msg
 viewInvitationWidget model =
   SmallInvitationWidget.view
     { setState = SetInvitationWidget
-    , createInvitation = CreateInvitation
-    , copy = Copy
-    , destination = Nothing
-    , httpOrigin = model.globals.httpOrigin
+    , sendInvitation = SendInvitation
+    , recipient = model.who
     }
     model.invitationWidget
 

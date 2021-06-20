@@ -26,7 +26,7 @@ class HttpTokenGlue:
             return await handler(request)
         except ForgottenTokenError as e:
             logger.exception(e)
-            response = web.HTTPInternalServerError(reason="I, uh, may have accidentally obliterated your entire account. Crap. I'm sorry.")
+            response = web.HTTPInternalServerError(reason="I, uh, may have accidentally obliterated your entire account. Crap. I'm sorry. Refresh the page to try again?")
             self.del_cookie(request, response)
             return response
 

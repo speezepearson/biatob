@@ -3,11 +3,12 @@ import contextlib
 import datetime
 import pytest
 import unittest.mock
-from typing import Tuple, Type, TypeVar, Iterator
+from typing import Any, Callable, Tuple, Type, TypeVar, Iterator
 
 from google.protobuf.message import Message
 
 from .core import PredictionId, Servicer, TokenMint
+from .emailer import Emailer
 from .protobuf import mvp_pb2
 from .sql_servicer import SqlServicer, SqlConn
 from .sql_schema import create_sqlite_engine
@@ -34,6 +35,7 @@ def emailer():
     send_resolution_notifications=unittest.mock.Mock(wraps=lambda *args, **kwargs: asyncio.sleep(0)),
     send_resolution_reminder=unittest.mock.Mock(wraps=lambda *args, **kwargs: asyncio.sleep(0)),
     send_email_verification=unittest.mock.Mock(wraps=lambda *args, **kwargs: asyncio.sleep(0)),
+    send_invitation=unittest.mock.Mock(wraps=lambda *args, **kwargs: asyncio.sleep(0)),
     send_backup=unittest.mock.Mock(wraps=lambda *args, **kwargs: asyncio.sleep(0)),
   )
 
@@ -104,3 +106,17 @@ def some_create_prediction_request(**kwargs) -> mvp_pb2.CreatePredictionRequest:
   )
   init_kwargs.update(kwargs)
   return mvp_pb2.CreatePredictionRequest(**init_kwargs)  # type: ignore
+
+def set_and_verify_email(
+  servicer: Servicer,
+  emailer: Emailer,
+  token: mvp_pb2.AuthToken,
+  email_address: str,
+) -> None:
+  servicer.SetEmail(token, mvp_pb2.SetEmailRequest(email=email_address))
+  servicer.VerifyEmail(token, mvp_pb2.VerifyEmailRequest(
+    code=get_call_kwarg(emailer.send_email_verification, 'code'),
+  ))
+
+def get_call_kwarg(mock_method: Callable[..., Any], kwarg: str) -> Any:
+  return mock_method.call_args[1][kwarg]  # type: ignore

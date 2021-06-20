@@ -11,10 +11,11 @@ import Iso8601
 
 import Biatob.Proto.Mvp as Pb
 import Utils exposing (i, Cents)
+import Elements.Prediction as Prediction
 
 import Widgets.AuthWidget as AuthWidget
+import Widgets.EmailSettingsWidget as EmailSettingsWidget
 import Widgets.Navbar as Navbar
-import Widgets.PredictionWidget as PredictionWidget
 import Utils
 import Globals
 import API
@@ -28,6 +29,7 @@ epsilon = 0.000001
 type alias Model =
   { globals : Globals.Globals
   , navbarAuth : AuthWidget.State
+  , emailSettingsWidget : EmailSettingsWidget.State
   , predictionField : String
   , resolvesAtField : String
   , stakeField : String
@@ -36,7 +38,6 @@ type alias Model =
   , openForUnitField : String
   , openForSecondsField : String
   , specialRulesField : String
-  , previewWidget : PredictionWidget.State
   , working : Bool
   , createError : Maybe String
   }
@@ -51,7 +52,7 @@ type Msg
   | SetOpenForSecondsField String
   | SetSpecialRulesField String
   | SetAuthWidget AuthWidget.State
-  | SetPreviewWidget PredictionWidget.State
+  | SetEmailWidget EmailSettingsWidget.State
   | Create
   | CreateFinished Pb.CreatePredictionRequest (Result Http.Error Pb.CreatePredictionResponse)
   | LogInUsername AuthWidget.State Pb.LogInUsernameRequest
@@ -60,6 +61,12 @@ type Msg
   | RegisterUsernameFinished Pb.RegisterUsernameRequest (Result Http.Error Pb.RegisterUsernameResponse)
   | SignOut AuthWidget.State Pb.SignOutRequest
   | SignOutFinished Pb.SignOutRequest (Result Http.Error Pb.SignOutResponse)
+  | SetEmail EmailSettingsWidget.State Pb.SetEmailRequest
+  | SetEmailFinished Pb.SetEmailRequest (Result Http.Error Pb.SetEmailResponse)
+  | UpdateSettings EmailSettingsWidget.State Pb.UpdateSettingsRequest
+  | UpdateSettingsFinished Pb.UpdateSettingsRequest (Result Http.Error Pb.UpdateSettingsResponse)
+  | VerifyEmail EmailSettingsWidget.State Pb.VerifyEmailRequest
+  | VerifyEmailFinished Pb.VerifyEmailRequest (Result Http.Error Pb.VerifyEmailResponse)
   | Tick Time.Posix
   | AuthWidgetExternallyModified AuthWidget.DomModification
   | Ignore
@@ -175,6 +182,7 @@ init : JD.Value -> ( Model , Cmd Msg )
 init flags =
   ( { globals = JD.decodeValue Globals.globalsDecoder flags |> Utils.mustResult "flags"
     , navbarAuth = AuthWidget.init
+    , emailSettingsWidget = EmailSettingsWidget.init
     , predictionField = ""
     , resolvesAtField = ""
     , stakeField = "20"
@@ -183,7 +191,6 @@ init flags =
     , openForUnitField = "weeks"
     , openForSecondsField = "2"
     , specialRulesField = ""
-    , previewWidget = PredictionWidget.init
     , working = False
     , createError = Nothing
     }
@@ -203,8 +210,8 @@ update msg model =
     SetSpecialRulesField s -> ( { model | specialRulesField = s } , Cmd.none )
     SetAuthWidget widgetState ->
       ( { model | navbarAuth = widgetState } , Cmd.none )
-    SetPreviewWidget widgetState ->
-      ( { model | previewWidget = widgetState } , Cmd.none )
+    SetEmailWidget widgetState ->
+      ( { model | emailSettingsWidget = widgetState } , Cmd.none )
     Create ->
       case buildCreateRequest model of
         Just req ->
@@ -261,6 +268,36 @@ update msg model =
       , case API.simplifySignOutResponse res of
           Ok _ -> navigate Nothing
           Err _ -> Cmd.none
+      )
+    SetEmail widgetState req ->
+      ( { model | emailSettingsWidget = widgetState }
+      , API.postSetEmail (SetEmailFinished req) req
+      )
+    SetEmailFinished req res ->
+      ( { model | globals = model.globals |> Globals.handleSetEmailResponse req res
+                , emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleSetEmailResponse res
+        }
+      , Cmd.none
+      )
+    UpdateSettings widgetState req ->
+      ( { model | emailSettingsWidget = widgetState }
+      , API.postUpdateSettings (UpdateSettingsFinished req) req
+      )
+    UpdateSettingsFinished req res ->
+      ( { model | globals = model.globals |> Globals.handleUpdateSettingsResponse req res
+                , emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleUpdateSettingsResponse res
+        }
+      , Cmd.none
+      )
+    VerifyEmail widgetState req ->
+      ( { model | emailSettingsWidget = widgetState }
+      , API.postVerifyEmail (VerifyEmailFinished req) req
+      )
+    VerifyEmailFinished req res ->
+      ( { model | globals = model.globals |> Globals.handleVerifyEmailResponse req res
+                , emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleVerifyEmailResponse res
+        }
+      , Cmd.none
       )
     Tick now ->
       ( { model | globals = model.globals |> Globals.tick now }
@@ -527,6 +564,38 @@ view model =
           , H.hr [] []
           ]
     , viewForm model
+    , let
+        allowsEmailInvitation = case model.globals.serverState.settings of
+          Just settings -> settings.allowEmailInvitations && (case settings.email |> Maybe.andThen .emailFlowStateKind of
+            Just (Pb.EmailFlowStateKindVerified _) -> True
+            _ -> False)
+          Nothing -> False
+      in
+      if allowsEmailInvitation || not (Globals.isLoggedIn model.globals) then
+        H.text ""
+      else
+        H.div [HA.class "pre-creation-plea-for-email"]
+        [ H.text "Hey! It'll be annoying and awkward for new people to bet against you unless I can ask you if you trust them. This requires emailing you. I won't force you to sign up for this, but I strongly recommend it!"
+        , H.details []
+          [ H.ul []
+            [ H.li [] [H.text "Since bets are all honor-system, people can only bet against each other if they trust each other to pay up."]
+            , H.li [] [H.text "If you register an email address, I'll be able to email you to ask you whether you trust potential bettors."]
+            , H.li [] [H.text "Otherwise, potential bettors will have to text/email/... you themselves to ask you to click buttons to tell me you trust them."]
+            , H.li [] [H.text "(Don't worry, I won't share your email address with anyone unless you ask me to.)"]
+            ]
+          ]
+        , H.hr [] []
+        , EmailSettingsWidget.view
+            { setState = SetEmailWidget
+            , ignore = Ignore
+            , setEmail = SetEmail
+            , verifyEmail = VerifyEmail
+            , updateSettings = UpdateSettings
+            , userInfo = Utils.must "checked that user is logged in" model.globals.serverState.settings
+            }
+            model.emailSettingsWidget
+        ]
+
     , H.div [HA.style "text-align" "center", HA.style "margin-bottom" "2em"]
         [ H.button
             [ HE.onClick Create
@@ -543,23 +612,7 @@ view model =
         [ case buildCreateRequest model of
             Just req ->
               previewPrediction {request=req, creatorName=Globals.getAuth model.globals |> Maybe.map .owner |> Maybe.withDefault "you", createdAt=model.globals.now}
-              |> (\prediction -> PredictionWidget.view
-                    { setState = SetPreviewWidget
-                    , copy = \_ -> Ignore
-                    , stake = \_ _ -> Ignore
-                    , resolve = \_ _ -> Ignore
-                    , invitationWidget = H.text "TODO"
-                    , linkTitle = False
-                    , disableCommit = True
-                    , predictionId = "12345"
-                    , prediction = prediction
-                    , httpOrigin = model.globals.httpOrigin
-                    , creatorRelationship = Globals.Friends
-                    , timeZone = model.globals.timeZone
-                    , now = model.globals.now
-                    }
-                    PredictionWidget.init
-                    |> H.map (always Ignore))
+              |> (\prediction -> Prediction.viewBodyMockup model.globals prediction |> H.map (always Ignore))
             Nothing ->
               H.span [HA.style "color" "red"] [H.text "(invalid prediction)"]
         ]
@@ -579,6 +632,7 @@ previewPrediction {request, creatorName, createdAt} =
   , resolutions = []
   , yourTrades = []
   , resolvesAtUnixtime = request.resolvesAtUnixtime
+  , allowEmailInvitations = False
   }
 
 subscriptions : Model -> Sub Msg

@@ -143,18 +143,6 @@ class TestSettings:
       conn.set_trusted(BOB, ALICE, b_trusts_a)
     assert must(conn.get_settings(ALICE, include_relationships_with_users=[BOB])).relationships == {BOB: mvp_pb2.Relationship(trusts_you=b_trusts_a or False)}
 
-  def test_get_settings_includes_open_invitations(self, conn: SqlConn):
-    conn.register_username(ALICE, 'password', password_id='alicepwid')
-    conn.create_invitation('nonce', ALICE, T0, 'notes')
-    assert must(conn.get_settings(ALICE)).invitations == {'nonce': mvp_pb2.Invitation(created_unixtime=T0.timestamp(), notes='notes')}
-
-  def test_get_settings_includes_closed_invitations(self, conn: SqlConn):
-    conn.register_username(ALICE, 'password', password_id='alicepwid')
-    conn.register_username(BOB, 'password', password_id='bobpwid')
-    conn.create_invitation('nonce', ALICE, T0, 'notes')
-    conn.accept_invitation('nonce', BOB, T1)
-    assert must(conn.get_settings(ALICE)).invitations == {'nonce': mvp_pb2.Invitation(created_unixtime=T0.timestamp(), notes='notes', accepted_by=BOB, accepted_unixtime=T1.timestamp())}
-
   def test_persists_updated_settings(self, conn: SqlConn):
     conn.register_username(ALICE, 'password', password_id='alicepwid')
     conn.update_settings(ALICE, mvp_pb2.UpdateSettingsRequest(email_resolution_notifications=mvp_pb2.MaybeBool(value=True)))
@@ -169,28 +157,18 @@ class TestSettings:
 
 
 class TestInvitations:
-  def test_invitation_is_open_between_create_and_accept(self, conn: SqlConn):
+  def test_accept_returns_params_from_create(self, conn: SqlConn):
     conn.register_username(ALICE, 'password', password_id='alicepwid')
     conn.register_username(BOB, 'password', password_id='bobpwid')
+    conn.create_invitation('mynonce', inviter=ALICE, recipient=BOB)
+    assert conn.accept_invitation('mynonce') == mvp_pb2.CheckInvitationResponse.Result(inviter=ALICE, recipient=BOB)
 
-    assert conn.get_invitation_info(nonce='mynonce') is None
-    conn.create_invitation(nonce='mynonce', inviter=ALICE, now=T0, notes='')
-    assert must(conn.get_invitation_info(nonce='mynonce'))['is_open']
-    conn.accept_invitation(nonce='mynonce', accepter=BOB, now=T1)
-    assert not must(conn.get_invitation_info(nonce='mynonce'))['is_open']
-
-  def test_no_accepting_closed_invitation(self, conn: SqlConn):
+  def test_returns_none_if_no_such_invitation(self, conn: SqlConn):
     conn.register_username(ALICE, 'password', password_id='alicepwid')
     conn.register_username(BOB, 'password', password_id='bobpwid')
+    conn.create_invitation('one nonce', inviter=ALICE, recipient=BOB)
+    assert conn.accept_invitation('some other nonce') is None
 
-    with pytest.raises(sqlalchemy.exc.IntegrityError):
-      conn.accept_invitation(nonce='mynonce', accepter=BOB, now=T1)
-
-    conn.create_invitation(nonce='mynonce', inviter=ALICE, now=T0, notes='')
-    conn.accept_invitation(nonce='mynonce', accepter=BOB, now=T1)
-
-    with pytest.raises(sqlalchemy.exc.IntegrityError):
-      conn.accept_invitation(nonce='mynonce', accepter=BOB, now=T1)
 
 class TestPredictions:
   def test_view_contains_all_creation_fields(self, conn: SqlConn):
@@ -277,6 +255,7 @@ class TestResolutionReminders:
   def test_requires_preferences(self, conn: SqlConn):
     create_user(conn, ALICE, email_address='alice@example.com')
     conn.create_prediction(now=T0, prediction_id=PRED_ID, creator=ALICE, request=some_create_prediction_request(resolves_at_unixtime=T1.timestamp()))
+    conn.update_settings(ALICE, mvp_pb2.UpdateSettingsRequest(email_reminders_to_resolve=mvp_pb2.MaybeBool(value=False)))
     assert [r['prediction_id'] for r in conn.get_predictions_needing_resolution_reminders(now=T2)] == []
     conn.update_settings(ALICE, mvp_pb2.UpdateSettingsRequest(email_reminders_to_resolve=mvp_pb2.MaybeBool(value=True)))
     assert [r['prediction_id'] for r in conn.get_predictions_needing_resolution_reminders(now=T2)] == [PRED_ID]

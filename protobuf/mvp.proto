@@ -31,14 +31,6 @@ message CredentialsConfig {
   }
 }
 
-message Invitation {
-  double created_unixtime = 6;
-  string notes = 3;
-  UserId accepted_by_depr = 4;
-  string accepted_by = 8;
-  double accepted_unixtime = 7;
-}
-
 message EmailFlowState {
   oneof email_flow_state_kind {
     Void unstarted = 1;
@@ -61,12 +53,15 @@ message GenericUserInfo {
   EmailFlowState email = 2;
   bool email_reminders_to_resolve = 3;
   bool email_resolution_notifications = 4;
+  bool allow_email_invitations = 8;
   map<string, Invitation> invitations = 5;
   map<string, Relationship> relationships = 6;
 
   oneof login_type {
     HashedPassword login_password = 7;
   }
+
+  message Invitation {}
 }
 message Relationship {
   bool trusts_you = 1;
@@ -201,6 +196,7 @@ message UserPredictionView {
   repeated ResolutionEvent resolutions = 10;
   repeated Trade your_trades = 11;
   double resolves_at_unixtime = 15;
+  bool allow_email_invitations = 16;
 }
 
 message ListMyStakesRequest {
@@ -348,6 +344,7 @@ message MaybeBool { bool value = 1; }
 message UpdateSettingsRequest {
   MaybeBool email_reminders_to_resolve = 1;
   MaybeBool email_resolution_notifications = 2;
+  MaybeBool allow_email_invitations = 3;
 }
 message UpdateSettingsResponse {
   oneof update_settings_result {
@@ -359,17 +356,13 @@ message UpdateSettingsResponse {
   }
 }
 
-message CreateInvitationRequest {
-  string notes = 1;
+message SendInvitationRequest {
+  string recipient = 1;
 }
-message CreateInvitationResponse {
-  oneof create_invitation_result {
-    Result ok = 1;
+message SendInvitationResponse {
+  oneof send_invitation_result {
+    Void ok = 1;
     Error error = 2;
-  }
-  message Result {
-    string nonce = 1;
-    GenericUserInfo user_info = 3;
   }
   message Error {
     string catchall = 1;
@@ -385,8 +378,8 @@ message CheckInvitationResponse {
     Error error = 2;
   }
   message Result {
-    bool is_open = 1;
-    string inviter = 2;
+    string inviter = 1;
+    string recipient = 2;
   }
   message Error {
     string catchall = 1;
