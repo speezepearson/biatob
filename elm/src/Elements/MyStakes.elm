@@ -1,6 +1,7 @@
 port module Elements.MyStakes exposing (main)
 
 import Html as H
+import Html.Attributes as HA
 import Json.Decode as JD
 import Http
 
@@ -60,7 +61,7 @@ view model =
         , id = "navbar-auth"
         }
         model.navbarAuth
-    , H.main_ []
+    , H.main_ [HA.class "container"]
       [ H.h2 [] [H.text "My Stakes"]
       , ViewPredictionsWidget.view
           { setState = SetPredictionsWidget

@@ -554,7 +554,7 @@ view model =
         , id = "navbar-auth"
         }
         model.navbarAuth
-    , H.main_ []
+    , H.main_ [HA.class "container"]
     [ H.h2 [] [H.text "New Prediction"]
     , case Globals.getAuth model.globals of
        Just _ -> H.text ""

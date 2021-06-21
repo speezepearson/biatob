@@ -162,7 +162,7 @@ view model =
         , id = "navbar-auth"
         }
         model.navbarAuth
-    , H.main_ []
+    , H.main_ [HA.class "container"]
     [ H.h2 [] [H.text model.who]
     , H.br [] []
     , case Globals.getTrustRelationship model.globals model.who of

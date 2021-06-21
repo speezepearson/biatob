@@ -2,6 +2,7 @@ port module Elements.Settings exposing (main)
 
 import Browser
 import Html as H
+import Html.Attributes as HA
 import Http
 import Json.Decode as JD
 
@@ -193,7 +194,7 @@ view model =
         }
         model.navbarAuth
     ,
-    H.main_ []
+    H.main_ [HA.class "container"]
     [ case model.globals.serverState.settings of
         Nothing -> H.text "You need to log in to view your settings!"
         Just userInfo ->

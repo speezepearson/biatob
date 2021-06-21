@@ -114,7 +114,7 @@ view model =
         , id = "navbar-auth"
         }
         model.navbarAuth
-    , H.main_ [] (viewBody model)
+    , H.main_ [HA.class "container"] (viewBody model)
     ]
   }
 

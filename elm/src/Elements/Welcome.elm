@@ -175,8 +175,8 @@ view model =
         }
         model.navbarAuth
     ,
-    H.main_ [HA.style "text-align" "justify"]
-    [ H.h1 [] [H.text "Betting is a tax on BS."]
+    H.main_ [HA.class "container", HA.style "text-align" "justify"]
+    [ H.h1 [HA.class "text-center"] [H.text "Betting is a tax on BS."]
     , H.p []
         [ H.text "Hi! This is a tool that helps people make friendly wagers, thereby clarifying and concretizing their beliefs and making the world a better, saner place."
         ]
@@ -203,7 +203,7 @@ view model =
         ]
     , H.p [] [H.text "I made this tool to share that joy with you."]
     , H.hr [] []
-    , H.h2 [] [ H.text "But what does it " , Utils.i "do?" ]
+    , H.h2 [HA.class "text-center"] [ H.text "But what does it " , Utils.i "do?" ]
     , H.p []
         [ H.text "Biatob provides a place for you to advertise things like this to your friends: "
         , H.blockquote []
@@ -232,13 +232,13 @@ view model =
         , H.text ". This is a different beast."
         ]
     , H.hr [] []
-    , H.h2 []
+    , H.h2 [HA.class "text-center"]
         [ H.text "Cool! How do I use it?"
         ]
     , H.ul []
         [ H.li [HA.style "margin-bottom" "1em"]
             [ H.text " Create an account:   "
-            , H.div [HA.id "welcome-page-auth-widget"]
+            , H.div [HA.id "welcome-page-auth-widget", HA.class "container m-2"]
                 [ AuthWidget.view
                   { setState = SetAuthWidget Inline
                   , logInUsername = LogInUsername Inline

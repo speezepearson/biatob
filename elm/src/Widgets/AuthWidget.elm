@@ -70,72 +70,99 @@ init =
   , notification = H.text ""
   }
 
+row : List (Html msg) -> Html msg
+row hs = H.div [HA.class "row"] hs
+
+col : List (Html msg) -> Html msg
+col hs = H.div [HA.class "col"] hs
+
 view : Config msg -> State -> Html msg
 view config state =
-  let
-    logInMsg = config.logInUsername
-      { state | working = True , notification = H.text "" }
-      { username = state.usernameField , password = state.passwordField }
-    registerMsg = config.register
-      { state | working = True , notification = H.text "" }
-      { username = state.usernameField , password = state.passwordField }
-    signOutMsg = config.signOut
-      { state | working = True , notification = H.text "" }
-      {}
-  in
-  case config.auth of
+  H.form
+  [ HA.id config.id
+  , HA.class "auth-widget"
+  , HA.class "row", HA.class "row-cols-sm-auto", HA.class "g-2"
+  , HE.onSubmit config.ignore
+  ]
+  <| case config.auth of
     Nothing ->
       let
-        disableButtons = case (Utils.parseUsername state.usernameField, Utils.parsePassword state.passwordField) of
-          (Ok _, Ok _) -> False
-          _ -> True
+        canSubmit = case (Utils.parseUsername state.usernameField, Utils.parsePassword state.passwordField) of
+          (Ok _, Ok _) -> True
+          _ -> False
+        logInMsg =
+          if canSubmit then
+            config.logInUsername
+              { state | working = True , notification = H.text "" }
+              { username = state.usernameField , password = state.passwordField }
+          else
+            config.ignore
+        registerMsg =
+          if canSubmit then
+            config.register
+            { state | working = True , notification = H.text "" }
+            { username = state.usernameField , password = state.passwordField }
+          else
+            config.ignore
       in
-      H.div
-        [ HA.id config.id
-        , HA.class "auth-widget"
-        ]
+      [ H.div [HA.class "col-4"]
         [ H.input
-            [ HA.disabled state.working
-            , HA.style "width" "8em"
-            , HA.name "username"
-            , HA.type_ "text"
-            , HA.placeholder "username"
-            , HA.class "username-field"
-            , HA.attribute "data-elm-value" state.usernameField
-            , HE.onInput (\s -> config.setState {state | usernameField=s})
-            , HA.value state.usernameField
-            ] []
+          [ HA.disabled state.working
+          , HA.style "width" "8em"
+          , HA.name "username"
+          , HA.type_ "text"
+          , HA.placeholder "username"
+          , HA.class "username-field"
+          , HA.class "form-control"
+          , HA.attribute "data-elm-value" state.usernameField
+          , HE.onInput (\s -> config.setState {state | usernameField=s})
+          , HA.value state.usernameField
+          ] []
           |> Utils.appendValidationError (if state.usernameField == "" then Nothing else Utils.resultToErr (Utils.parseUsername state.usernameField))
-        , H.input
-            [ HA.disabled state.working
-            , HA.style "width" "8em"
-            , HA.name "password"
-            , HA.type_ "password"
-            , HA.placeholder "password"
-            , HA.attribute "data-elm-value" state.passwordField
-            , HE.onInput (\s -> config.setState {state | passwordField=s})
-            , HA.value state.passwordField
-            , Utils.onEnter logInMsg config.ignore
-            ] []
-          |> Utils.appendValidationError (if state.passwordField == "" then Nothing else Utils.resultToErr (Utils.parsePassword state.passwordField))
-        , H.button
-            [ HA.disabled <| state.working || disableButtons
-            , HE.onClick logInMsg
-            ]
-            [H.text "Log in"]
-        , H.text " or "
-        , H.button
-            [ HA.disabled <| state.working || disableButtons
-            , HE.onClick registerMsg
-            ]
-            [H.text "Sign up"]
-        , state.notification |> H.map never
         ]
+      , H.div [HA.class "col-4"]
+        [ H.input
+          [ HA.disabled state.working
+          , HA.style "width" "8em"
+          , HA.name "password"
+          , HA.type_ "password"
+          , HA.placeholder "password"
+          , HA.attribute "data-elm-value" state.passwordField
+          , HA.class "form-control"
+          , HE.onInput (\s -> config.setState {state | passwordField=s})
+          , HA.value state.passwordField
+          , Utils.onEnter logInMsg config.ignore
+          ] []
+          |> Utils.appendValidationError (if state.passwordField == "" then Nothing else Utils.resultToErr (Utils.parsePassword state.passwordField))
+        ]
+      , H.div [HA.class "col-4"]
+        [ H.button
+          [ HA.disabled <| state.working || not canSubmit
+          , HE.onClick logInMsg
+          , HA.class "btn", HA.class "btn-primary"
+          ]
+          [H.text "Log in"]
+        , H.span [HA.class "pt-1"] [H.text " or "]
+        , H.button
+          [ HA.disabled <| state.working || not canSubmit
+          , HE.onClick registerMsg
+          , HA.class "btn", HA.class "btn-secondary"
+          ]
+          [H.text "Sign up"]
+        ]
+      , state.notification |> H.map never
+      ]
     Just auth ->
-      H.div []
-        [ H.text <| "Signed in as "
-        , Utils.renderUser auth.owner
-        , H.text " "
-        , H.button [HA.disabled state.working, HE.onClick signOutMsg] [H.text "Sign out"]
-        , state.notification |> H.map never
+        [ H.div [HA.class "col-8 pt-1"]
+          [ H.span [HA.class "align-middle"] [H.text <| "Signed in as ", Utils.renderUser auth.owner]
+          ]
+        , H.div [HA.class "col-4"]
+          [ H.button
+            [ HA.class "btn"
+            , HA.class "btn-secondary"
+            , HA.disabled state.working
+            , HE.onClick (config.signOut { state | working = True , notification = H.text "" } {})
+            ] [H.text "Sign out"]
+          , state.notification |> H.map never
+          ]
         ]

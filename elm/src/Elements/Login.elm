@@ -2,6 +2,7 @@ port module Elements.Login exposing (main)
 
 import Browser
 import Html as H
+import Html.Attributes as HA
 import Http
 import Json.Decode as JD
 import Time
@@ -117,7 +118,7 @@ view model =
         }
         model.navbarAuth
     ,
-    H.main_ []
+    H.main_ [HA.class "container"]
     [ H.h2 [] [H.text "Log in"]
     , H.text "...using the navbar at the top."
     ]
