@@ -82,11 +82,11 @@ unitToSeconds u =
 buildCreateRequest : Model -> Maybe Pb.CreatePredictionRequest
 buildCreateRequest model =
   parsePrediction model |> Result.toMaybe |> Maybe.andThen (\prediction ->
-  parseResolvesAt model.globals.now model |> Result.toMaybe |> Maybe.andThen (\resolvesAt ->
+  parseResolvesAt model |> Result.toMaybe |> Maybe.andThen (\resolvesAt ->
   parseStake model |> Result.toMaybe |> Maybe.andThen (\stake ->
   parseLowProbability model |> Result.toMaybe |> Maybe.andThen (\lowP ->
   parseHighProbability model |> Result.toMaybe |> Maybe.andThen (\highP -> if highP < lowP then Nothing else
-  parseOpenForSeconds model.globals.now model |> Result.toMaybe |> Maybe.andThen (\openForSeconds ->
+  parseOpenForSeconds model |> Result.toMaybe |> Maybe.andThen (\openForSeconds ->
     Just
       { prediction = prediction
       , certainty = Just { low=lowP, high=highP }
@@ -104,11 +104,11 @@ parsePrediction model =
   else
     Ok model.predictionField
 
-parseResolvesAt : Time.Posix -> Model -> Result String Time.Posix
-parseResolvesAt now model =
+parseResolvesAt : Model -> Result String Time.Posix
+parseResolvesAt model =
     case Iso8601.toTime model.resolvesAtField of
       Err _ -> Err ""
-      Ok t -> if Utils.timeToUnixtime t < Utils.timeToUnixtime now then Err "must be in the future" else Ok t
+      Ok t -> if Utils.timeToUnixtime t < Utils.timeToUnixtime model.globals.now then Err "must be in the future" else Ok t
 
 parseStake : Model -> Result String Cents
 parseStake model =
@@ -161,8 +161,8 @@ parseOpenForUnit model =
       "weeks" -> Weeks
       _ -> Debug.todo "unrecognized time unit"
 
-parseOpenForSeconds : Time.Posix -> Model -> Result String Int
-parseOpenForSeconds now model =
+parseOpenForSeconds : Model -> Result String Int
+parseOpenForSeconds model =
     case String.toInt model.openForSecondsField of
       Nothing -> Err "must be a positive integer"
       Just n ->
@@ -170,10 +170,10 @@ parseOpenForSeconds now model =
           Err "must be a positive integer"
         else
           let nSec = n * unitToSeconds (parseOpenForUnit model) in
-          case parseResolvesAt now model of
+          case parseResolvesAt model of
             Err _ -> Ok nSec
             Ok t ->
-              if Time.posixToMillis now + 1000 * nSec > Time.posixToMillis t then
+              if Time.posixToMillis model.globals.now + 1000 * nSec > Time.posixToMillis t then
                 Err "must close before prediction resolves"
               else
                 Ok nSec
@@ -346,7 +346,7 @@ viewForm model =
                 , HE.onInput SetResolvesAtField
                 , HA.value model.resolvesAtField
                 ] []
-              |> Utils.appendValidationError (Utils.resultToErr (parseResolvesAt model.globals.now model))
+              |> Utils.appendValidationError (Utils.resultToErr (parseResolvesAt model))
             , H.text ", "
             , H.br [] []
             , H.textarea
@@ -506,7 +506,7 @@ viewForm model =
                 , HE.onInput SetOpenForSecondsField
                 , HA.value model.openForSecondsField
                 ] []
-              |> Utils.appendValidationError (Utils.resultToErr (parseOpenForSeconds model.globals.now model))
+              |> Utils.appendValidationError (Utils.resultToErr (parseOpenForSeconds model))
             , H.select
                 [ HA.disabled disabled
                 , HE.onInput SetOpenForUnitField
