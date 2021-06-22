@@ -16,7 +16,6 @@ import Elements.Prediction as Prediction
 import Widgets.AuthWidget as AuthWidget
 import Widgets.EmailSettingsWidget as EmailSettingsWidget
 import Widgets.Navbar as Navbar
-import Utils
 import Globals
 import API
 

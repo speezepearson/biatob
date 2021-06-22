@@ -4,14 +4,12 @@ import Html as H exposing (Html)
 import Html.Attributes as HA
 import Html.Events as HE
 import Http
-import Utils exposing (Password)
 
 import Biatob.Proto.Mvp as Pb
 
 import Biatob.Proto.Mvp exposing (StakeResult(..))
 import API
-import Utils exposing (isOk)
-import Utils exposing (viewError)
+import Utils exposing (Password, isOk, viewError)
 
 type alias Config msg =
   { setState : State -> msg

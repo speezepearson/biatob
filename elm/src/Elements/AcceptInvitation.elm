@@ -9,7 +9,6 @@ import Http
 import Json.Decode as JD
 
 import Biatob.Proto.Mvp as Pb
-import Utils
 
 import Widgets.AuthWidget as AuthWidget
 import Globals

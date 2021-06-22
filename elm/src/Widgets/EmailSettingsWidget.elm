@@ -6,12 +6,11 @@ import Html.Events as HE
 import Http
 
 import Biatob.Proto.Mvp as Pb
-import Utils exposing (EmailAddress, viewError)
+import Utils exposing (EmailAddress, isOk, viewError)
 
 import API
 import Parser exposing ((|.), (|=))
 import Set
-import Utils exposing (isOk)
 
 type alias Config msg =
   { setState : State -> msg
