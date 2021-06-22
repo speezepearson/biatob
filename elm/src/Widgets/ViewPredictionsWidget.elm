@@ -155,38 +155,41 @@ view config state =
         H.text ""
     , H.text " Sort: "
     , viewSortOrderInput config state
-    , H.hr [] []
     , if Dict.isEmpty config.predictions then
         H.text "<none>"
       else
-        config.predictions
-        |> Dict.toList
-        |> sortPredictions (\(_, prediction) -> prediction) state.order
-        |> List.filter (\(_, prediction) -> filterMatches config state.filter prediction)
-        |> List.map (\(id, prediction) ->
-            viewRow
-              { cell = H.td
-              , created = H.text <| Utils.dateStr config.timeZone (Utils.unixtimeToTime prediction.createdUnixtime)
-              , creator = if config.allowFilterByOwner then Just (H.text prediction.creator) else Nothing
-              , resolves = H.text <| Utils.dateStr config.timeZone (Utils.unixtimeToTime prediction.resolvesAtUnixtime)
-              , prediction = H.a [HA.href <| Utils.pathToPrediction id] [H.text prediction.prediction]
-              , resolution = case List.head (List.reverse prediction.resolutions) |> Maybe.map .resolution of
-                  Nothing -> H.text ""
-                  Just Pb.ResolutionNoneYet -> H.text ""
-                  Just Pb.ResolutionYes -> H.text "Yes"
-                  Just Pb.ResolutionNo -> H.text "No"
-                  Just Pb.ResolutionInvalid -> H.text "Invalid!"
-                  Just (Pb.ResolutionUnrecognized_ _) -> Debug.todo "unrecognized resolution"
-              })
-        |> (::) (viewRow
+        H.table [HA.class "table mt-1"]
+        [ H.thead []
+          [ viewRow
             { cell = H.th
-            , created = H.text "Predicted on"
+            , created = H.text "Predicted"
             , creator = if config.allowFilterByOwner then Just (H.text "Creator") else Nothing
-            , resolves = H.text "Resolves by"
+            , resolves = H.text "Resolves"
             , prediction = H.text "Prediction"
             , resolution = H.text "Resolution"
-            })
-        |> H.table [HA.class "prediction-list-table"]
+            }
+          ]
+        , config.predictions
+          |> Dict.toList
+          |> sortPredictions (\(_, prediction) -> prediction) state.order
+          |> List.filter (\(_, prediction) -> filterMatches config state.filter prediction)
+          |> List.map (\(id, prediction) ->
+              viewRow
+                { cell = H.td
+                , created = H.text <| Utils.dateStr config.timeZone (Utils.unixtimeToTime prediction.createdUnixtime)
+                , creator = if config.allowFilterByOwner then Just (Utils.renderUser prediction.creator) else Nothing
+                , resolves = H.text <| Utils.dateStr config.timeZone (Utils.unixtimeToTime prediction.resolvesAtUnixtime)
+                , prediction = H.a [HA.href <| Utils.pathToPrediction id] [H.text prediction.prediction]
+                , resolution = case List.head (List.reverse prediction.resolutions) |> Maybe.map .resolution of
+                    Nothing -> H.text ""
+                    Just Pb.ResolutionNoneYet -> H.text ""
+                    Just Pb.ResolutionYes -> H.text "Yes"
+                    Just Pb.ResolutionNo -> H.text "No"
+                    Just Pb.ResolutionInvalid -> H.text "Invalid!"
+                    Just (Pb.ResolutionUnrecognized_ _) -> Debug.todo "unrecognized resolution"
+                })
+          |> H.tbody []
+        ]
     ]
 
 viewRow :
@@ -199,11 +202,11 @@ viewRow :
   } -> Html msg
 viewRow info =
   H.tr []
-  [ info.cell [] [info.created]
+  [ info.cell [HA.class "col-1"] [info.created]
   , case info.creator of
       Nothing -> H.text ""
-      Just creator -> info.cell [] [creator]
-  , info.cell [] [info.resolves]
-  , info.cell [] [info.prediction]
-  , info.cell [] [info.resolution]
+      Just creator -> info.cell [HA.class "col-1"] [creator]
+  , info.cell [HA.class "col-1"] [info.resolves]
+  , info.cell [HA.class "col-1"] [info.resolution]
+  , info.cell [HA.class "col-6"] [info.prediction]
   ]

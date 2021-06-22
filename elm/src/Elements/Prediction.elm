@@ -502,40 +502,42 @@ getTitleText timeZone prediction =
 
 viewSummaryTable : Time.Posix -> Time.Zone -> Pb.UserPredictionView -> Html Msg
 viewSummaryTable now timeZone prediction =
-  H.table [HA.class "table", HA.class "col-4"]
-  [ H.tr []
-    [ H.th [HA.scope "row"] [H.text "Prediction by:"]
-    , H.td [] [Utils.renderUser prediction.creator]
+  H.table [HA.class "table table-sm", HA.class "col-4"]
+  [ H.tbody []
+    [ H.tr []
+      [ H.th [HA.scope "row"] [H.text "Prediction by:"]
+      , H.td [] [Utils.renderUser prediction.creator]
+      ]
+    , H.tr []
+      [ H.th [HA.scope "row"] [H.text "Confidence:"]
+      , H.td [] [H.text <|
+          (String.fromInt <| round <| 100 * (Utils.mustPredictionCertainty prediction).low)
+          ++ "-" ++
+          (String.fromInt <| round <| 100 * (Utils.mustPredictionCertainty prediction).high)
+          ++ "%"]
+      ]
+    , H.tr []
+      [ H.th [HA.scope "row"] [H.text "Stakes:"]
+      , H.td [] [H.text <| "up to " ++ Utils.formatCents prediction.maximumStakeCents]
+      ]
+    , H.tr []
+      [ H.th [HA.scope "row"] [H.text "Created on:"]
+      , H.td [] [H.text <| Utils.dateStr timeZone (Utils.unixtimeToTime prediction.createdUnixtime)]
+      ]
+    , H.tr []
+      [ H.th [HA.scope "row"] [H.text "Betting closes:"]
+      , H.td [] [H.text <| Utils.dateStr timeZone (Utils.unixtimeToTime prediction.closesUnixtime)]
+      ]
+    , viewResolutionRow now timeZone prediction
+    , case prediction.specialRules of
+        "" ->
+          H.text ""
+        rules ->
+          H.tr []
+          [ H.th [HA.scope "row"] [H.text "Special rules:"]
+          , H.td [] [H.text rules]
+          ]
     ]
-  , H.tr []
-    [ H.th [HA.scope "row"] [H.text "Confidence:"]
-    , H.td [] [H.text <|
-        (String.fromInt <| round <| 100 * (Utils.mustPredictionCertainty prediction).low)
-        ++ "-" ++
-        (String.fromInt <| round <| 100 * (Utils.mustPredictionCertainty prediction).high)
-        ++ "%"]
-    ]
-  , H.tr []
-    [ H.th [HA.scope "row"] [H.text "Stakes:"]
-    , H.td [] [H.text <| "up to " ++ Utils.formatCents prediction.maximumStakeCents]
-    ]
-  , H.tr []
-    [ H.th [HA.scope "row"] [H.text "Created on:"]
-    , H.td [] [H.text <| Utils.dateStr timeZone (Utils.unixtimeToTime prediction.createdUnixtime)]
-    ]
-  , H.tr []
-    [ H.th [HA.scope "row"] [H.text "Betting closes:"]
-    , H.td [] [H.text <| Utils.dateStr timeZone (Utils.unixtimeToTime prediction.closesUnixtime)]
-    ]
-  , viewResolutionRow now timeZone prediction
-  , case prediction.specialRules of
-      "" ->
-        H.text ""
-      rules ->
-        H.tr []
-        [ H.th [HA.scope "row"] [H.text "Special rules:"]
-        , H.td [] [H.text rules]
-        ]
   ]
 
 viewResolutionRow : Time.Posix -> Time.Zone -> Pb.UserPredictionView -> Html msg
@@ -736,10 +738,13 @@ formatYouWin wonCents =
 makeTable : List (H.Attribute msg) -> List (List (Html msg), a -> List (Html msg)) -> List a -> Html msg
 makeTable tableAttrs columns xs =
   let
-    headerRow = H.tr [] <| List.map (\(header, _) -> H.th [] header) columns
+    headerRow = H.tr [] <| List.map (\(header, _) -> H.th [HA.scope "col"] header) columns
     dataRows = List.map (\x -> H.tr [] (List.map (\(_, toTd) -> H.td [] (toTd x)) columns)) xs
   in
-  H.table tableAttrs (headerRow :: dataRows)
+  H.table (HA.class "table" :: tableAttrs)
+  [ H.thead [] [headerRow]
+  , H.tbody [] dataRows
+  ]
 
 
 viewEmbedInfo : Model -> Html Msg

@@ -103,7 +103,7 @@ view config state =
                 , HA.value state.emailField
                 , Utils.onEnter (config.setEmail {state | working=True, notification=H.text ""} {email=state.emailField}) config.ignore
                 , HA.class "form-control form-control-sm mx-1 d-inline-block"
-                , if state.emailField == "" then HA.attribute "data-ignore" "" else HA.class (if isOk (parseEmailAddress state) then "is-valid" else "is-invalid")
+                , HA.class <| if state.emailField == "" then "" else if isOk (parseEmailAddress state) then "is-valid" else "is-invalid"
                 , HA.style "width" "18em"
                 ] []
             , H.button

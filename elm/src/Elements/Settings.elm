@@ -229,6 +229,7 @@ view model =
               , ChangePasswordWidget.view
                   { setState = SetChangePasswordWidget
                   , changePassword = ChangePassword
+                  , ignore = Ignore
                   }
                   model.changePasswordWidget
               ]

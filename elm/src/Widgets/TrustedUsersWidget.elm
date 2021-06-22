@@ -63,6 +63,7 @@ view config state =
                   , H.button
                       [ HE.onClick (config.setTrusted {state | working=True, notification=H.text ""} {whoDepr=Nothing, who=u, trusted=False})
                       , HA.disabled state.working
+                      , HA.class "btn btn-sm btn-outline-primary"
                       ] [H.text "Remove trust"]
                   ]
               else
