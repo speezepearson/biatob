@@ -32,6 +32,7 @@ port authWidgetExternallyChanged : (AuthWidget.DomModification -> msg) -> Sub ms
 type alias Model =
   { globals : Globals.Globals
   , navbarAuth : AuthWidget.State
+  , authWidget : AuthWidget.State
   , predictionId : PredictionId
   , invitationWidget : SmallInvitationWidget.State
   , emailSettingsWidget : EmailSettingsWidget.State
@@ -44,25 +45,26 @@ type alias Model =
   }
 
 type RequestStatus = Unstarted | AwaitingResponse | Succeeded | Failed String
+type AuthWidgetLoc = Navbar | Inline
 
 type Msg
-  = SetAuthWidget AuthWidget.State
+  = SetAuthWidget AuthWidgetLoc AuthWidget.State
   | SetEmailWidget EmailSettingsWidget.State
   | SetInvitationWidget SmallInvitationWidget.State
   | SendInvitation
   | SendInvitationFinished Pb.SendInvitationRequest (Result Http.Error Pb.SendInvitationResponse)
-  | LogInUsername AuthWidget.State Pb.LogInUsernameRequest
-  | LogInUsernameFinished Pb.LogInUsernameRequest (Result Http.Error Pb.LogInUsernameResponse)
-  | RegisterUsername AuthWidget.State Pb.RegisterUsernameRequest
-  | RegisterUsernameFinished Pb.RegisterUsernameRequest (Result Http.Error Pb.RegisterUsernameResponse)
+  | LogInUsername AuthWidgetLoc AuthWidget.State Pb.LogInUsernameRequest
+  | LogInUsernameFinished AuthWidgetLoc Pb.LogInUsernameRequest (Result Http.Error Pb.LogInUsernameResponse)
+  | RegisterUsername AuthWidgetLoc AuthWidget.State Pb.RegisterUsernameRequest
+  | RegisterUsernameFinished AuthWidgetLoc Pb.RegisterUsernameRequest (Result Http.Error Pb.RegisterUsernameResponse)
   | Resolve Pb.Resolution
   | ResolveFinished Pb.ResolveRequest (Result Http.Error Pb.ResolveResponse)
   | SetCreatorTrusted
   | SetCreatorTrustedFinished Pb.SetTrustedRequest (Result Http.Error Pb.SetTrustedResponse)
   | SetEmail EmailSettingsWidget.State Pb.SetEmailRequest
   | SetEmailFinished Pb.SetEmailRequest (Result Http.Error Pb.SetEmailResponse)
-  | SignOut AuthWidget.State Pb.SignOutRequest
-  | SignOutFinished Pb.SignOutRequest (Result Http.Error Pb.SignOutResponse)
+  | SignOut AuthWidgetLoc AuthWidget.State Pb.SignOutRequest
+  | SignOutFinished AuthWidgetLoc Pb.SignOutRequest (Result Http.Error Pb.SignOutResponse)
   | Stake Cents
   | StakeFinished Pb.StakeRequest (Result Http.Error Pb.StakeResponse)
   | UpdateSettings EmailSettingsWidget.State Pb.UpdateSettingsRequest
@@ -80,6 +82,7 @@ init : JD.Value -> ( Model, Cmd Msg )
 init flags =
   ( { globals = JD.decodeValue Globals.globalsDecoder flags |> Utils.mustResult "flags"
     , navbarAuth = AuthWidget.init
+    , authWidget = AuthWidget.init
     , predictionId = Utils.mustDecodeFromFlags JD.string "predictionId" flags
     , invitationWidget = SmallInvitationWidget.init
     , emailSettingsWidget = EmailSettingsWidget.init
@@ -105,10 +108,10 @@ view model =
   { title = "Prediction: by " ++ Utils.dateStr model.globals.timeZone (Utils.unixtimeToTime prediction.resolvesAtUnixtime) ++ ", " ++ prediction.prediction
   , body =
     [ Navbar.view
-        { setState = SetAuthWidget
-        , logInUsername = LogInUsername
-        , register = RegisterUsername
-        , signOut = SignOut
+        { setState = SetAuthWidget Navbar
+        , logInUsername = LogInUsername Navbar
+        , register = RegisterUsername Navbar
+        , signOut = SignOut Navbar
         , ignore = Ignore
         , auth = Globals.getAuth model.globals
         , id = "navbar-auth"
@@ -148,6 +151,7 @@ viewBodyMockup globals prediction =
         |> Globals.handleSignOutResponse {} (Ok {})
         |> Globals.handleLogInUsernameResponse {username="__previewer__", password=""} (Ok {logInUsernameResult=Just <| Pb.LogInUsernameResultOk {token=Just mockToken, userInfo=Just mockSettings}})
     , navbarAuth = AuthWidget.init
+    , authWidget = AuthWidget.init
     , predictionId = "12345"
     , invitationWidget = SmallInvitationWidget.init
     , emailSettingsWidget = EmailSettingsWidget.init
@@ -255,9 +259,19 @@ viewBody model =
             , Utils.renderUser prediction.creator
             , H.text ", I have to make sure that they trust you to pay up if you lose!"
             , H.br [] []
-            , H.text "Could I trouble you to "
-            , H.a [HA.href <| "/login?dest=" ++ Utils.pathToPrediction model.predictionId] [H.text "log in or sign up"]
-            , H.text " so I have some idea who you are?"
+            , H.text "Could I trouble you to log in or sign up, so I have some idea who you are?"
+            , H.div [HA.class "m-1 mx-4"]
+              [ AuthWidget.view
+                { setState = SetAuthWidget Inline
+                , logInUsername = LogInUsername Inline
+                , register = RegisterUsername Inline
+                , signOut = SignOut Inline
+                , ignore = Ignore
+                , auth = Globals.getAuth model.globals
+                , id = "inline-auth"
+                }
+                model.authWidget
+              ]
             ]
           CanAlreadyStake ->
             H.div []
@@ -320,7 +334,8 @@ viewBody model =
             , H.text ", I have to make sure that they trust you to pay up if you lose!"
             , H.br [] []
             , H.text "I can ask them if they trust you, but first, could I trouble you to add an email address to your account, as a way to identify you to them?"
-            , EmailSettingsWidget.view
+            , H.div [HA.class "m-1 mx-4"]
+              [ EmailSettingsWidget.view
                 { setState = SetEmailWidget
                 , ignore = Ignore
                 , setEmail = SetEmail
@@ -329,6 +344,7 @@ viewBody model =
                 , userInfo = Utils.must "checked that user is logged in" model.globals.serverState.settings
                 }
                 model.emailSettingsWidget
+              ]
             ]
           NeedsToTextUserPageLink ->
             H.div []
@@ -837,11 +853,17 @@ viewWhatIsThis predictionId prediction =
   , H.p [] [H.text "I made this tool to share that joy with you."]
   ]
 
+updateAuthWidget : AuthWidgetLoc -> (AuthWidget.State -> AuthWidget.State) -> Model -> Model
+updateAuthWidget loc f model =
+  case loc of
+    Navbar -> { model | navbarAuth = model.navbarAuth |> f }
+    Inline -> { model | authWidget = model.authWidget |> f }
+
 update : Msg -> Model -> ( Model , Cmd Msg )
 update msg model =
   case msg of
-    SetAuthWidget widgetState ->
-      ( { model | navbarAuth = widgetState } , Cmd.none )
+    SetAuthWidget loc widgetState ->
+      ( updateAuthWidget loc (always widgetState) model , Cmd.none )
     SetEmailWidget widgetState ->
       ( { model | emailSettingsWidget = widgetState } , Cmd.none )
     SetInvitationWidget widgetState ->
@@ -859,26 +881,22 @@ update msg model =
                 }
       , Cmd.none
       )
-    LogInUsername widgetState req ->
-      ( { model | navbarAuth = widgetState }
-      , API.postLogInUsername (LogInUsernameFinished req) req
+    LogInUsername loc widgetState req ->
+      ( updateAuthWidget loc (always widgetState) model
+      , API.postLogInUsername (LogInUsernameFinished loc req) req
       )
-    LogInUsernameFinished req res ->
-      ( { model | globals = model.globals |> Globals.handleLogInUsernameResponse req res
-                , navbarAuth = model.navbarAuth |> AuthWidget.handleLogInUsernameResponse res
-        }
+    LogInUsernameFinished loc req res ->
+      ( updateAuthWidget loc (AuthWidget.handleLogInUsernameResponse res) { model | globals = model.globals |> Globals.handleLogInUsernameResponse req res }
       , case API.simplifyLogInUsernameResponse res of
           Ok _ -> navigate <| Nothing
           Err _ -> Cmd.none
       )
-    RegisterUsername widgetState req ->
-      ( { model | navbarAuth = widgetState }
-      , API.postRegisterUsername (RegisterUsernameFinished req) req
+    RegisterUsername loc widgetState req ->
+      ( updateAuthWidget loc (always widgetState) model
+      , API.postRegisterUsername (RegisterUsernameFinished loc req) req
       )
-    RegisterUsernameFinished req res ->
-      ( { model | globals = model.globals |> Globals.handleRegisterUsernameResponse req res
-                , navbarAuth = model.navbarAuth |> AuthWidget.handleRegisterUsernameResponse res
-        }
+    RegisterUsernameFinished loc req res ->
+      ( updateAuthWidget loc (AuthWidget.handleRegisterUsernameResponse res) { model | globals = model.globals |> Globals.handleRegisterUsernameResponse req res }
       , case API.simplifyRegisterUsernameResponse res of
           Ok _ -> navigate <| Nothing
           Err _ -> Cmd.none
@@ -917,14 +935,12 @@ update msg model =
         }
       , Cmd.none
       )
-    SignOut widgetState req ->
-      ( { model | navbarAuth = widgetState }
-      , API.postSignOut (SignOutFinished req) req
+    SignOut loc widgetState req ->
+      ( updateAuthWidget loc (always widgetState) model
+      , API.postSignOut (SignOutFinished loc req) req
       )
-    SignOutFinished req res ->
-      ( { model | globals = model.globals |> Globals.handleSignOutResponse req res
-                , navbarAuth = model.navbarAuth |> AuthWidget.handleSignOutResponse res
-        }
+    SignOutFinished loc req res ->
+      ( updateAuthWidget loc (AuthWidget.handleSignOutResponse res) { model | globals = model.globals |> Globals.handleSignOutResponse req res }
       , case API.simplifySignOutResponse res of
           Ok _ -> navigate <| Just "/"
           Err _ -> Cmd.none

@@ -23,7 +23,7 @@ view config state =
   in
   H.nav [HA.class "navbar navbar-expand-lg navbar-light bg-light mb-3", HA.style "border-bottom" "1px solid black"]
   [ H.div [HA.class "container"]
-    [ H.a [HA.class "navbar-brand", HA.href "#"]
+    [ H.a [HA.class "navbar-brand", HA.href "/"]
       [ H.text "Biatob" ]
     , H.button [HA.class "navbar-toggler", HA.attribute "type" "button", HA.attribute "data-bs-toggle" "collapse", HA.attribute "data-bs-target" "#navbarSupportedContent", HA.attribute "aria-controls" "navbarSupportedContent", HA.attribute "aria-expanded" "false", HA.attribute "aria-label" "Toggle navigation"]
       [ H.span [HA.class "navbar-toggler-icon"] []
