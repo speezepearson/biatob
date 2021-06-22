@@ -358,7 +358,7 @@ viewForm model =
           , HA.disabled disabled
           , HE.onInput SetResolvesAtField
           , HA.value model.resolvesAtField
-          , HA.class (if isValid then "is-valid" else "is-invalid")
+          , HA.class (if isValid then "" else "is-invalid")
           , HA.class "form-control form-control-sm ms-1"
           ] []
         , H.text ","
@@ -375,7 +375,7 @@ viewForm model =
           , HA.class "prediction-field"
           , HE.onInput SetPredictionField
           , HA.value model.predictionField
-          , HA.class (if isValid then "is-valid" else "is-invalid")
+          , HA.class (if isValid then "" else "is-invalid")
           , HA.class "form-control"
           ] []
         , H.div [HA.class "mx-5 mt-1 text-secondary"]
@@ -402,7 +402,7 @@ viewForm model =
             , HA.disabled disabled
             , HE.onInput SetLowPField
             , HA.value model.lowPField
-            , HA.class (if isValid then "is-valid" else "is-invalid")
+            , HA.class (if isValid then "" else "is-invalid")
             , HA.class "form-control form-control-sm"
             ] []
         , H.text "% chance of happening."
@@ -427,7 +427,7 @@ viewForm model =
             , HA.disabled disabled
             , HE.onInput SetHighPField
             , HA.value model.highPField
-            , HA.class (if isValid then "is-valid" else "is-invalid")
+            , HA.class (if isValid then "" else "is-invalid")
             , HA.class "form-control form-control-sm"
             ] []
         , H.text "% chance. "
@@ -437,7 +437,7 @@ viewForm model =
           , H.p [] [H.text "Yeah, this is startlingly difficult to think about! Here are some roughly equivalent statements:"]
           , H.ul []
             [ H.li []
-              [ H.text "I think a significant number of my friends assign this a probability below "
+              [ H.text "\"I think a significant number of my friends assign this a probability below "
               , Utils.b <| model.lowPField ++ "%"
               , H.text ", and I'm pretty sure that they're being too hasty to dismiss this."
               , case parseHighProbability model of
@@ -449,9 +449,10 @@ viewForm model =
                     , H.text " -- I think they're overconfident that this will happen."
                     ]
                   Err _ -> H.text ""
+              , H.text "\""
               ]
             , H.li []
-              [ H.text "I'm pretty sure that, if I researched this question pretty carefully, and at the end of the day I had to put a single number on it,"
+              [ H.text "\"I'm pretty sure that, if I researched this question pretty carefully, and at the end of the day I had to put a single number on it,"
               , H.text " I would end up assigning it a probability between "
               , Utils.b <| model.lowPField ++ "%"
               , case parseHighProbability model of
@@ -462,10 +463,10 @@ viewForm model =
                     , Utils.b <| model.highPField ++ "%"
                     ]
                   Err _ -> H.text ""
-              , H.text ". If I assigned a number outside that range, I must have learned something really surprising, something that changed my mind significantly!"
+              , H.text ". If I assigned a number outside that range, I must have learned something really surprising, something that changed my mind significantly!\""
               ]
             , H.li []
-              [ H.text "I would pay one of my friends about "
+              [ H.text "\"I would pay one of my friends about "
               , Utils.b <| "$" ++ model.lowPField
               , H.text " for an \"IOU $100 if [this prediction comes true]\" note"
               , case parseHighProbability model of
@@ -476,7 +477,7 @@ viewForm model =
                     , Utils.b <| "$" ++ model.highPField
                     ]
                   Err _ -> H.text ""
-              , H.text "."
+              , H.text ".\""
               ]
             ]
           , H.p [] [H.text <| "You can think of the spread as being a measurement of how confident you are:"
@@ -498,7 +499,7 @@ viewForm model =
         isValid = isOk (parseStake model)
       in
       H.div [HA.class ""]
-      [ H.text "I'm willing to bet up to $"
+      [ H.text "I'm willing to lose up to $"
       , H.input
           [ HA.type_ "number", HA.min "0", HA.max (String.fromInt <| maxLegalStakeCents//100)
           , HA.style "width" "7em"
@@ -507,10 +508,10 @@ viewForm model =
           , HA.disabled disabled
           , HE.onInput SetStakeField
           , HA.value model.stakeField
-          , HA.class (if isValid then "is-valid" else "is-invalid")
+          , HA.class (if isValid then "" else "is-invalid")
           , HA.class "form-control form-control-sm"
           ] []
-      , H.text " at these odds."
+      , H.text " if I'm wrong."
       , H.div [HA.class "invalid-feedback"] [viewError (parseStake model)]
       , case parseStake model of
             Err _ -> H.text ""
@@ -546,7 +547,7 @@ viewForm model =
           , HA.disabled disabled
           , HE.onInput SetOpenForSecondsField
           , HA.value model.openForSecondsField
-          , HA.class (if isValid then "is-valid" else "is-invalid")
+          , HA.class (if isValid then "" else "is-invalid")
           , HA.class "form-control form-control-sm"
           ] []
       , H.select

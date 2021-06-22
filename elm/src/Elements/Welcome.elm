@@ -252,16 +252,6 @@ view model =
                 ]
             ]
         , H.li [HA.style "margin-bottom" "1em"]
-            [ H.text " Go to "
-            , H.a [HA.href "/new"]
-                [ H.text "the New Prediction page"
-                ]
-            , H.text " to create a bet. "
-            ]
-        , H.li [HA.style "margin-bottom" "1em"]
-            [ H.text " Advertise your bet -- post the link on Facebook, include a cute little embeddable image in your blog, whatever. "
-            ]
-        , H.li [HA.style "margin-bottom" "1em"]
             [ H.text " Consider adding an email address, so I can remind you to resolve your prediction when the time comes:   "
             , H.div [HA.style "border" "1px solid gray", HA.style "padding" "0.5em", HA.style "margin" "0.5em"]
                 [ case Globals.getUserInfo model.globals of
@@ -277,6 +267,17 @@ view model =
                         }
                         model.emailSettingsWidget
                 ]
+            ]
+        , H.li [HA.style "margin-bottom" "1em"]
+            [ H.text " Go to "
+            , H.a [HA.href "/new"]
+                [ H.text "the New Prediction page"
+                ]
+            , H.text " to create a bet. "
+            ]
+        , H.li [HA.style "margin-bottom" "1em"]
+            [ H.text " Advertise your bet -- post the link on Facebook, include a cute little embeddable image in your blog, whatever."
+            , H.text " (The prediction page will show you how.)"
             ]
         , H.li [HA.style "margin-bottom" "1em"]
             [ H.text " When your prediction resolves to Yes or No, settle up with your friends! "

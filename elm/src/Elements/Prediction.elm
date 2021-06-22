@@ -524,9 +524,16 @@ viewSummaryTable now timeZone prediction =
       [ H.th [HA.scope "row"] [H.text "Created on:"]
       , H.td [] [H.text <| Utils.dateStr timeZone (Utils.unixtimeToTime prediction.createdUnixtime)]
       ]
-    , H.tr []
-      [ H.th [HA.scope "row"] [H.text "Betting closes:"]
-      , H.td [] [H.text <| Utils.dateStr timeZone (Utils.unixtimeToTime prediction.closesUnixtime)]
+    , let secondsRemaining = prediction.closesUnixtime - Utils.timeToUnixtime now in
+      H.tr []
+      [ H.th [HA.scope "row"] [H.text <| "Betting " ++ (if secondsRemaining < 0 then "closed" else "closes") ++ ":"]
+      , H.td []
+        [ H.text <| Utils.dateStr timeZone (Utils.unixtimeToTime prediction.closesUnixtime)
+        , if 0 < secondsRemaining && secondsRemaining < 86400 * 3 then
+            H.text <| " (in " ++ Utils.renderIntervalSeconds secondsRemaining ++ ")"
+          else
+            H.text ""
+        ]
       ]
     , viewResolutionRow now timeZone prediction
     , case prediction.specialRules of

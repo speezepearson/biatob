@@ -91,7 +91,7 @@ view config state =
       Pb.EmailFlowStateKindVerified _ -> True
     registrationBlock : Html msg
     registrationBlock =
-      case config.userInfo |> Utils.mustUserInfoEmail |> Utils.mustEmailFlowStateKind of
+      case emailFlowState of
         Pb.EmailFlowStateKindUnstarted _ ->
           H.div []
             [ H.text "Register an email address: "
@@ -163,32 +163,37 @@ view config state =
       , HE.onSubmit config.ignore
       ]
       [ registrationBlock
-      , H.div []
-          [ H.input
-              [ HA.type_ "checkbox", HA.checked config.userInfo.allowEmailInvitations
-              , HA.disabled (state.working || not isRegistered)
-              , HE.onInput (\_ -> config.updateSettings {state | working=True, notification=H.text ""} {emailRemindersToResolve=Nothing, emailResolutionNotifications=Nothing, allowEmailInvitations=Just {value=not config.userInfo.allowEmailInvitations}})
-              ] []
-          , H.text " Email notifications when new people want to bet against you? (Highly recommended! This will make it "
-          , Utils.i "way"
-          , H.text " smoother when one of your friends wants to bet against you for the first time.)"
+      , if isRegistered then
+          H.div [HA.class "mx-4"]
+          [ H.div []
+            [ H.input
+                [ HA.type_ "checkbox", HA.checked config.userInfo.allowEmailInvitations
+                , HA.disabled (state.working || not isRegistered)
+                , HE.onInput (\_ -> config.updateSettings {state | working=True, notification=H.text ""} {emailRemindersToResolve=Nothing, emailResolutionNotifications=Nothing, allowEmailInvitations=Just {value=not config.userInfo.allowEmailInvitations}})
+                ] []
+            , H.text " Email notifications when new people want to bet against you? (Highly recommended! This will make it "
+            , Utils.i "way"
+            , H.text " smoother when one of your friends wants to bet against you for the first time.)"
+            ]
+          , H.div []
+              [ H.input
+                  [ HA.type_ "checkbox", HA.checked config.userInfo.emailRemindersToResolve
+                  , HA.disabled (state.working || not isRegistered)
+                  , HE.onInput (\_ -> config.updateSettings {state | working=True, notification=H.text ""} {emailRemindersToResolve=Just {value=not config.userInfo.emailRemindersToResolve}, emailResolutionNotifications=Nothing, allowEmailInvitations=Nothing})
+                  ] []
+              , H.text " Email reminders to resolve your predictions, when it's time?"
+              ]
+          , H.div []
+              [ H.input
+                  [ HA.type_ "checkbox", HA.checked config.userInfo.emailResolutionNotifications
+                  , HA.disabled (state.working || not isRegistered)
+                  , HE.onInput (\_ -> config.updateSettings {state | working=True, notification=H.text ""} {emailRemindersToResolve=Nothing, emailResolutionNotifications=Just {value=not config.userInfo.emailResolutionNotifications}, allowEmailInvitations=Nothing})
+                  ] []
+              , H.text " Email notifications when predictions you've bet on resolve?"
+              ]
           ]
-      , H.div []
-          [ H.input
-              [ HA.type_ "checkbox", HA.checked config.userInfo.emailRemindersToResolve
-              , HA.disabled (state.working || not isRegistered)
-              , HE.onInput (\_ -> config.updateSettings {state | working=True, notification=H.text ""} {emailRemindersToResolve=Just {value=not config.userInfo.emailRemindersToResolve}, emailResolutionNotifications=Nothing, allowEmailInvitations=Nothing})
-              ] []
-          , H.text " Email reminders to resolve your predictions, when it's time?"
-          ]
-      , H.div []
-          [ H.input
-              [ HA.type_ "checkbox", HA.checked config.userInfo.emailResolutionNotifications
-              , HA.disabled (state.working || not isRegistered)
-              , HE.onInput (\_ -> config.updateSettings {state | working=True, notification=H.text ""} {emailRemindersToResolve=Nothing, emailResolutionNotifications=Just {value=not config.userInfo.emailResolutionNotifications}, allowEmailInvitations=Nothing})
-              ] []
-          , H.text " Email notifications when predictions you've bet on resolve?"
-          ]
+        else
+          H.text ""
       ]
 
 subscriptions : State -> Sub msg
