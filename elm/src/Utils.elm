@@ -59,15 +59,6 @@ resultToErr res =
   case res of
     Err e -> Just e
     Ok _ -> Nothing
-appendValidationError : Maybe String -> Html msg -> Html msg
-appendValidationError err elem =
-  case err of
-    Just e ->
-      H.span [HA.style "outline" "1px solid red"]
-        [ elem
-        , H.span [HA.style "color" "red"] [H.text e]
-        ]
-    Nothing -> H.span [] [elem] -- the extra span is necessary for Elm to realize the input is the same, to keep focus on it
 
 formatCents : Cents -> String
 formatCents n =
@@ -88,7 +79,7 @@ must errmsg mx =
 
 renderUser : Username -> H.Html msg
 renderUser user =
-  H.a [HA.href <| pathToUserPage user] [H.text user]
+  H.a [HA.class "p-0", HA.href <| pathToUserPage user] [H.text user]
 
 outlineIfInvalid : Bool -> H.Attribute msg
 outlineIfInvalid isInvalid =
@@ -259,3 +250,9 @@ onEnter : msg -> msg -> H.Attribute msg
 onEnter msg nevermind =
   HE.on "keydown" <|
     JD.map (\keyCode -> if keyCode == 13 then msg else nevermind) HE.keyCode
+
+viewError : Result String x -> Html msg
+viewError res =
+  case res of
+    Ok _ -> H.text ""
+    Err e -> redText e

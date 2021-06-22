@@ -10,13 +10,12 @@ import Time
 import Iso8601
 
 import Biatob.Proto.Mvp as Pb
-import Utils exposing (i, Cents)
+import Utils exposing (i, isOk, viewError, Cents)
 import Elements.Prediction as Prediction
 
 import Widgets.AuthWidget as AuthWidget
 import Widgets.EmailSettingsWidget as EmailSettingsWidget
 import Widgets.Navbar as Navbar
-import Utils
 import Globals
 import API
 
@@ -82,11 +81,11 @@ unitToSeconds u =
 buildCreateRequest : Model -> Maybe Pb.CreatePredictionRequest
 buildCreateRequest model =
   parsePrediction model |> Result.toMaybe |> Maybe.andThen (\prediction ->
-  parseResolvesAt model.globals.now model |> Result.toMaybe |> Maybe.andThen (\resolvesAt ->
+  parseResolvesAt model |> Result.toMaybe |> Maybe.andThen (\resolvesAt ->
   parseStake model |> Result.toMaybe |> Maybe.andThen (\stake ->
   parseLowProbability model |> Result.toMaybe |> Maybe.andThen (\lowP ->
   parseHighProbability model |> Result.toMaybe |> Maybe.andThen (\highP -> if highP < lowP then Nothing else
-  parseOpenForSeconds model.globals.now model |> Result.toMaybe |> Maybe.andThen (\openForSeconds ->
+  parseOpenForSeconds model |> Result.toMaybe |> Maybe.andThen (\openForSeconds ->
     Just
       { prediction = prediction
       , certainty = Just { low=lowP, high=highP }
@@ -104,11 +103,11 @@ parsePrediction model =
   else
     Ok model.predictionField
 
-parseResolvesAt : Time.Posix -> Model -> Result String Time.Posix
-parseResolvesAt now model =
+parseResolvesAt : Model -> Result String Time.Posix
+parseResolvesAt model =
     case Iso8601.toTime model.resolvesAtField of
       Err _ -> Err ""
-      Ok t -> if Utils.timeToUnixtime t < Utils.timeToUnixtime now then Err "must be in the future" else Ok t
+      Ok t -> if Utils.timeToUnixtime t < Utils.timeToUnixtime model.globals.now then Err "must be in the future" else Ok t
 
 parseStake : Model -> Result String Cents
 parseStake model =
@@ -161,8 +160,8 @@ parseOpenForUnit model =
       "weeks" -> Weeks
       _ -> Debug.todo "unrecognized time unit"
 
-parseOpenForSeconds : Time.Posix -> Model -> Result String Int
-parseOpenForSeconds now model =
+parseOpenForSeconds : Model -> Result String Int
+parseOpenForSeconds model =
     case String.toInt model.openForSecondsField of
       Nothing -> Err "must be a positive integer"
       Just n ->
@@ -170,10 +169,10 @@ parseOpenForSeconds now model =
           Err "must be a positive integer"
         else
           let nSec = n * unitToSeconds (parseOpenForUnit model) in
-          case parseResolvesAt now model of
+          case parseResolvesAt model of
             Err _ -> Ok nSec
             Ok t ->
-              if Time.posixToMillis now + 1000 * nSec > Time.posixToMillis t then
+              if Time.posixToMillis model.globals.now + 1000 * nSec > Time.posixToMillis t then
                 Err "must close before prediction resolves"
               else
                 Ok nSec
@@ -310,20 +309,24 @@ update msg model =
     Ignore ->
       (model, Cmd.none)
 
-rationalApprox : {x: Float, tolerance: Float} -> (Int, Int)
+rationalApprox : {x: Float, tolerance: Float} -> Maybe (Int, Int)
 rationalApprox {x, tolerance} =
   let
-    help : Int -> Int -> (Int, Int)
-    help num denom =
-      let ratio = toFloat num / toFloat denom in
-      if abs (ratio - x) < tolerance then
-        (num, denom)
-      else if ratio > x then
-        help num (denom+1)
-      else
-        help (num+1) denom
+    denominators = [2, 3, 4, 5, 6, 10, 15, 20]
+
+    bestNumerator : Int -> Int
+    bestNumerator denominator = round (x * toFloat denominator)
+
+    error : Int -> Float
+    error denominator =
+      abs <| x - toFloat (bestNumerator denominator) / toFloat denominator
+
   in
-    help 0 1
+    denominators
+    |> List.map (\d -> (error d, bestNumerator d, d))
+    |> List.filter (\(err, _, _) -> err <= tolerance)
+    |> List.minimum
+    |> Maybe.map (\(_, n, d) -> (n, d))
 
 viewForm : Model -> Html Msg
 viewForm model =
@@ -335,210 +338,253 @@ viewForm model =
       , specialRules = "If the CDC doesn't publish statistics on this, I'll fall back to some other official organization, like the WHO; failing that, I'll look for journal papers on U.S. cases, and go with a consensus if I find one; failing that, the prediction is unresolvable."
       }
   in
-  H.div []
-    [ H.ul [HA.class "new-prediction-form"]
-        [ H.li []
-            [ H.text "I predict that, by "
-            , H.input
-                [ HA.type_ "date"
-                , HA.class "resolves-at-field"
-                , HA.disabled disabled
-                , HE.onInput SetResolvesAtField
-                , HA.value model.resolvesAtField
-                ] []
-              |> Utils.appendValidationError (Utils.resultToErr (parseResolvesAt model.globals.now model))
-            , H.text ", "
-            , H.br [] []
-            , H.textarea
-                [ HA.style "width" "100%"
-                , HA.placeholder placeholders.prediction
-                , HA.disabled disabled
-                , HA.class "prediction-field"
-                , HE.onInput SetPredictionField
-                , HA.value model.predictionField
-                ] []
-              |> Utils.appendValidationError (if model.predictionField == "" then Just "must not be empty" else Nothing)
-            , H.details []
-                [ H.summary [HA.style "text-align" "right"] [H.text "Advice"]
-                , H.text "A good prediction is ", i "objective", H.text " and ", i "verifiable,"
-                , H.text " ideally about ", i "experiences you anticipate having."
-                , H.ul []
-                  [ H.li [] [H.text " \"Gun violence will increase in the U.S. in 2022\" is extremely ill-defined."]
-                  , H.li [] [H.text " \"There will be at least 40,000 gun deaths in the U.S. in 2022\" is better, but it's still not ", i "verifiable", H.text " (by you)."]
-                  , H.li [] [H.text " \"The CDC will report at least 40,000 gun deaths for 2022, as stated on https://www.cdc.gov/nchs/fastats/injury.htm\" is very good!"]
-                  ]
-                ]
+  H.form
+    [ HA.class "g-3 needs-validation"
+    , HA.attribute "novalidate" ""
+    , HE.onSubmit Ignore
+    ]
+    [ H.div [HA.class ""]
+      [ let
+          isValid = isOk (parseResolvesAt model)
+        in
+        H.div []
+        [ H.label [HA.for "resolves-at"] [H.text "I predict that, by "]
+        , H.input
+          [ HA.type_ "date"
+          , HA.id "resolves-at"
+          , HA.style "width" "auto"
+          , HA.style "display" "inline-block"
+          , HA.disabled disabled
+          , HE.onInput SetResolvesAtField
+          , HA.value model.resolvesAtField
+          , HA.class (if isValid then "" else "is-invalid")
+          , HA.class "form-control form-control-sm ms-1"
+          ] []
+        , H.text ","
+        , H.div [HA.class "invalid-feedback"] [viewError (parseResolvesAt model)]
+        ]
+      , let
+          isValid = isOk (parsePrediction model)
+        in
+        H.div [HA.class "m-1"]
+        [ H.textarea
+          [ HA.style "width" "100%"
+          , HA.placeholder placeholders.prediction
+          , HA.disabled disabled
+          , HA.class "prediction-field"
+          , HE.onInput SetPredictionField
+          , HA.value model.predictionField
+          , HA.class (if isValid then "" else "is-invalid")
+          , HA.class "form-control"
+          ] []
+        , H.div [HA.class "mx-5 mt-1 text-secondary"]
+          [ H.small []
+            [ H.text "A good prediction is ", i "objective", H.text " and ", i "verifiable,"
+            , H.text " ideally about ", i "experiences you anticipate having."
+            , H.text " \"Gun violence will increase in the U.S. in 2022\" is extremely ill-defined;"
+            , H.text " \"The CDC will report at least 40,000 gun deaths for 2022, as stated on https://www.cdc.gov/nchs/fastats/injury.htm\" is much better."
+            ]
           ]
-        , H.li []
-            [ H.text "I think that this has at least a "
-            , H.input
-                [ HA.type_ "number", HA.min "0", HA.max "100", HA.step "any"
-                , HA.style "width" "5em"
-                , HA.disabled disabled
-                , HE.onInput SetLowPField
-                , HA.value model.lowPField
-                ] []
-              |> Utils.appendValidationError (Utils.resultToErr (parseLowProbability model))
-            , H.text "% chance of happening"
-            , H.text <| case parseLowProbability model of
-                Err _ -> " (i.e. about ??? out of ???)"
-                Ok lowP ->
-                  if lowP < 0.01 || lowP > 0.99 then
-                    "" -- telling the user that 99.8 is "about 454 out of 455" is not helpful
-                  else
-                    let (n,d) = rationalApprox {x=lowP, tolerance=0.1 * min lowP (1-lowP)} in
-                    " (i.e. about " ++ String.fromInt n ++ " out of " ++ String.fromInt d ++ ")"
-            , H.text "."
-            , H.br [] []
-            , H.details []
-              [ H.summary [HA.style "text-align" "right"] [H.text "Set upper bound too?"]
-              , H.text "...but I think that it would be overconfident to assign it more than a "
-              , H.input
-                  [ HA.type_ "number", HA.min (String.toFloat model.lowPField |> Maybe.withDefault 0 |> String.fromFloat), HA.max "100", HA.step "any"
-                  , HA.style "width" "5em"
-                  , HA.disabled disabled
-                  , HE.onInput SetHighPField
-                  , HA.value model.highPField
-                  ] []
-                |> Utils.appendValidationError (Utils.resultToErr (parseHighProbability model))
-              , H.text "% chance."
-            , H.details []
-                [ H.summary [HA.style "text-align" "right"] [H.text "Confusing?"]
-
-                , H.p [] [H.text "Yeah, this is startlingly difficult to think about! Here are some roughly equivalent statements:"]
-                , H.ul []
-                  [ H.li []
-                    [ H.text "I think a significant number of my friends assign this a probability below "
-                    , Utils.b <| model.lowPField ++ "%"
-                    , H.text ", and I'm pretty sure that they're being too hasty to dismiss this."
-                    , case parseHighProbability model of
-                        Ok highP ->
-                          if highP == 1 then H.text "" else
-                          H.span []
-                          [ H.text " And other friends assign this a probability higher than "
-                          , Utils.b <| model.highPField ++ "%"
-                          , H.text " -- I think they're overconfident that this will happen."
-                          ]
-                        Err _ -> H.text ""
+        ]
+      ]
+    , H.hr [] []
+    , H.div []
+      [ let
+          isValid = isOk (parseLowProbability model)
+        in
+        H.div []
+        [ H.text "I think that this has at least a "
+        , H.input
+            [ HA.type_ "number", HA.min "0", HA.max "100", HA.step "any"
+            , HA.style "width" "7em"
+            , HA.style "display" "inline-block"
+            , HA.disabled disabled
+            , HE.onInput SetLowPField
+            , HA.value model.lowPField
+            , HA.class (if isValid then "" else "is-invalid")
+            , HA.class "form-control form-control-sm"
+            ] []
+        , H.text "% chance of happening."
+        , H.div [HA.class "invalid-feedback"] [viewError (parseLowProbability model)]
+        , case parseLowProbability model of
+            Err e -> H.text ""
+            Ok lowP ->
+              case rationalApprox {x=lowP, tolerance=0.13 * min lowP (1-lowP)} of
+                Just (n, d) -> H.div [] [H.small [HA.class "text-secondary"] [H.text <| "(i.e. about " ++ String.fromInt n ++ " out of " ++ String.fromInt d ++ ")"]]
+                Nothing -> H.text ""
+        ]
+      , let
+          isValid = isOk (parseHighProbability model)
+        in
+        H.small [] [H.details [HA.class "px-4"]
+        [ H.summary [HA.style "text-align" "right"] [H.text "Set upper bound too?"]
+        , H.text "...but I think that it would be overconfident to assign it more than a "
+        , H.input
+            [ HA.type_ "number", HA.min (String.toFloat model.lowPField |> Maybe.withDefault 0 |> String.fromFloat), HA.max "100", HA.step "any"
+            , HA.style "width" "7em"
+            , HA.style "display" "inline-block"
+            , HA.disabled disabled
+            , HE.onInput SetHighPField
+            , HA.value model.highPField
+            , HA.class (if isValid then "" else "is-invalid")
+            , HA.class "form-control form-control-sm"
+            ] []
+        , H.text "% chance. "
+        , H.span [HA.class "invalid-feedback"] [viewError (parseHighProbability model)]
+        , H.details [HA.class "px-4"]
+          [ H.summary [HA.style "text-align" "right"] [H.text "Confusing?"]
+          , H.p [] [H.text "Yeah, this is startlingly difficult to think about! Here are some roughly equivalent statements:"]
+          , H.ul []
+            [ H.li []
+              [ H.text "\"I think a significant number of my friends assign this a probability below "
+              , Utils.b <| model.lowPField ++ "%"
+              , H.text ", and I'm pretty sure that they're being too hasty to dismiss this."
+              , case parseHighProbability model of
+                  Ok highP ->
+                    if highP == 1 then H.text "" else
+                    H.span []
+                    [ H.text " And other friends assign this a probability higher than "
+                    , Utils.b <| model.highPField ++ "%"
+                    , H.text " -- I think they're overconfident that this will happen."
                     ]
-                  , H.li []
-                    [ H.text "I'm pretty sure that, if I researched this question pretty carefully, and at the end of the day I had to put a single number on it,"
-                    , H.text " I would end up assigning it a probability between "
-                    , Utils.b <| model.lowPField ++ "%"
-                    , case parseHighProbability model of
-                        Ok highP ->
-                          if highP == 1 then H.text "" else
-                          H.span []
-                          [ H.text " and "
-                          , Utils.b <| model.highPField ++ "%"
-                          ]
-                        Err _ -> H.text ""
-                    , H.text ". If I assigned a number outside that range, I must have learned something really surprising, something that changed my mind significantly!"
+                  Err _ -> H.text ""
+              , H.text "\""
+              ]
+            , H.li []
+              [ H.text "\"I'm pretty sure that, if I researched this question pretty carefully, and at the end of the day I had to put a single number on it,"
+              , H.text " I would end up assigning it a probability between "
+              , Utils.b <| model.lowPField ++ "%"
+              , case parseHighProbability model of
+                  Ok highP ->
+                    if highP == 1 then H.text "" else
+                    H.span []
+                    [ H.text " and "
+                    , Utils.b <| model.highPField ++ "%"
                     ]
-                  , H.li []
-                    [ H.text "I would pay one of my friends about "
-                    , Utils.b <| "$" ++ model.lowPField
-                    , H.text " for an \"IOU $100 if [this prediction comes true]\" note"
-                    , case parseHighProbability model of
-                        Ok highP ->
-                          if highP > 0.9999 then H.text "" else
-                          H.span []
-                          [ H.text ", or sell them such an IOU for about "
-                          , Utils.b <| "$" ++ model.highPField
-                          ]
-                        Err _ -> H.text ""
-                    , H.text "."
+                  Err _ -> H.text ""
+              , H.text ". If I assigned a number outside that range, I must have learned something really surprising, something that changed my mind significantly!\""
+              ]
+            , H.li []
+              [ H.text "\"I would pay one of my friends about "
+              , Utils.b <| "$" ++ model.lowPField
+              , H.text " for an \"IOU $100 if [this prediction comes true]\" note"
+              , case parseHighProbability model of
+                  Ok highP ->
+                    if highP > 0.9999 then H.text "" else
+                    H.span []
+                    [ H.text ", or sell them such an IOU for about "
+                    , Utils.b <| "$" ++ model.highPField
                     ]
-                  ]
-                , H.p [] [H.text <| "You can think of the spread as being a measurement of how confident you are:"
-                    ++ " a small spread, like 70-73%, means you've thought about this ", i "really carefully,", H.text <| " and"
-                    ++ " you don't expect your opinion to be budged by any of your friends' bets or any new information that comes out"
-                    ++ " before betting closes; a wide spread, like 30-95%, is sort of off-the-cuff, you just want to throw it out there that"
-                    ++ " it's ", i "pretty likely", H.text <| " but you haven't thought ", i "that", H.text <| " hard about it."
-                    ++ " Predictions don't have to be effortful, painstakingly researched things!"
-                    ++ " It's okay to throw out half-formed thoughts with wide spreads."
-                    ]
-                , H.p [] [H.text <| "If you still confused, hey, don't worry about it! This is really remarkably counterintuitive stuff."
-                    ++ " Just leave the high probability at 100%."
-                    ]
-                ]
+                  Err _ -> H.text ""
+              , H.text ".\""
               ]
             ]
-        , H.li []
-            [ H.text "I'm willing to bet up to $"
-            , H.input
-                [ HA.type_ "number", HA.min "0", HA.max (String.fromInt <| maxLegalStakeCents//100)
-                , HA.style "width" "5em"
-                , HA.placeholder placeholders.stake
-                , HA.disabled disabled
-                , HE.onInput SetStakeField
-                , HA.value model.stakeField
-                ] []
-              |> Utils.appendValidationError (Utils.resultToErr (parseStake model))
-            , H.text " at these odds."
-            , case parseStake model of
-                  Err _ -> H.text ""
-                  Ok stakeCents ->
-                    let
-                      betVsSkeptics : Maybe String
-                      betVsSkeptics =
-                        parseLowProbability model
-                        |> Result.toMaybe
-                        |> Maybe.andThen (\lowP -> if lowP == 0 then Nothing else Just <| Utils.formatCents stakeCents ++ " against " ++ Utils.formatCents (round <| toFloat stakeCents * (1-lowP)/lowP))
-                      betVsBelievers : Maybe String
-                      betVsBelievers =
-                        parseHighProbability model
-                        |> Result.toMaybe
-                        |> Maybe.andThen (\highP -> if highP == 1 then Nothing else Just <| Utils.formatCents stakeCents ++ " against " ++ Utils.formatCents (round <| toFloat stakeCents * highP/(1-highP)))
-                    in
-                      case (betVsSkeptics, betVsBelievers) of
-                        (Nothing, Nothing) -> H.text ""
-                        (Just s, Nothing) -> H.div [] [H.text "(In other words, I'd happily bet ", Utils.b s, H.text " that this will happen.)"]
-                        (Nothing, Just s) -> H.div [] [H.text "(In other words, I'd happily bet ", Utils.b s, H.text " that this won't happen.)"]
-                        (Just skep, Just bel)  -> H.div [] [H.text "(In other words, I'd happily bet ", Utils.b skep, H.text " that this will happen, or ", Utils.b bel, H.text " that it won't.)"]
-            ]
-        , H.li []
-            [ H.text "This offer is open for "
-            , H.input
-                [ HA.type_ "number", HA.min "1"
-                , HA.style "width" "5em"
-                , HA.disabled disabled
-                , HE.onInput SetOpenForSecondsField
-                , HA.value model.openForSecondsField
-                ] []
-              |> Utils.appendValidationError (Utils.resultToErr (parseOpenForSeconds model.globals.now model))
-            , H.select
-                [ HA.disabled disabled
-                , HE.onInput SetOpenForUnitField
-                , HA.value model.openForUnitField
-                ]
-                [ H.option [] [H.text "weeks"]
-                , H.option [] [H.text "days"]
-                ]
-            , H.text "."
-            , H.details []
-                [ H.summary [HA.style "text-align" "right"] [H.text "Confusing?"]
-                , H.text <| "If it's Jan 1, and you're betting about how many book reviews Scott Alexander will have published by Dec 31,"
-                    ++ " you don't want people to be able to wait until Dec 30 before betting against you --"
-                    ++ " the question is essentially already answered at that point!"
-                    ++ " So, you might only accept bets for a week or two, to give your friends time to bet against you,"
-                    ++ " without letting them get ", Utils.i "too much", H.text " extra information."
-                ]
-            ]
-        , H.li []
-            [ H.text "Special rules (e.g. implicit assumptions, what counts as cheating):"
-            , H.textarea
-                [ HA.style "width" "100%"
-                , HA.placeholder placeholders.specialRules
-                , HA.disabled disabled
-                , HA.class "special-rules-field"
-                , HE.onInput SetSpecialRulesField
-                , HA.value model.specialRulesField
-                ]
-                []
-            ]
+          , H.p [] [H.text <| "You can think of the spread as being a measurement of how confident you are:"
+              ++ " a small spread, like 70-73%, means you've thought about this ", i "really carefully,", H.text <| " and"
+              ++ " you don't expect your opinion to be budged by any of your friends' bets or any new information that comes out"
+              ++ " before betting closes; a wide spread, like 30-95%, is sort of off-the-cuff, you just want to throw it out there that"
+              ++ " it's ", i "pretty likely", H.text <| " but you haven't thought ", i "that", H.text <| " hard about it."
+              ++ " Predictions don't have to be effortful, painstakingly researched things!"
+              ++ " It's okay to throw out half-formed thoughts with wide spreads."
+              ]
+          , H.p [] [H.text <| "If you still confused, hey, don't worry about it! This is really remarkably counterintuitive stuff."
+              ++ " Just leave the high probability at 100%."
+              ]
+          ]
         ]
-    ]
+      ]]
+    , H.hr [] []
+    , let
+        isValid = isOk (parseStake model)
+      in
+      H.div [HA.class ""]
+      [ H.text "I'm willing to lose up to $"
+      , H.input
+          [ HA.type_ "number", HA.min "0", HA.max (String.fromInt <| maxLegalStakeCents//100)
+          , HA.style "width" "7em"
+          , HA.style "display" "inline-block"
+          , HA.placeholder placeholders.stake
+          , HA.disabled disabled
+          , HE.onInput SetStakeField
+          , HA.value model.stakeField
+          , HA.class (if isValid then "" else "is-invalid")
+          , HA.class "form-control form-control-sm"
+          ] []
+      , H.text " if I'm wrong."
+      , H.div [HA.class "invalid-feedback"] [viewError (parseStake model)]
+      , case parseStake model of
+            Err _ -> H.text ""
+            Ok stakeCents ->
+              let
+                betVsSkeptics : Maybe String
+                betVsSkeptics =
+                  parseLowProbability model
+                  |> Result.toMaybe
+                  |> Maybe.andThen (\lowP -> if lowP == 0 then Nothing else Just <| Utils.formatCents stakeCents ++ " against " ++ Utils.formatCents (round <| toFloat stakeCents * (1-lowP)/lowP))
+                betVsBelievers : Maybe String
+                betVsBelievers =
+                  parseHighProbability model
+                  |> Result.toMaybe
+                  |> Maybe.andThen (\highP -> if highP == 1 then Nothing else Just <| Utils.formatCents stakeCents ++ " against " ++ Utils.formatCents (round <| toFloat stakeCents * highP/(1-highP)))
+              in
+                case (betVsSkeptics, betVsBelievers) of
+                  (Nothing, Nothing) -> H.text ""
+                  (Just s, Nothing) -> H.div [] [H.small [HA.class "text-secondary"] [H.text "(In other words, I'd happily bet ", Utils.b s, H.text " that this will happen.)"]]
+                  (Nothing, Just s) -> H.div [] [H.small [HA.class "text-secondary"] [H.text "(In other words, I'd happily bet ", Utils.b s, H.text " that this won't happen.)"]]
+                  (Just skep, Just bel)  -> H.div [] [H.small [HA.class "text-secondary"] [H.text "(In other words, I'd happily bet ", Utils.b skep, H.text " that this will happen, or ", Utils.b bel, H.text " that it won't.)"]]
+      ]
+    , H.hr [] []
+    , let
+        isValid = isOk (parseOpenForSeconds model)
+      in
+      H.div [HA.class ""]
+      [ H.text "This offer is open for "
+      , H.input
+          [ HA.type_ "number", HA.min "1"
+          , HA.style "width" "7em"
+          , HA.style "display" "inline-block"
+          , HA.disabled disabled
+          , HE.onInput SetOpenForSecondsField
+          , HA.value model.openForSecondsField
+          , HA.class (if isValid then "" else "is-invalid")
+          , HA.class "form-control form-control-sm"
+          ] []
+      , H.select
+          [ HA.disabled disabled
+          , HE.onInput SetOpenForUnitField
+          , HA.value model.openForUnitField
+          , HA.class "form-select d-inline-block w-auto"
+          ]
+          [ H.option [] [H.text "weeks"]
+          , H.option [] [H.text "days"]
+          ]
+      , H.text "."
+      , H.div [HA.class "invalid-feedback"] [viewError (parseOpenForSeconds model)]
+      , H.small [] [H.details [HA.class "px-4"]
+          [ H.summary [HA.style "text-align" "right"] [H.text "Confusing?"]
+          , H.text <| "If it's Jan 1, and you're betting about how many book reviews Scott Alexander will have published by Dec 31,"
+              ++ " you don't want people to be able to wait until Dec 30 before betting against you --"
+              ++ " the question is essentially already answered at that point!"
+              ++ " So, you might only accept bets for a week or two, to give your friends time to bet against you,"
+              ++ " without letting them get ", Utils.i "too much", H.text " extra information."
+          ]]
+      ]
+  , H.hr [] []
+  , H.div [HA.class ""]
+      [ H.text "Special rules (e.g. implicit assumptions, what counts as cheating):"
+      , H.textarea
+          [ HA.style "width" "100%"
+          , HA.placeholder placeholders.specialRules
+          , HA.disabled disabled
+          , HA.class "special-rules-field"
+          , HE.onInput SetSpecialRulesField
+          , HA.value model.specialRulesField
+          , HA.class "form-control"
+          ]
+          []
+      ]
+  ]
+
 
 view : Model -> Browser.Document Msg
 view model =
@@ -554,8 +600,8 @@ view model =
         , id = "navbar-auth"
         }
         model.navbarAuth
-    , H.main_ []
-    [ H.h2 [] [H.text "New Prediction"]
+    , H.main_ [HA.class "container"]
+    [ H.h2 [HA.class "text-center"] [H.text "New Prediction"]
     , case Globals.getAuth model.globals of
        Just _ -> H.text ""
        Nothing ->
@@ -599,9 +645,10 @@ view model =
     , H.div [HA.style "text-align" "center", HA.style "margin-bottom" "2em"]
         [ H.button
             [ HE.onClick Create
+            , HA.class "btn btn-primary mt-2"
             , HA.disabled (not (Globals.isLoggedIn model.globals) || buildCreateRequest model == Nothing || model.working)
             ]
-            [ H.text <| if Globals.isLoggedIn model.globals then "Create" else "Log in to create" ]
+            [ H.text <| if Globals.isLoggedIn model.globals then "Post prediction" else "Log in to post prediction" ]
         ]
     , case model.createError of
         Just e -> H.div [HA.style "color" "red"] [H.text e]

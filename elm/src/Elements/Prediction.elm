@@ -8,8 +8,6 @@ import Html.Events as HE
 import Json.Decode as JD
 import Http
 
-import Utils
-
 import Widgets.CopyWidget as CopyWidget
 import Widgets.AuthWidget as AuthWidget
 import Widgets.Navbar as Navbar
@@ -18,7 +16,7 @@ import Widgets.SmallInvitationWidget as SmallInvitationWidget
 import Globals
 import API
 import Biatob.Proto.Mvp as Pb
-import Utils exposing (Cents, PredictionId, Username)
+import Utils exposing (Cents, PredictionId, Username, isOk, viewError)
 import Time
 import Bytes.Encode
 
@@ -32,6 +30,7 @@ port authWidgetExternallyChanged : (AuthWidget.DomModification -> msg) -> Sub ms
 type alias Model =
   { globals : Globals.Globals
   , navbarAuth : AuthWidget.State
+  , authWidget : AuthWidget.State
   , predictionId : PredictionId
   , invitationWidget : SmallInvitationWidget.State
   , emailSettingsWidget : EmailSettingsWidget.State
@@ -44,25 +43,26 @@ type alias Model =
   }
 
 type RequestStatus = Unstarted | AwaitingResponse | Succeeded | Failed String
+type AuthWidgetLoc = Navbar | Inline
 
 type Msg
-  = SetAuthWidget AuthWidget.State
+  = SetAuthWidget AuthWidgetLoc AuthWidget.State
   | SetEmailWidget EmailSettingsWidget.State
   | SetInvitationWidget SmallInvitationWidget.State
   | SendInvitation
   | SendInvitationFinished Pb.SendInvitationRequest (Result Http.Error Pb.SendInvitationResponse)
-  | LogInUsername AuthWidget.State Pb.LogInUsernameRequest
-  | LogInUsernameFinished Pb.LogInUsernameRequest (Result Http.Error Pb.LogInUsernameResponse)
-  | RegisterUsername AuthWidget.State Pb.RegisterUsernameRequest
-  | RegisterUsernameFinished Pb.RegisterUsernameRequest (Result Http.Error Pb.RegisterUsernameResponse)
+  | LogInUsername AuthWidgetLoc AuthWidget.State Pb.LogInUsernameRequest
+  | LogInUsernameFinished AuthWidgetLoc Pb.LogInUsernameRequest (Result Http.Error Pb.LogInUsernameResponse)
+  | RegisterUsername AuthWidgetLoc AuthWidget.State Pb.RegisterUsernameRequest
+  | RegisterUsernameFinished AuthWidgetLoc Pb.RegisterUsernameRequest (Result Http.Error Pb.RegisterUsernameResponse)
   | Resolve Pb.Resolution
   | ResolveFinished Pb.ResolveRequest (Result Http.Error Pb.ResolveResponse)
   | SetCreatorTrusted
   | SetCreatorTrustedFinished Pb.SetTrustedRequest (Result Http.Error Pb.SetTrustedResponse)
   | SetEmail EmailSettingsWidget.State Pb.SetEmailRequest
   | SetEmailFinished Pb.SetEmailRequest (Result Http.Error Pb.SetEmailResponse)
-  | SignOut AuthWidget.State Pb.SignOutRequest
-  | SignOutFinished Pb.SignOutRequest (Result Http.Error Pb.SignOutResponse)
+  | SignOut AuthWidgetLoc AuthWidget.State Pb.SignOutRequest
+  | SignOutFinished AuthWidgetLoc Pb.SignOutRequest (Result Http.Error Pb.SignOutResponse)
   | Stake Cents
   | StakeFinished Pb.StakeRequest (Result Http.Error Pb.StakeResponse)
   | UpdateSettings EmailSettingsWidget.State Pb.UpdateSettingsRequest
@@ -80,6 +80,7 @@ init : JD.Value -> ( Model, Cmd Msg )
 init flags =
   ( { globals = JD.decodeValue Globals.globalsDecoder flags |> Utils.mustResult "flags"
     , navbarAuth = AuthWidget.init
+    , authWidget = AuthWidget.init
     , predictionId = Utils.mustDecodeFromFlags JD.string "predictionId" flags
     , invitationWidget = SmallInvitationWidget.init
     , emailSettingsWidget = EmailSettingsWidget.init
@@ -105,16 +106,16 @@ view model =
   { title = "Prediction: by " ++ Utils.dateStr model.globals.timeZone (Utils.unixtimeToTime prediction.resolvesAtUnixtime) ++ ", " ++ prediction.prediction
   , body =
     [ Navbar.view
-        { setState = SetAuthWidget
-        , logInUsername = LogInUsername
-        , register = RegisterUsername
-        , signOut = SignOut
+        { setState = SetAuthWidget Navbar
+        , logInUsername = LogInUsername Navbar
+        , register = RegisterUsername Navbar
+        , signOut = SignOut Navbar
         , ignore = Ignore
         , auth = Globals.getAuth model.globals
         , id = "navbar-auth"
         }
         model.navbarAuth
-    , H.main_ [] (viewBody model)
+    , H.main_ [HA.class "container"] (viewBody model)
     ]
   }
 
@@ -148,6 +149,7 @@ viewBodyMockup globals prediction =
         |> Globals.handleSignOutResponse {} (Ok {})
         |> Globals.handleLogInUsernameResponse {username="__previewer__", password=""} (Ok {logInUsernameResult=Just <| Pb.LogInUsernameResultOk {token=Just mockToken, userInfo=Just mockSettings}})
     , navbarAuth = AuthWidget.init
+    , authWidget = AuthWidget.init
     , predictionId = "12345"
     , invitationWidget = SmallInvitationWidget.init
     , emailSettingsWidget = EmailSettingsWidget.init
@@ -224,127 +226,144 @@ viewBody model =
     prediction = mustPrediction model
     isOwnPrediction = Globals.isSelf model.globals prediction.creator
   in
-  [ H.h2 [] [H.text <| getTitleText model.globals.timeZone prediction]
-  , viewSummaryTable model.globals.now model.globals.timeZone prediction
-  , if List.isEmpty prediction.yourTrades then
-      H.text ""
-    else
-      H.div []
-      [ H.hr [] []
-      , Utils.b "Your existing stake: "
-      , if isOwnPrediction then
-          viewTradesAsCreator model.globals.timeZone prediction
-        else
-          viewTradesAsBettor model.globals.timeZone prediction
-      ]
+  [ H.h2 [HA.class "text-center"] [H.text <| getTitleText model.globals.timeZone prediction]
   , H.hr [] []
-  , case getPrereqsForStaking model of
-      IsCreator ->
-        H.div []
-        [ viewResolveButtons model
-        , H.hr [HA.style "margin" "2em 0"] []
-        , H.text "If you want to link to your prediction, here are some snippets of HTML you could copy-paste:"
-        , viewEmbedInfo model
-        ]
-      NeedsAccount ->
-        H.div []
-        [ Utils.b "Make a bet:"
-        , H.text " Before I let you bet against "
-        , Utils.renderUser prediction.creator
-        , H.text ", I have to make sure that they trust you to pay up if you lose!"
-        , H.br [] []
-        , H.text "Could I trouble you to "
-        , H.a [HA.href <| "/login?dest=" ++ Utils.pathToPrediction model.predictionId] [H.text "log in or sign up"]
-        , H.text " so I have some idea who you are?"
-        ]
-      CanAlreadyStake ->
-        H.div []
-        [ Utils.b "Make a bet:"
-        , H.text " "
-        , viewStakeWidget BettingEnabled model
-        ]
-      NeedsToSetTrusted ->
-        H.div []
-        [ Utils.b "Make a bet:"
-        , H.text " Before I let you bet against "
-        , Utils.renderUser prediction.creator
-        , H.text ", I have to make sure that you trust them to pay up if they lose!"
-        , H.br [] []
-        , H.text "If you know who this account belongs to, and you trust them to pay up if they lose, then click "
-        , H.button
-          [ HA.disabled (model.setTrustedStatus == AwaitingResponse)
-          , HE.onClick SetCreatorTrusted
+  , H.div [HA.class "row row-cols-12"]
+    [ H.div [HA.class "col-4"] [viewSummaryTable model.globals.now model.globals.timeZone prediction]
+    , H.div [HA.class "col-8"]
+      [ if List.isEmpty prediction.yourTrades then
+          H.text ""
+        else
+          H.div []
+          [ Utils.b "Your existing stake: "
+          , if isOwnPrediction then
+              viewTradesAsCreator model.globals.timeZone prediction
+            else
+              viewTradesAsBettor model.globals.timeZone prediction
+          , H.hr [] []
           ]
-          [ H.text <| "I trust '" ++ prediction.creator ++ "'" ]
-        , case model.setTrustedStatus of
-            Unstarted -> H.text ""
-            AwaitingResponse -> H.text ""
-            Succeeded -> Utils.greenText "(success!)"
-            Failed e -> Utils.redText e
-        , H.text " and then I'll let you bet on this!"
-        ]
-      NeedsToWaitForInvitation ->
-        H.div []
-        [ Utils.b "Make a bet:"
-        , H.text " Before I let you bet against "
-        , Utils.renderUser prediction.creator
-        , H.text ", I have to make sure that they trust you to pay up if you lose!"
-        , H.br [] []
-        , H.text "I've sent them an email asking whether they trust you; you'll have to wait for them to say yes before you can bet on their predictions!"
-        ]
-      NeedsToSendEmailInvitation ->
-        H.div []
-        [ Utils.b "Make a bet:"
-        , H.text " Before I let you bet against "
-        , Utils.renderUser prediction.creator
-        , H.text ", I have to make sure that they trust you to pay up if you lose!"
-        , H.br [] []
-        , H.text "May I share your email address with them so that they know who you are? "
-        , H.button
-          [ HA.disabled (model.sendInvitationStatus == AwaitingResponse)
-          , HE.onClick SendInvitation
-          ]
-          [ H.text <| "I trust '" ++ prediction.creator ++ "', and I'm pretty sure they trust me too" ]
-        , H.br [] []
-        , H.text "After they tell me that they trust you, I'll let you bet on this prediction!"
-        ]
-      NeedsEmailAddress ->
-        H.div []
-        [ Utils.b "Make a bet:"
-        , H.text " Before I let you bet against "
-        , Utils.renderUser prediction.creator
-        , H.text ", I have to make sure that they trust you to pay up if you lose!"
-        , H.br [] []
-        , H.text "I can ask them if they trust you, but first, could I trouble you to add an email address to your account, as a way to identify you to them?"
-        , EmailSettingsWidget.view
-            { setState = SetEmailWidget
-            , ignore = Ignore
-            , setEmail = SetEmail
-            , verifyEmail = VerifyEmail
-            , updateSettings = UpdateSettings
-            , userInfo = Utils.must "checked that user is logged in" model.globals.serverState.settings
-            }
-            model.emailSettingsWidget
-        ]
-      NeedsToTextUserPageLink ->
-        H.div []
-        [ Utils.b "Make a bet:"
-        , H.text " Before I let you bet against "
-        , Utils.renderUser prediction.creator
-        , H.text ", I have to make sure that they trust you to pay up if you lose!"
-        , H.br [] []
-        , H.text "Normally, I'd offer to ask them for you, but they've disabled that feature! You'll need to send them a link to "
-        , H.a [HA.href <| Utils.pathToUserPage <| .owner <| Utils.must "checked user is logged in" model.globals.authToken] [H.text "your user page"]
-        , H.text ", over SMS/IM/email/whatever, and ask them to mark you as trusted."
-        ]
-
-  , if not (Globals.isLoggedIn model.globals) then
-      H.div []
-      [ H.hr [HA.style "margin" "2em 0"] []
-      , viewWhatIsThis model.predictionId prediction
+      , case getPrereqsForStaking model of
+          IsCreator ->
+            H.div []
+            [ viewResolveButtons model
+            , H.hr [HA.style "margin" "2em 0"] []
+            , H.text "If you want to link to your prediction, here are some snippets of HTML you could copy-paste:"
+            , viewEmbedInfo model
+            ]
+          NeedsAccount ->
+            H.div []
+            [ Utils.b "Make a bet:"
+            , H.text " Before I let you bet against "
+            , Utils.renderUser prediction.creator
+            , H.text ", I have to make sure that they trust you to pay up if you lose!"
+            , H.br [] []
+            , H.text "Could I trouble you to log in or sign up, so I have some idea who you are?"
+            , H.div [HA.class "m-1 mx-4"]
+              [ AuthWidget.view
+                { setState = SetAuthWidget Inline
+                , logInUsername = LogInUsername Inline
+                , register = RegisterUsername Inline
+                , signOut = SignOut Inline
+                , ignore = Ignore
+                , auth = Globals.getAuth model.globals
+                , id = "inline-auth"
+                }
+                model.authWidget
+              ]
+            ]
+          CanAlreadyStake ->
+            H.div []
+            [ Utils.b "Make a bet:"
+            , H.text " "
+            , viewStakeWidget BettingEnabled model
+            ]
+          NeedsToSetTrusted ->
+            H.div []
+            [ Utils.b "Make a bet:"
+            , H.text " Before I let you bet against "
+            , Utils.renderUser prediction.creator
+            , H.text ", I have to make sure that you trust them to pay up if they lose!"
+            , H.br [] []
+            , H.text "If you know who this account belongs to, and you trust them to pay up if they lose, then click "
+            , H.button
+              [ HA.disabled (model.setTrustedStatus == AwaitingResponse)
+              , HE.onClick SetCreatorTrusted
+              , HA.class "btn btn-outline-primary"
+              ]
+              [ H.text <| "I trust '" ++ prediction.creator ++ "'" ]
+            , case model.setTrustedStatus of
+                Unstarted -> H.text ""
+                AwaitingResponse -> H.text ""
+                Succeeded -> Utils.greenText "(success!)"
+                Failed e -> Utils.redText e
+            , H.text " and then I'll let you bet on this!"
+            ]
+          NeedsToWaitForInvitation ->
+            H.div []
+            [ Utils.b "Make a bet:"
+            , H.text " Before I let you bet against "
+            , Utils.renderUser prediction.creator
+            , H.text ", I have to make sure that they trust you to pay up if you lose!"
+            , H.br [] []
+            , H.text "I've sent them an email asking whether they trust you; you'll have to wait for them to say yes before you can bet on their predictions!"
+            ]
+          NeedsToSendEmailInvitation ->
+            H.div []
+            [ Utils.b "Make a bet:"
+            , H.text " Before I let you bet against "
+            , Utils.renderUser prediction.creator
+            , H.text ", I have to make sure that they trust you to pay up if you lose!"
+            , H.br [] []
+            , H.text "May I share your email address with them so that they know who you are? "
+            , H.button
+              [ HA.disabled (model.sendInvitationStatus == AwaitingResponse)
+              , HE.onClick SendInvitation
+              , HA.class "btn btn-outline-primary"
+              ]
+              [ H.text <| "I trust '" ++ prediction.creator ++ "', and I'm pretty sure they trust me too" ]
+            , H.br [] []
+            , H.text "After they tell me that they trust you, I'll let you bet on this prediction!"
+            ]
+          NeedsEmailAddress ->
+            H.div []
+            [ Utils.b "Make a bet:"
+            , H.text " Before I let you bet against "
+            , Utils.renderUser prediction.creator
+            , H.text ", I have to make sure that they trust you to pay up if you lose!"
+            , H.br [] []
+            , H.text "I can ask them if they trust you, but first, could I trouble you to add an email address to your account, as a way to identify you to them?"
+            , H.div [HA.class "m-1 mx-4"]
+              [ EmailSettingsWidget.view
+                { setState = SetEmailWidget
+                , ignore = Ignore
+                , setEmail = SetEmail
+                , verifyEmail = VerifyEmail
+                , updateSettings = UpdateSettings
+                , userInfo = Utils.must "checked that user is logged in" model.globals.serverState.settings
+                }
+                model.emailSettingsWidget
+              ]
+            ]
+          NeedsToTextUserPageLink ->
+            H.div []
+            [ Utils.b "Make a bet:"
+            , H.text " Before I let you bet against "
+            , Utils.renderUser prediction.creator
+            , H.text ", I have to make sure that they trust you to pay up if you lose!"
+            , H.br [] []
+            , H.text "Normally, I'd offer to ask them for you, but they've disabled that feature! You'll need to send them a link to "
+            , H.a [HA.href <| Utils.pathToUserPage <| .owner <| Utils.must "checked user is logged in" model.globals.authToken] [H.text "your user page"]
+            , H.text ", over SMS/IM/email/whatever, and ask them to mark you as trusted."
+            ]
       ]
-    else
-      H.text ""
+    , if not (Globals.isLoggedIn model.globals) then
+        H.div []
+        [ H.hr [HA.style "margin" "2em 0"] []
+        , viewWhatIsThis model.predictionId prediction
+        ]
+      else
+        H.text ""
+    ]
   ]
 
 viewResolveButtons : Model -> Html Msg
@@ -357,6 +376,7 @@ viewResolveButtons model =
         , H.button
           [ HA.disabled (model.resolveStatus == AwaitingResponse)
           , HE.onClick <| Resolve Pb.ResolutionNoneYet
+          , HA.class "btn btn-sm btn-outline-secondary"
           ]
           [ H.text "un-resolve it." ]
         ]
@@ -372,9 +392,9 @@ viewResolveButtons model =
           mistakeInfo
         Pb.ResolutionNoneYet ->
           H.span []
-          [ H.button [HA.disabled (model.resolveStatus == AwaitingResponse), HE.onClick <| Resolve Pb.ResolutionYes    ] [H.text "Resolve YES"]
-          , H.button [HA.disabled (model.resolveStatus == AwaitingResponse), HE.onClick <| Resolve Pb.ResolutionNo     ] [H.text "Resolve NO"]
-          , H.button [HA.disabled (model.resolveStatus == AwaitingResponse), HE.onClick <| Resolve Pb.ResolutionInvalid] [H.text "Resolve INVALID"]
+          [ H.button [HA.class "btn btn-sm btn-outline-primary mx-2", HA.disabled (model.resolveStatus == AwaitingResponse), HE.onClick <| Resolve Pb.ResolutionYes    ] [H.text "Resolve YES"]
+          , H.button [HA.class "btn btn-sm btn-outline-primary mx-2", HA.disabled (model.resolveStatus == AwaitingResponse), HE.onClick <| Resolve Pb.ResolutionNo     ] [H.text "Resolve NO"]
+          , H.button [HA.class "btn btn-sm btn-outline-primary mx-2", HA.disabled (model.resolveStatus == AwaitingResponse), HE.onClick <| Resolve Pb.ResolutionInvalid] [H.text "Resolve INVALID"]
           ]
         Pb.ResolutionUnrecognized_ _ ->
           H.span []
@@ -401,6 +421,7 @@ viewWillWontDropdown model =
           "will" -> False
           _ -> Debug.todo <| "invalid value" ++ Debug.toString s ++ "for skepticism dropdown"
         ))
+      , HA.class "form-select d-inline-block w-auto"
       ]
       [ H.option [HA.value "won't", HA.selected <| model.bettorIsASkeptic] [H.text "won't"]
       , H.option [HA.value "will", HA.selected <| not <| model.bettorIsASkeptic] [H.text "will"]
@@ -439,11 +460,14 @@ viewStakeWidget bettability model =
         [ HA.style "width" "5em"
         , HA.type_"number", HA.min "0", HA.max (toFloat maxBettorStakeCents / 100 + epsilon |> String.fromFloat), HA.step "any"
         , HA.disabled disableInputs
+        , HA.class "form-control form-control-sm d-inline-block"
         , HE.onInput SetStakeField
         , HA.value model.stakeField
+        , HA.class (if isOk stakeCents then "" else "is-invalid")
+        , HA.class "form-control form-control-sm"
         ]
         []
-      |> Utils.appendValidationError (Utils.resultToErr stakeCents)
+    , H.div [HA.class "invalid-feedback"] [viewError stakeCents]
     , H.text " that this "
     , viewWillWontDropdown model
     , H.text <| " happen, against " ++ prediction.creator ++ "'s "
@@ -452,7 +476,7 @@ viewStakeWidget bettability model =
     , H.text <| if model.bettorIsASkeptic then "will" else "won't"
     , H.text ". "
     , H.button
-        (case stakeCents of
+        (HA.class "btn btn-sm btn-primary" :: case stakeCents of
           Ok cents ->
             [ HA.disabled disableInputs
             , HE.onClick (Stake cents)
@@ -494,40 +518,49 @@ getTitleText timeZone prediction =
 
 viewSummaryTable : Time.Posix -> Time.Zone -> Pb.UserPredictionView -> Html Msg
 viewSummaryTable now timeZone prediction =
-  H.table [HA.class "prediction-summary-table"]
-  [ H.tr []
-    [ H.td [] [Utils.b "Prediction by:"]
-    , H.td [] [Utils.renderUser prediction.creator]
-    ]
-  , H.tr []
-    [ H.td [] [Utils.b "Confidence:"]
-    , H.td [] [H.text <|
-        (String.fromInt <| round <| 100 * (Utils.mustPredictionCertainty prediction).low)
-        ++ "-" ++
-        (String.fromInt <| round <| 100 * (Utils.mustPredictionCertainty prediction).high)
-        ++ "%"]
-    ]
-  , H.tr []
-    [ H.td [] [Utils.b "Stakes:"]
-    , H.td [] [H.text <| "up to " ++ Utils.formatCents prediction.maximumStakeCents]
-    ]
-  , H.tr []
-    [ H.td [] [Utils.b "Created on:"]
-    , H.td [] [H.text <| Utils.dateStr timeZone (Utils.unixtimeToTime prediction.createdUnixtime)]
-    ]
-  , H.tr []
-    [ H.td [] [Utils.b "Betting closes:"]
-    , H.td [] [H.text <| Utils.dateStr timeZone (Utils.unixtimeToTime prediction.closesUnixtime)]
-    ]
-  , viewResolutionRow now timeZone prediction
-  , case prediction.specialRules of
-      "" ->
-        H.text ""
-      rules ->
-        H.tr []
-        [ H.td [] [Utils.b "Special rules:"]
-        , H.td [] [H.text rules]
+  H.table [HA.class "table table-sm", HA.class "col-4"]
+  [ H.tbody []
+    [ H.tr []
+      [ H.th [HA.scope "row"] [H.text "Prediction by:"]
+      , H.td [] [Utils.renderUser prediction.creator]
+      ]
+    , H.tr []
+      [ H.th [HA.scope "row"] [H.text "Confidence:"]
+      , H.td [] [H.text <|
+          (String.fromInt <| round <| 100 * (Utils.mustPredictionCertainty prediction).low)
+          ++ "-" ++
+          (String.fromInt <| round <| 100 * (Utils.mustPredictionCertainty prediction).high)
+          ++ "%"]
+      ]
+    , H.tr []
+      [ H.th [HA.scope "row"] [H.text "Stakes:"]
+      , H.td [] [H.text <| "up to " ++ Utils.formatCents prediction.maximumStakeCents]
+      ]
+    , H.tr []
+      [ H.th [HA.scope "row"] [H.text "Created on:"]
+      , H.td [] [H.text <| Utils.dateStr timeZone (Utils.unixtimeToTime prediction.createdUnixtime)]
+      ]
+    , let secondsRemaining = prediction.closesUnixtime - Utils.timeToUnixtime now in
+      H.tr []
+      [ H.th [HA.scope "row"] [H.text <| "Betting " ++ (if secondsRemaining < 0 then "closed" else "closes") ++ ":"]
+      , H.td []
+        [ H.text <| Utils.dateStr timeZone (Utils.unixtimeToTime prediction.closesUnixtime)
+        , if 0 < secondsRemaining && secondsRemaining < 86400 * 3 then
+            H.text <| " (in " ++ Utils.renderIntervalSeconds secondsRemaining ++ ")"
+          else
+            H.text ""
         ]
+      ]
+    , viewResolutionRow now timeZone prediction
+    , case prediction.specialRules of
+        "" ->
+          H.text ""
+        rules ->
+          H.tr []
+          [ H.th [HA.scope "row"] [H.text "Special rules:"]
+          , H.td [] [H.text rules]
+          ]
+    ]
   ]
 
 viewResolutionRow : Time.Posix -> Time.Zone -> Pb.UserPredictionView -> Html msg
@@ -556,7 +589,7 @@ viewResolutionRow now timeZone prediction =
         ]
   in
   H.tr []
-  [ H.td [] [Utils.b "Resolution:"]
+  [ H.th [HA.scope "row"] [H.text "Resolution:"]
   , H.td []
     [ case Utils.currentResolution prediction of
         Pb.ResolutionYes ->
@@ -728,10 +761,13 @@ formatYouWin wonCents =
 makeTable : List (H.Attribute msg) -> List (List (Html msg), a -> List (Html msg)) -> List a -> Html msg
 makeTable tableAttrs columns xs =
   let
-    headerRow = H.tr [] <| List.map (\(header, _) -> H.th [] header) columns
+    headerRow = H.tr [] <| List.map (\(header, _) -> H.th [HA.scope "col"] header) columns
     dataRows = List.map (\x -> H.tr [] (List.map (\(_, toTd) -> H.td [] (toTd x)) columns)) xs
   in
-  H.table tableAttrs (headerRow :: dataRows)
+  H.table (HA.class "table" :: tableAttrs)
+  [ H.thead [] [headerRow]
+  , H.tbody [] dataRows
+  ]
 
 
 viewEmbedInfo : Model -> Html Msg
@@ -775,7 +811,7 @@ viewEmbedInfo model =
 
 viewWhatIsThis : PredictionId -> Pb.UserPredictionView -> Html msg
 viewWhatIsThis predictionId prediction =
-  H.details []
+  H.details [HA.class "mx-3"]
   [ H.summary [] [Utils.b "Huh? What is this?"]
   , H.p []
       [ H.text "This site is a tool that helps people make friendly wagers, thereby clarifying and concretizing their beliefs and making the world a better, saner place."
@@ -792,7 +828,7 @@ viewWhatIsThis predictionId prediction =
       , H.text " to bet against them!"
       ]
   , H.hr [] []
-  , H.h3 [] [H.text "But... why would you do this?"]
+  , H.strong [] [H.text "But... why would you do this?"]
   , H.p []
       [ H.text "Personally, when I force myself to make concrete predictions -- especially on topics I feel strongly about -- it frequently turns out that "
       , Utils.i "I don't actually believe what I thought I did."
@@ -817,11 +853,17 @@ viewWhatIsThis predictionId prediction =
   , H.p [] [H.text "I made this tool to share that joy with you."]
   ]
 
+updateAuthWidget : AuthWidgetLoc -> (AuthWidget.State -> AuthWidget.State) -> Model -> Model
+updateAuthWidget loc f model =
+  case loc of
+    Navbar -> { model | navbarAuth = model.navbarAuth |> f }
+    Inline -> { model | authWidget = model.authWidget |> f }
+
 update : Msg -> Model -> ( Model , Cmd Msg )
 update msg model =
   case msg of
-    SetAuthWidget widgetState ->
-      ( { model | navbarAuth = widgetState } , Cmd.none )
+    SetAuthWidget loc widgetState ->
+      ( updateAuthWidget loc (always widgetState) model , Cmd.none )
     SetEmailWidget widgetState ->
       ( { model | emailSettingsWidget = widgetState } , Cmd.none )
     SetInvitationWidget widgetState ->
@@ -839,26 +881,22 @@ update msg model =
                 }
       , Cmd.none
       )
-    LogInUsername widgetState req ->
-      ( { model | navbarAuth = widgetState }
-      , API.postLogInUsername (LogInUsernameFinished req) req
+    LogInUsername loc widgetState req ->
+      ( updateAuthWidget loc (always widgetState) model
+      , API.postLogInUsername (LogInUsernameFinished loc req) req
       )
-    LogInUsernameFinished req res ->
-      ( { model | globals = model.globals |> Globals.handleLogInUsernameResponse req res
-                , navbarAuth = model.navbarAuth |> AuthWidget.handleLogInUsernameResponse res
-        }
+    LogInUsernameFinished loc req res ->
+      ( updateAuthWidget loc (AuthWidget.handleLogInUsernameResponse res) { model | globals = model.globals |> Globals.handleLogInUsernameResponse req res }
       , case API.simplifyLogInUsernameResponse res of
           Ok _ -> navigate <| Nothing
           Err _ -> Cmd.none
       )
-    RegisterUsername widgetState req ->
-      ( { model | navbarAuth = widgetState }
-      , API.postRegisterUsername (RegisterUsernameFinished req) req
+    RegisterUsername loc widgetState req ->
+      ( updateAuthWidget loc (always widgetState) model
+      , API.postRegisterUsername (RegisterUsernameFinished loc req) req
       )
-    RegisterUsernameFinished req res ->
-      ( { model | globals = model.globals |> Globals.handleRegisterUsernameResponse req res
-                , navbarAuth = model.navbarAuth |> AuthWidget.handleRegisterUsernameResponse res
-        }
+    RegisterUsernameFinished loc req res ->
+      ( updateAuthWidget loc (AuthWidget.handleRegisterUsernameResponse res) { model | globals = model.globals |> Globals.handleRegisterUsernameResponse req res }
       , case API.simplifyRegisterUsernameResponse res of
           Ok _ -> navigate <| Nothing
           Err _ -> Cmd.none
@@ -897,14 +935,12 @@ update msg model =
         }
       , Cmd.none
       )
-    SignOut widgetState req ->
-      ( { model | navbarAuth = widgetState }
-      , API.postSignOut (SignOutFinished req) req
+    SignOut loc widgetState req ->
+      ( updateAuthWidget loc (always widgetState) model
+      , API.postSignOut (SignOutFinished loc req) req
       )
-    SignOutFinished req res ->
-      ( { model | globals = model.globals |> Globals.handleSignOutResponse req res
-                , navbarAuth = model.navbarAuth |> AuthWidget.handleSignOutResponse res
-        }
+    SignOutFinished loc req res ->
+      ( updateAuthWidget loc (AuthWidget.handleSignOutResponse res) { model | globals = model.globals |> Globals.handleSignOutResponse req res }
       , case API.simplifySignOutResponse res of
           Ok _ -> navigate <| Just "/"
           Err _ -> Cmd.none

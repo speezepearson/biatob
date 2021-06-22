@@ -6,7 +6,7 @@ import Html.Events as HE
 import Http
 
 import Biatob.Proto.Mvp as Pb
-import Utils exposing (EmailAddress)
+import Utils exposing (EmailAddress, isOk, viewError)
 
 import API
 import Parser exposing ((|.), (|=))
@@ -90,7 +90,7 @@ view config state =
       Pb.EmailFlowStateKindVerified _ -> True
     registrationBlock : Html msg
     registrationBlock =
-      case config.userInfo |> Utils.mustUserInfoEmail |> Utils.mustEmailFlowStateKind of
+      case emailFlowState of
         Pb.EmailFlowStateKindUnstarted _ ->
           H.div []
             [ H.text "Register an email address: "
@@ -101,13 +101,17 @@ view config state =
                 , HE.onInput (\s -> config.setState {state | emailField=s})
                 , HA.value state.emailField
                 , Utils.onEnter (config.setEmail {state | working=True, notification=H.text ""} {email=state.emailField}) config.ignore
+                , HA.class "form-control form-control-sm mx-1 d-inline-block"
+                , HA.class <| if state.emailField == "" then "" else if isOk (parseEmailAddress state) then "is-valid" else "is-invalid"
+                , HA.style "width" "18em"
                 ] []
-              |> Utils.appendValidationError (if state.emailField == "" then Nothing else Utils.resultToErr (parseEmailAddress state))
             , H.button
                 [ HE.onClick (config.setEmail {state | working=True, notification=H.text ""} {email=state.emailField})
                 , HA.disabled <| state.working || Result.toMaybe (parseEmailAddress state) == Nothing
+                , HA.class "btn btn-sm btn-primary"
                 ] [H.text "Send verification"]
             , state.notification |> H.map never
+            , H.div [HA.class "invalid-feedback"] [viewError (parseEmailAddress state)]
             ]
         Pb.EmailFlowStateKindCodeSent {email} ->
           H.div []
@@ -120,15 +124,23 @@ view config state =
                 , Utils.onEnter (config.verifyEmail {state | working=True, notification=H.text ""} {code=state.codeField}) config.ignore
                 , HE.onInput (\s -> config.setState {state | codeField=s})
                 , HA.value state.codeField
+                , HA.class "form-control form-control-sm mx-1"
+                , HA.style "display" "inline-block"
+                , HA.style "width" "12em"
                 ] []
             , H.button
                 [ HE.onClick (config.verifyEmail {state | working=True, notification=H.text ""} {code=state.codeField})
                 , HA.disabled <| state.working || state.codeField == ""
+                , HA.class "btn btn-sm btn-primary"
                 ] [H.text "Verify code"]
               -- TODO: "Resend email"
             , state.notification |> H.map never
             , H.text " (Or, "
-            , H.button [HE.onClick (config.setEmail {state | working=True, notification=H.text ""} {email=""})] [H.text "delete email"]
+            , H.button
+                [ HE.onClick (config.setEmail {state | working=True, notification=H.text ""} {email=""})
+                , HA.class "btn btn-sm btn-outline-secondary"
+                ]
+                [H.text "delete email"]
             , H.text ")"
             ]
         Pb.EmailFlowStateKindVerified email ->
@@ -136,39 +148,51 @@ view config state =
             [ H.text "Your email address is: "
             , Utils.b email
             , H.text ". "
-            , H.button [HE.onClick (config.setEmail {state | working=True, notification=H.text ""} {email=""})] [H.text "delete?"]
+            , H.button
+                [ HE.onClick (config.setEmail {state | working=True, notification=H.text ""} {email=""})
+                , HA.class "btn btn-sm btn-outline-primary"
+                ]
+                [H.text "delete?"]
             , H.br [] []
             , state.notification |> H.map never
             ]
   in
-    H.div []
+    H.form
+      [ HA.class "needs-validation"
+      , HE.onSubmit config.ignore
+      ]
       [ registrationBlock
-      , H.div []
-          [ H.input
-              [ HA.type_ "checkbox", HA.checked config.userInfo.allowEmailInvitations
-              , HA.disabled (state.working || not isRegistered)
-              , HE.onInput (\_ -> config.updateSettings {state | working=True, notification=H.text ""} {emailRemindersToResolve=Nothing, emailResolutionNotifications=Nothing, allowEmailInvitations=Just {value=not config.userInfo.allowEmailInvitations}})
-              ] []
-          , H.text " Email notifications when new people want to bet against you? (Highly recommended! This will make it "
-          , Utils.i "way"
-          , H.text " smoother when one of your friends wants to bet against you for the first time.)"
+      , if isRegistered then
+          H.div [HA.class "mx-4"]
+          [ H.div []
+            [ H.input
+                [ HA.type_ "checkbox", HA.checked config.userInfo.allowEmailInvitations
+                , HA.disabled (state.working || not isRegistered)
+                , HE.onInput (\_ -> config.updateSettings {state | working=True, notification=H.text ""} {emailRemindersToResolve=Nothing, emailResolutionNotifications=Nothing, allowEmailInvitations=Just {value=not config.userInfo.allowEmailInvitations}})
+                ] []
+            , H.text " Email notifications when new people want to bet against you? (Highly recommended! This will make it "
+            , Utils.i "way"
+            , H.text " smoother when one of your friends wants to bet against you for the first time.)"
+            ]
+          , H.div []
+              [ H.input
+                  [ HA.type_ "checkbox", HA.checked config.userInfo.emailRemindersToResolve
+                  , HA.disabled (state.working || not isRegistered)
+                  , HE.onInput (\_ -> config.updateSettings {state | working=True, notification=H.text ""} {emailRemindersToResolve=Just {value=not config.userInfo.emailRemindersToResolve}, emailResolutionNotifications=Nothing, allowEmailInvitations=Nothing})
+                  ] []
+              , H.text " Email reminders to resolve your predictions, when it's time?"
+              ]
+          , H.div []
+              [ H.input
+                  [ HA.type_ "checkbox", HA.checked config.userInfo.emailResolutionNotifications
+                  , HA.disabled (state.working || not isRegistered)
+                  , HE.onInput (\_ -> config.updateSettings {state | working=True, notification=H.text ""} {emailRemindersToResolve=Nothing, emailResolutionNotifications=Just {value=not config.userInfo.emailResolutionNotifications}, allowEmailInvitations=Nothing})
+                  ] []
+              , H.text " Email notifications when predictions you've bet on resolve?"
+              ]
           ]
-      , H.div []
-          [ H.input
-              [ HA.type_ "checkbox", HA.checked config.userInfo.emailRemindersToResolve
-              , HA.disabled (state.working || not isRegistered)
-              , HE.onInput (\_ -> config.updateSettings {state | working=True, notification=H.text ""} {emailRemindersToResolve=Just {value=not config.userInfo.emailRemindersToResolve}, emailResolutionNotifications=Nothing, allowEmailInvitations=Nothing})
-              ] []
-          , H.text " Email reminders to resolve your predictions, when it's time?"
-          ]
-      , H.div []
-          [ H.input
-              [ HA.type_ "checkbox", HA.checked config.userInfo.emailResolutionNotifications
-              , HA.disabled (state.working || not isRegistered)
-              , HE.onInput (\_ -> config.updateSettings {state | working=True, notification=H.text ""} {emailRemindersToResolve=Nothing, emailResolutionNotifications=Just {value=not config.userInfo.emailResolutionNotifications}, allowEmailInvitations=Nothing})
-              ] []
-          , H.text " Email notifications when predictions you've bet on resolve?"
-          ]
+        else
+          H.text ""
       ]
 
 subscriptions : State -> Sub msg

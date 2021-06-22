@@ -175,8 +175,8 @@ view model =
         }
         model.navbarAuth
     ,
-    H.main_ [HA.style "text-align" "justify"]
-    [ H.h1 [] [H.text "Betting is a tax on BS."]
+    H.main_ [HA.class "container", HA.style "text-align" "justify"]
+    [ H.h1 [HA.class "text-center"] [H.text "Betting is a tax on BS."]
     , H.p []
         [ H.text "Hi! This is a tool that helps people make friendly wagers, thereby clarifying and concretizing their beliefs and making the world a better, saner place."
         ]
@@ -203,19 +203,17 @@ view model =
         ]
     , H.p [] [H.text "I made this tool to share that joy with you."]
     , H.hr [] []
-    , H.h2 [] [ H.text "But what does it " , Utils.i "do?" ]
+    , H.h2 [HA.class "text-center"] [ H.text "But what does it " , Utils.i "do?" ]
     , H.p []
         [ H.text "Biatob provides a place for you to advertise things like this to your friends: "
-        , H.blockquote []
-            [ H.text "  Hey, I think that X has at least a 2/3 chance of happening!   If you think I'm overconfident, let's bet: I'll pay you $20 if I'm wrong, against your $10 if I'm right. "
+        , H.p [HA.class "mt-2 mb-2 mx-4"]
+            [ Utils.i "  Hey, I think that X has at least a 2/3 chance of happening!   If you think I'm overconfident, let's bet: I'll pay you $20 if I'm wrong, against your $10 if I'm right. "
             ]
-        , H.text "Then, you publish a link to that page, and any of your friends can take you up on that bet. Biatob handles the bookkeeping, emails you (if you want) to make sure you remember to resolve the prediction when the answer becomes clear, and calculates and informs everybody of their net winnings."
+        , H.text "Then, you publish a link to that page, and any of your friends can take you up on that bet. Biatob handles the bookkeeping, emails you (if you want) to make sure you remember to resolve the prediction when the answer becomes clear, and calculates and informs everybody of their net winnings so that they can settle up."
         ]
     , H.p []
-        [ H.text "Note that last bit: \""
-        , Utils.i "informs everybody of"
-        , H.text " their net winnings.\""
-        , Utils.b " Everything is purely honor-system."
+        [ H.text "Note that last bit: "
+        , Utils.b " everything is purely honor-system."
         , H.text " Biatob doesn't touch money, it relies on you to settle up on your own. While a significant restriction in some ways (you can only bet against people who trust you to pay your debts) this also makes things "
         , Utils.i "much"
         , H.text " simpler: you don't need to give me your credit card number, you don't need to pay any fees, I don't need to worry about being charged with running an illegal gambling operation -- everybody wins!"
@@ -232,13 +230,13 @@ view model =
         , H.text ". This is a different beast."
         ]
     , H.hr [] []
-    , H.h2 []
+    , H.h2 [HA.class "text-center"]
         [ H.text "Cool! How do I use it?"
         ]
     , H.ul []
         [ H.li [HA.style "margin-bottom" "1em"]
             [ H.text " Create an account:   "
-            , H.div [HA.id "welcome-page-auth-widget"]
+            , H.div [HA.id "welcome-page-auth-widget", HA.class "container m-2"]
                 [ AuthWidget.view
                   { setState = SetAuthWidget Inline
                   , logInUsername = LogInUsername Inline
@@ -250,16 +248,6 @@ view model =
                   }
                   model.authWidget
                 ]
-            ]
-        , H.li [HA.style "margin-bottom" "1em"]
-            [ H.text " Go to "
-            , H.a [HA.href "/new"]
-                [ H.text "the New Prediction page"
-                ]
-            , H.text " to create a bet. "
-            ]
-        , H.li [HA.style "margin-bottom" "1em"]
-            [ H.text " Advertise your bet -- post the link on Facebook, include a cute little embeddable image in your blog, whatever. "
             ]
         , H.li [HA.style "margin-bottom" "1em"]
             [ H.text " Consider adding an email address, so I can remind you to resolve your prediction when the time comes:   "
@@ -277,6 +265,17 @@ view model =
                         }
                         model.emailSettingsWidget
                 ]
+            ]
+        , H.li [HA.style "margin-bottom" "1em"]
+            [ H.text " Go to "
+            , H.a [HA.href "/new"]
+                [ H.text "the New Prediction page"
+                ]
+            , H.text " to create a bet. "
+            ]
+        , H.li [HA.style "margin-bottom" "1em"]
+            [ H.text " Advertise your bet -- post the link on Facebook, include a cute little embeddable image in your blog, whatever."
+            , H.text " (The prediction page will show you how.)"
             ]
         , H.li [HA.style "margin-bottom" "1em"]
             [ H.text " When your prediction resolves to Yes or No, settle up with your friends! "

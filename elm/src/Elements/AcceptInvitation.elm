@@ -9,7 +9,6 @@ import Http
 import Json.Decode as JD
 
 import Biatob.Proto.Mvp as Pb
-import Utils
 
 import Widgets.AuthWidget as AuthWidget
 import Globals
@@ -138,7 +137,7 @@ view model =
         , id = "navbar-auth"
         }
         model.navbarAuth
-    , H.main_ [HA.style "text-align" "justify"]
+    , H.main_ [HA.class "container", HA.style "text-align" "justify"]
       [ case model.requestStatus of
           AwaitingResponse ->
             H.text "Working..."
