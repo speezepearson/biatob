@@ -8,5 +8,7 @@
     var predictionId = {{ prediction_id | tojson }};
 
     main({elmApp: Elm.Elements.Prediction, flags: {predictionsPbB64, predictionId}});
+    var stakeField = document.getElementById('stakeField');
+    if (stakeField) stakeField.focus();
   </script>
 {% endblock %}

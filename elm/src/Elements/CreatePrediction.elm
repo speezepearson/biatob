@@ -10,7 +10,7 @@ import Time
 import Iso8601
 
 import Biatob.Proto.Mvp as Pb
-import Utils exposing (i, isOk, viewError, Cents, RequestStatus(..))
+import Utils exposing (i, isOk, maxLegalStakeCents, viewError, Cents, RequestStatus(..))
 import Elements.Prediction as Prediction
 
 import Widgets.AuthWidget as AuthWidget
@@ -22,7 +22,6 @@ import API
 port navigate : Maybe String -> Cmd msg
 port authWidgetExternallyChanged : (AuthWidget.DomModification -> msg) -> Sub msg
 
-maxLegalStakeCents = 500000
 epsilon = 0.000001
 
 type alias Model =

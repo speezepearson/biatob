@@ -20,6 +20,8 @@ type alias Cents = Int
 type alias PredictionId = String
 type alias InvitationNonce = String
 
+maxLegalStakeCents = 500000
+
 illegalUsernameCharacters : String -> Set.Set Char
 illegalUsernameCharacters s =
   let

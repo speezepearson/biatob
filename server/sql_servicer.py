@@ -762,6 +762,10 @@ class SqlServicer(Servicer):
         return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall='must log in to bet'))
       assert request.bettor_stake_cents >= 0, 'protobuf should enforce this being a uint, but just in case...'
 
+      if request.bettor_stake_cents == 0:
+        logger.warn('trying to stake 0 cents', prediction_id=request.prediction_id)
+        return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall='betting 0 cents doesn\'t make sense'))
+
       predinfo = self._conn.get_prediction_info(PredictionId(request.prediction_id))
       if predinfo is None:
         logger.warn('trying to bet on nonexistent prediction', prediction_id=request.prediction_id)
@@ -791,6 +795,10 @@ class SqlServicer(Servicer):
         highP = predinfo['certainty_high_p']
         creator_stake_cents = int(request.bettor_stake_cents * (1-highP)/highP)
 
+      if creator_stake_cents == 0:
+        logger.warn('trying to make a bet that results in the creator staking 0 cents', prediction_id=request.prediction_id, request=request)
+        return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall='creator would bet 0 cents against you'))
+
       existing_creator_exposure = self._conn.get_creator_exposure_cents(PredictionId(request.prediction_id), against_skeptics=request.bettor_is_a_skeptic)
       if existing_creator_exposure + creator_stake_cents > predinfo['maximum_stake_cents']:
           logger.warn('trying to make a bet that would exceed creator tolerance', request=request)
@@ -799,7 +807,7 @@ class SqlServicer(Servicer):
       existing_bettor_exposure = self._conn.get_bettor_exposure_cents(PredictionId(request.prediction_id), token_owner(token), bettor_is_a_skeptic=request.bettor_is_a_skeptic)
       if existing_bettor_exposure + request.bettor_stake_cents > MAX_LEGAL_STAKE_CENTS:
         logger.warn('trying to make a bet that would exceed per-market stake limit', request=request)
-        return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall=f'your existing stake of ~${existing_bettor_exposure//100} plus your new stake ~${request.bettor_stake_cents//100} cents would put you over the limit of ${MAX_LEGAL_STAKE_CENTS//100} staked in a single prediction'))
+        return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall=f'your existing stake of ~${existing_bettor_exposure//100} plus your new stake of ~${request.bettor_stake_cents//100} would put you over the limit of ${MAX_LEGAL_STAKE_CENTS//100} staked in a single prediction; sorry, I hate to be paternalistic, but this site is not yet ready for Big Bets.'))
 
       self._conn.stake(
         prediction_id=PredictionId(request.prediction_id),
