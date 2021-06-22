@@ -80,8 +80,7 @@ view : Config msg -> State -> Html msg
 view config state =
   H.form
   [ HA.id config.id
-  , HA.class "auth-widget"
-  , HA.class "row", HA.class "row-cols-sm-auto", HA.class "g-2"
+  , HA.class "row row-cols-sm-auto g-2"
   , HE.onSubmit config.ignore
   ]
   <| case config.auth of
@@ -113,7 +112,7 @@ view config state =
           , HA.type_ "text"
           , HA.placeholder "username"
           , HA.class "username-field"
-          , HA.class "form-control"
+          , HA.class "form-control form-control-sm"
           , HA.attribute "data-elm-value" state.usernameField
           , HE.onInput (\s -> config.setState {state | usernameField=s})
           , HA.value state.usernameField
@@ -128,7 +127,7 @@ view config state =
           , HA.type_ "password"
           , HA.placeholder "password"
           , HA.attribute "data-elm-value" state.passwordField
-          , HA.class "form-control"
+          , HA.class "form-control form-control-sm"
           , HE.onInput (\s -> config.setState {state | passwordField=s})
           , HA.value state.passwordField
           , Utils.onEnter logInMsg config.ignore
@@ -139,14 +138,14 @@ view config state =
         [ H.button
           [ HA.disabled <| state.working || not canSubmit
           , HE.onClick logInMsg
-          , HA.class "btn", HA.class "btn-primary"
+          , HA.class "btn btn-sm btn-primary"
           ]
           [H.text "Log in"]
         , H.span [HA.class "pt-1"] [H.text " or "]
         , H.button
           [ HA.disabled <| state.working || not canSubmit
           , HE.onClick registerMsg
-          , HA.class "btn", HA.class "btn-secondary"
+          , HA.class "btn btn-sm btn-secondary"
           ]
           [H.text "Sign up"]
         ]
@@ -158,8 +157,7 @@ view config state =
           ]
         , H.div [HA.class "col-4"]
           [ H.button
-            [ HA.class "btn"
-            , HA.class "btn-secondary"
+            [ HA.class "btn btn-sm btn-outline-primary"
             , HA.disabled state.working
             , HE.onClick (config.signOut { state | working = True , notification = H.text "" } {})
             ] [H.text "Sign out"]

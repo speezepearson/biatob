@@ -72,6 +72,7 @@ viewFilterInput config state =
             Nothing -> "all owners"
             Just True -> "my own"
             Just False -> "not mine"
+        , HA.class "form-select d-inline-block w-auto"
         ]
         [ H.option [HA.value "all owners"] [H.text "all owners"]
         , H.option [HA.value "my own"] [H.text "my own"]
@@ -90,6 +91,7 @@ viewFilterInput config state =
             Just Open -> "open"
             Just NeedsResolution -> "needs resolution"
             Just Resolved -> "resolved"
+        , HA.class "form-select d-inline-block w-auto"
         ]
         [ H.option [HA.value "all phases"] [H.text "all phases"]
         , H.option [HA.value "open"] [H.text "open"]
@@ -122,6 +124,7 @@ viewSortOrderInput config state =
         CreatedDate Asc -> "created, asc"
         ResolutionDate Desc -> "resolves, desc"
         ResolutionDate Asc -> "resolves, asc"
+    , HA.class "form-select d-inline-block w-auto"
     ]
     [ H.option [HA.value "created, desc"] [H.text "created, desc"]
     , H.option [HA.value "created, asc"] [H.text "created, asc"]

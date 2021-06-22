@@ -72,8 +72,8 @@
       )
     }
   </script>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-+0n0xVW2eSR5OomGNYDnhzAbDsOXxcvSN1TPprVMTNDbiYZCxYbOOl7+AMvyTG2x" crossorigin="anonymous">
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.1/dist/js/bootstrap.bundle.min.js" integrity="sha384-gtEjrD/SeCtmISkJkNUaaKMoLD0//ElJ19smozuHV6z3Iehds+3Ulb9Bn9Plx0x4" crossorigin="anonymous"></script>
+  <link href="/static/bootstrap.min.css" rel="stylesheet" integrity="sha384-+0n0xVW2eSR5OomGNYDnhzAbDsOXxcvSN1TPprVMTNDbiYZCxYbOOl7+AMvyTG2x" crossorigin="anonymous">
+  <script src="/static/bootstrap.bundle.min.js" integrity="sha384-gtEjrD/SeCtmISkJkNUaaKMoLD0//ElJ19smozuHV6z3Iehds+3Ulb9Bn9Plx0x4" crossorigin="anonymous"></script>
   <script type="text/javascript">
     // setTimeout(() => window.location.reload(), 3000);
   </script>
@@ -170,11 +170,11 @@
   
   {% block page_body %}{% endblock %}
 
-  <div id="footer-wrapper">
-    <footer>
+  <footer class="footer mt-auto py-3 bg-light" style="border-top: 1px solid black">
+    <div class="container">
       <a href="mailto:contact@biatob.com">Contact us!</a>
-    </footer>
-  </div>
+    </div>
+  </footer>
 
 </body>
 </html>

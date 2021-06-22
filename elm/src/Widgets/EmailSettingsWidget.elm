@@ -6,11 +6,12 @@ import Html.Events as HE
 import Http
 
 import Biatob.Proto.Mvp as Pb
-import Utils exposing (EmailAddress)
+import Utils exposing (EmailAddress, viewError)
 
 import API
 import Parser exposing ((|.), (|=))
 import Set
+import Utils exposing (isOk)
 
 type alias Config msg =
   { setState : State -> msg
@@ -101,13 +102,17 @@ view config state =
                 , HE.onInput (\s -> config.setState {state | emailField=s})
                 , HA.value state.emailField
                 , Utils.onEnter (config.setEmail {state | working=True, notification=H.text ""} {email=state.emailField}) config.ignore
+                , HA.class "form-control form-control-sm mx-1 d-inline-block"
+                , if state.emailField == "" then HA.attribute "data-ignore" "" else HA.class (if isOk (parseEmailAddress state) then "is-valid" else "is-invalid")
+                , HA.style "width" "18em"
                 ] []
-              |> Utils.appendValidationError (if state.emailField == "" then Nothing else Utils.resultToErr (parseEmailAddress state))
             , H.button
                 [ HE.onClick (config.setEmail {state | working=True, notification=H.text ""} {email=state.emailField})
                 , HA.disabled <| state.working || Result.toMaybe (parseEmailAddress state) == Nothing
+                , HA.class "btn btn-sm btn-primary"
                 ] [H.text "Send verification"]
             , state.notification |> H.map never
+            , H.div [HA.class "invalid-feedback"] [viewError (parseEmailAddress state)]
             ]
         Pb.EmailFlowStateKindCodeSent {email} ->
           H.div []
@@ -120,15 +125,23 @@ view config state =
                 , Utils.onEnter (config.verifyEmail {state | working=True, notification=H.text ""} {code=state.codeField}) config.ignore
                 , HE.onInput (\s -> config.setState {state | codeField=s})
                 , HA.value state.codeField
+                , HA.class "form-control form-control-sm mx-1"
+                , HA.style "display" "inline-block"
+                , HA.style "width" "12em"
                 ] []
             , H.button
                 [ HE.onClick (config.verifyEmail {state | working=True, notification=H.text ""} {code=state.codeField})
                 , HA.disabled <| state.working || state.codeField == ""
+                , HA.class "btn btn-sm btn-primary"
                 ] [H.text "Verify code"]
               -- TODO: "Resend email"
             , state.notification |> H.map never
             , H.text " (Or, "
-            , H.button [HE.onClick (config.setEmail {state | working=True, notification=H.text ""} {email=""})] [H.text "delete email"]
+            , H.button
+                [ HE.onClick (config.setEmail {state | working=True, notification=H.text ""} {email=""})
+                , HA.class "btn btn-sm btn-outline-secondary"
+                ]
+                [H.text "delete email"]
             , H.text ")"
             ]
         Pb.EmailFlowStateKindVerified email ->
@@ -136,12 +149,19 @@ view config state =
             [ H.text "Your email address is: "
             , Utils.b email
             , H.text ". "
-            , H.button [HE.onClick (config.setEmail {state | working=True, notification=H.text ""} {email=""})] [H.text "delete?"]
+            , H.button
+                [ HE.onClick (config.setEmail {state | working=True, notification=H.text ""} {email=""})
+                , HA.class "btn btn-sm btn-outline-primary"
+                ]
+                [H.text "delete?"]
             , H.br [] []
             , state.notification |> H.map never
             ]
   in
-    H.div []
+    H.form
+      [ HA.class "needs-validation"
+      , HE.onSubmit config.ignore
+      ]
       [ registrationBlock
       , H.div []
           [ H.input

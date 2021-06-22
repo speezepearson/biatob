@@ -21,7 +21,7 @@ view config state =
       :: if config.auth == Nothing then [] else loggedInItems
 
   in
-  H.nav [HA.class "navbar", HA.class "navbar-expand-lg", HA.class "navbar-light", HA.class "bg-light"]
+  H.nav [HA.class "navbar navbar-expand-lg navbar-light bg-light mb-3", HA.style "border-bottom" "1px solid black"]
   [ H.div [HA.class "container"]
     [ H.a [HA.class "navbar-brand", HA.href "#"]
       [ H.text "Biatob" ]

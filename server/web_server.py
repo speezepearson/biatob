@@ -36,7 +36,7 @@ def render_text(text: str, file_format: str = 'png') -> bytes:
 def stupid_file_response(path: Path) -> web.Response:
     '''For some reason, web.FileResponse sometimes results in a 404 even when the file exists. Dodge that.'''
     if path.is_file():
-        return web.Response(status=200, body=path.read_bytes())
+        return web.Response(status=200, body=path.read_bytes(), content_type='text/html' if path.name.endswith('.html') else 'text/css' if path.name.endswith('.css') else 'text/javascript' if path.name.endswith('.js') else 'application/octet-stream')
     return web.Response(status=404)
 
 
@@ -63,9 +63,8 @@ class WebServer:
 
     async def get_static(self, req: web.Request) -> web.StreamResponse:
         filename = req.match_info['filename']
-        if (not filename) or filename.startswith('.'):
-            raise web.HTTPBadRequest()
-        return stupid_file_response(_HERE/'static'/filename)
+        static_dir = _HERE / 'static'
+        return stupid_file_response(static_dir / (static_dir/filename).relative_to(static_dir))
 
     async def get_wellknown(self, req: web.Request) -> web.StreamResponse:
         path = Path(req.match_info['path'])
@@ -77,8 +76,8 @@ class WebServer:
 
     async def get_elm_module(self, req: web.Request) -> web.StreamResponse:
         module = req.match_info['module']
-        filepath = (_HERE.parent/f'elm/dist/{module}.js').resolve()
-        return stupid_file_response(filepath)
+        elmdist = _HERE.parent/'elm'/'dist'
+        return stupid_file_response(elmdist / (elmdist/f'{module}.js').relative_to(elmdist))
 
     async def get_index(self, req: web.Request) -> web.StreamResponse:
         auth = self._token_glue.parse_cookie(req)
