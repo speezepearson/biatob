@@ -46,28 +46,38 @@ handleSetTrustedResponse res state =
 
 view : Config msg -> State -> Html msg
 view config state =
-  H.div []
+  H.div [HA.class "row"]
     [ state.notification |> H.map never
     , Utils.b "Your relationships: "
-    , let relationships = config.userInfo |> .relationships |> Utils.mustMapValues in
+    , H.div [HA.class "col-md-8"] <| List.singleton <| let relationships = config.userInfo |> .relationships |> Utils.mustMapValues in
       if D.isEmpty relationships then
         H.text "nobody yet!"
       else
-        H.ul []
-        <| List.map (\(u, rel) -> H.li []
-            [ Utils.renderUser u
-            , H.text ": "
-            , if rel.trustedByYou then
-                H.span []
-                  [ H.text "trusted "
-                  , H.button
-                      [ HE.onClick (config.setTrusted {state | working=True, notification=H.text ""} {whoDepr=Nothing, who=u, trusted=False})
-                      , HA.disabled state.working
-                      , HA.class "btn btn-sm btn-outline-primary"
-                      ] [H.text "Remove trust"]
-                  ]
-              else
-                H.text " untrusted"
+        H.table [HA.class "table table-sm"]
+        [ H.thead [] <| List.singleton <| H.tr []
+          [ H.th [HA.scope "col", HA.class "col-1"] [H.text "Username"]
+          , H.th [HA.scope "col", HA.class "col-1"] [H.text "Status"]
+          , H.th [HA.scope "col", HA.class "col-1"] [H.text "Actions"]
+          ]
+        , D.toList relationships
+          |> List.map (\(u, rel) -> H.tr []
+            [ H.td [] [Utils.renderUser u]
+            , H.td [] [H.text <| if rel.trustedByYou then "trusted" else "untrusted"]
+            , H.td []
+              [ if rel.trustedByYou then
+                  H.button
+                  [ HE.onClick (config.setTrusted {state | working=True, notification=H.text ""} {whoDepr=Nothing, who=u, trusted=False})
+                  , HA.disabled state.working
+                  , HA.class "btn btn-sm btn-outline-primary"
+                  ] [H.text "Mark untrusted"]
+                else
+                  H.button
+                  [ HE.onClick (config.setTrusted {state | working=True, notification=H.text ""} {whoDepr=Nothing, who=u, trusted=True})
+                  , HA.disabled state.working
+                  , HA.class "btn btn-sm btn-outline-primary"
+                  ] [H.text "Mark trusted"]
+              ]
             ])
-        <| D.toList relationships
+          |> H.tbody []
+        ]
     ]
