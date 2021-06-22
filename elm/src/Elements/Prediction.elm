@@ -8,8 +8,6 @@ import Html.Events as HE
 import Json.Decode as JD
 import Http
 
-import Utils
-
 import Widgets.CopyWidget as CopyWidget
 import Widgets.AuthWidget as AuthWidget
 import Widgets.Navbar as Navbar
@@ -18,7 +16,7 @@ import Widgets.SmallInvitationWidget as SmallInvitationWidget
 import Globals
 import API
 import Biatob.Proto.Mvp as Pb
-import Utils exposing (Cents, PredictionId, Username)
+import Utils exposing (Cents, PredictionId, Username, isOk, viewError)
 import Time
 import Bytes.Encode
 
@@ -465,9 +463,11 @@ viewStakeWidget bettability model =
         , HA.class "form-control form-control-sm d-inline-block"
         , HE.onInput SetStakeField
         , HA.value model.stakeField
+        , HA.class (if isOk stakeCents then "" else "is-invalid")
+        , HA.class "form-control form-control-sm"
         ]
         []
-      |> Utils.appendValidationError (Utils.resultToErr stakeCents)
+    , H.div [HA.class "invalid-feedback"] [viewError stakeCents]
     , H.text " that this "
     , viewWillWontDropdown model
     , H.text <| " happen, against " ++ prediction.creator ++ "'s "

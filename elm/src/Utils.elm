@@ -59,15 +59,6 @@ resultToErr res =
   case res of
     Err e -> Just e
     Ok _ -> Nothing
-appendValidationError : Maybe String -> Html msg -> Html msg
-appendValidationError err elem =
-  case err of
-    Just e ->
-      H.span [HA.style "outline" "1px solid red"]
-        [ elem
-        , H.span [HA.style "color" "red"] [H.text e]
-        ]
-    Nothing -> H.span [] [elem] -- the extra span is necessary for Elm to realize the input is the same, to keep focus on it
 
 formatCents : Cents -> String
 formatCents n =

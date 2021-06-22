@@ -6,11 +6,10 @@ import Html.Events as HE
 import Html exposing (s)
 
 import Biatob.Proto.Mvp as Pb
-import Utils
 import Http
 
 import API
-import Utils
+import Utils exposing (isOk, viewError)
 
 type alias Config msg =
   { setState : State -> msg
@@ -104,7 +103,8 @@ view config state =
           else
             config.ignore
       in
-      [ H.div [HA.class "col-4"]
+      [ let username = Utils.parseUsername state.usernameField in
+        H.div [HA.class "col-4"]
         [ H.input
           [ HA.disabled state.working
           , HA.style "width" "8em"
@@ -113,13 +113,15 @@ view config state =
           , HA.placeholder "username"
           , HA.class "username-field"
           , HA.class "form-control form-control-sm"
+          , HA.class (if state.usernameField == "" then "" else if isOk username then "" else "is-invalid")
           , HA.attribute "data-elm-value" state.usernameField
           , HE.onInput (\s -> config.setState {state | usernameField=s})
           , HA.value state.usernameField
           ] []
-          |> Utils.appendValidationError (if state.usernameField == "" then Nothing else Utils.resultToErr (Utils.parseUsername state.usernameField))
+        , H.div [HA.class "invalid-feedback"] [viewError username]
         ]
-      , H.div [HA.class "col-4"]
+      , let password = Utils.parsePassword state.passwordField in
+        H.div [HA.class "col-4"]
         [ H.input
           [ HA.disabled state.working
           , HA.style "width" "8em"
@@ -128,11 +130,12 @@ view config state =
           , HA.placeholder "password"
           , HA.attribute "data-elm-value" state.passwordField
           , HA.class "form-control form-control-sm"
+          , HA.class (if state.passwordField == "" then "" else if isOk password then "" else "is-invalid")
           , HE.onInput (\s -> config.setState {state | passwordField=s})
           , HA.value state.passwordField
           , Utils.onEnter logInMsg config.ignore
           ] []
-          |> Utils.appendValidationError (if state.passwordField == "" then Nothing else Utils.resultToErr (Utils.parsePassword state.passwordField))
+        , H.div [HA.class "invalid-feedback"] [viewError password]
         ]
       , H.div [HA.class "col-4"]
         [ H.button
