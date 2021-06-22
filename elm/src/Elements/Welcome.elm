@@ -209,13 +209,11 @@ view model =
         , H.p [HA.class "mt-2 mb-2 mx-4"]
             [ Utils.i "  Hey, I think that X has at least a 2/3 chance of happening!   If you think I'm overconfident, let's bet: I'll pay you $20 if I'm wrong, against your $10 if I'm right. "
             ]
-        , H.text "Then, you publish a link to that page, and any of your friends can take you up on that bet. Biatob handles the bookkeeping, emails you (if you want) to make sure you remember to resolve the prediction when the answer becomes clear, and calculates and informs everybody of their net winnings."
+        , H.text "Then, you publish a link to that page, and any of your friends can take you up on that bet. Biatob handles the bookkeeping, emails you (if you want) to make sure you remember to resolve the prediction when the answer becomes clear, and calculates and informs everybody of their net winnings so that they can settle up."
         ]
     , H.p []
-        [ H.text "Note that last bit: \""
-        , Utils.i "informs everybody of"
-        , H.text " their net winnings.\""
-        , Utils.b " Everything is purely honor-system."
+        [ H.text "Note that last bit: "
+        , Utils.b " everything is purely honor-system."
         , H.text " Biatob doesn't touch money, it relies on you to settle up on your own. While a significant restriction in some ways (you can only bet against people who trust you to pay your debts) this also makes things "
         , Utils.i "much"
         , H.text " simpler: you don't need to give me your credit card number, you don't need to pay any fees, I don't need to worry about being charged with running an illegal gambling operation -- everybody wins!"
