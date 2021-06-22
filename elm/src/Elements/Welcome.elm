@@ -206,8 +206,8 @@ view model =
     , H.h2 [HA.class "text-center"] [ H.text "But what does it " , Utils.i "do?" ]
     , H.p []
         [ H.text "Biatob provides a place for you to advertise things like this to your friends: "
-        , H.blockquote []
-            [ H.text "  Hey, I think that X has at least a 2/3 chance of happening!   If you think I'm overconfident, let's bet: I'll pay you $20 if I'm wrong, against your $10 if I'm right. "
+        , H.p [HA.class "mt-2 mb-2 mx-4"]
+            [ Utils.i "  Hey, I think that X has at least a 2/3 chance of happening!   If you think I'm overconfident, let's bet: I'll pay you $20 if I'm wrong, against your $10 if I'm right. "
             ]
         , H.text "Then, you publish a link to that page, and any of your friends can take you up on that bet. Biatob handles the bookkeeping, emails you (if you want) to make sure you remember to resolve the prediction when the answer becomes clear, and calculates and informs everybody of their net winnings."
         ]
