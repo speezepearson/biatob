@@ -9,7 +9,7 @@ import Json.Decode as JD
 
 import Biatob.Proto.Mvp as Pb
 import API
-import Utils exposing (Username)
+import Utils exposing (RequestStatus(..), Username)
 
 import Widgets.AuthWidget as AuthWidget
 import Widgets.Navbar as Navbar
@@ -28,8 +28,7 @@ type alias Model =
   , navbarAuth : AuthWidget.State
   , who : Username
   , predictionsWidget : ViewPredictionsWidget.State
-  , working : Bool
-  , notification : Html Never
+  , setTrustedRequestStatus : RequestStatus
   , invitationWidget : SmallInvitationWidget.State
   }
 
@@ -58,8 +57,7 @@ init flags =
     , navbarAuth = AuthWidget.init
     , who = Utils.mustDecodeFromFlags JD.string "who" flags
     , predictionsWidget = ViewPredictionsWidget.init
-    , working = False
-    , notification = H.text ""
+    , setTrustedRequestStatus = Unstarted
     , invitationWidget = SmallInvitationWidget.init
     }
   , Cmd.none
@@ -110,15 +108,14 @@ update msg model =
       )
     SetTrusted trusted ->
       let req = {who=model.who, whoDepr=Nothing, trusted=trusted} in
-      ( { model | working = True , notification = H.text "" }
+      ( { model | setTrustedRequestStatus = AwaitingResponse }
       , API.postSetTrusted (SetTrustedFinished req) req
       )
     SetTrustedFinished req res ->
       ( { model | globals = model.globals |> Globals.handleSetTrustedResponse req res
-                , working = False
-                , notification = case API.simplifySetTrustedResponse res of
-                    Ok _ -> H.text ""
-                    Err e -> Utils.redText e
+                , setTrustedRequestStatus = case API.simplifySetTrustedResponse res of
+                    Ok _ -> Succeeded
+                    Err e -> Failed e
         }
       , Cmd.none
       )
@@ -193,16 +190,24 @@ view model =
             , viewInvitationWidget model
             , H.br [] []
             , H.text "...or, if you ", Utils.i "don't", H.text " trust them anymore, you can"
-            , H.button [HA.disabled model.working, HE.onClick (SetTrusted False)] [H.text "mark this user untrusted"]
-            , model.notification |> H.map never
+            , H.button [HA.disabled (model.setTrustedRequestStatus == AwaitingResponse), HE.onClick (SetTrusted False)] [H.text "mark this user untrusted"]
+            , case model.setTrustedRequestStatus of
+                Unstarted -> H.text ""
+                AwaitingResponse -> H.text ""
+                Succeeded -> Utils.greenText " Success!"
+                Failed e -> Utils.redText e
             ]
         Globals.Friends ->
           H.p []
             [ H.text "You and this user trust each other! Aww, how nice!"
             , H.br [] []
             , H.text "...but, if you ", Utils.i "don't", H.text " trust them anymore, you can"
-            , H.button [HA.disabled model.working, HE.onClick (SetTrusted False)] [H.text "mark this user untrusted"]
-            , model.notification |> H.map never
+            , H.button [HA.disabled (model.setTrustedRequestStatus == AwaitingResponse), HE.onClick (SetTrusted False)] [H.text "mark this user untrusted"]
+            , case model.setTrustedRequestStatus of
+                Unstarted -> H.text ""
+                AwaitingResponse -> H.text ""
+                Succeeded -> Utils.greenText " Success!"
+                Failed e -> Utils.redText e
             ]
             , H.br [] []
             , if Globals.getRelationship model.globals model.who |> Maybe.map .trustsYou |> Maybe.withDefault False then

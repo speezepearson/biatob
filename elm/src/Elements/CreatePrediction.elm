@@ -10,7 +10,7 @@ import Time
 import Iso8601
 
 import Biatob.Proto.Mvp as Pb
-import Utils exposing (i, isOk, viewError, Cents)
+import Utils exposing (i, isOk, viewError, Cents, RequestStatus(..))
 import Elements.Prediction as Prediction
 
 import Widgets.AuthWidget as AuthWidget
@@ -37,8 +37,7 @@ type alias Model =
   , openForUnitField : String
   , openForSecondsField : String
   , specialRulesField : String
-  , working : Bool
-  , createError : Maybe String
+  , createRequestStatus : RequestStatus
   }
 
 type Msg
@@ -190,8 +189,7 @@ init flags =
     , openForUnitField = "weeks"
     , openForSecondsField = "2"
     , specialRulesField = ""
-    , working = False
-    , createError = Nothing
+    , createRequestStatus = Unstarted
     }
   , Cmd.none
   )
@@ -214,19 +212,18 @@ update msg model =
     Create ->
       case buildCreateRequest model of
         Just req ->
-          ( { model | working = True , createError = Nothing }
+          ( { model | createRequestStatus = AwaitingResponse }
           , API.postCreatePrediction (CreateFinished req) req
           )
         Nothing ->
-          ( { model | createError = Just "bad form" } -- TODO: improve error message
+          ( { model | createRequestStatus = Failed "invalid form; how did you even click that button?" }
           , Cmd.none
           )
     CreateFinished req res ->
       ( { model | globals = model.globals |> Globals.handleCreatePredictionResponse req res
-                , working = False
-                , createError = case API.simplifyCreatePredictionResponse res of
-                    Ok _ -> Nothing
-                    Err e -> Just e
+                , createRequestStatus = case API.simplifyCreatePredictionResponse res of
+                    Ok _ -> Succeeded
+                    Err e -> Failed e
         }
       , case API.simplifyCreatePredictionResponse res of
           Ok predictionId -> navigate <| Just <| Utils.pathToPrediction predictionId
@@ -646,13 +643,15 @@ view model =
         [ H.button
             [ HE.onClick Create
             , HA.class "btn btn-primary mt-2"
-            , HA.disabled (not (Globals.isLoggedIn model.globals) || buildCreateRequest model == Nothing || model.working)
+            , HA.disabled (not (Globals.isLoggedIn model.globals) || buildCreateRequest model == Nothing || model.createRequestStatus == AwaitingResponse)
             ]
             [ H.text <| if Globals.isLoggedIn model.globals then "Post prediction" else "Log in to post prediction" ]
+        , case model.createRequestStatus of
+            Unstarted -> H.text ""
+            AwaitingResponse -> H.text ""
+            Succeeded -> Utils.greenText "Success!"
+            Failed e -> H.div [HA.style "color" "red"] [H.text e]
         ]
-    , case model.createError of
-        Just e -> H.div [HA.style "color" "red"] [H.text e]
-        Nothing -> H.text ""
     , H.hr [] []
     , H.text "Preview:"
     , H.div [HA.style "border" "1px solid black", HA.style "padding" "1em", HA.style "margin" "1em"]

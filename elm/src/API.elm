@@ -59,164 +59,173 @@ postSendInvitation = hit {url="/api/SendInvitation", encoder=Pb.toSendInvitation
 postAcceptInvitation : (Result Http.Error Pb.AcceptInvitationResponse -> msg) -> Pb.AcceptInvitationRequest -> Cmd msg
 postAcceptInvitation = hit {url="/api/AcceptInvitation", encoder=Pb.toAcceptInvitationRequestEncoder, decoder=Pb.acceptInvitationResponseDecoder}
 
+httpErrorToString : Http.Error -> String
+httpErrorToString e =
+  case e of
+    Http.BadUrl _ -> "unintelligible URL"
+    Http.Timeout -> "timed out"
+    Http.NetworkError -> "network error"
+    Http.BadStatus code -> "HTTP error code " ++ String.fromInt code
+    Http.BadBody _ -> "unintelligible response"
+
 simplifyLogInUsernameResponse : Result Http.Error Pb.LogInUsernameResponse -> Result String Pb.AuthSuccess
 simplifyLogInUsernameResponse res =
   case res of
-    Err e -> Err (Debug.toString e)
+    Err e -> Err (httpErrorToString e)
     Ok resp ->
       case resp.logInUsernameResult of
         Just (Pb.LogInUsernameResultOk success) ->
           Ok success
         Just (Pb.LogInUsernameResultError e) ->
-          Err (Debug.toString e)
+          Err e.catchall
         Nothing ->
           Err "Invalid server response (neither Ok nor Error in protobuf)"
 
 simplifyRegisterUsernameResponse : Result Http.Error Pb.RegisterUsernameResponse -> Result String Pb.AuthSuccess
 simplifyRegisterUsernameResponse res =
   case res of
-    Err e -> Err (Debug.toString e)
+    Err e -> Err (httpErrorToString e)
     Ok resp ->
       case resp.registerUsernameResult of
         Just (Pb.RegisterUsernameResultOk success) ->
           Ok success
         Just (Pb.RegisterUsernameResultError e) ->
-          Err (Debug.toString e)
+          Err e.catchall
         Nothing ->
           Err "Invalid server response (neither Ok nor Error in protobuf)"
 
 simplifySignOutResponse : Result Http.Error Pb.SignOutResponse -> Result String ()
 simplifySignOutResponse res =
   case res of
-    Err e -> Err (Debug.toString e)
+    Err e -> Err (httpErrorToString e)
     Ok {} -> Ok ()
 
 simplifySendInvitationResponse : Result Http.Error Pb.SendInvitationResponse -> Result String ()
 simplifySendInvitationResponse res =
   case res of
-    Err e -> Err (Debug.toString e)
+    Err e -> Err (httpErrorToString e)
     Ok resp ->
       case resp.sendInvitationResult of
         Just (Pb.SendInvitationResultOk _) ->
           Ok ()
         Just (Pb.SendInvitationResultError e) ->
-          Err (Debug.toString e)
+          Err e.catchall
         Nothing ->
           Err "Invalid server response (neither Ok nor Error in protobuf)"
 
 simplifyAcceptInvitationResponse : Result Http.Error Pb.AcceptInvitationResponse -> Result String Pb.GenericUserInfo
 simplifyAcceptInvitationResponse res =
   case res of
-    Err e -> Err (Debug.toString e)
+    Err e -> Err (httpErrorToString e)
     Ok resp ->
       case resp.acceptInvitationResult of
         Just (Pb.AcceptInvitationResultOk result) ->
           Ok result
         Just (Pb.AcceptInvitationResultError e) ->
-          Err (Debug.toString e)
+          Err e.catchall
         Nothing ->
           Err "Invalid server response (neither Ok nor Error in protobuf)"
 
 simplifyCreatePredictionResponse : Result Http.Error Pb.CreatePredictionResponse -> Result String PredictionId
 simplifyCreatePredictionResponse res =
   case res of
-    Err e -> Err (Debug.toString e)
+    Err e -> Err (httpErrorToString e)
     Ok resp ->
       case resp.createPredictionResult of
         Just (Pb.CreatePredictionResultNewPredictionId result) ->
           Ok result
         Just (Pb.CreatePredictionResultError e) ->
-          Err (Debug.toString e)
+          Err e.catchall
         Nothing ->
           Err "Invalid server response (neither Ok nor Error in protobuf)"
 
 simplifyStakeResponse : Result Http.Error Pb.StakeResponse -> Result String Pb.UserPredictionView
 simplifyStakeResponse res =
   case res of
-    Err e -> Err (Debug.toString e)
+    Err e -> Err (httpErrorToString e)
     Ok resp ->
       case resp.stakeResult of
         Just (Pb.StakeResultOk result) ->
           Ok result
         Just (Pb.StakeResultError e) ->
-          Err (Debug.toString e)
+          Err e.catchall
         Nothing ->
           Err "Invalid server response (neither Ok nor Error in protobuf)"
 
 simplifyResolveResponse : Result Http.Error Pb.ResolveResponse -> Result String Pb.UserPredictionView
 simplifyResolveResponse res =
   case res of
-    Err e -> Err (Debug.toString e)
+    Err e -> Err (httpErrorToString e)
     Ok resp ->
       case resp.resolveResult of
         Just (Pb.ResolveResultOk result) ->
           Ok result
         Just (Pb.ResolveResultError e) ->
-          Err (Debug.toString e)
+          Err e.catchall
         Nothing ->
           Err "Invalid server response (neither Ok nor Error in protobuf)"
 
 simplifyUpdateSettingsResponse : Result Http.Error Pb.UpdateSettingsResponse -> Result String Pb.GenericUserInfo
 simplifyUpdateSettingsResponse res =
   case res of
-    Err e -> Err (Debug.toString e)
+    Err e -> Err (httpErrorToString e)
     Ok resp ->
       case resp.updateSettingsResult of
         Just (Pb.UpdateSettingsResultOk result) ->
           Ok result
         Just (Pb.UpdateSettingsResultError e) ->
-          Err (Debug.toString e)
+          Err e.catchall
         Nothing ->
           Err "Invalid server response (neither Ok nor Error in protobuf)"
 
 simplifySetEmailResponse : Result Http.Error Pb.SetEmailResponse -> Result String Pb.EmailFlowState
 simplifySetEmailResponse res =
   case res of
-    Err e -> Err (Debug.toString e)
+    Err e -> Err (httpErrorToString e)
     Ok resp ->
       case resp.setEmailResult of
         Just (Pb.SetEmailResultOk result) ->
           Ok result
         Just (Pb.SetEmailResultError e) ->
-          Err (Debug.toString e)
+          Err e.catchall
         Nothing ->
           Err "Invalid server response (neither Ok nor Error in protobuf)"
 
 simplifyVerifyEmailResponse : Result Http.Error Pb.VerifyEmailResponse -> Result String Pb.EmailFlowState
 simplifyVerifyEmailResponse res =
   case res of
-    Err e -> Err (Debug.toString e)
+    Err e -> Err (httpErrorToString e)
     Ok resp ->
       case resp.verifyEmailResult of
         Just (Pb.VerifyEmailResultOk result) ->
           Ok result
         Just (Pb.VerifyEmailResultError e) ->
-          Err (Debug.toString e)
+          Err e.catchall
         Nothing ->
           Err "Invalid server response (neither Ok nor Error in protobuf)"
 
 simplifyChangePasswordResponse : Result Http.Error Pb.ChangePasswordResponse -> Result String Pb.Void
 simplifyChangePasswordResponse res =
   case res of
-    Err e -> Err (Debug.toString e)
+    Err e -> Err (httpErrorToString e)
     Ok resp ->
       case resp.changePasswordResult of
         Just (Pb.ChangePasswordResultOk result) ->
           Ok result
         Just (Pb.ChangePasswordResultError e) ->
-          Err (Debug.toString e)
+          Err e.catchall
         Nothing ->
           Err "Invalid server response (neither Ok nor Error in protobuf)"
 
 simplifySetTrustedResponse : Result Http.Error Pb.SetTrustedResponse -> Result String Pb.GenericUserInfo
 simplifySetTrustedResponse res =
   case res of
-    Err e -> Err (Debug.toString e)
+    Err e -> Err (httpErrorToString e)
     Ok resp ->
       case resp.setTrustedResult of
         Just (Pb.SetTrustedResultOk result) ->
           Ok result
         Just (Pb.SetTrustedResultError e) ->
-          Err (Debug.toString e)
+          Err e.catchall
         Nothing ->
           Err "Invalid server response (neither Ok nor Error in protobuf)"

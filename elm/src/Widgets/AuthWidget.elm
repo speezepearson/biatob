@@ -9,7 +9,7 @@ import Biatob.Proto.Mvp as Pb
 import Http
 
 import API
-import Utils exposing (isOk, viewError)
+import Utils exposing (isOk, viewError, RequestStatus(..))
 
 type alias Config msg =
   { setState : State -> msg
@@ -23,8 +23,7 @@ type alias Config msg =
 type alias State =
   { usernameField : String
   , passwordField : String
-  , working : Bool
-  , notification : Html Never
+  , requestStatus : RequestStatus
   }
 
 type alias DomModification =
@@ -42,31 +41,27 @@ handleDomModification mod state =
 
 handleLogInUsernameResponse : Result Http.Error Pb.LogInUsernameResponse -> State -> State
 handleLogInUsernameResponse res state =
-  { state | working = False
-          , notification = case API.simplifyLogInUsernameResponse res of
-              Ok _ -> H.text ""
-              Err e -> Utils.redText e
+  { state | requestStatus = case API.simplifyLogInUsernameResponse res of
+              Ok _ -> Succeeded
+              Err e -> Failed e
   }
 handleRegisterUsernameResponse : Result Http.Error Pb.RegisterUsernameResponse -> State -> State
 handleRegisterUsernameResponse res state =
-  { state | working = False
-          , notification = case API.simplifyRegisterUsernameResponse res of
-              Ok _ -> H.text ""
-              Err e -> Utils.redText e
+  { state | requestStatus = case API.simplifyRegisterUsernameResponse res of
+              Ok _ -> Succeeded
+              Err e -> Failed e
   }
 handleSignOutResponse : Result Http.Error Pb.SignOutResponse -> State -> State
 handleSignOutResponse res state =
-  { state | working = False
-          , notification = case API.simplifySignOutResponse res of
-              Ok _ -> H.text ""
-              Err e -> Utils.redText e
+  { state | requestStatus = case API.simplifySignOutResponse res of
+              Ok _ -> Succeeded
+              Err e -> Failed e
   }
 init : State
 init =
   { usernameField = ""
   , passwordField = ""
-  , working = False
-  , notification = H.text ""
+  , requestStatus = Unstarted
   }
 
 row : List (Html msg) -> Html msg
@@ -91,14 +86,14 @@ view config state =
         logInMsg =
           if canSubmit then
             config.logInUsername
-              { state | working = True , notification = H.text "" }
+              { state | requestStatus = AwaitingResponse }
               { username = state.usernameField , password = state.passwordField }
           else
             config.ignore
         registerMsg =
           if canSubmit then
             config.register
-            { state | working = True , notification = H.text "" }
+            { state | requestStatus = AwaitingResponse }
             { username = state.usernameField , password = state.passwordField }
           else
             config.ignore
@@ -106,7 +101,7 @@ view config state =
       [ let username = Utils.parseUsername state.usernameField in
         H.div [HA.class "col-4"]
         [ H.input
-          [ HA.disabled state.working
+          [ HA.disabled (state.requestStatus == AwaitingResponse)
           , HA.style "width" "8em"
           , HA.name "username"
           , HA.type_ "text"
@@ -123,7 +118,7 @@ view config state =
       , let password = Utils.parsePassword state.passwordField in
         H.div [HA.class "col-4"]
         [ H.input
-          [ HA.disabled state.working
+          [ HA.disabled (state.requestStatus == AwaitingResponse)
           , HA.style "width" "8em"
           , HA.name "password"
           , HA.type_ "password"
@@ -139,20 +134,24 @@ view config state =
         ]
       , H.div [HA.class "col-4"]
         [ H.button
-          [ HA.disabled <| state.working || not canSubmit
+          [ HA.disabled <| (state.requestStatus == AwaitingResponse) || not canSubmit
           , HE.onClick logInMsg
           , HA.class "btn btn-sm btn-primary"
           ]
           [H.text "Log in"]
         , H.span [HA.class "pt-1"] [H.text " or "]
         , H.button
-          [ HA.disabled <| state.working || not canSubmit
+          [ HA.disabled <| (state.requestStatus == AwaitingResponse) || not canSubmit
           , HE.onClick registerMsg
           , HA.class "btn btn-sm btn-secondary"
           ]
           [H.text "Sign up"]
         ]
-      , state.notification |> H.map never
+      , case state.requestStatus of
+          Unstarted -> H.text ""
+          AwaitingResponse -> H.text ""
+          Succeeded -> H.text ""
+          Failed e -> Utils.redText e
       ]
     Just auth ->
         [ H.div [HA.class "col-8 pt-1"]
@@ -161,9 +160,13 @@ view config state =
         , H.div [HA.class "col-4"]
           [ H.button
             [ HA.class "btn btn-sm btn-outline-primary"
-            , HA.disabled state.working
-            , HE.onClick (config.signOut { state | working = True , notification = H.text "" } {})
+            , HA.disabled (state.requestStatus == AwaitingResponse)
+            , HE.onClick (config.signOut { state | requestStatus = AwaitingResponse } {})
             ] [H.text "Sign out"]
-          , state.notification |> H.map never
+          , case state.requestStatus of
+              Unstarted -> H.text ""
+              AwaitingResponse -> H.text ""
+              Succeeded -> H.text ""
+              Failed e -> Utils.redText e
           ]
         ]

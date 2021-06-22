@@ -6,7 +6,7 @@ import Html.Events as HE
 import Http
 
 import Biatob.Proto.Mvp as Pb
-import Utils exposing (EmailAddress, isOk, viewError)
+import Utils exposing (EmailAddress, RequestStatus(..), isOk, viewError)
 
 import API
 import Parser exposing ((|.), (|=))
@@ -23,8 +23,8 @@ type alias Config msg =
 type alias State =
   { emailField : String
   , codeField : String
-  , working : Bool
-  , notification : Html Never
+  , registrationRequestStatus : RequestStatus
+  , updateSettingsRequestStatus : RequestStatus
   }
 
 parseEmailAddress : State -> Result String EmailAddress
@@ -37,8 +37,8 @@ init : State
 init =
   { emailField = ""
   , codeField = ""
-  , working = False
-  , notification = H.text ""
+  , registrationRequestStatus = Unstarted
+  , updateSettingsRequestStatus = Unstarted
   }
 
 emailParser : Parser.Parser EmailAddress
@@ -55,26 +55,23 @@ emailParser =
 
 handleUpdateSettingsResponse : Result Http.Error Pb.UpdateSettingsResponse -> State -> State
 handleUpdateSettingsResponse res state =
-  { state | working = False
-          , notification = case API.simplifyUpdateSettingsResponse res of
-              Ok _ -> H.text ""
-              Err e -> Utils.redText e
+  { state | updateSettingsRequestStatus = case API.simplifyUpdateSettingsResponse res of
+              Ok _ -> Succeeded
+              Err e -> Failed e
   }
 
 handleSetEmailResponse : Result Http.Error Pb.SetEmailResponse -> State -> State
 handleSetEmailResponse res state =
-  { state | working = False
-          , notification = case API.simplifySetEmailResponse res of
-              Ok _ -> H.text ""
-              Err e -> Utils.redText e
+  { state | registrationRequestStatus = case API.simplifySetEmailResponse res of
+              Ok _ -> Succeeded
+              Err e -> Failed e
   }
 
 handleVerifyEmailResponse : Result Http.Error Pb.VerifyEmailResponse -> State -> State
 handleVerifyEmailResponse res state =
-  { state | working = False
-          , notification = case API.simplifyVerifyEmailResponse res of
-              Ok _ -> H.text ""
-              Err e -> Utils.redText e
+  { state | registrationRequestStatus = case API.simplifyVerifyEmailResponse res of
+              Ok _ -> Succeeded
+              Err e -> Failed e
   }
 
 view : Config msg -> State -> Html msg
@@ -92,56 +89,66 @@ view config state =
     registrationBlock =
       case emailFlowState of
         Pb.EmailFlowStateKindUnstarted _ ->
-          H.div []
-            [ H.text "Register an email address: "
+          H.div [HA.class "form-group"]
+            [ H.label [] [H.text "Register an email address:"]
             , H.input
-                [ HA.type_ "email"
-                , HA.disabled <| state.working
-                , HA.placeholder "email@ddre.ss"
-                , HE.onInput (\s -> config.setState {state | emailField=s})
-                , HA.value state.emailField
-                , Utils.onEnter (config.setEmail {state | working=True, notification=H.text ""} {email=state.emailField}) config.ignore
-                , HA.class "form-control form-control-sm mx-1 d-inline-block"
-                , HA.class <| if state.emailField == "" then "" else if isOk (parseEmailAddress state) then "is-valid" else "is-invalid"
-                , HA.style "width" "18em"
-                ] []
+              [ HA.type_ "email"
+              , HA.disabled <| state.registrationRequestStatus == AwaitingResponse
+              , HA.placeholder "email@ddre.ss"
+              , HE.onInput (\s -> config.setState {state | emailField=s})
+              , HA.value state.emailField
+              , Utils.onEnter (config.setEmail {state | registrationRequestStatus = AwaitingResponse} {email=state.emailField}) config.ignore
+              , HA.class "form-control form-control-sm mx-1 d-inline-block"
+              , HA.class <| if state.emailField == "" then "" else if isOk (parseEmailAddress state) then "" else "is-invalid"
+              , HA.style "width" "18em"
+              ] []
             , H.button
-                [ HE.onClick (config.setEmail {state | working=True, notification=H.text ""} {email=state.emailField})
-                , HA.disabled <| state.working || Result.toMaybe (parseEmailAddress state) == Nothing
+                [ HE.onClick (config.setEmail {state | registrationRequestStatus = AwaitingResponse} {email=state.emailField})
+                , HA.disabled <| state.registrationRequestStatus == AwaitingResponse || Result.toMaybe (parseEmailAddress state) == Nothing
                 , HA.class "btn btn-sm btn-primary"
                 ] [H.text "Send verification"]
-            , state.notification |> H.map never
+              , H.text " "
+              , case state.registrationRequestStatus of
+                  Unstarted -> H.text ""
+                  AwaitingResponse -> H.text ""
+                  Succeeded -> Utils.greenText "Success!"
+                  Failed e -> Utils.redText e
             , H.div [HA.class "invalid-feedback"] [viewError (parseEmailAddress state)]
             ]
         Pb.EmailFlowStateKindCodeSent {email} ->
-          H.div []
+          H.div [HA.class "form-group"]
             [ H.text "I sent a verification code to "
             , Utils.b email
             , H.text ". Enter it here: "
             , H.input
-                [ HA.disabled <| state.working
-                , HA.placeholder "code"
-                , Utils.onEnter (config.verifyEmail {state | working=True, notification=H.text ""} {code=state.codeField}) config.ignore
-                , HE.onInput (\s -> config.setState {state | codeField=s})
-                , HA.value state.codeField
-                , HA.class "form-control form-control-sm mx-1"
-                , HA.style "display" "inline-block"
-                , HA.style "width" "12em"
-                ] []
+              [ HA.disabled <| state.registrationRequestStatus == AwaitingResponse
+              , HA.placeholder "code"
+              , Utils.onEnter (config.verifyEmail {state | registrationRequestStatus = AwaitingResponse} {code=state.codeField}) config.ignore
+              , HE.onInput (\s -> config.setState {state | codeField=s})
+              , HA.value state.codeField
+              , HA.class "form-control form-control-sm mx-1"
+              , HA.style "display" "inline-block"
+              , HA.style "width" "12em"
+              ] []
             , H.button
-                [ HE.onClick (config.verifyEmail {state | working=True, notification=H.text ""} {code=state.codeField})
-                , HA.disabled <| state.working || state.codeField == ""
-                , HA.class "btn btn-sm btn-primary"
-                ] [H.text "Verify code"]
-              -- TODO: "Resend email"
-            , state.notification |> H.map never
+              [ HE.onClick (config.verifyEmail {state | registrationRequestStatus = AwaitingResponse} {code=state.codeField})
+              , HA.disabled <| state.registrationRequestStatus == AwaitingResponse || state.codeField == ""
+              , HA.class "btn btn-sm btn-primary"
+              ] [H.text "Verify code"]
+            , H.text " "
+            -- TODO: "Resend email"
             , H.text " (Or, "
             , H.button
-                [ HE.onClick (config.setEmail {state | working=True, notification=H.text ""} {email=""})
+                [ HE.onClick (config.setEmail {state | registrationRequestStatus = AwaitingResponse} {email=""})
                 , HA.class "btn btn-sm btn-outline-secondary"
                 ]
                 [H.text "delete email"]
             , H.text ")"
+            , case state.registrationRequestStatus of
+                Unstarted -> H.text ""
+                AwaitingResponse -> H.text ""
+                Succeeded -> H.div [] [Utils.greenText "Success!"]
+                Failed e -> H.div [] [Utils.redText e]
             ]
         Pb.EmailFlowStateKindVerified email ->
           H.div []
@@ -149,12 +156,16 @@ view config state =
             , Utils.b email
             , H.text ". "
             , H.button
-                [ HE.onClick (config.setEmail {state | working=True, notification=H.text ""} {email=""})
+                [ HE.onClick (config.setEmail {state | registrationRequestStatus = AwaitingResponse} {email=""})
                 , HA.class "btn btn-sm btn-outline-primary"
                 ]
                 [H.text "delete?"]
-            , H.br [] []
-            , state.notification |> H.map never
+            , H.text " "
+            , case state.registrationRequestStatus of
+                Unstarted -> H.text ""
+                AwaitingResponse -> H.text ""
+                Succeeded -> Utils.greenText "Success!"
+                Failed e -> Utils.redText e
             ]
   in
     H.form
@@ -167,29 +178,45 @@ view config state =
           [ H.div []
             [ H.input
                 [ HA.type_ "checkbox", HA.checked config.userInfo.allowEmailInvitations
-                , HA.disabled (state.working || not isRegistered)
-                , HE.onInput (\_ -> config.updateSettings {state | working=True, notification=H.text ""} {emailRemindersToResolve=Nothing, emailResolutionNotifications=Nothing, allowEmailInvitations=Just {value=not config.userInfo.allowEmailInvitations}})
+                , HA.class "form-check-input"
+                , HA.id "allowEmailInvitationsCheckbox"
+                , HA.disabled (state.updateSettingsRequestStatus == AwaitingResponse || not isRegistered)
+                , HE.onInput (\_ -> config.updateSettings {state | updateSettingsRequestStatus = AwaitingResponse} {emailRemindersToResolve=Nothing, emailResolutionNotifications=Nothing, allowEmailInvitations=Just {value=not config.userInfo.allowEmailInvitations}})
                 ] []
-            , H.text " Email notifications when new people want to bet against you? (Highly recommended! This will make it "
-            , Utils.i "way"
-            , H.text " smoother when one of your friends wants to bet against you for the first time.)"
+            , H.label [HA.class "ms-1", HA.for "allowEmailInvitationsCheckbox"] [ H.text " Email notifications when new people want to bet against you?" ]
+            , H.div [HA.class "ms-4"]
+              [ H.text "(Highly recommended! This will make it "
+                , Utils.i "way"
+                , H.text " smoother when one of your friends wants to bet against you for the first time.)"
+              ]
             ]
           , H.div []
               [ H.input
                   [ HA.type_ "checkbox", HA.checked config.userInfo.emailRemindersToResolve
-                  , HA.disabled (state.working || not isRegistered)
-                  , HE.onInput (\_ -> config.updateSettings {state | working=True, notification=H.text ""} {emailRemindersToResolve=Just {value=not config.userInfo.emailRemindersToResolve}, emailResolutionNotifications=Nothing, allowEmailInvitations=Nothing})
+                  , HA.class "form-check-input"
+                  , HA.id "emailRemindersToResolveCheckbox"
+                  , HA.disabled (state.updateSettingsRequestStatus == AwaitingResponse || not isRegistered)
+                  , HE.onInput (\_ -> config.updateSettings {state | updateSettingsRequestStatus = AwaitingResponse} {emailRemindersToResolve=Just {value=not config.userInfo.emailRemindersToResolve}, emailResolutionNotifications=Nothing, allowEmailInvitations=Nothing})
                   ] []
-              , H.text " Email reminders to resolve your predictions, when it's time?"
+              , H.label [HA.class "ms-1", HA.for "emailRemindersToResolveCheckbox"] [H.text " Email reminders to resolve your predictions, when it's time?"]
               ]
           , H.div []
               [ H.input
                   [ HA.type_ "checkbox", HA.checked config.userInfo.emailResolutionNotifications
-                  , HA.disabled (state.working || not isRegistered)
-                  , HE.onInput (\_ -> config.updateSettings {state | working=True, notification=H.text ""} {emailRemindersToResolve=Nothing, emailResolutionNotifications=Just {value=not config.userInfo.emailResolutionNotifications}, allowEmailInvitations=Nothing})
+                  , HA.class "form-check-input"
+                  , HA.id "emailResolutionNotificationsCheckbox"
+                  , HA.disabled (state.updateSettingsRequestStatus == AwaitingResponse || not isRegistered)
+                  , HE.onInput (\_ -> config.updateSettings {state | updateSettingsRequestStatus = AwaitingResponse} {emailRemindersToResolve=Nothing, emailResolutionNotifications=Just {value=not config.userInfo.emailResolutionNotifications}, allowEmailInvitations=Nothing})
                   ] []
-              , H.text " Email notifications when predictions you've bet on resolve?"
+              , H.label [HA.class "ms-1", HA.for "emailResolutionNotificationsCheckbox"] [H.text "Email notifications when predictions you've bet on resolve?"]
               ]
+          , H.div []
+            [ case state.updateSettingsRequestStatus of
+                Unstarted -> H.text ""
+                AwaitingResponse -> H.text ""
+                Succeeded -> Utils.greenText "Updated settings!"
+                Failed e -> Utils.redText e
+            ]
           ]
         else
           H.text ""

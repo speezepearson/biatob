@@ -256,3 +256,5 @@ viewError res =
   case res of
     Ok _ -> H.text ""
     Err e -> redText e
+
+type RequestStatus = Unstarted | AwaitingResponse | Succeeded | Failed String

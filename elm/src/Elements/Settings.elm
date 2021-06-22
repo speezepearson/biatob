@@ -127,7 +127,7 @@ update msg model =
       )
     SetTrustedFinished req res ->
       ( { model | globals = model.globals |> Globals.handleSetTrustedResponse req res
-                , trustedUsersWidget = model.trustedUsersWidget |> TrustedUsersWidget.handleSetTrustedResponse res
+                , trustedUsersWidget = model.trustedUsersWidget |> TrustedUsersWidget.handleSetTrustedResponse req.who res
         }
       , Cmd.none
       )
