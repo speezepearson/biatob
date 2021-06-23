@@ -948,7 +948,7 @@ class SqlServicer(Servicer):
 
       if request.email:
         # TODO: prevent an email address from getting "too many" emails if somebody abuses us
-        code = secrets.token_urlsafe(nbytes=16)
+        code = secrets.token_urlsafe(nbytes=16).replace('-', '')  # hyphens break copy-paste, and the entropy decrease isn't too bad
         asyncio.create_task(self._emailer.send_email_verification(
             to=request.email,
             code=code,
