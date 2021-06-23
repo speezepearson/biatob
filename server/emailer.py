@@ -4,7 +4,7 @@ import datetime
 from email.message import EmailMessage
 import json
 from pathlib import Path
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any, Iterable, Mapping, Optional, Sequence
 
 import aiosmtplib
 import jinja2
@@ -47,12 +47,14 @@ class Emailer:
         self._InvariantViolations_template = jenv.get_template('InvariantViolations.html')
         self._Invitation_template = jenv.get_template('Invitation.html')
 
-    async def _send(self, *, to: str, subject: str, body: str, headers: Mapping[str, str] = {}) -> None:
+    async def _send(self, *, to: Optional[str], subject: str, body: str, headers: Mapping[str, str] = {}) -> None:
         # adapted from https://aiosmtplib.readthedocs.io/en/stable/usage.html#authentication
         message = EmailMessage()
         message["From"] = self._from_addr
-        message["To"] = to
+        if to:
+            message["To"] = to
         message["Subject"] = subject
+        message["Reply-To"] = "contact@biatob.com"
         for k, v in headers.items():
             message[k] = v
         message.set_content(body)
@@ -73,7 +75,7 @@ class Emailer:
             bccs_chunk = bccs[i:i+32]
             await self._send(
                 subject=subject,
-                to='blackhole@biatob.com',
+                to=None,
                 headers={'Bcc': ', '.join(bccs_chunk)},
                 body=body,
             )
@@ -119,7 +121,7 @@ class Emailer:
         await self._send(
             to=to,
             subject='Your Biatob email-verification',
-            body=self._EmailVerification_template.render(code=code),
+            body=self._EmailVerification_template.render(email=to, code=code),
         )
 
     async def send_backup(self, to: str, now: datetime.datetime, body: str) -> None:
