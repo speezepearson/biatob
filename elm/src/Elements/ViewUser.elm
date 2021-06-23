@@ -17,6 +17,7 @@ import Widgets.ViewPredictionsWidget as ViewPredictionsWidget
 import Globals
 import Time
 import Dict exposing (Dict)
+import Biatob.Proto.Mvp exposing (Relationship)
 
 port copy : String -> Cmd msg
 port navigate : Maybe String -> Cmd msg
@@ -112,7 +113,7 @@ update msg model =
     SetTrustedFinished req res ->
       ( { model | globals = model.globals |> Globals.handleSetTrustedResponse req res
                 , setTrustedRequestStatus = case API.simplifySetTrustedResponse res of
-                    Ok _ -> Succeeded
+                    Ok _ -> Unstarted
                     Err e -> Failed e
         }
       , Cmd.none
@@ -144,6 +145,21 @@ update msg model =
     Ignore ->
       ( model , Cmd.none )
 
+type Relationship
+  = LoggedOut
+  | Self
+  | NoRelation
+  | Related Pb.Relationship
+getRelationship : Username -> Globals.Globals -> Relationship
+getRelationship who globals =
+  case globals.serverState.settings of
+    Nothing -> LoggedOut
+    Just {relationships} ->
+      if Globals.getOwnUsername globals == Just who then Self else
+      case Dict.get who relationships |> Maybe.andThen identity of
+        Nothing -> NoRelation
+        Just rel -> Related rel
+
 view : Model -> Browser.Document Msg
 view model =
   {title=model.who, body=
@@ -158,33 +174,97 @@ view model =
         }
         model.navbarAuth
     , H.main_ [HA.class "container"]
-    [ H.h2 [] [H.text model.who]
-    , H.br [] []
-    , case Globals.getTrustRelationship model.globals model.who of
+    [ H.h2 [HA.class "text-center"] [H.text <| "User '" ++ model.who ++ "'"]
+    , let
+        haveSentInvitation = case model.globals.serverState.settings of
+          Nothing -> False
+          Just {invitations} -> Dict.member model.who invitations
+      in
+      case Globals.getTrustRelationship model.globals model.who of
+        Globals.LoggedOut ->
+          H.text "Log in to see your relationship with this user."
         Globals.Self ->
           H.p []
             [ H.text "This is you! You might have meant to visit "
             , H.a [HA.href "/settings"] [H.text "your settings"]
             , H.text "?"
             ]
-        Globals.LoggedOut ->
-          H.text "Log in to see your relationship with this user."
-        Globals.NoRelation ->
+        Globals.NoRelation -> 
+          H.div []
+            [ H.p [] [H.text "You and this user don't (yet?) trust each other!"]
+            , if haveSentInvitation then
+                H.p [] [H.text "I've sent this user an email asking them if they trust you. Just sit tight and wait for them to tell me they do!"]
+              else
+                H.div []
+                [ if Globals.hasEmailAddress model.globals then
+                    H.p []
+                    [ H.text "If you're confident that you know who owns this account, and in real life you trust them to pay their debts, and you think they trust you too, then click "
+                    , H.button
+                      [ HA.disabled (model.sendInvitationRequestStatus==AwaitingResponse)
+                      , HE.onClick SendInvitation
+                      , HA.class "btn btn-sm py-0 btn-outline-primary mx-1"
+                      ]
+                      [ H.text "I trust this person, and I think they trust me too" ]
+                    , case model.sendInvitationRequestStatus of
+                        Unstarted -> H.text ""
+                        AwaitingResponse -> H.text ""
+                        Succeeded -> Utils.greenText "✓"
+                        Failed e -> Utils.redText e
+                    , H.text " and then I'll let you bet against each other!"
+                    ]
+                  else
+                    H.p []
+                    [ H.text "If you want to bet against this person, and you register an email address over on "
+                    , H.a [HA.href "/settings"] [H.text "your settings page"]
+                    , H.text ", then I can send this user an email asking if they trust you! Otherwise, you'll have to text/email/whatever them a link to "
+                    , H.a [HA.href <| Utils.pathToUserPage <| Utils.must "logged in" <| Globals.getOwnUsername model.globals] [H.text "your user page"]
+                    , H.text " and ask them to click \"I trust this person.\""
+                    ]
+                , H.div []
+                  [ H.p []
+                    [ H.text "Alternatively, if you trust them but you ", Utils.i "don't", H.text " think they trust you back, you can just click "
+                    , H.button
+                      [ HA.disabled (model.setTrustedRequestStatus==AwaitingResponse)
+                      , HE.onClick (SetTrusted True)
+                      , HA.class "btn btn-sm py-0 btn-outline-primary mx-1"
+                      ]
+                      [ H.text "I trust this person" ]
+                    , case model.setTrustedRequestStatus of
+                        Unstarted -> H.text ""
+                        AwaitingResponse -> H.text ""
+                        Succeeded -> Utils.greenText "✓"
+                        Failed e -> Utils.redText e
+                    , H.text "-- maybe they'll come to trust you at some point in the future."
+                    ]
+                  ]
+                ]
+            ]
+        Globals.Friends ->
           H.p []
-            [ H.text "You have no relationship with this user! If you're confident that you know who owns this account, and in real life you trust them to pay their debts, and they trust you too,"
-            , H.text " then send them an invitation!"
+            [ H.text "You and this user trust each other! Aww, how nice!"
+            , H.br [] []
+            , H.text "...but, if you ", Utils.i "don't", H.text " trust them anymore, you can"
             , H.button
-              [ HA.disabled (model.sendInvitationRequestStatus==AwaitingResponse)
-              , HE.onClick SendInvitation
-              , HA.class "btn btn-sm btn-outline-primary mx-1"
-              ]
-              [ H.text "I trust this person, and they trust me too" ]
-            , case model.sendInvitationRequestStatus of
+              [ HA.disabled (model.setTrustedRequestStatus == AwaitingResponse)
+              , HE.onClick (SetTrusted False)
+              , HA.class "btn btn-sm py-0 btn-outline-primary mx-1"
+              ] [H.text "mark this user untrusted"]
+            , case model.setTrustedRequestStatus of
                 Unstarted -> H.text ""
                 AwaitingResponse -> H.text ""
                 Succeeded -> Utils.greenText "✓"
                 Failed e -> Utils.redText e
-            , H.text " and then I'll let you bet against each other!"
+            , H.hr [HA.class "my-4"] []
+            , H.h3 [HA.class "text-center"] [H.text <| model.who ++ "'s predictions"]
+            , ViewPredictionsWidget.view
+                { setState = SetPredictionsWidget
+                , predictions = Dict.filter (\_ pred -> pred.creator == model.who) model.globals.serverState.predictions
+                , allowFilterByOwner = False
+                , self = Globals.getOwnUsername model.globals |> Maybe.withDefault "TODO"
+                , now = model.globals.now
+                , timeZone = model.globals.timeZone
+                }
+                model.predictionsWidget
             ]
         Globals.TrustsCurrentUser ->
           H.p []
@@ -192,8 +272,8 @@ view model =
             , H.text " then click "
             , H.button
               [ HA.disabled (model.setTrustedRequestStatus==AwaitingResponse)
-              , HE.onClick (SetTrusted True) 
-              , HA.class "btn btn-sm btn-outline-primary mx-1"
+              , HE.onClick (SetTrusted True)
+              , HA.class "btn btn-sm py-0 btn-outline-primary mx-1"
               ]
               [ H.text "I trust this person" ]
             , case model.setTrustedRequestStatus of
@@ -205,66 +285,49 @@ view model =
             ]
         Globals.TrustedByCurrentUser ->
           H.p []
-            [ H.text "You trust this user, but they don't trust you back! If you're confident that you know who owns this account, and in real life you think they ", Utils.i "do", H.text " trust you to pay your debts,"
-            , H.text " then send them an invitation!"
-            , H.button
-              [ HA.disabled (model.sendInvitationRequestStatus==AwaitingResponse)
-              , HE.onClick SendInvitation
-              , HA.class "btn btn-sm btn-outline-primary mx-1"
-              ]
-              [ H.text "I think this person trusts me" ]
-            , case model.sendInvitationRequestStatus of
-                Unstarted -> H.text ""
-                AwaitingResponse -> H.text ""
-                Succeeded -> Utils.greenText "✓"
-                Failed e -> Utils.redText e
-            , H.text " and then I'll let you bet against each other!"
-            , H.br [] []
-            , H.text "...or, if you ", Utils.i "don't", H.text " trust them anymore, you can"
-            , H.button
-              [ HA.disabled (model.setTrustedRequestStatus == AwaitingResponse)
-              , HE.onClick (SetTrusted False)
-              , HA.class "btn btn-sm btn-outline-primary mx-1"
-              ] [H.text "mark this user untrusted"]
-            , case model.setTrustedRequestStatus of
-                Unstarted -> H.text ""
-                AwaitingResponse -> H.text ""
-                Succeeded -> Utils.greenText "✓"
-                Failed e -> Utils.redText e
-            ]
-        Globals.Friends ->
-          H.p []
-            [ H.text "You and this user trust each other! Aww, how nice!"
-            , H.br [] []
-            , H.text "...but, if you ", Utils.i "don't", H.text " trust them anymore, you can"
-            , H.button
-              [ HA.disabled (model.setTrustedRequestStatus == AwaitingResponse)
-              , HE.onClick (SetTrusted False)
-              , HA.class "btn btn-sm btn-outline-primary mx-1"
-              ] [H.text "mark this user untrusted"]
-            , case model.setTrustedRequestStatus of
-                Unstarted -> H.text ""
-                AwaitingResponse -> H.text ""
-                Succeeded -> Utils.greenText " Success!"
-                Failed e -> Utils.redText e
-            ]
-            , H.br [] []
-            , if Globals.getRelationship model.globals model.who |> Maybe.map .trustsYou |> Maybe.withDefault False then
-                H.div []
-                  [ H.h3 [] [H.text "Predictions"]
-                  , ViewPredictionsWidget.view
-                      { setState = SetPredictionsWidget
-                      , predictions = Dict.filter (\_ pred -> pred.creator == model.who) model.globals.serverState.predictions
-                      , allowFilterByOwner = False
-                      , self = model.globals.authToken |> Maybe.map .owner |> Maybe.withDefault "TODO"
-                      , now = model.globals.now
-                      , timeZone = model.globals.timeZone
-                      }
-                      model.predictionsWidget
+            [ H.p [] [H.text "You trust this user, but they don't trust you back!"]
+            , if haveSentInvitation then
+                H.p [] [H.text "I've sent this user an email asking them if they trust you. Just sit tight and wait for them to tell me they do!"]
+              else if Globals.hasEmailAddress model.globals then
+                H.p []
+                [ H.text "If you're confident that you know who owns this account, and in real life you think they ", Utils.i "do", H.text " trust you to pay your debts,"
+                , H.text " then click "
+                , H.button
+                  [ HA.disabled (model.sendInvitationRequestStatus==AwaitingResponse)
+                  , HE.onClick SendInvitation
+                  , HA.class "btn btn-sm py-0 btn-outline-primary mx-1"
                   ]
+                  [ H.text "I think this person trusts me" ]
+                , case model.sendInvitationRequestStatus of
+                    Unstarted -> H.text ""
+                    AwaitingResponse -> H.text ""
+                    Succeeded -> Utils.greenText "✓"
+                    Failed e -> Utils.redText e
+                , H.text " and then I'll let you bet against each other!"
+                ]
               else
-                H.text ""
+                H.p []
+                [ H.text "If you want to bet against this person, and you register an email address over on "
+                , H.a [HA.href "/settings"] [H.text "your settings page"]
+                , H.text ", then I can send this user an email asking if they trust you! Otherwise, you'll have to text/email/whatever them a link to "
+                , H.a [HA.href <| Utils.pathToUserPage <| Utils.must "logged in" <| Globals.getOwnUsername model.globals] [H.text "your user page"]
+                , H.text " and ask them to click \"I trust this person.\""
+                ]
+            , H.p []
+              [ H.text "If you ", Utils.i "don't", H.text " trust them anymore, you can"
+              , H.button
+                [ HA.disabled (model.setTrustedRequestStatus == AwaitingResponse)
+                , HE.onClick (SetTrusted False)
+                , HA.class "btn btn-sm py-0 btn-outline-primary mx-1"
+                ] [H.text "mark this user untrusted"]
+              , case model.setTrustedRequestStatus of
+                  Unstarted -> H.text ""
+                  AwaitingResponse -> H.text ""
+                  Succeeded -> Utils.greenText "✓"
+                  Failed e -> Utils.redText e
+              ]
             ]
+    ]
   ]}
 
 subscriptions : Model -> Sub Msg
