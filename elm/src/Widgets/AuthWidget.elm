@@ -139,7 +139,7 @@ view config state =
           , HA.class "btn btn-sm py-0 btn-primary"
           ]
           [H.text "Log in"]
-        , H.span [HA.class "pt-1"] [H.text " or "]
+        , H.span [] [H.text " or "]
         , H.button
           [ HA.disabled <| (state.requestStatus == AwaitingResponse) || not canSubmit
           , HE.onClick registerMsg
@@ -154,8 +154,8 @@ view config state =
           Failed e -> Utils.redText e
       ]
     Just auth ->
-        [ H.div [HA.class "col-8 pt-1"]
-          [ H.span [HA.class "align-middle"] [H.text <| "Signed in as ", Utils.renderUser auth.owner]
+        [ H.div [HA.class "col-8"]
+          [ H.span [HA.class "align-middle"] [H.text <| "Signed in as ", Utils.b auth.owner]
           ]
         , H.div [HA.class "col-4"]
           [ H.button
