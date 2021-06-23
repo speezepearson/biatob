@@ -122,10 +122,13 @@ update msg model =
 
 view : Model -> Browser.Document Msg
 view model =
-  { title = case model.requestStatus of
+  let
+    title = case model.requestStatus of
       AwaitingResponse -> "Accepting invitation"
-      Succeeded -> "Invitation accepted"
-      Failed _ -> "[try again?] Accept invitation"
+      Succeeded -> "Accepted invitation"
+      Failed _ -> "Failed accepting invitation"
+  in
+  { title = title
   , body =
     [ Navbar.view
         { setState = SetAuthWidget
@@ -138,7 +141,8 @@ view model =
         }
         model.navbarAuth
     , H.main_ [HA.class "container", HA.style "text-align" "justify"]
-      [ case model.requestStatus of
+      [ H.h2 [HA.class "text-center"] [H.text title]
+      , case model.requestStatus of
           AwaitingResponse ->
             H.text "Working..."
           Failed e ->
