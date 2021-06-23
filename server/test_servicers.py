@@ -544,6 +544,20 @@ class TestSetTrusted:
     alice_view_of_bob = GetUserOk(any_servicer, alice_token, 'Bob')
     assert not alice_view_of_bob.trusted_by_you
 
+  @pytest.mark.parametrize('trust', [True, False])
+  async def test_removing_trust_deletes_outgoing_invitation(self, any_servicer: Servicer, emailer: Emailer, trust: bool):
+    inviter_token = new_user_token(any_servicer, 'inviter')
+    set_and_verify_email(any_servicer, emailer, inviter_token, 'inviter@example.com')
+
+    recipient_token = new_user_token(any_servicer, 'recipient')
+    set_and_verify_email(any_servicer, emailer, recipient_token, 'recipient@example.com')
+    UpdateSettingsOk(any_servicer, recipient_token, allow_email_invitations=True)
+
+    SendInvitationOk(any_servicer, inviter_token, 'recipient')
+    SetTrustedOk(any_servicer, inviter_token, 'recipient', trust)
+
+    expected_invitations = {'recipient': mvp_pb2.GenericUserInfo.Invitation()} if trust else {}
+    assert GetSettingsOk(any_servicer, inviter_token).invitations == expected_invitations
 
 
 class TestGetUser:

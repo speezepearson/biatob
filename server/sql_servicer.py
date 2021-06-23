@@ -520,6 +520,15 @@ class SqlConn:
     )
     return check_resp
 
+  def delete_invitation(self, inviter: Username, recipient: Username) -> None:
+    self._conn.execute(
+      sqlalchemy.delete(schema.email_invitations)
+      .where(sqlalchemy.and_(
+        schema.email_invitations.c.inviter == inviter,
+        schema.email_invitations.c.recipient == recipient,
+      ))
+    )
+
   ResolutionReminderInfo = TypedDict('ResolutionReminderInfo', {'prediction_id': PredictionId,
                                                                 'prediction_text': str,
                                                                 'email_address': str})
@@ -872,6 +881,8 @@ class SqlServicer(Servicer):
         return mvp_pb2.SetTrustedResponse(error=mvp_pb2.SetTrustedResponse.Error(catchall='no such user'))
 
       self._conn.set_trusted(token_owner(token), Username(request.who), request.trusted)
+      if not request.trusted:
+        self._conn.delete_invitation(inviter=token_owner(token), recipient=Username(request.who))
 
       return mvp_pb2.SetTrustedResponse(ok=self._conn.get_settings(token_owner(token)))
 
