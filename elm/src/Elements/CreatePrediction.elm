@@ -656,7 +656,7 @@ view model =
     , H.div [HA.style "border" "1px solid black", HA.style "padding" "1em", HA.style "margin" "1em"]
         [ case buildCreateRequest model of
             Just req ->
-              previewPrediction {request=req, creatorName=Globals.getAuth model.globals |> Maybe.map .owner |> Maybe.withDefault "you", createdAt=model.globals.now}
+              previewPrediction {request=req, creatorName=Globals.getOwnUsername model.globals |> Maybe.withDefault "you", createdAt=model.globals.now}
               |> (\prediction -> Prediction.viewBodyMockup model.globals prediction |> H.map (always Ignore))
             Nothing ->
               H.span [HA.style "color" "red"] [H.text "(invalid prediction)"]

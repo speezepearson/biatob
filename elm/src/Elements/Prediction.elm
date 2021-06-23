@@ -411,7 +411,7 @@ viewBody model =
             , H.text ", I have to make sure that they trust you to pay up if you lose!"
             , H.br [] []
             , H.text "Normally, I'd offer to ask them for you, but they've disabled that feature! You'll need to send them a link to "
-            , H.a [HA.href <| Utils.pathToUserPage <| .owner <| Utils.must "checked user is logged in" model.globals.authToken] [H.text "your user page"]
+            , H.a [HA.href <| Utils.pathToUserPage <| Utils.must "checked user is logged in" <| Globals.getOwnUsername model.globals] [H.text "your user page"]
             , H.text ", over SMS/IM/email/whatever, and ask them to mark you as trusted."
             ]
       ]

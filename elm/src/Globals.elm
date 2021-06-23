@@ -7,6 +7,7 @@ module Globals exposing
   , TrustRelationship(..)
   , getTrustRelationship
   , getRelationship
+  , getOwnUsername
   , ServerState
   , globalsDecoder
   , tick
@@ -245,3 +246,7 @@ globalsDecoder =
       , httpOrigin = httpOrigin
       }
   )))))
+
+getOwnUsername : Globals -> Maybe Username
+getOwnUsername globals =
+  globals.authToken |> Maybe.map .owner
