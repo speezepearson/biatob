@@ -148,6 +148,7 @@ init =
 
 view : Config msg -> State -> Html msg
 view config state =
+  if Dict.isEmpty config.predictions then H.div [] [H.text "(no predictions yet!)"] else
   H.div []
     [ if config.allowFilterByOwner then
         H.span [] [H.text "Filter: ", viewFilterInput config state]
@@ -155,10 +156,7 @@ view config state =
         H.text ""
     , H.text " Sort: "
     , viewSortOrderInput config state
-    , if Dict.isEmpty config.predictions then
-        H.text "<none>"
-      else
-        H.table [HA.class "table mt-1"]
+    , H.table [HA.class "table mt-1"]
         [ H.thead []
           [ viewRow
             { cell = H.th
