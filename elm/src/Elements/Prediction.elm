@@ -368,40 +368,96 @@ viewBody model =
             ]
           NeedsToSendEmailInvitation ->
             H.div []
-            [ Utils.b "Make a bet:"
-            , H.text " Before I let you bet against "
-            , Utils.renderUser prediction.creator
-            , H.text ", I have to make sure that they trust you to pay up if you lose!"
-            , H.br [] []
-            , H.text "May I share your email address with them so that they know who you are? "
-            , H.button
-              [ HA.disabled (model.sendInvitationStatus == AwaitingResponse)
-              , HE.onClick SendInvitation
-              , HA.class "btn btn-sm btn-primary"
+            [ H.p []
+              [ Utils.b "Make a bet:"
+              , H.text " Before I let you bet against "
+              , Utils.renderUser prediction.creator
+              , H.text ", I have to make sure that they trust you to pay up if you lose!"
+              , H.br [] []
+              , H.text "May I share your email address with them so that they know who you are? "
+              , H.button
+                [ HA.disabled (model.sendInvitationStatus == AwaitingResponse)
+                , HE.onClick SendInvitation
+                , HA.class "btn btn-sm btn-primary"
+                ]
+                [ H.text <| "Yes, I trust '" ++ prediction.creator ++ "', and I'm pretty sure they trust me too." ]
+              , H.br [] []
+              , H.text "After they tell me that they trust you, I'll let you bet on this prediction!"
               ]
-              [ H.text <| "I trust '" ++ prediction.creator ++ "', and I'm pretty sure they trust me too" ]
-            , H.br [] []
-            , H.text "After they tell me that they trust you, I'll let you bet on this prediction!"
+            , H.p []
+              [ H.text "Alternatively, you could "
+              , if Globals.getRelationship model.globals prediction.creator |> Debug.log "creator rel" |> Maybe.map .trustedByYou |> Maybe.withDefault False then
+                  H.span []
+                  [ H.text " text/email/whatever them a link to "
+                  , H.a [HA.href <| Utils.pathToUserPage <| Utils.must "NeedsEmailAddress only possible for logged-in users" <| Globals.getOwnUsername model.globals] [H.text "your user page"]
+                  , H.text " and ask them to mark you as trusted."
+                  ]
+                else
+                  H.span []
+                  [ H.button
+                    [ HA.disabled (model.setTrustedStatus == AwaitingResponse)
+                    , HE.onClick SetCreatorTrusted
+                    , HA.class "btn btn-sm btn-primary"
+                    ]
+                    [ H.text <| "I trust '" ++ prediction.creator ++ "'" ]
+                  , case model.setTrustedStatus of
+                      Unstarted -> H.text ""
+                      AwaitingResponse -> H.text ""
+                      Succeeded -> Utils.greenText "(success!)"
+                      Failed e -> Utils.redText e
+                  , H.text " and text/email/whatever them a link to "
+                  , H.a [HA.href <| Utils.pathToUserPage <| Utils.must "NeedsEmailAddress only possible for logged-in users" <| Globals.getOwnUsername model.globals] [H.text "your user page"]
+                  , H.text " and ask them to mark you as trusted."
+                  ]
+                ]
             ]
           NeedsEmailAddress ->
             H.div []
-            [ Utils.b "Make a bet:"
-            , H.text " Before I let you bet against "
-            , Utils.renderUser prediction.creator
-            , H.text ", I have to make sure that they trust you to pay up if you lose!"
-            , H.br [] []
-            , H.text "I can ask them if they trust you, but first, could I trouble you to add an email address to your account, as a way to identify you to them?"
-            , H.div [HA.class "m-1 mx-4"]
-              [ EmailSettingsWidget.view
-                { setState = SetEmailWidget
-                , ignore = Ignore
-                , setEmail = SetEmail
-                , verifyEmail = VerifyEmail
-                , updateSettings = UpdateSettings
-                , userInfo = Utils.must "checked that user is logged in" model.globals.serverState.settings
-                }
-                model.emailSettingsWidget
+            [ H.p []
+              [ Utils.b "Make a bet:"
+              , H.text " Before I let you bet against "
+              , Utils.renderUser prediction.creator
+              , H.text ", I have to make sure that they trust you to pay up if you lose!"
+              , H.br [] []
+              , H.text "I can ask them if they trust you, but first, could I trouble you to add an email address to your account, as a way to identify you to them?"
+              , H.div [HA.class "m-1 mx-4"]
+                [ EmailSettingsWidget.view
+                  { setState = SetEmailWidget
+                  , ignore = Ignore
+                  , setEmail = SetEmail
+                  , verifyEmail = VerifyEmail
+                  , updateSettings = UpdateSettings
+                  , userInfo = Utils.must "checked that user is logged in" model.globals.serverState.settings
+                  }
+                  model.emailSettingsWidget
+                ]
               ]
+            , H.p []
+              [ H.text "Alternatively, you could "
+              , if Globals.getRelationship model.globals prediction.creator |> Debug.log "creator rel" |> Maybe.map .trustedByYou |> Maybe.withDefault False then
+                  H.span []
+                  [ H.text " text/email/whatever them a link to "
+                  , H.a [HA.href <| Utils.pathToUserPage <| Utils.must "NeedsEmailAddress only possible for logged-in users" <| Globals.getOwnUsername model.globals] [H.text "your user page"]
+                  , H.text " and ask them to mark you as trusted."
+                  ]
+                else
+                  H.span []
+                  [ H.button
+                    [ HA.disabled (model.setTrustedStatus == AwaitingResponse)
+                    , HE.onClick SetCreatorTrusted
+                    , HA.class "btn btn-sm btn-primary"
+                    ]
+                    [ H.text <| "I trust '" ++ prediction.creator ++ "'" ]
+                  , case model.setTrustedStatus of
+                      Unstarted -> H.text ""
+                      AwaitingResponse -> H.text ""
+                      Succeeded -> Utils.greenText "(success!)"
+                      Failed e -> Utils.redText e
+                  , H.text " and text/email/whatever them a link to "
+                  , H.a [HA.href <| Utils.pathToUserPage <| Utils.must "NeedsEmailAddress only possible for logged-in users" <| Globals.getOwnUsername model.globals] [H.text "your user page"]
+                  , H.text " and ask them to mark you as trusted."
+                  ]
+                ]
             ]
           NeedsToTextUserPageLink ->
             H.div []
