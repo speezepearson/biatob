@@ -772,6 +772,16 @@ class TestSendInvitation:
 
     assert 'does not accept email invitations' in str(SendInvitationErr(any_servicer, inviter_token, 'recipient'))
 
+  async def test_error_if_already_sent(self, any_servicer: Servicer, emailer: Emailer):
+    recipient_token = new_user_token(any_servicer, 'recipient')
+    set_and_verify_email(any_servicer, emailer, recipient_token, 'recipient@example.com')
+    UpdateSettingsOk(any_servicer, recipient_token, allow_email_invitations=True)
+    inviter_token = new_user_token(any_servicer, 'inviter')
+    set_and_verify_email(any_servicer, emailer, inviter_token, 'inviter@example.com')
+
+    SendInvitationOk(any_servicer, inviter_token, 'recipient')
+    assert 'already asked this user if they trust you' in str(SendInvitationErr(any_servicer, inviter_token, 'recipient'))
+
   async def test_sends_email(self, any_servicer: Servicer, emailer: Emailer):
     recipient_token = new_user_token(any_servicer, 'recipient')
     set_and_verify_email(any_servicer, emailer, recipient_token, 'recipient@example.com')

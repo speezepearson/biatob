@@ -98,11 +98,13 @@ Index('email_attempts_by_email_id', email_attempts.c.email_id)
 email_invitations = Table(
   'email_invitations',
   metadata,
-  Column('nonce', String(64), primary_key=True, nullable=False),
-  Column('inviter', ForeignKey('users.username'), nullable=False),
-  Column('recipient', ForeignKey('users.username'), nullable=False),
+  Column('inviter', ForeignKey('users.username'), primary_key=True, nullable=False),
+  Column('recipient', ForeignKey('users.username'), primary_key=True, nullable=False),
+  Column('nonce', String(64), unique=True, nullable=False),
 )
+Index('email_invitations_by_nonce', email_invitations.c.nonce)
 Index('email_invitations_by_inviter', email_invitations.c.inviter)
+Index('email_invitations_by_recipient', email_invitations.c.recipient)
 
 migrations = Table(
   'migrations',

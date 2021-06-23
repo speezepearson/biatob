@@ -529,6 +529,15 @@ class SqlConn:
       ))
     )
 
+  def is_invitation_outstanding(self, inviter: Username, recipient: Username) -> bool:
+    return self._conn.execute(
+      sqlalchemy.select([1])
+      .where(sqlalchemy.and_(
+        schema.email_invitations.c.inviter == inviter,
+        schema.email_invitations.c.recipient == recipient,
+      ))
+    ).fetchone() is not None
+
   ResolutionReminderInfo = TypedDict('ResolutionReminderInfo', {'prediction_id': PredictionId,
                                                                 'prediction_text': str,
                                                                 'email_address': str})
@@ -1026,6 +1035,10 @@ class SqlServicer(Servicer):
       if recipient_settings.email.WhichOneof('email_flow_state_kind') != 'verified':
         logger.warn('trying to send email invitation to user without email set')
         return mvp_pb2.SendInvitationResponse(error=mvp_pb2.SendInvitationResponse.Error(catchall='recipient user does not accept email invitations'))
+
+      if self._conn.is_invitation_outstanding(inviter=token_owner(token), recipient=Username(request.recipient)):
+        logger.warn('trying to send duplicate email invitation', request=request)
+        return mvp_pb2.SendInvitationResponse(error=mvp_pb2.SendInvitationResponse.Error(catchall="I've already asked this user if they trust you"))
 
       nonce = secrets.token_urlsafe(16)
 
