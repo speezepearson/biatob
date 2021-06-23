@@ -214,7 +214,7 @@ view model =
     , H.p []
         [ H.text "Note that last bit: "
         , Utils.b " everything is purely honor-system."
-        , H.text " Biatob doesn't touch money, it relies on you to settle up on your own. While a significant restriction in some ways (you can only bet against people who trust you to pay your debts) this also makes things "
+        , H.text " Biatob doesn't touch money, it relies on you to settle up on your own. While a significant restriction in some ways (you can only bet against people whom you trust to pay their debts) this also makes things "
         , Utils.i "much"
         , H.text " simpler: you don't need to give me your credit card number, you don't need to pay any fees, I don't need to worry about being charged with running an illegal gambling operation -- everybody wins!"
         ]
