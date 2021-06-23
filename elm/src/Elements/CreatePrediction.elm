@@ -607,11 +607,7 @@ view model =
           ]
     , viewForm model
     , let
-        allowsEmailInvitation = case model.globals.serverState.settings of
-          Just settings -> settings.allowEmailInvitations && (case settings.email |> Maybe.andThen .emailFlowStateKind of
-            Just (Pb.EmailFlowStateKindVerified _) -> True
-            _ -> False)
-          Nothing -> False
+        allowsEmailInvitation = Globals.hasEmailAddress model.globals && (model.globals.serverState.settings |> Maybe.map .allowEmailInvitations |> Maybe.withDefault False)
       in
       if allowsEmailInvitation || not (Globals.isLoggedIn model.globals) then
         H.text ""

@@ -8,6 +8,7 @@ module Globals exposing
   , getTrustRelationship
   , getRelationship
   , getOwnUsername
+  , hasEmailAddress
   , ServerState
   , globalsDecoder
   , tick
@@ -250,3 +251,12 @@ globalsDecoder =
 getOwnUsername : Globals -> Maybe Username
 getOwnUsername globals =
   globals.authToken |> Maybe.map .owner
+
+hasEmailAddress : Globals -> Bool
+hasEmailAddress globals =
+  case globals.serverState.settings of
+    Nothing -> False
+    Just settings ->
+      case Utils.mustUserInfoEmail settings |> Utils.mustEmailFlowStateKind of
+        Pb.EmailFlowStateKindVerified _ -> True
+        _ -> False
