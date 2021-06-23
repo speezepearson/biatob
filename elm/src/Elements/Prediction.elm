@@ -12,7 +12,6 @@ import Widgets.CopyWidget as CopyWidget
 import Widgets.AuthWidget as AuthWidget
 import Widgets.Navbar as Navbar
 import Widgets.EmailSettingsWidget as EmailSettingsWidget
-import Widgets.SmallInvitationWidget as SmallInvitationWidget
 import Globals
 import API
 import Biatob.Proto.Mvp as Pb
@@ -34,7 +33,6 @@ type alias Model =
   , navbarAuth : AuthWidget.State
   , authWidget : AuthWidget.State
   , predictionId : PredictionId
-  , invitationWidget : SmallInvitationWidget.State
   , emailSettingsWidget : EmailSettingsWidget.State
   , resolveStatus : RequestStatus
   , stakeField : String
@@ -50,7 +48,6 @@ type AuthWidgetLoc = Navbar | Inline
 type Msg
   = SetAuthWidget AuthWidgetLoc AuthWidget.State
   | SetEmailWidget EmailSettingsWidget.State
-  | SetInvitationWidget SmallInvitationWidget.State
   | SendInvitation
   | SendInvitationFinished Pb.SendInvitationRequest (Result Http.Error Pb.SendInvitationResponse)
   | LogInUsername AuthWidgetLoc AuthWidget.State Pb.LogInUsernameRequest
@@ -89,7 +86,6 @@ init flags =
     , navbarAuth = AuthWidget.init
     , authWidget = AuthWidget.init
     , predictionId = predictionId
-    , invitationWidget = SmallInvitationWidget.init
     , emailSettingsWidget = EmailSettingsWidget.init
     , resolveStatus = Unstarted
     , stakeStatus = Unstarted
@@ -167,7 +163,6 @@ viewBodyMockup globals prediction =
     , navbarAuth = AuthWidget.init
     , authWidget = AuthWidget.init
     , predictionId = "12345"
-    , invitationWidget = SmallInvitationWidget.init
     , emailSettingsWidget = EmailSettingsWidget.init
     , resolveStatus = Unstarted
     , stakeStatus = Unstarted
@@ -941,15 +936,12 @@ update msg model =
       ( updateAuthWidget loc (always widgetState) model , Cmd.none )
     SetEmailWidget widgetState ->
       ( { model | emailSettingsWidget = widgetState } , Cmd.none )
-    SetInvitationWidget widgetState ->
-      ( { model | invitationWidget = widgetState } , Cmd.none )
     SendInvitation ->
       ( { model | sendInvitationStatus = AwaitingResponse }
       , let req = {recipient=(mustPrediction model).creator} in API.postSendInvitation (SendInvitationFinished req) req
       )
     SendInvitationFinished req res ->
       ( { model | globals = model.globals |> Globals.handleSendInvitationResponse req res
-                , invitationWidget = model.invitationWidget |> SmallInvitationWidget.handleSendInvitationResponse res
                 , sendInvitationStatus = case API.simplifySendInvitationResponse res of
                     Ok _ -> Succeeded
                     Err e -> Failed e

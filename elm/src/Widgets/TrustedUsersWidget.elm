@@ -9,7 +9,6 @@ import Dict as D
 import Biatob.Proto.Mvp as Pb
 import Utils
 
-import Widgets.SmallInvitationWidget as SmallInvitationWidget
 import API
 import Time
 import Utils exposing (Username)
@@ -24,16 +23,14 @@ type alias Config msg =
   , httpOrigin : String
   }
 type alias State =
-  { invitationWidget : SmallInvitationWidget.State
-  , setTrustedRequestStatuses : D.Dict Username SetTrustedRequestStatus
+  { setTrustedRequestStatuses : D.Dict Username SetTrustedRequestStatus
   }
 
 type SetTrustedRequestStatus = AwaitingResponse | Succeeded | Failed String
 
 init : State
 init =
-  { invitationWidget = SmallInvitationWidget.init
-  , setTrustedRequestStatuses = D.empty
+  { setTrustedRequestStatuses = D.empty
   }
 
 handleSetTrustedResponse : Username -> Result Http.Error Pb.SetTrustedResponse -> State -> State

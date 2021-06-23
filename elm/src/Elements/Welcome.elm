@@ -10,7 +10,6 @@ import Time
 import Utils
 
 import Widgets.AuthWidget as AuthWidget
-import Widgets.SmallInvitationWidget as SmallInvitationWidget
 import Widgets.EmailSettingsWidget as EmailSettingsWidget
 import Globals
 import API
@@ -25,7 +24,6 @@ type alias Model =
   { globals : Globals.Globals
   , navbarAuth : AuthWidget.State
   , authWidget : AuthWidget.State
-  , invitationWidget : SmallInvitationWidget.State
   , emailSettingsWidget : EmailSettingsWidget.State
   }
 
@@ -33,7 +31,6 @@ type AuthWidgetLoc = Navbar | Inline
 type Msg
   = SetAuthWidget AuthWidgetLoc AuthWidget.State
   | SetEmailWidget EmailSettingsWidget.State
-  | SetInvitationWidget SmallInvitationWidget.State
   | LogInUsername AuthWidgetLoc AuthWidget.State Pb.LogInUsernameRequest
   | LogInUsernameFinished AuthWidgetLoc Pb.LogInUsernameRequest (Result Http.Error Pb.LogInUsernameResponse)
   | RegisterUsername AuthWidgetLoc AuthWidget.State Pb.RegisterUsernameRequest
@@ -56,7 +53,6 @@ init flags =
   ( { globals = JD.decodeValue Globals.globalsDecoder flags |> Utils.mustResult "flags"
     , navbarAuth = AuthWidget.init
     , authWidget = AuthWidget.init
-    , invitationWidget = SmallInvitationWidget.init
     , emailSettingsWidget = EmailSettingsWidget.init
     }
   , Cmd.none
@@ -75,8 +71,6 @@ update msg model =
       ( updateAuthWidget loc (always widgetState) model , Cmd.none )
     SetEmailWidget widgetState ->
       ( { model | emailSettingsWidget = widgetState } , Cmd.none )
-    SetInvitationWidget widgetState ->
-      ( { model | invitationWidget = widgetState } , Cmd.none )
     LogInUsername loc widgetState req ->
       ( updateAuthWidget loc (always widgetState) model
       , API.postLogInUsername (LogInUsernameFinished loc req) req
