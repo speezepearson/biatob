@@ -136,14 +136,14 @@ view config state =
         [ H.button
           [ HA.disabled <| (state.requestStatus == AwaitingResponse) || not canSubmit
           , HE.onClick logInMsg
-          , HA.class "btn btn-sm btn-primary"
+          , HA.class "btn btn-sm py-0 btn-primary"
           ]
           [H.text "Log in"]
         , H.span [HA.class "pt-1"] [H.text " or "]
         , H.button
           [ HA.disabled <| (state.requestStatus == AwaitingResponse) || not canSubmit
           , HE.onClick registerMsg
-          , HA.class "btn btn-sm btn-secondary"
+          , HA.class "btn btn-sm py-0 btn-secondary"
           ]
           [H.text "Sign up"]
         ]
@@ -159,7 +159,7 @@ view config state =
           ]
         , H.div [HA.class "col-4"]
           [ H.button
-            [ HA.class "btn btn-sm btn-outline-primary"
+            [ HA.class "btn btn-sm py-0 btn-outline-primary"
             , HA.disabled (state.requestStatus == AwaitingResponse)
             , HE.onClick (config.signOut { state | requestStatus = AwaitingResponse } {})
             ] [H.text "Sign out"]

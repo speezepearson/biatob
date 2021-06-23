@@ -105,7 +105,7 @@ view config state =
             , H.button
                 [ HE.onClick (config.setEmail {state | registrationRequestStatus = AwaitingResponse} {email=state.emailField})
                 , HA.disabled <| state.registrationRequestStatus == AwaitingResponse || Result.toMaybe (parseEmailAddress state) == Nothing
-                , HA.class "btn btn-sm btn-primary"
+                , HA.class "btn btn-sm py-0 btn-primary"
                 ] [H.text "Send verification"]
               , H.text " "
               , case state.registrationRequestStatus of
@@ -133,14 +133,14 @@ view config state =
             , H.button
               [ HE.onClick (config.verifyEmail {state | registrationRequestStatus = AwaitingResponse} {code=state.codeField})
               , HA.disabled <| state.registrationRequestStatus == AwaitingResponse || state.codeField == ""
-              , HA.class "btn btn-sm btn-primary"
+              , HA.class "btn btn-sm py-0 btn-primary"
               ] [H.text "Verify code"]
             , H.text " "
             -- TODO: "Resend email"
             , H.text " (Or, "
             , H.button
                 [ HE.onClick (config.setEmail {state | registrationRequestStatus = AwaitingResponse} {email=""})
-                , HA.class "btn btn-sm btn-outline-secondary"
+                , HA.class "btn btn-sm py-0 btn-outline-secondary"
                 ]
                 [H.text "delete email"]
             , H.text ")"
@@ -157,7 +157,7 @@ view config state =
             , H.text ". "
             , H.button
                 [ HE.onClick (config.setEmail {state | registrationRequestStatus = AwaitingResponse} {email=""})
-                , HA.class "btn btn-sm btn-outline-primary"
+                , HA.class "btn btn-sm py-0 btn-outline-primary"
                 ]
                 [H.text "delete?"]
             , H.text " "

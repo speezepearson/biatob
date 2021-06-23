@@ -347,7 +347,7 @@ viewBody model =
             , H.button
               [ HA.disabled (model.setTrustedStatus == AwaitingResponse)
               , HE.onClick SetCreatorTrusted
-              , HA.class "btn btn-outline-primary"
+              , HA.class "btn btn-sm btn-primary"
               ]
               [ H.text <| "I trust '" ++ prediction.creator ++ "'" ]
             , case model.setTrustedStatus of
@@ -377,7 +377,7 @@ viewBody model =
             , H.button
               [ HA.disabled (model.sendInvitationStatus == AwaitingResponse)
               , HE.onClick SendInvitation
-              , HA.class "btn btn-outline-primary"
+              , HA.class "btn btn-sm btn-primary"
               ]
               [ H.text <| "I trust '" ++ prediction.creator ++ "', and I'm pretty sure they trust me too" ]
             , H.br [] []
@@ -438,7 +438,7 @@ viewResolveButtons model =
         , H.button
           [ HA.disabled (model.resolveStatus == AwaitingResponse)
           , HE.onClick <| Resolve Pb.ResolutionNoneYet
-          , HA.class "btn btn-sm btn-outline-secondary"
+          , HA.class "btn btn-sm py-0 btn-outline-secondary"
           ]
           [ H.text "un-resolve it." ]
         ]
@@ -454,9 +454,9 @@ viewResolveButtons model =
           mistakeInfo "INVALID"
         Pb.ResolutionNoneYet ->
           H.span []
-          [ H.button [HA.class "btn btn-sm btn-outline-primary mx-2", HA.disabled (model.resolveStatus == AwaitingResponse), HE.onClick <| Resolve Pb.ResolutionYes    ] [H.text "Resolve YES"]
-          , H.button [HA.class "btn btn-sm btn-outline-primary mx-2", HA.disabled (model.resolveStatus == AwaitingResponse), HE.onClick <| Resolve Pb.ResolutionNo     ] [H.text "Resolve NO"]
-          , H.button [HA.class "btn btn-sm btn-outline-primary mx-2", HA.disabled (model.resolveStatus == AwaitingResponse), HE.onClick <| Resolve Pb.ResolutionInvalid] [H.text "Resolve INVALID"]
+          [ H.button [HA.class "btn btn-sm py-0 btn-outline-primary mx-2", HA.disabled (model.resolveStatus == AwaitingResponse), HE.onClick <| Resolve Pb.ResolutionYes    ] [H.text "Resolve YES"]
+          , H.button [HA.class "btn btn-sm py-0 btn-outline-primary mx-2", HA.disabled (model.resolveStatus == AwaitingResponse), HE.onClick <| Resolve Pb.ResolutionNo     ] [H.text "Resolve NO"]
+          , H.button [HA.class "btn btn-sm py-0 btn-outline-primary mx-2", HA.disabled (model.resolveStatus == AwaitingResponse), HE.onClick <| Resolve Pb.ResolutionInvalid] [H.text "Resolve INVALID"]
           ]
         Pb.ResolutionUnrecognized_ _ ->
           H.span []
@@ -532,7 +532,7 @@ viewStakeWidget bettability model =
     , H.text <| if model.bettorIsASkeptic then "will" else "won't"
     , H.text ". "
     , H.button
-        (HA.class "btn btn-sm btn-primary" :: case stakeCents of
+        (HA.class "btn btn-sm py-0 btn-primary" :: case stakeCents of
           Ok 0 ->
             [ HA.disabled True ]
           Ok cents ->
