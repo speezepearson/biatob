@@ -122,6 +122,11 @@ view model =
             , H.div [HA.class "input-group-append"] [H.div [HA.class "input-group-text"] [H.text "%"]]
             , H.div [HA.class "invalid-feedback"] [viewError pLow]
             ]
+          , case pLow of
+              Err _ -> H.text ""
+              Ok p -> case rationalApprox {x=p, tolerance=0.13 * min p (1-p)} of
+                Nothing -> H.text ""
+                Just (n,d) -> if n==0 || n==d then H.text "" else H.span [HA.class "text-secondary"] [H.text <| "i.e. about " ++ String.fromInt n ++ " out of " ++ String.fromInt d]
           ]
         , let pHigh = parsePHigh model in
           H.div [HA.class "mb-3"]
@@ -137,6 +142,11 @@ view model =
             , H.div [HA.class "input-group-append"] [H.div [HA.class "input-group-text"] [H.text "%"]]
             , H.div [HA.class "invalid-feedback"] [viewError pHigh]
             ]
+          , case pHigh of
+              Err _ -> H.text ""
+              Ok p -> case rationalApprox {x=p, tolerance=0.13 * min p (1-p)} of
+                Nothing -> H.text ""
+                Just (n,d) -> if n==0 || n==d then H.text "" else H.span [HA.class "text-secondary"] [H.text <| "i.e. about " ++ String.fromInt n ++ " out of " ++ String.fromInt d]
           ]
         , let exposure = parseExposure model in
           H.div [HA.class "mb-3"]
@@ -196,6 +206,25 @@ view model =
       ]
     ]
   }
+
+rationalApprox : {x: Float, tolerance: Float} -> Maybe (Int, Int)
+rationalApprox {x, tolerance} =
+  let
+    denominators = [2, 3, 4, 5, 6, 10, 15, 20]
+
+    bestNumerator : Int -> Int
+    bestNumerator denominator = round (x * toFloat denominator)
+
+    error : Int -> Float
+    error denominator =
+      abs <| x - toFloat (bestNumerator denominator) / toFloat denominator
+
+  in
+    denominators
+    |> List.map (\d -> (error d, bestNumerator d, d))
+    |> List.filter (\(err, _, _) -> err <= tolerance)
+    |> List.minimum
+    |> Maybe.map (\(_, n, d) -> (n, d))
 
 update : Msg -> Model -> ( Model , Cmd never )
 update msg model =
