@@ -672,6 +672,7 @@ previewPrediction {request, creatorName, createdAt} =
   , creator = creatorName
   , resolutions = []
   , yourTrades = []
+  , yourQueuedTrades = []
   , resolvesAtUnixtime = request.resolvesAtUnixtime
   , allowEmailInvitations = False
   }

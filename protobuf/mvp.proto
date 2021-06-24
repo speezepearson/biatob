@@ -85,12 +85,19 @@ message ResolutionEvent {
 }
 
 message Trade {
-  UserId bettor_depr = 1;
   string bettor = 7;
   bool bettor_is_a_skeptic = 2;
   uint32 bettor_stake_cents = 3;
   uint32 creator_stake_cents = 4;
   double transacted_unixtime = 6;
+}
+
+message QueuedTrade {
+  string bettor = 1;
+  bool bettor_is_a_skeptic = 2;
+  uint32 bettor_stake_cents = 3;
+  uint32 creator_stake_cents = 4;
+  double enqueued_at_unixtime = 6;
 }
 
 
@@ -195,6 +202,7 @@ message UserPredictionView {
   string creator = 9;
   repeated ResolutionEvent resolutions = 10;
   repeated Trade your_trades = 11;
+  repeated QueuedTrade your_queued_trades = 17;
   double resolves_at_unixtime = 15;
   bool allow_email_invitations = 16;
 }
@@ -235,6 +243,21 @@ message StakeRequest {
 }
 message StakeResponse {
   oneof stake_result {
+    UserPredictionView ok = 1;
+    Error error = 2;
+  }
+  message Error {
+    string catchall = 1;
+  }
+}
+
+message QueueStakeRequest {
+  string prediction_id = 2;
+  bool bettor_is_a_skeptic = 3;
+  uint32 bettor_stake_cents = 4;
+}
+message QueueStakeResponse {
+  oneof queue_stake_result {
     UserPredictionView ok = 1;
     Error error = 2;
   }

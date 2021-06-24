@@ -76,6 +76,19 @@ trades = Table(
 Index('trades_by_prediction_id', trades.c.prediction_id)
 Index('trades_by_bettor', trades.c.bettor)
 
+queued_trades = Table(
+  'queued_trades',
+  metadata,
+  Column('prediction_id', ForeignKey('predictions.prediction_id'), nullable=False),
+  Column('bettor', ForeignKey('users.username'), nullable=False),
+  Column('bettor_is_a_skeptic', BOOLEAN(), nullable=False),
+  Column('bettor_stake_cents', Integer(), CheckConstraint('bettor_stake_cents > 0'), nullable=False),
+  Column('creator_stake_cents', Integer(), CheckConstraint('creator_stake_cents > 0'), nullable=False),
+  Column('enqueued_at_unixtime', REAL(), nullable=False),
+)
+Index('queued_trades_by_prediction_id', queued_trades.c.prediction_id)
+Index('queued_trades_by_bettor', queued_trades.c.bettor)
+
 resolutions = Table(
   'resolutions',
   metadata,

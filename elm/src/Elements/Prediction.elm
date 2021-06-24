@@ -26,8 +26,6 @@ port copy : String -> Cmd msg
 port navigate : Maybe String -> Cmd msg
 port authWidgetExternallyChanged : (AuthWidget.DomModification -> msg) -> Sub msg
 
-defaultStakeField = "10"
-
 type alias Model =
   { globals : Globals.Globals
   , navbarAuth : AuthWidget.State
@@ -62,6 +60,8 @@ type Msg
   | SetEmailFinished Pb.SetEmailRequest (Result Http.Error Pb.SetEmailResponse)
   | SignOut AuthWidgetLoc AuthWidget.State Pb.SignOutRequest
   | SignOutFinished AuthWidgetLoc Pb.SignOutRequest (Result Http.Error Pb.SignOutResponse)
+  | QueueStake Cents
+  | QueueStakeFinished Pb.QueueStakeRequest (Result Http.Error Pb.QueueStakeResponse)
   | Stake Cents
   | StakeFinished Pb.StakeRequest (Result Http.Error Pb.StakeResponse)
   | UpdateSettings EmailSettingsWidget.State Pb.UpdateSettingsRequest
@@ -91,7 +91,7 @@ init flags =
     , stakeStatus = Unstarted
     , setTrustedStatus = Unstarted
     , sendInvitationStatus = Unstarted
-    , stakeField = defaultStakeField
+    , stakeField = "10"
     , bettorIsASkeptic = True
     } |> updateBettorInputFields prediction
   , Cmd.none
@@ -102,7 +102,7 @@ updateBettorInputFields prediction model =
   let
     bettorIsASkeptic = not (canAnyBelieversBet prediction && not (canAnySkepticsBet prediction))
   in
-  { model | stakeField = String.fromInt <| min 10 (getBetParameters bettorIsASkeptic prediction).maxBettorStake
+  { model | stakeField = min 1000 (getBetParameters bettorIsASkeptic prediction).maxBettorStake |> Utils.formatCents |> String.replace "$" ""
           , bettorIsASkeptic = bettorIsASkeptic
   }
 
@@ -156,7 +156,7 @@ viewBodyMockup globals prediction =
       }
   in
   viewBody
-    { globals = globals
+    ({ globals = globals
         |> Globals.handleGetPredictionResponse {predictionId="12345"} (Ok {getPredictionResult=Just <| Pb.GetPredictionResultPrediction prediction})
         |> Globals.handleSignOutResponse {} (Ok {})
         |> Globals.handleLogInUsernameResponse {username="__previewer__", password=""} (Ok {logInUsernameResult=Just <| Pb.LogInUsernameResultOk {token=Just mockToken, userInfo=Just mockSettings}})
@@ -168,9 +168,9 @@ viewBodyMockup globals prediction =
     , stakeStatus = Unstarted
     , setTrustedStatus = Unstarted
     , sendInvitationStatus = Unstarted
-    , stakeField = defaultStakeField
+    , stakeField = "10"
     , bettorIsASkeptic = True
-    }
+    } |> updateBettorInputFields prediction)
   |> H.div []
   |> H.map (\_ -> ())
 
@@ -235,7 +235,7 @@ getBetParameters bettorIsASkeptic prediction =
     { remainingCreatorStake = remainingCreatorStake
     , creatorStakeFactor = creatorStakeFactor
     , maxBettorStake = maxBettorStake
-    }
+    } |> Debug.log "bet params"
 
 
 canAnySkepticsBet : Pb.UserPredictionView -> Bool
@@ -276,6 +276,18 @@ viewBody model =
   let
     prediction = mustPrediction model
     isOwnPrediction = Globals.isSelf model.globals prediction.creator
+    maybeButHeresAQueueForm =
+      if Globals.getRelationship model.globals prediction.creator |> Maybe.map .trustedByYou |> Maybe.withDefault False then
+        H.p []
+        [ H.text "However! While you're waiting for them to trust you back, I'll let you "
+        , Utils.i "queue up"
+        , H.text " bets that I'll apply once "
+        , Utils.renderUser prediction.creator
+        , H.text " tells me they trust you."
+        , viewStakeWidget QueueingNecessary model
+        ]
+      else
+        H.text ""
   in
   [ H.h2 [HA.class "text-center"] [H.text <| getTitleText model.globals.timeZone prediction]
   , H.hr [] []
@@ -290,9 +302,24 @@ viewBody model =
           , if isOwnPrediction then
               viewTradesAsCreator model.globals.timeZone prediction
             else
-              viewTradesAsBettor model.globals.timeZone prediction
+              viewTradesAsBettor model.globals.timeZone prediction prediction.yourTrades
           , H.hr [] []
           ]
+      , if (not isOwnPrediction) || List.isEmpty prediction.yourQueuedTrades then
+          H.text ""
+        else
+          H.div []
+          [ Utils.b "Your queued stake"
+          , H.text " (from bets that I'll apply once "
+          , Utils.renderUser prediction.creator
+          , H.text " tells me they trust you): "
+          , viewTradesAsBettor model.globals.timeZone prediction
+            <| List.map
+                (\qt -> {bettor=qt.bettor, bettorIsASkeptic=qt.bettorIsASkeptic, bettorStakeCents=qt.bettorStakeCents, creatorStakeCents=qt.creatorStakeCents, transactedUnixtime=qt.enqueuedAtUnixtime})
+                prediction.yourQueuedTrades
+          , H.hr [] []
+          ]
+
       , case getPrereqsForStaking model of
           IsCreator ->
             H.div []
@@ -334,7 +361,7 @@ viewBody model =
             H.div []
             [ Utils.b "Make a bet:"
             , H.text " "
-            , viewStakeWidget BettingEnabled model
+            , viewStakeWidget QueueingUnnecessary model
             ]
           NeedsToSetTrusted ->
             H.div []
@@ -359,12 +386,15 @@ viewBody model =
             ]
           NeedsToWaitForInvitation ->
             H.div []
-            [ Utils.b "Make a bet:"
-            , H.text " Before I let you bet against "
-            , Utils.renderUser prediction.creator
-            , H.text ", I have to make sure that they trust you to pay up if you lose!"
-            , H.br [] []
-            , H.text "I've sent them an email asking whether they trust you; you'll have to wait for them to say yes before you can bet on their predictions!"
+            [ H.p []
+              [ Utils.b "Make a bet:"
+              , H.text " Before I let you bet against "
+              , Utils.renderUser prediction.creator
+              , H.text ", I have to make sure that they trust you to pay up if you lose!"
+              , H.br [] []
+              , H.text "I've sent them an email asking whether they trust you; you'll have to wait for them to say yes before you can bet on their predictions!"
+            ]
+            , maybeButHeresAQueueForm
             ]
           NeedsToSendEmailInvitation ->
             H.div []
@@ -386,7 +416,7 @@ viewBody model =
               ]
             , H.p []
               [ H.text "Alternatively, you could "
-              , if Globals.getRelationship model.globals prediction.creator |> Debug.log "creator rel" |> Maybe.map .trustedByYou |> Maybe.withDefault False then
+              , if Globals.getRelationship model.globals prediction.creator |> Maybe.map .trustedByYou |> Maybe.withDefault False then
                   H.span []
                   [ H.text " text/email/whatever them a link to "
                   , H.a [HA.href <| Utils.pathToUserPage <| Utils.must "NeedsEmailAddress only possible for logged-in users" <| Globals.getOwnUsername model.globals] [H.text "your user page"]
@@ -394,7 +424,8 @@ viewBody model =
                   ]
                 else
                   H.span []
-                  [ H.button
+                  [ H.text " click "
+                  , H.button
                     [ HA.disabled (model.setTrustedStatus == AwaitingResponse)
                     , HE.onClick SetCreatorTrusted
                     , HA.class "btn btn-sm btn-primary"
@@ -410,6 +441,7 @@ viewBody model =
                   , H.text " and ask them to mark you as trusted."
                   ]
                 ]
+            , maybeButHeresAQueueForm
             ]
           NeedsEmailAddress ->
             H.div []
@@ -434,7 +466,7 @@ viewBody model =
               ]
             , H.p []
               [ H.text "Alternatively, you could "
-              , if Globals.getRelationship model.globals prediction.creator |> Debug.log "creator rel" |> Maybe.map .trustedByYou |> Maybe.withDefault False then
+              , if Globals.getRelationship model.globals prediction.creator |> Maybe.map .trustedByYou |> Maybe.withDefault False then
                   H.span []
                   [ H.text " text/email/whatever them a link to "
                   , H.a [HA.href <| Utils.pathToUserPage <| Utils.must "NeedsEmailAddress only possible for logged-in users" <| Globals.getOwnUsername model.globals] [H.text "your user page"]
@@ -442,7 +474,8 @@ viewBody model =
                   ]
                 else
                   H.span []
-                  [ H.button
+                  [ H.text " click "
+                  , H.button
                     [ HA.disabled (model.setTrustedStatus == AwaitingResponse)
                     , HE.onClick SetCreatorTrusted
                     , HA.class "btn btn-sm btn-primary"
@@ -458,17 +491,21 @@ viewBody model =
                   , H.text " and ask them to mark you as trusted."
                   ]
                 ]
+            , maybeButHeresAQueueForm
             ]
           NeedsToTextUserPageLink ->
             H.div []
-            [ Utils.b "Make a bet:"
-            , H.text " Before I let you bet against "
-            , Utils.renderUser prediction.creator
-            , H.text ", I have to make sure that they trust you to pay up if you lose!"
-            , H.br [] []
-            , H.text "Normally, I'd offer to ask them for you, but they've disabled that feature! You'll need to send them a link to "
-            , H.a [HA.href <| Utils.pathToUserPage <| Utils.must "checked user is logged in" <| Globals.getOwnUsername model.globals] [H.text "your user page"]
-            , H.text ", over SMS/IM/email/whatever, and ask them to mark you as trusted."
+            [ H.p []
+              [ Utils.b "Make a bet:"
+              , H.text " Before I let you bet against "
+              , Utils.renderUser prediction.creator
+              , H.text ", I have to make sure that they trust you to pay up if you lose!"
+              , H.br [] []
+              , H.text "Normally, I'd offer to ask them for you, but they've disabled that feature! You'll need to send them a link to "
+              , H.a [HA.href <| Utils.pathToUserPage <| Utils.must "checked user is logged in" <| Globals.getOwnUsername model.globals] [H.text "your user page"]
+              , H.text ", over SMS/IM/email/whatever, and ask them to mark you as trusted."
+              ]
+            , maybeButHeresAQueueForm
             ]
       ]
     , if not (Globals.isLoggedIn model.globals) then
@@ -546,16 +583,11 @@ viewWillWontDropdown model =
       , H.option [HA.value "will", HA.selected <| not <| model.bettorIsASkeptic] [H.text "will"]
       ]
 
-type Bettability = BettingEnabled | BettingDisabled
+type Bettability = QueueingNecessary | QueueingUnnecessary
 viewStakeWidget : Bettability -> Model -> Html Msg
 viewStakeWidget bettability model =
   let
     prediction = mustPrediction model
-    certainty = Utils.mustPredictionCertainty prediction
-
-    disableInputs = case bettability of
-      BettingEnabled -> False
-      BettingDisabled -> True
 
     betParameters = getBetParameters model.bettorIsASkeptic prediction
     stakeCents = case String.toFloat model.stakeField of
@@ -563,7 +595,12 @@ viewStakeWidget bettability model =
       Just dollars ->
         let n = floor (100*dollars) in
         if n < 0 || n > betParameters.maxBettorStake then
-          Err ("must be between $0 and " ++ Utils.formatCents betParameters.maxBettorStake)
+          Err <|
+            "must be between $0 and " ++ Utils.formatCents betParameters.maxBettorStake
+            ++ ": " ++ if betParameters.maxBettorStake == Utils.maxLegalStakeCents then
+                "I don't (yet) want this site used for enormous bets"
+              else
+                (prediction.creator ++ " isn't willing to make larger bets")
         else
           Ok n
   in
@@ -572,7 +609,6 @@ viewStakeWidget bettability model =
     , H.input
         [ HA.style "width" "7em"
         , HA.type_"number", HA.min "0", HA.max (toFloat betParameters.maxBettorStake / 100 + epsilon |> String.fromFloat), HA.step "any"
-        , HA.disabled disableInputs
         , HA.class "form-control form-control-sm d-inline-block"
         , HA.id "stakeField"
         , HE.onInput SetStakeField
@@ -592,8 +628,9 @@ viewStakeWidget bettability model =
           Ok 0 ->
             [ HA.disabled True ]
           Ok cents ->
-            [ HA.disabled disableInputs
-            , HE.onClick (Stake cents)
+            [ HE.onClick <| case bettability of
+                QueueingNecessary -> QueueStake cents
+                QueueingUnnecessary -> Stake cents
             ]
           Err _ ->
             [ HA.disabled True ]
@@ -806,11 +843,11 @@ viewTradesAsCreator timeZone prediction =
   in
     makeTable [HA.class "winnings-by-bettor-table"] (bettorColumn :: winningsColumns) (Dict.toList tradesByBettor)
 
-viewTradesAsBettor : Time.Zone -> Pb.UserPredictionView -> Html msg
-viewTradesAsBettor timeZone prediction =
+viewTradesAsBettor : Time.Zone -> Pb.UserPredictionView -> List Pb.Trade -> Html msg
+viewTradesAsBettor timeZone prediction trades =
   let
-    allTradesDetails : Username -> List Pb.Trade -> Html msg
-    allTradesDetails counterparty trades =
+    allTradesDetails : Html msg
+    allTradesDetails =
       H.details [HA.style "opacity" "50%"]
       [ H.summary [] [H.text "All trades"]
       , makeTable [HA.class "all-trades-details-table"]
@@ -823,7 +860,7 @@ viewTradesAsBettor timeZone prediction =
         , ( [H.text "You staked"]
           , \t -> [H.text <| Utils.formatCents t.bettorStakeCents]
           )
-        , ( [Utils.renderUser counterparty, H.text "'s stake"]
+        , ( [Utils.renderUser prediction.creator, H.text "'s stake"]
           , \t -> [H.text <| Utils.formatCents t.creatorStakeCents]
           )
         ]
@@ -834,28 +871,28 @@ viewTradesAsBettor timeZone prediction =
       Pb.ResolutionYes ->
         H.span []
         [ H.text "Resolved YES: "
-        , Utils.b <| formatYouWin -(getTotalCreatorWinnings True prediction.yourTrades) ++ "!"
-        , allTradesDetails prediction.creator prediction.yourTrades
+        , Utils.b <| formatYouWin -(getTotalCreatorWinnings True trades) ++ "!"
+        , allTradesDetails
         ]
       Pb.ResolutionNo ->
         H.span []
         [ H.text "Resolved NO: "
-        , Utils.b <| formatYouWin -(getTotalCreatorWinnings False prediction.yourTrades) ++ "!"
-        , allTradesDetails prediction.creator prediction.yourTrades
+        , Utils.b <| formatYouWin -(getTotalCreatorWinnings False trades) ++ "!"
+        , allTradesDetails
         ]
       Pb.ResolutionInvalid ->
         H.span []
-        [ H.text <| "If YES, " ++ formatYouWin -(getTotalCreatorWinnings True prediction.yourTrades)
-        , H.text <| "; if NO, " ++ formatYouWin -(getTotalCreatorWinnings False prediction.yourTrades)
+        [ H.text <| "If YES, " ++ formatYouWin -(getTotalCreatorWinnings True trades)
+        , H.text <| "; if NO, " ++ formatYouWin -(getTotalCreatorWinnings False trades)
         , H.text "."
-        , allTradesDetails prediction.creator prediction.yourTrades
+        , allTradesDetails
         ]
       Pb.ResolutionNoneYet ->
         H.span []
-        [ H.text <| "If YES, " ++ formatYouWin -(getTotalCreatorWinnings True prediction.yourTrades)
-        , H.text <| "; if NO, " ++ formatYouWin -(getTotalCreatorWinnings False prediction.yourTrades)
+        [ H.text <| "If YES, " ++ formatYouWin -(getTotalCreatorWinnings True trades)
+        , H.text <| "; if NO, " ++ formatYouWin -(getTotalCreatorWinnings False trades)
         , H.text "."
-        , allTradesDetails prediction.creator prediction.yourTrades
+        , allTradesDetails
         ]
       Pb.ResolutionUnrecognized_ _ ->
         H.text "??????"
@@ -907,15 +944,16 @@ viewEmbedInfo model =
       "<a href=\"" ++ linkUrl ++ "\">"
       ++ "<img style=\"" ++ (imgStyles |> List.map (\(k,v) -> k++":"++v) |> String.join ";") ++ "\" src=\"" ++ imgUrl ++ "\" /></a>"
     linkText =
-      "["
+      "(bet "
       ++ Utils.formatCents (prediction.maximumStakeCents // 100 * 100)
       ++ " @ "
       ++ String.fromInt (round <| (Utils.mustPredictionCertainty prediction).low * 100)
       ++ "-"
       ++ String.fromInt (round <| (Utils.mustPredictionCertainty prediction).high * 100)
-      ++ "%]"
+      ++ "%)"
     linkCode =
       "<a href=\"" ++ linkUrl ++ "\">" ++ linkText ++ "</a>"
+    markdownLinkCode = "[" ++ linkText ++ "](" ++ linkUrl ++ ")"
   in
     H.ul []
       [ H.li [] <|
@@ -927,8 +965,11 @@ viewEmbedInfo model =
           [ H.img (HA.src imgUrl :: (imgStyles |> List.map (\(k,v) -> HA.style k v))) []]
         ]
       , H.li [] <|
-        [ H.text "A boring old link: "
+        [ H.text "A boring old link, either as HTML ("
         , CopyWidget.view Copy linkCode
+        , H.text ") or as  Markdown ("
+        , CopyWidget.view Copy markdownLinkCode
+        , H.text ")"
         , H.br [] []
         , H.text "This would render as: "
         , H.a [HA.href linkUrl] [H.text linkText]
@@ -1080,6 +1121,22 @@ update msg model =
             } |> updateBettorInputFields prediction
           Err e ->
             { model | globals = model.globals |> Globals.handleStakeResponse req res
+                    , stakeStatus = Failed e
+            }
+      , Cmd.none
+      )
+    QueueStake cents ->
+      ( { model | stakeStatus = AwaitingResponse }
+      , let req = {predictionId=model.predictionId, bettorIsASkeptic=model.bettorIsASkeptic, bettorStakeCents=cents} in API.postQueueStake (QueueStakeFinished req) req
+      )
+    QueueStakeFinished req res ->
+      ( case API.simplifyQueueStakeResponse res of
+          Ok prediction ->
+            { model | globals = model.globals |> Globals.handleQueueStakeResponse req res
+                    , stakeStatus = Succeeded
+            } |> updateBettorInputFields prediction
+          Err e ->
+            { model | globals = model.globals |> Globals.handleQueueStakeResponse req res
                     , stakeStatus = Failed e
             }
       , Cmd.none

@@ -4,6 +4,8 @@ from typing import Any, Mapping, Optional
 from typing_extensions import Literal
 from unittest.mock import ANY
 
+from sqlalchemy.sql.sqltypes import NullType
+
 from .protobuf import mvp_pb2
 from .core import Servicer
 from .emailer import Emailer
@@ -51,6 +53,11 @@ def StakeOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], request: mvp
   return assert_oneof(servicer.Stake(token, request), 'stake_result', 'ok', mvp_pb2.UserPredictionView)
 def StakeErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.StakeRequest) -> mvp_pb2.StakeResponse.Error:
   return assert_oneof(servicer.Stake(token, request), 'stake_result', 'error', mvp_pb2.StakeResponse.Error)
+
+def QueueStakeOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.QueueStakeRequest) -> mvp_pb2.UserPredictionView:
+  return assert_oneof(servicer.QueueStake(token, request), 'queue_stake_result', 'ok', mvp_pb2.UserPredictionView)
+def QueueStakeErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.QueueStakeRequest) -> mvp_pb2.QueueStakeResponse.Error:
+  return assert_oneof(servicer.QueueStake(token, request), 'queue_stake_result', 'error', mvp_pb2.QueueStakeResponse.Error)
 
 def ResolveOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], prediction_id: str, resolution: mvp_pb2.Resolution.V, notes: str = '') -> mvp_pb2.UserPredictionView:
   return assert_oneof(servicer.Resolve(token, mvp_pb2.ResolveRequest(prediction_id=prediction_id, resolution=resolution, notes=notes)), 'resolve_result', 'ok', mvp_pb2.UserPredictionView)
@@ -452,6 +459,134 @@ class TestStake:
       assert "you don\\'t trust the creator" in str(StakeErr(any_servicer, bettor_token, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_stake_cents=10)))
 
 
+class TestQueueStake:
+
+  async def test_error_if_resolved(self, any_servicer: Servicer):
+    creator_token = new_user_token(any_servicer, 'creator')
+    bettor_token = new_user_token(any_servicer, 'bettor')
+    SetTrustedOk(any_servicer, bettor_token, creator_token.owner, True)
+    prediction_id = CreatePredictionOk(any_servicer, creator_token, {})
+    ResolveOk(any_servicer, creator_token, prediction_id, mvp_pb2.RESOLUTION_YES)
+
+    with assert_prediction_unchanged(any_servicer, prediction_id=prediction_id, creator_token=creator_token):
+      assert 'prediction has already resolved' in str(QueueStakeErr(any_servicer, bettor_token, mvp_pb2.QueueStakeRequest(prediction_id=prediction_id, bettor_stake_cents=1_00)))
+
+  async def test_error_if_closed(self, clock: MockClock, any_servicer: Servicer):
+    creator_token = new_user_token(any_servicer, 'creator')
+    bettor_token = new_user_token(any_servicer, 'bettor')
+    SetTrustedOk(any_servicer, bettor_token, creator_token.owner, True)
+    prediction_id = CreatePredictionOk(any_servicer, creator_token, dict(open_seconds=86400, resolves_at_unixtime=int(clock.now().timestamp() + 2*86400)))
+
+    clock.tick(86401)
+    with assert_prediction_unchanged(any_servicer, prediction_id=prediction_id, creator_token=creator_token):
+      assert 'prediction is no longer open for betting' in str(QueueStakeErr(any_servicer, bettor_token, mvp_pb2.QueueStakeRequest(prediction_id=prediction_id, bettor_stake_cents=1_00)))
+
+  async def test_appears_in_your_queued_trades(self, any_servicer: Servicer, clock: MockClock):
+    creator_token = new_user_token(any_servicer, 'creator')
+    bettor_token = new_user_token(any_servicer, 'bettor')
+    SetTrustedOk(any_servicer, bettor_token, creator_token.owner, True)
+    prediction_id = CreatePredictionOk(any_servicer, creator_token, dict(
+        certainty=mvp_pb2.CertaintyRange(low=0.80, high=0.90),
+        maximum_stake_cents=100_00,
+    ))
+
+    QueueStakeOk(any_servicer, bettor_token, mvp_pb2.QueueStakeRequest(
+      prediction_id=prediction_id,
+      bettor_is_a_skeptic=True,
+      bettor_stake_cents=20_00,
+    ))
+    assert list(GetPredictionOk(any_servicer, creator_token, prediction_id).your_queued_trades) == [
+      mvp_pb2.QueuedTrade(
+        bettor=bettor_token.owner,
+        bettor_is_a_skeptic=True,
+        bettor_stake_cents=20_00,
+        creator_stake_cents=80_00,
+        enqueued_at_unixtime=clock.now().timestamp(),
+      ),
+    ]
+
+  async def test_error_if_already_trusted(self, any_servicer: Servicer, clock: MockClock):
+    alice_token, bob_token = alice_bob_tokens(any_servicer)
+    prediction_id = CreatePredictionOk(any_servicer, alice_token, dict(
+        certainty=mvp_pb2.CertaintyRange(low=0.80, high=0.90),
+        maximum_stake_cents=100_00,
+    ))
+
+    assert 'you already trust the creator, so you should be using the Stake endpoint, not QueueStake' in str(QueueStakeErr(any_servicer, bob_token, mvp_pb2.QueueStakeRequest(
+      prediction_id=prediction_id,
+      bettor_is_a_skeptic=True,
+      bettor_stake_cents=20_00,
+    )))
+
+  async def test_queued_stakes_dont_count_against_exposure(self, any_servicer: Servicer):
+    creator_token, friend_token = alice_bob_tokens(any_servicer)
+    bettor_token = new_user_token(any_servicer, 'bettor')
+    SetTrustedOk(any_servicer, bettor_token, creator_token.owner, True)
+    prediction_id = CreatePredictionOk(any_servicer, creator_token, dict(
+        certainty=mvp_pb2.CertaintyRange(low=0.50, high=1.00),
+        maximum_stake_cents=100_00,
+    ))
+
+    QueueStakeOk(any_servicer, bettor_token, mvp_pb2.QueueStakeRequest(
+      prediction_id=prediction_id,
+      bettor_is_a_skeptic=True,
+      bettor_stake_cents=100_00,
+    ))
+
+    prediction = GetPredictionOk(any_servicer, creator_token, prediction_id)
+    assert prediction.remaining_stake_cents_vs_skeptics == prediction.maximum_stake_cents
+
+    # ensure an actual friend can come along and bet for the full amount
+    StakeOk(any_servicer, friend_token, mvp_pb2.StakeRequest(
+      prediction_id=prediction_id,
+      bettor_is_a_skeptic=True,
+      bettor_stake_cents=100_00,
+    ))
+
+  async def test_prevents_overpromising(self, any_servicer: Servicer):
+    creator_token, friend_token = alice_bob_tokens(any_servicer)
+    bettor_token = new_user_token(any_servicer, 'bettor')
+    SetTrustedOk(any_servicer, bettor_token, creator_token.owner, True)
+    prediction_id = CreatePredictionOk(any_servicer, creator_token, dict(
+        certainty=mvp_pb2.CertaintyRange(low=0.80, high=0.90),
+        maximum_stake_cents=100_00,
+    ))
+
+    StakeOk(any_servicer, friend_token, mvp_pb2.StakeRequest(  # This is an ACTUAL stake, not just a queued stake, since queued stakes don't count against exposure
+      prediction_id=prediction_id,
+      bettor_is_a_skeptic=True,
+      bettor_stake_cents=25_00,
+    ))
+    with assert_prediction_unchanged(any_servicer, prediction_id=prediction_id, creator_token=creator_token):
+      assert 'bet would exceed creator tolerance' in str(QueueStakeErr(any_servicer, bettor_token, mvp_pb2.QueueStakeRequest(
+        prediction_id=prediction_id,
+        bettor_is_a_skeptic=True,
+        bettor_stake_cents=1,
+      )))
+
+  async def test_error_if_logged_out(self, any_servicer: Servicer):
+    token = new_user_token(any_servicer, 'rando')
+    prediction_id = CreatePredictionOk(any_servicer, token, {})
+    with assert_prediction_unchanged(any_servicer, prediction_id=prediction_id, creator_token=token):
+      assert 'must log in to bet' in str(QueueStakeErr(any_servicer, None, mvp_pb2.QueueStakeRequest(prediction_id=prediction_id)))
+
+  async def test_ok_if_creator_doesnt_trust_bettor(self, any_servicer: Servicer):
+    creator_token = new_user_token(any_servicer, 'creator')
+    prediction_id = CreatePredictionOk(any_servicer, creator_token, {})
+    bettor_token = new_user_token(any_servicer, 'bettor')
+    SetTrustedOk(any_servicer, bettor_token, creator_token.owner, True)
+    QueueStakeOk(any_servicer, bettor_token, mvp_pb2.QueueStakeRequest(prediction_id=prediction_id, bettor_stake_cents=10))
+    assert GetPredictionOk(any_servicer, bettor_token, prediction_id).your_queued_trades
+
+  async def test_error_if_bettor_doesnt_trust_creator(self, any_servicer: Servicer):
+    creator_token = new_user_token(any_servicer, 'creator')
+    prediction_id = CreatePredictionOk(any_servicer, creator_token, {})
+    bettor_token = new_user_token(any_servicer, 'bettor')
+    SetTrustedOk(any_servicer, creator_token, bettor_token.owner, True)
+    with assert_prediction_unchanged(any_servicer, prediction_id=prediction_id, creator_token=creator_token):
+      assert "you don\\'t trust the creator" in str(QueueStakeErr(any_servicer, bettor_token, mvp_pb2.QueueStakeRequest(prediction_id=prediction_id, bettor_stake_cents=10)))
+
+
 class TestResolve:
 
   async def test_happy_path(self, any_servicer: Servicer, clock: MockClock):
@@ -558,6 +693,31 @@ class TestSetTrusted:
 
     expected_invitations = {'recipient': mvp_pb2.GenericUserInfo.Invitation()} if trust else {}
     assert GetSettingsOk(any_servicer, inviter_token).invitations == expected_invitations
+
+  async def test_commits_queued_trades_when_mutual_trust_created(self, any_servicer: Servicer, clock: MockClock):
+    creator_token = new_user_token(any_servicer, 'creator')
+    bettor_token = new_user_token(any_servicer, 'bettor')
+    SetTrustedOk(any_servicer, bettor_token, creator_token.owner, True)
+    prediction_id = CreatePredictionOk(any_servicer, creator_token, dict(
+      certainty=mvp_pb2.CertaintyRange(low=0.50, high=1.00),
+      maximum_stake_cents=100_00,
+    ))
+    QueueStakeOk(any_servicer, bettor_token, mvp_pb2.QueueStakeRequest(
+      prediction_id=prediction_id,
+      bettor_is_a_skeptic=True,
+      bettor_stake_cents=20_00,
+    ))
+    prediction = GetPredictionOk(any_servicer, creator_token, prediction_id)
+    assert prediction.remaining_stake_cents_vs_skeptics == 100_00
+    assert not prediction.your_trades
+    assert prediction.your_queued_trades
+
+    SetTrustedOk(any_servicer, creator_token, bettor_token.owner, True)
+
+    prediction = GetPredictionOk(any_servicer, creator_token, prediction_id)
+    assert prediction.remaining_stake_cents_vs_skeptics == 80_00
+    assert prediction.your_trades
+    assert not prediction.your_queued_trades
 
 
 class TestGetUser:

@@ -38,6 +38,8 @@ postListPredictions : (Result Http.Error Pb.ListPredictionsResponse -> msg) -> P
 postListPredictions = hit {url="/api/ListPredictions", encoder=Pb.toListPredictionsRequestEncoder, decoder=Pb.listPredictionsResponseDecoder}
 postStake : (Result Http.Error Pb.StakeResponse -> msg) -> Pb.StakeRequest -> Cmd msg
 postStake = hit {url="/api/Stake", encoder=Pb.toStakeRequestEncoder, decoder=Pb.stakeResponseDecoder}
+postQueueStake : (Result Http.Error Pb.QueueStakeResponse -> msg) -> Pb.QueueStakeRequest -> Cmd msg
+postQueueStake = hit {url="/api/QueueStake", encoder=Pb.toQueueStakeRequestEncoder, decoder=Pb.queueStakeResponseDecoder}
 postResolve : (Result Http.Error Pb.ResolveResponse -> msg) -> Pb.ResolveRequest -> Cmd msg
 postResolve = hit {url="/api/Resolve", encoder=Pb.toResolveRequestEncoder, decoder=Pb.resolveResponseDecoder}
 postSetTrusted : (Result Http.Error Pb.SetTrustedResponse -> msg) -> Pb.SetTrustedRequest -> Cmd msg
@@ -148,6 +150,19 @@ simplifyStakeResponse res =
         Just (Pb.StakeResultOk result) ->
           Ok result
         Just (Pb.StakeResultError e) ->
+          Err e.catchall
+        Nothing ->
+          Err "Invalid server response (neither Ok nor Error in protobuf)"
+
+simplifyQueueStakeResponse : Result Http.Error Pb.QueueStakeResponse -> Result String Pb.UserPredictionView
+simplifyQueueStakeResponse res =
+  case res of
+    Err e -> Err (httpErrorToString e)
+    Ok resp ->
+      case resp.queueStakeResult of
+        Just (Pb.QueueStakeResultOk result) ->
+          Ok result
+        Just (Pb.QueueStakeResultError e) ->
           Err e.catchall
         Nothing ->
           Err "Invalid server response (neither Ok nor Error in protobuf)"
