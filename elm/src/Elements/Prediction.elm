@@ -417,8 +417,8 @@ viewBody model =
   [ H.h2 [HA.class "text-center"] [H.text <| getTitleText model.globals.timeZone prediction]
   , H.hr [] []
   , H.div [HA.class "row row-cols-12"]
-    [ H.div [HA.class "col-4"] [viewSummaryTable model.globals.now model.globals.timeZone prediction]
-    , H.div [HA.class "col-8"]
+    [ H.div [HA.class "col-md-4"] [viewSummaryTable model.globals.now model.globals.timeZone prediction]
+    , H.div [HA.class "col-md-8"]
       [ if List.isEmpty prediction.yourTrades then
           H.text ""
         else
