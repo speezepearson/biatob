@@ -19,6 +19,7 @@ type alias Config msg =
 type alias State =
   { oldPasswordField : String
   , newPasswordField : String
+  , confirmNewPasswordField : String
   , requestStatus : RequestStatus
   }
 
@@ -32,6 +33,7 @@ init : State
 init =
   { oldPasswordField = ""
   , newPasswordField = ""
+  , confirmNewPasswordField = ""
   , requestStatus = Unstarted
   }
 
@@ -51,31 +53,47 @@ view : Config msg -> State -> Html msg
 view config state =
   H.div []
     [ H.div [HA.class "row m-2"]
-      [ H.div [HA.class "col-2"]
-        [ H.input
+      [ H.div [HA.class "form-group col"]
+        [ H.label [] [H.text "Old:"]
+        , H.input
           [ HA.type_ "password"
           , HA.disabled <| state.requestStatus == AwaitingResponse
           , HA.placeholder "old password"
           , HE.onInput (\s -> config.setState {state | oldPasswordField=s})
           , HA.value state.oldPasswordField
-          , HA.class "form-control form-control-sm d-inline-block"
+          , HA.class "form-control form-control-sm ms-2 d-inline-block"
           , HA.style "max-width" "16em"
           ] []
         ]
-      , H.div [HA.class "col-2"]
-        [ H.input
+      , H.div [HA.class "form-group col"]
+        [ H.label [] [H.text "New:"]
+        , H.input
           [ HA.type_ "password"
           , HA.disabled <| state.requestStatus == AwaitingResponse
           , HA.placeholder "new password"
           , HE.onInput (\s -> config.setState {state | newPasswordField=s})
           , HA.value state.newPasswordField
-          , HA.class "form-control form-control-sm d-inline-block"
+          , HA.class "form-control form-control-sm ms-2 d-inline-block"
           , HA.class (if state.newPasswordField == "" then "" else if isOk (Utils.parsePassword state.newPasswordField) then "" else "is-invalid")
           , HA.style "max-width" "16em"
           ] []
         , H.div [HA.class "invalid-feedback"] [viewError (Utils.parsePassword state.newPasswordField)]
         ]
-      , H.div [HA.class "col-8"]
+      , H.div [HA.class "form-group col"]
+        [ H.label [] [H.text "Confirm:"]
+        , H.input
+          [ HA.type_ "password"
+          , HA.disabled <| state.requestStatus == AwaitingResponse
+          , HA.placeholder "new password again"
+          , HE.onInput (\s -> config.setState {state | confirmNewPasswordField=s})
+          , HA.value state.confirmNewPasswordField
+          , HA.class "form-control form-control-sm ms-2 d-inline-block"
+          , HA.class (if state.confirmNewPasswordField == "" then "" else if state.confirmNewPasswordField == state.newPasswordField then "is-valid" else "is-invalid")
+          , HA.style "max-width" "16em"
+          ] []
+        , H.div [HA.class "invalid-feedback"] [H.text "doesn't match"]
+        ]
+      , H.div [HA.class "col"]
         [ H.button
           [ HA.disabled <| state.requestStatus == AwaitingResponse || state.oldPasswordField == "" || (Utils.isErr <| Utils.parsePassword state.newPasswordField)
           , HE.onClick (config.changePassword {state | requestStatus=AwaitingResponse} {oldPassword=state.oldPasswordField, newPassword=state.newPasswordField})
