@@ -28,6 +28,7 @@ def app(loop, web_server):
   '/my_stakes',
   '/username/alice',
   '/settings',
+  '/fast',
 ])
 async def test_smoke(aiohttp_client, app, api_server, any_servicer, path: str, logged_in: bool):
   api_server.add_to_app(app)

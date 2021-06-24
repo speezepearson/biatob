@@ -100,6 +100,12 @@ class WebServer:
         else:
             return await self.get_my_stakes(req)
 
+    async def get_fast_bet(self, req: web.Request) -> web.Response:
+        return web.Response(
+            content_type='text/html',
+            body=self._jinja.get_template('FastBetPage.html').render()
+        )
+
     async def get_welcome(self, req: web.Request) -> web.Response:
         auth = self._token_glue.parse_cookie(req)
         auth_success = self._get_auth_success(auth)
@@ -261,6 +267,7 @@ class WebServer:
         app.router.add_get('/.well-known/{path:.*}', self.get_wellknown)
         app.router.add_get('/static/{filename}', self.get_static)
         app.router.add_get('/elm/{module}.js', self.get_elm_module)
+        app.router.add_get('/fast', self.get_fast_bet)
         app.router.add_get('/welcome', self.get_welcome)
         app.router.add_get('/new', self.get_create_prediction_page)
         app.router.add_get('/p/{prediction_id:[0-9]+}', self.get_view_prediction_page)
