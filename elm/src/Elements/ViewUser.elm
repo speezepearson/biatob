@@ -189,7 +189,7 @@ view model =
             , H.a [HA.href "/settings"] [H.text "your settings"]
             , H.text "?"
             ]
-        Globals.NoRelation -> 
+        Globals.NoRelation ->
           H.div []
             [ H.p [] [H.text "You and this user don't (yet?) trust each other!"]
             , if haveSentInvitation then
