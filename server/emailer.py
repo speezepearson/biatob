@@ -94,8 +94,8 @@ class Emailer:
                 prediction_id=prediction_id,
                 prediction_text=prediction_text,
                 verbed=(
-                    'resolved YES' if resolution == mvp_pb2.RESOLUTION_YES else
-                    'resolved NO' if resolution == mvp_pb2.RESOLUTION_NO else
+                    'came true' if resolution == mvp_pb2.RESOLUTION_YES else
+                    'did not come true' if resolution == mvp_pb2.RESOLUTION_NO else
                     'resolved INVALID' if resolution == mvp_pb2.RESOLUTION_INVALID else
                     'UN-resolved'
                 ),

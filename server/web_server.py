@@ -158,7 +158,7 @@ class WebServer:
 
         if prediction.resolutions and prediction.resolutions[-1].resolution != mvp_pb2.RESOLUTION_NONE_YET:
             res = prediction.resolutions[-1].resolution
-            res_text = "YES" if res == mvp_pb2.RESOLUTION_YES else "NO" if res == mvp_pb2.RESOLUTION_NO  else "INVALID" if res == mvp_pb2.RESOLUTION_INVALID else "???"
+            res_text = "happened" if res == mvp_pb2.RESOLUTION_YES else "didn't happen" if res == mvp_pb2.RESOLUTION_NO  else "INVALID" if res == mvp_pb2.RESOLUTION_INVALID else "???"
             remaining_text = f" (result: {res_text})"
         elif prediction.closes_unixtime < self._clock().timestamp():
             remaining_text = " (closed)"

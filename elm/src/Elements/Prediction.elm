@@ -650,7 +650,7 @@ viewResolveButtons model =
     mistakeInfo : String -> Html Msg
     mistakeInfo s =
       H.span [HA.style "color" "gray"]
-        [ H.text "You resolved this prediction as "
+        [ H.text "You said that this "
         , H.text s
         , H.text ". If that was a mistake, you can always "
         , H.button
@@ -665,16 +665,16 @@ viewResolveButtons model =
     [ Utils.b "Resolve this prediction: "
     , case Utils.currentResolution prediction of
         Pb.ResolutionYes ->
-          mistakeInfo "YES"
+          mistakeInfo "HAPPENED"
         Pb.ResolutionNo ->
-          mistakeInfo "NO"
+          mistakeInfo "DID NOT HAPPEN"
         Pb.ResolutionInvalid ->
-          mistakeInfo "INVALID"
+          mistakeInfo "was INVALID"
         Pb.ResolutionNoneYet ->
           H.span []
-          [ H.button [HA.class "btn btn-sm py-0 btn-outline-primary mx-2", HA.disabled (model.resolveStatus == AwaitingResponse), HE.onClick <| Resolve Pb.ResolutionYes    ] [H.text "Resolve YES"]
-          , H.button [HA.class "btn btn-sm py-0 btn-outline-primary mx-2", HA.disabled (model.resolveStatus == AwaitingResponse), HE.onClick <| Resolve Pb.ResolutionNo     ] [H.text "Resolve NO"]
-          , H.button [HA.class "btn btn-sm py-0 btn-outline-primary mx-2", HA.disabled (model.resolveStatus == AwaitingResponse), HE.onClick <| Resolve Pb.ResolutionInvalid] [H.text "Resolve INVALID"]
+          [ H.button [HA.class "btn btn-sm py-0 btn-outline-primary mx-2", HA.disabled (model.resolveStatus == AwaitingResponse), HE.onClick <| Resolve Pb.ResolutionYes    ] [H.text "It happened!"]
+          , H.button [HA.class "btn btn-sm py-0 btn-outline-primary mx-2", HA.disabled (model.resolveStatus == AwaitingResponse), HE.onClick <| Resolve Pb.ResolutionNo     ] [H.text "It didn't happen!"]
+          , H.button [HA.class "btn btn-sm py-0 btn-outline-secondary mx-2", HA.disabled (model.resolveStatus == AwaitingResponse), HE.onClick <| Resolve Pb.ResolutionInvalid] [H.text "Invalid prediction / impossible to resolve"]
           ]
         Pb.ResolutionUnrecognized_ _ ->
           H.span []
@@ -865,8 +865,8 @@ viewResolutionRow now timeZone prediction =
             )
           , ( [H.text "Resolution"]
             , \event -> [ H.text <| case event.resolution of
-                  Pb.ResolutionYes -> "YES"
-                  Pb.ResolutionNo -> "NO"
+                  Pb.ResolutionYes -> "happened"
+                  Pb.ResolutionNo -> "did not happen"
                   Pb.ResolutionInvalid -> "INVALID"
                   Pb.ResolutionNoneYet -> "UN-RESOLVED"
                   Pb.ResolutionUnrecognized_ _ -> "(??? unrecognized resolution ???)"
@@ -881,11 +881,11 @@ viewResolutionRow now timeZone prediction =
   , H.td []
     [ case Utils.currentResolution prediction of
         Pb.ResolutionYes ->
-          H.text "YES"
+          H.text "it happened"
         Pb.ResolutionNo ->
-          H.text "NO"
+          H.text "it didn't happen"
         Pb.ResolutionInvalid ->
-          H.text "INVALID"
+          H.text "INVALID PREDICTION"
         Pb.ResolutionNoneYet ->
           H.text <|
             "none yet"
@@ -916,7 +916,7 @@ viewTradesAsCreator timeZone prediction =
           , \t -> [H.text (Utils.isoStr timeZone (Utils.unixtimeToTime t.transactedUnixtime))]
           )
         , ( [H.text "Your side"]
-          , \t -> [H.text <| if t.bettorIsASkeptic then "YES" else "NO"]
+          , \t -> [H.text <| if t.bettorIsASkeptic then "will happen" else "will not happen"]
           )
         , ( [H.text "Your stake"]
           , \t -> [H.text <| Utils.formatCents t.creatorStakeCents]
@@ -948,18 +948,18 @@ viewTradesAsCreator timeZone prediction =
             )
           ]
         Pb.ResolutionInvalid ->
-          [ ( [H.text "if YES"]
+          [ ( [H.text "if it happens"]
             , \(_, trades) -> [H.text <| formatYouWin <| getTotalCreatorWinnings True trades]
             )
-          , ( [H.text "if NO"]
+          , ( [H.text "if not"]
             , \(_, trades) -> [H.text <| formatYouWin <| getTotalCreatorWinnings False trades]
             )
           ]
         Pb.ResolutionNoneYet ->
-          [ ( [H.text "if YES"]
+          [ ( [H.text "if it happens"]
             , \(_, trades) -> [H.text <| formatYouWin <| getTotalCreatorWinnings True trades]
             )
-          , ( [H.text "if NO"]
+          , ( [H.text "if not"]
             , \(_, trades) -> [H.text <| formatYouWin <| getTotalCreatorWinnings False trades]
             )
           ]
@@ -980,7 +980,7 @@ viewTradesAsBettor timeZone prediction trades =
           , \t -> [H.text (Utils.isoStr timeZone (Utils.unixtimeToTime t.transactedUnixtime))]
           )
         , ( [H.text "Your side"]
-          , \t -> [H.text <| if t.bettorIsASkeptic then "NO" else "YES"]
+          , \t -> [H.text <| if t.bettorIsASkeptic then "it won't happen" else "it will happen"]
           )
         , ( [H.text "You staked"]
           , \t -> [H.text <| Utils.formatCents t.bettorStakeCents]
@@ -995,27 +995,27 @@ viewTradesAsBettor timeZone prediction trades =
     case Utils.currentResolution prediction of
       Pb.ResolutionYes ->
         H.span []
-        [ H.text "Resolved YES: "
+        [ H.text "The predicted event happened: "
         , Utils.b <| formatYouWin -(getTotalCreatorWinnings True trades) ++ "!"
         , allTradesDetails
         ]
       Pb.ResolutionNo ->
         H.span []
-        [ H.text "Resolved NO: "
+        [ H.text "The predicted event didn't happen: "
         , Utils.b <| formatYouWin -(getTotalCreatorWinnings False trades) ++ "!"
         , allTradesDetails
         ]
       Pb.ResolutionInvalid ->
         H.span []
-        [ H.text <| "If YES, " ++ formatYouWin -(getTotalCreatorWinnings True trades)
-        , H.text <| "; if NO, " ++ formatYouWin -(getTotalCreatorWinnings False trades)
+        [ H.text <| "If it happens, " ++ formatYouWin -(getTotalCreatorWinnings True trades)
+        , H.text <| "; if not, " ++ formatYouWin -(getTotalCreatorWinnings False trades)
         , H.text "."
         , allTradesDetails
         ]
       Pb.ResolutionNoneYet ->
         H.span []
-        [ H.text <| "If YES, " ++ formatYouWin -(getTotalCreatorWinnings True trades)
-        , H.text <| "; if NO, " ++ formatYouWin -(getTotalCreatorWinnings False trades)
+        [ H.text <| "If it happens, " ++ formatYouWin -(getTotalCreatorWinnings True trades)
+        , H.text <| "; if not, " ++ formatYouWin -(getTotalCreatorWinnings False trades)
         , H.text "."
         , allTradesDetails
         ]
