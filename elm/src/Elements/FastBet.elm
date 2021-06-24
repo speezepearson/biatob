@@ -105,7 +105,10 @@ view model =
     [ H.main_ [HA.class "container"]
       [ H.h2 [HA.class "my-4 text-center"] [H.text "Make a fast bet"]
       , H.div [HA.class "row mb-3"]
-        [ H.text "This page helps you craft a quick bet on a yes/no proposition! If you and a friend disagree on how likely something is, just enter the probabilities you assign to it below."
+        [ H.text <|
+            "This page helps you craft a quick bet on a yes/no proposition!"
+            ++ " If you and a friend disagree on how likely something is, just enter the probabilities you assign to it below."
+            ++ " The one of you that think it's less likely is the \"skeptic\"; the other is the \"believer.\""
         ]
       , H.div [HA.class "row"]
         [ let pLow = parsePLow model in
