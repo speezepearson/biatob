@@ -1080,7 +1080,7 @@ viewEmbedInfo model =
           , HE.onInput (\s -> SetEmbedding (model.shareEmbedding |> updateEmbedding (mustFromDisplayName s)))
           ]
   in
-    H.form []
+    H.div []
     [ H.div []
       [ dropdown (\format embedding -> {embedding | format = format}) allFormats model.shareEmbedding.format formatDisplayName
       , dropdown (\contentType embedding -> {embedding | contentType = contentType}) allContentTypes model.shareEmbedding.contentType contentTypeDisplayName

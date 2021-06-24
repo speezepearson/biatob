@@ -72,10 +72,9 @@ col hs = H.div [HA.class "col"] hs
 
 view : Config msg -> State -> Html msg
 view config state =
-  H.form
+  H.div
   [ HA.id config.id
   , HA.class "row row-cols-sm-auto g-2"
-  , HE.onSubmit config.ignore
   ]
   <| case config.auth of
     Nothing ->

@@ -168,10 +168,7 @@ view config state =
                 Failed e -> Utils.redText e
             ]
   in
-    H.form
-      [ HA.class "needs-validation"
-      , HE.onSubmit config.ignore
-      ]
+    H.div []
       [ registrationBlock
       , if isRegistered then
           H.div [HA.class "mx-4"]

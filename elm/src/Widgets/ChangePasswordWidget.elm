@@ -49,7 +49,7 @@ handleChangePasswordResponse res state =
 
 view : Config msg -> State -> Html msg
 view config state =
-  H.form [HE.onSubmit config.ignore]
+  H.div []
     [ H.div [HA.class "row m-2"]
       [ H.div [HA.class "col-2"]
         [ H.input

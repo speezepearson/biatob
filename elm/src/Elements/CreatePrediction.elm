@@ -334,11 +334,7 @@ viewForm model =
       , specialRules = "If the CDC doesn't publish statistics on this, I'll fall back to some other official organization, like the WHO; failing that, I'll look for journal papers on U.S. cases, and go with a consensus if I find one; failing that, the prediction is unresolvable."
       }
   in
-  H.form
-    [ HA.class "g-3 needs-validation"
-    , HA.attribute "novalidate" ""
-    , HE.onSubmit Ignore
-    ]
+  H.div [ HA.class "g-3 needs-validation"]
     [ H.div [HA.class ""]
       [ let
           isValid = isOk (parseResolvesAt model)
