@@ -38,7 +38,129 @@ type alias Model =
   , stakeStatus : RequestStatus
   , sendInvitationStatus : RequestStatus
   , setTrustedStatus : RequestStatus
+  , shareEmbedding : EmbeddingFields
   }
+
+type alias EmbeddingFields =
+  { format : EmbeddingFormat
+  , contentType : EmbeddingContentType
+  , color : EmbeddedImageColor
+  , fontSize : EmbeddedImageFontSize
+  }
+
+type EmbeddedImageColor = Red | DarkGreen | DarkBlue | Black | White
+imageColorIdString color = case color of
+  Red -> "red"
+  DarkGreen -> "darkgreen"
+  DarkBlue -> "darkblue"
+  Black -> "black"
+  White -> "white"
+imageColorDisplayName color = case color of
+  Red -> "red"
+  DarkGreen -> "green"
+  DarkBlue -> "blue"
+  Black -> "black"
+  White -> "white"
+imageColorCssCode color = case color of
+  Red ->       "rgb(255, 0  , 0  )"
+  DarkGreen -> "rgb(0  , 128, 0  )"
+  DarkBlue ->  "rgb(0  , 0  , 128)"
+  Black ->     "rgb(0  , 0  , 0  )"
+  White ->     "rgb(255, 255, 255)"
+type EmbeddedImageFontSize = SixPt | EightPt | TenPt | TwelvePt | FourteenPt | EighteenPt | TwentyFourPt
+imageFontSizeIdString size = case size of
+  SixPt -> "6pt"
+  EightPt -> "8pt"
+  TenPt -> "10pt"
+  TwelvePt -> "12pt"
+  FourteenPt -> "14pt"
+  EighteenPt -> "18pt"
+  TwentyFourPt -> "24pt"
+imageFontSizeDisplayName = imageFontSizeIdString
+type EmbeddingFormat = EmbedHtml | EmbedMarkdown
+formatDisplayName fmt = case fmt of
+  EmbedHtml -> "HTML"
+  EmbedMarkdown -> "Markdown"
+
+type EmbeddingContentType = Link | Image
+contentTypeDisplayName ct = case ct of
+  Link -> "link"
+  Image -> "image"
+
+embeddedLinkText : String -> PredictionId -> Pb.UserPredictionView -> String
+embeddedLinkText httpOrigin predictionId prediction =
+  let
+    certainty = Utils.mustPredictionCertainty prediction
+  in
+    "(bet "
+    ++ Utils.formatCents (prediction.maximumStakeCents // 100 * 100)
+    ++ " @ "
+    ++ String.fromInt (round <| certainty.low * 100)
+    ++ (if certainty.high < 1 then
+          "-"
+          ++ String.fromInt (round <| certainty.high * 100)
+          ++ ""
+        else
+          ""
+       )
+    ++ ")"
+embeddedImageUrl : String -> PredictionId -> EmbeddedImageColor -> EmbeddedImageFontSize -> String
+embeddedImageUrl httpOrigin predictionId color size =
+  httpOrigin
+  ++ Utils.pathToPrediction predictionId
+  ++ "/embed-" ++ imageColorIdString color
+  ++ "-" ++ imageFontSizeIdString size
+  ++ ".png"
+embeddedImageStyles : EmbeddingFields -> List (String, String)
+embeddedImageStyles fields =
+  [ ("max-height", "1.5em")
+  , ("border-bottom", "1px solid " ++ imageColorCssCode fields.color)
+  ]
+embeddingPreview : String -> PredictionId -> Pb.UserPredictionView -> EmbeddingFields -> Html msg
+embeddingPreview httpOrigin predictionId prediction fields =
+  let
+    linkUrl = httpOrigin ++ Utils.pathToPrediction predictionId
+    text = embeddedLinkText httpOrigin predictionId prediction
+  in
+  case fields.contentType |> Debug.log "contentType" of
+    Link -> H.a [HA.href linkUrl] [H.text text]
+    Image ->
+      H.a [HA.href linkUrl]
+        [ H.img
+          ( [ HA.alt text
+            , HA.src <| embeddedImageUrl httpOrigin predictionId fields.color fields.fontSize
+            ]
+            ++ (embeddedImageStyles fields |> List.map (\(k,v) -> HA.style k v))
+          )
+          []
+        ]
+
+embeddingCode : String -> PredictionId -> Pb.UserPredictionView -> EmbeddingFields -> String
+embeddingCode httpOrigin predictionId prediction fields =
+  let
+    linkUrl = httpOrigin ++ Utils.pathToPrediction predictionId
+    text = embeddedLinkText httpOrigin predictionId prediction
+  in
+  case fields.contentType of
+    Link ->
+      case fields.format of
+        EmbedHtml -> "<a href=\"" ++ linkUrl ++ "\">" ++ text ++ "</a>"
+        EmbedMarkdown -> "[" ++ text ++ "](" ++ linkUrl ++ ")"
+    Image ->
+      let
+        imageUrl = embeddedImageUrl httpOrigin predictionId fields.color fields.fontSize
+        imageStyles = embeddedImageStyles fields
+      in
+      case fields.format of
+        EmbedHtml ->
+          ( "<a href=\"" ++ linkUrl ++ "\">"
+            ++ "<img alt=\"" ++ text ++ "\""
+            ++ " src=\"" ++ imageUrl ++ "\""
+            ++ " style=\"" ++ String.join "; " (List.map (\(k,v) -> k++":"++v) imageStyles) ++ "\""
+            ++ " />"
+            ++ "</a>"
+          )
+        EmbedMarkdown -> "[![" ++ text ++ "](" ++ imageUrl ++ ")](" ++ linkUrl ++ ")"
 
 type RequestStatus = Unstarted | AwaitingResponse | Succeeded | Failed String
 type AuthWidgetLoc = Navbar | Inline
@@ -70,6 +192,7 @@ type Msg
   | VerifyEmailFinished Pb.VerifyEmailRequest (Result Http.Error Pb.VerifyEmailResponse)
   | SetBettorIsASkeptic Bool
   | SetStakeField String
+  | SetEmbedding EmbeddingFields
   | Copy String
   | Tick Time.Posix
   | AuthWidgetExternallyModified AuthWidget.DomModification
@@ -93,6 +216,7 @@ init flags =
     , sendInvitationStatus = Unstarted
     , stakeField = "10"
     , bettorIsASkeptic = True
+    , shareEmbedding = { format = EmbedHtml, contentType = Image , color = DarkGreen , fontSize = FourteenPt }
     } |> updateBettorInputFields prediction
   , Cmd.none
   )
@@ -170,6 +294,7 @@ viewBodyMockup globals prediction =
     , sendInvitationStatus = Unstarted
     , stakeField = "10"
     , bettorIsASkeptic = True
+    , shareEmbedding = { format = EmbedHtml, contentType = Image , color = DarkGreen , fontSize = FourteenPt }
     } |> updateBettorInputFields prediction)
   |> H.div []
   |> H.map (\_ -> ())
@@ -325,7 +450,7 @@ viewBody model =
             H.div []
             [ viewResolveButtons model
             , H.hr [HA.style "margin" "2em 0"] []
-            , H.text "If you want to link to your prediction, here are some snippets of HTML you could copy-paste:"
+            , H.text "If you want to link to your prediction, here's some code you could copy-paste:"
             , viewEmbedInfo model
             ]
           CreatorStakeExhausted ->
@@ -932,49 +1057,49 @@ makeTable tableAttrs columns xs =
   , H.tbody [] dataRows
   ]
 
-
 viewEmbedInfo : Model -> Html Msg
 viewEmbedInfo model =
   let
     prediction = Utils.must "must have loaded prediction being viewed" <| Dict.get model.predictionId model.globals.serverState.predictions
-    linkUrl = model.globals.httpOrigin ++ Utils.pathToPrediction model.predictionId  -- TODO(P0): needs origin to get stuck in text field
-    imgUrl = model.globals.httpOrigin ++ Utils.pathToPrediction model.predictionId ++ "/embed.png"
-    imgStyles = [("max-height","1.5ex"), ("border-bottom","1px solid #008800")]
-    imgCode =
-      "<a href=\"" ++ linkUrl ++ "\">"
-      ++ "<img style=\"" ++ (imgStyles |> List.map (\(k,v) -> k++":"++v) |> String.join ";") ++ "\" src=\"" ++ imgUrl ++ "\" /></a>"
-    linkText =
-      "(bet "
-      ++ Utils.formatCents (prediction.maximumStakeCents // 100 * 100)
-      ++ " @ "
-      ++ String.fromInt (round <| (Utils.mustPredictionCertainty prediction).low * 100)
-      ++ "-"
-      ++ String.fromInt (round <| (Utils.mustPredictionCertainty prediction).high * 100)
-      ++ "%)"
-    linkCode =
-      "<a href=\"" ++ linkUrl ++ "\">" ++ linkText ++ "</a>"
-    markdownLinkCode = "[" ++ linkText ++ "](" ++ linkUrl ++ ")"
+    allFormats = [EmbedHtml, EmbedMarkdown]
+    displayNameToFormat s = Utils.must ("somehow got input " ++ s) <| List.head <| List.filter (formatDisplayName >> (==) s) allFormats
+    allContentTypes = [Link, Image]
+    displayNameToContentType s = Utils.must ("somehow got input " ++ s) <| List.head <| List.filter (contentTypeDisplayName >> (==) s) allContentTypes
+    allColors = [DarkGreen, DarkBlue, Red, Black, White]
+    displayNameToColor s = Utils.must ("somehow got input " ++ s) <| List.head <| List.filter (imageColorDisplayName >> (==) s) allColors
+    allFontSizes = [SixPt, EightPt, TenPt, TwelvePt, FourteenPt, EighteenPt, TwentyFourPt]
+    displayNameToFontSize s = Utils.must ("somehow got input " ++ s) <| List.head <| List.filter (imageFontSizeDisplayName >> (==) s) allFontSizes
+
+    dropdown : (a -> EmbeddingFields -> EmbeddingFields) -> List a -> a -> (a -> String) -> Html Msg
+    dropdown updateEmbedding options selected toDisplayName =
+      let mustFromDisplayName s = options |> List.filter (\o -> toDisplayName o == s) |> List.head |> Utils.must ("somehow got input " ++ s) in
+      options
+      |> List.map (\opt -> H.option [HA.selected (opt == selected), HA.value (toDisplayName opt)] [H.text (toDisplayName opt)])
+      |> H.select
+          [ HA.class "form-select py-0 ps-0 d-inline-block w-auto"
+          , HE.onInput (\s -> SetEmbedding (model.shareEmbedding |> updateEmbedding (mustFromDisplayName s)))
+          ]
   in
-    H.ul []
-      [ H.li [] <|
-        [ H.text "A linked inline image: "
-        , CopyWidget.view Copy imgCode
-        , H.br [] []
-        , H.text "This would render as: "
-        , H.a [HA.href linkUrl]
-          [ H.img (HA.src imgUrl :: (imgStyles |> List.map (\(k,v) -> HA.style k v))) []]
-        ]
-      , H.li [] <|
-        [ H.text "A boring old link, either as HTML ("
-        , CopyWidget.view Copy linkCode
-        , H.text ") or as  Markdown ("
-        , CopyWidget.view Copy markdownLinkCode
-        , H.text ")"
-        , H.br [] []
-        , H.text "This would render as: "
-        , H.a [HA.href linkUrl] [H.text linkText]
-        ]
+    H.form []
+    [ H.div []
+      [ dropdown (\format embedding -> {embedding | format = format}) allFormats model.shareEmbedding.format formatDisplayName
+      , dropdown (\contentType embedding -> {embedding | contentType = contentType}) allContentTypes model.shareEmbedding.contentType contentTypeDisplayName
+      , case model.shareEmbedding.contentType of
+          Link -> H.text ""
+          Image -> dropdown (\newColor embedding -> {embedding | color = newColor}) allColors model.shareEmbedding.color imageColorDisplayName
+      , case model.shareEmbedding.contentType of
+          Link -> H.text ""
+          Image -> dropdown (\newSize embedding -> {embedding | fontSize = newSize}) allFontSizes model.shareEmbedding.fontSize imageFontSizeDisplayName
       ]
+    , H.div []
+      [ CopyWidget.view Copy (embeddingCode model.globals.httpOrigin model.predictionId (mustPrediction model) model.shareEmbedding)
+      , H.text " renders as "
+      , embeddingPreview model.globals.httpOrigin model.predictionId (mustPrediction model) model.shareEmbedding
+      , case model.shareEmbedding.contentType of
+          Link -> H.text ""
+          Image -> H.div [HA.class " mx-3 my-1 text-secondary"] [H.small [] [H.text " (This image's main advantage over a bare link is that it will always show the current state of the prediction, e.g. whether it's resolved and how much people have bet against you.)"]]
+      ]
+    ]
 
 viewWhatIsThis : PredictionId -> Pb.UserPredictionView -> Html msg
 viewWhatIsThis predictionId prediction =
@@ -1167,6 +1292,10 @@ update msg model =
       )
     SetStakeField value ->
       ( { model | stakeField = value , stakeStatus = Unstarted }
+      , Cmd.none
+      )
+    SetEmbedding value ->
+      ( { model | shareEmbedding = value }
       , Cmd.none
       )
     Copy s ->

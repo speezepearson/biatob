@@ -44,7 +44,7 @@ async def test_smoke(aiohttp_client, app, api_server, any_servicer, path: str, l
 @pytest.mark.parametrize('logged_in', [True, False])
 @pytest.mark.parametrize('path', [
   '/p/{prediction_id}',
-  '/p/{prediction_id}/embed.png',
+  '/p/{prediction_id}/embed-darkgreen-14pt.png',
 ])
 async def test_smoke_for_prediction_paths(aiohttp_client, app, api_server, any_servicer, path: str, logged_in: bool):
   api_server.add_to_app(app)

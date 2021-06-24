@@ -3,7 +3,7 @@ import datetime
 import functools
 import io
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional, Tuple
 
 from aiohttp import web
 from google.protobuf.message import Message
@@ -19,15 +19,28 @@ logger = structlog.get_logger()
 
 _HERE = Path(__file__).parent
 
+Color = Tuple[int, int, int]
 
-try: IMAGE_EMBED_FONT = ImageFont.truetype('FreeSans.ttf', 18)
-except Exception: IMAGE_EMBED_FONT = ImageFont.load_default()
+COLOR_NAME_TO_COLOR = {
+    'red'      : (255, 0  , 0  ),
+    'darkgreen': (0  , 128, 0  ),
+    'darkblue' : (0  , 0  , 128),
+    'black'    : (0  , 0  , 0  ),
+    'white'    : (255, 255, 255),
+}
+DEFAULT_COLOR = COLOR_NAME_TO_COLOR['darkgreen']
+
+FONT_SIZE_TO_FONT = {
+    size: ImageFont.truetype(str((_HERE / 'arial.ttf').resolve()), size)
+    for size in (6, 8, 10, 12, 14, 18, 24)
+}
+DEFAULT_FONT = FONT_SIZE_TO_FONT[12]
 
 @functools.lru_cache(maxsize=256)
-def render_text(text: str, file_format: str = 'png') -> bytes:
-    size = IMAGE_EMBED_FONT.getsize(text)
+def render_text(text: str, font: ImageFont, color: Color, file_format: str = 'png') -> bytes:
+    size = font.getsize(text)
     img = Image.new('RGBA', size, color=(255,255,255,0))
-    ImageDraw.Draw(img).text((0,0), text, fill=(0,128,0,255), font=IMAGE_EMBED_FONT)
+    ImageDraw.Draw(img).text((0,0), text, fill=(*color, 255), font=font)
     buf = io.BytesIO()
     img.save(buf, format=file_format)
     return buf.getvalue()
@@ -41,10 +54,11 @@ def stupid_file_response(path: Path) -> web.Response:
 
 
 class WebServer:
-    def __init__(self, servicer: Servicer, elm_dist: Path, token_glue: HttpTokenGlue) -> None:
+    def __init__(self, servicer: Servicer, elm_dist: Path, token_glue: HttpTokenGlue, clock: Callable[[], datetime.datetime] = datetime.datetime.now) -> None:
         self._servicer = servicer
         self._elm_dist = elm_dist
         self._token_glue = token_glue
+        self._clock = clock
 
         self._jinja = jinja2.Environment( # adapted from https://jinja.palletsprojects.com/en/2.11.x/api/#basics
             loader=jinja2.FileSystemLoader(searchpath=[_HERE/'templates'], encoding='utf-8'),
@@ -132,13 +146,41 @@ class WebServer:
             return web.Response(status=404, body=str(get_prediction_resp.error))
 
         assert get_prediction_resp.WhichOneof('get_prediction_result') == 'prediction'
-        def format_cents(n: int) -> str:
-            if n < 0: return '-' + format_cents(-n)
-            return f'${n//100}' + ('' if n%100 == 0 else f'.{n%100 :02d}')
+        def format_stake_concisely(n_cents: int) -> str:
+            return f'${n_cents//100}'
         prediction = get_prediction_resp.prediction
-        text = f'[{format_cents(prediction.maximum_stake_cents)} @ {round(prediction.certainty.low*100)}-{round(prediction.certainty.high*100)}%]'
+        stake_text = format_stake_concisely(prediction.maximum_stake_cents)
+            
+        if prediction.certainty.low == 1:
+            confidence_text = f'{round(prediction.certainty.low*100)}%'
+        else:
+            confidence_text = f'{round(prediction.certainty.low*100)}-{round(prediction.certainty.high*100)}%'
 
-        return web.Response(content_type='image/png', body=render_text(text=text, file_format='png'))
+        if prediction.resolutions and prediction.resolutions[-1].resolution != mvp_pb2.RESOLUTION_NONE_YET:
+            res = prediction.resolutions[-1].resolution
+            res_text = "YES" if res == mvp_pb2.RESOLUTION_YES else "NO" if res == mvp_pb2.RESOLUTION_NO  else "INVALID" if res == mvp_pb2.RESOLUTION_INVALID else "???"
+            remaining_text = f" (result: {res_text})"
+        elif prediction.closes_unixtime < self._clock().timestamp():
+            remaining_text = " (closed)"
+        elif not (prediction.remaining_stake_cents_vs_skeptics == prediction.remaining_stake_cents_vs_believers == prediction.maximum_stake_cents):
+            remaining_text = (
+                " ("
+                + format_stake_concisely(prediction.remaining_stake_cents_vs_skeptics)
+                + ("/" + format_stake_concisely(prediction.remaining_stake_cents_vs_believers) if prediction.remaining_stake_cents_vs_believers < prediction.maximum_stake_cents else "")
+                + " remain)"
+            )
+        else:
+            remaining_text = ""
+
+        text = f'[bet {stake_text} @ {confidence_text}{remaining_text}]'
+
+        try: font = FONT_SIZE_TO_FONT[int(req.match_info['fontsize'].replace('-', '').replace('pt', ''))]
+        except Exception: font = DEFAULT_FONT
+
+        try: color = COLOR_NAME_TO_COLOR[req.match_info['color'].replace('-', '')]
+        except Exception: color = DEFAULT_COLOR
+
+        return web.Response(content_type='image/png', body=render_text(text=text, font=font, color=color, file_format='png'))
 
     async def get_my_stakes(self, req: web.Request) -> web.Response:
         auth = self._token_glue.parse_cookie(req)
@@ -222,7 +264,7 @@ class WebServer:
         app.router.add_get('/welcome', self.get_welcome)
         app.router.add_get('/new', self.get_create_prediction_page)
         app.router.add_get('/p/{prediction_id:[0-9]+}', self.get_view_prediction_page)
-        app.router.add_get('/p/{prediction_id:[0-9]+}/embed.png', self.get_prediction_img_embed)
+        app.router.add_get('/p/{prediction_id:[0-9]+}/embed-{color:COLORPAT}-{fontsize:FONTPAT}.png'.replace('COLORPAT', '|'.join(COLOR_NAME_TO_COLOR.keys())).replace('FONTPAT', '|'.join(f'{size}pt' for size in FONT_SIZE_TO_FONT.keys())), self.get_prediction_img_embed)
         app.router.add_get('/my_stakes', self.get_my_stakes)
         app.router.add_get('/username/{username:[a-zA-Z0-9_-]+}', self.get_username)
         app.router.add_get('/settings', self.get_settings)
