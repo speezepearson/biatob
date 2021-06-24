@@ -155,7 +155,7 @@ view model =
           ]
         , H.hr [HA.class "my-2"] []
         , H.h3 [HA.class "text-center mb-2"] [H.text "The bet you should make:"]
-        , H.table []
+        , H.table [HA.style "max-width" "40em"]
           [ H.tr []
             [ H.th [HA.class "pe-3", HA.scope "row"] [H.text "If the thing happens,"]
             , H.td [HA.class "pe-3" ] [ H.text " the ", b "skeptic", H.text " should pay the ", b "believer" ]
