@@ -114,6 +114,9 @@ view config state =
                   Succeeded -> Utils.greenText "Success!"
                   Failed e -> Utils.redText e
             , H.div [HA.class "invalid-feedback"] [viewError (parseEmailAddress state)]
+            , H.div [HA.class "mx-2 text-secondary"]
+              [ H.small [] [H.text "I will never ever intentionally share this with anybody."]
+              ]
             ]
         Pb.EmailFlowStateKindCodeSent {email} ->
           H.div [HA.class "form-group"]

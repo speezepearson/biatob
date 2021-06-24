@@ -244,7 +244,7 @@ view model =
                 ]
             ]
         , H.li [HA.style "margin-bottom" "1em"]
-            [ H.text " Consider adding an email address, so I can remind you to resolve your prediction when the time comes:   "
+            [ H.text " Consider adding an email address, so I can remind you to resolve your predictions, notify you when predictions resolve, and ask you if you trust people who want to bet on your predictions: "
             , H.div [HA.style "border" "1px solid gray", HA.style "padding" "0.5em", HA.style "margin" "0.5em"]
                 [ case Globals.getUserInfo model.globals of
                     Nothing -> H.text "(first, log in)"
