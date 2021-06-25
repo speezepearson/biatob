@@ -10,5 +10,9 @@
     main({elmApp: Elm.Elements.Prediction, flags: {predictionsPbB64, predictionId}});
     var stakeField = document.getElementById('stakeField');
     if (stakeField) stakeField.focus();
+    else {
+      var resolveNotesField = document.getElementById('resolveNotesField');
+      if (resolveNotesField) resolveNotesField.focus();
+    }
   </script>
 {% endblock %}

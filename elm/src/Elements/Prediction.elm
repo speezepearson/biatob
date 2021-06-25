@@ -32,6 +32,7 @@ type alias Model =
   , authWidget : AuthWidget.State
   , predictionId : PredictionId
   , emailSettingsWidget : EmailSettingsWidget.State
+  , resolveNotesField : String
   , resolveStatus : RequestStatus
   , stakeField : String
   , bettorIsASkeptic : Bool
@@ -193,6 +194,7 @@ type Msg
   | SetBettorIsASkeptic Bool
   | SetStakeField String
   | SetEmbedding EmbeddingFields
+  | SetResolveNotesField String
   | Copy String
   | Tick Time.Posix
   | AuthWidgetExternallyModified AuthWidget.DomModification
@@ -210,6 +212,7 @@ init flags =
     , authWidget = AuthWidget.init
     , predictionId = predictionId
     , emailSettingsWidget = EmailSettingsWidget.init
+    , resolveNotesField = ""
     , resolveStatus = Unstarted
     , stakeStatus = Unstarted
     , setTrustedStatus = Unstarted
@@ -288,6 +291,7 @@ viewBodyMockup globals prediction =
     , authWidget = AuthWidget.init
     , predictionId = "12345"
     , emailSettingsWidget = EmailSettingsWidget.init
+    , resolveNotesField = ""
     , resolveStatus = Unstarted
     , stakeStatus = Unstarted
     , setTrustedStatus = Unstarted
@@ -671,10 +675,23 @@ viewResolveButtons model =
         Pb.ResolutionInvalid ->
           mistakeInfo "was INVALID"
         Pb.ResolutionNoneYet ->
-          H.span []
-          [ H.button [HA.class "btn btn-sm py-0 btn-outline-primary mx-2", HA.disabled (model.resolveStatus == AwaitingResponse), HE.onClick <| Resolve Pb.ResolutionYes    ] [H.text "It happened!"]
-          , H.button [HA.class "btn btn-sm py-0 btn-outline-primary mx-2", HA.disabled (model.resolveStatus == AwaitingResponse), HE.onClick <| Resolve Pb.ResolutionNo     ] [H.text "It didn't happen!"]
-          , H.button [HA.class "btn btn-sm py-0 btn-outline-secondary mx-2", HA.disabled (model.resolveStatus == AwaitingResponse), HE.onClick <| Resolve Pb.ResolutionInvalid] [H.text "Invalid prediction / impossible to resolve"]
+          H.div []
+          [ H.div []
+            [ H.button [HA.class "btn btn-sm py-0 btn-outline-primary mx-2", HA.disabled (model.resolveStatus == AwaitingResponse), HE.onClick <| Resolve Pb.ResolutionYes    ] [H.text "It happened!"]
+            , H.button [HA.class "btn btn-sm py-0 btn-outline-primary mx-2", HA.disabled (model.resolveStatus == AwaitingResponse), HE.onClick <| Resolve Pb.ResolutionNo     ] [H.text "It didn't happen!"]
+            , H.button [HA.class "btn btn-sm py-0 btn-outline-secondary mx-2", HA.disabled (model.resolveStatus == AwaitingResponse), HE.onClick <| Resolve Pb.ResolutionInvalid] [H.text "Invalid prediction / impossible to resolve"]
+            ]
+          , H.div [HA.class "mx-4 mt-2"]
+            [ H.text "Explanation / supporting evidence:"
+            , H.textarea
+              [ HA.class "form-control"
+              , HA.id "resolveNotesField"
+              , HE.onInput SetResolveNotesField
+              , HA.value model.resolveNotesField
+              , HA.disabled (model.resolveStatus == AwaitingResponse)
+              ]
+              []
+            ]
           ]
         Pb.ResolutionUnrecognized_ _ ->
           H.span []
@@ -871,6 +888,9 @@ viewResolutionRow now timeZone prediction =
                   Pb.ResolutionNoneYet -> "UN-RESOLVED"
                   Pb.ResolutionUnrecognized_ _ -> "(??? unrecognized resolution ???)"
                 ]
+            )
+          , ( [H.text "Notes"]
+            , \event -> [ H.text event.notes ]
             )
           ]
           prediction.resolutions
@@ -1192,13 +1212,14 @@ update msg model =
       )
     Resolve resolution ->
       ( { model | resolveStatus = AwaitingResponse }
-      , let req = {predictionId=model.predictionId, resolution=resolution, notes=""} in API.postResolve (ResolveFinished req) req
+      , let req = {predictionId=model.predictionId, resolution=resolution, notes=model.resolveNotesField} in API.postResolve (ResolveFinished req) req
       )
     ResolveFinished req res ->
       ( { model | globals = model.globals |> Globals.handleResolveResponse req res
                 , resolveStatus = case API.simplifyResolveResponse res of
                     Ok _ -> Succeeded
                     Err e -> Failed e
+                , resolveNotesField = if isOk (API.simplifyResolveResponse res) then "" else model.resolveNotesField
         }
       , Cmd.none
       )
@@ -1296,6 +1317,10 @@ update msg model =
       )
     SetEmbedding value ->
       ( { model | shareEmbedding = value }
+      , Cmd.none
+      )
+    SetResolveNotesField value ->
+      ( { model | resolveNotesField = value }
       , Cmd.none
       )
     Copy s ->

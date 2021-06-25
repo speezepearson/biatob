@@ -180,7 +180,8 @@ class SqlConn:
       resolutions=[
         mvp_pb2.ResolutionEvent(
           unixtime=r['resolved_at_unixtime'],
-          resolution=mvp_pb2.Resolution.Value(r['resolution'])
+          resolution=mvp_pb2.Resolution.Value(r['resolution']),
+          notes=r['notes'],
         )
         for r in resolution_rows
       ],
