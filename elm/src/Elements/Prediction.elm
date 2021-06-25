@@ -408,9 +408,9 @@ viewBody model =
     maybeButHeresAQueueForm =
       if Globals.getRelationship model.globals prediction.creator |> Maybe.map .trustedByYou |> Maybe.withDefault False then
         H.p []
-        [ H.text "However! While you're waiting for them to trust you back, I'll let you "
-        , Utils.i "queue up"
-        , H.text " bets that I'll apply once "
+        [ H.text "...but, in the meantime, I'll let you tell me about the bets you "
+        , Utils.i "want"
+        , H.text " to make, and I'll apply them once "
         , Utils.renderUser prediction.creator
         , H.text " tells me they trust you."
         , viewStakeWidget QueueingNecessary model
@@ -488,9 +488,7 @@ viewBody model =
             ]
           CanAlreadyStake ->
             H.div []
-            [ Utils.b "Make a bet:"
-            , H.text " "
-            , viewStakeWidget QueueingUnnecessary model
+            [ viewStakeWidget QueueingUnnecessary model
             ]
           NeedsToSetTrusted ->
             H.div []
@@ -631,7 +629,7 @@ viewBody model =
               , Utils.renderUser prediction.creator
               , H.text ", I have to make sure that they trust you to pay up if you lose!"
               , H.br [] []
-              , H.text "Normally, I'd offer to ask them for you, but they've disabled that feature! You'll need to send them a link to "
+              , H.text "Normally, I'd offer to ask them for you, but they don't have that setting enabled, so you'll need to send them a link to "
               , H.a [HA.href <| Utils.pathToUserPage <| Utils.must "checked user is logged in" <| Globals.getOwnUsername model.globals] [H.text "your user page"]
               , H.text ", over SMS/IM/email/whatever, and ask them to mark you as trusted."
               ]
@@ -747,7 +745,7 @@ viewStakeWidget bettability model =
         else
           Ok n
   in
-  H.span []
+  H.div [HA.class "mx-5 my-3"]
     [ H.text " Bet $"
     , H.input
         [ HA.style "width" "7em"
@@ -778,12 +776,23 @@ viewStakeWidget bettability model =
           Err _ ->
             [ HA.disabled True ]
         )
-        [H.text "Commit"]
+        [ H.text <| case bettability of
+            QueueingNecessary -> "Queue"
+            QueueingUnnecessary -> "Commit"
+        ]
     , case model.stakeStatus of
         Unstarted -> H.text ""
         AwaitingResponse -> H.text ""
         Succeeded -> Utils.greenText "Success!"
         Failed e -> Utils.redText e
+    , case bettability of
+        QueueingNecessary ->
+          H.div [HA.class "text-secondary"]
+          [ H.text " (Your bet won't take effect until "
+          , Utils.renderUser prediction.creator
+          , H.text " tells me they trust you.)"
+          ]
+        QueueingUnnecessary -> H.text ""
     , if model.bettorIsASkeptic then
         if prediction.remainingStakeCentsVsSkeptics /= prediction.maximumStakeCents then
           H.div [HA.style "opacity" "50%"]
