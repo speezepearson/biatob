@@ -545,7 +545,7 @@ viewForm model =
           [ HA.disabled disabled
           , HE.onInput SetOpenForUnitField
           , HA.value model.openForUnitField
-          , HA.class "form-select d-inline-block w-auto"
+          , HA.class "form-select form-select-sm d-inline-block w-auto"
           ]
           [ H.option [] [H.text "weeks"]
           , H.option [] [H.text "days"]
