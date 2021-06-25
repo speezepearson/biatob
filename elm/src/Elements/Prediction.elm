@@ -104,7 +104,7 @@ embeddedLinkText httpOrigin predictionId prediction =
         else
           ""
        )
-    ++ ")"
+    ++ "%)"
 embeddedImageUrl : String -> PredictionId -> EmbeddedImageColor -> EmbeddedImageFontSize -> String
 embeddedImageUrl httpOrigin predictionId color size =
   httpOrigin
