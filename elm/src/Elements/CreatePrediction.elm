@@ -562,7 +562,33 @@ viewForm model =
           ]]
       ]
   , H.hr [] []
-  , H.div [HA.class ""]
+  , H.div []
+      [ H.text "This prediction should be viewable by "
+      , H.select
+          [ HA.disabled True
+          , HA.value "anyone with the link"
+          , HA.class "form-select form-select-sm d-inline-block w-auto"
+          ]
+          [ H.option [] [H.text "anyone with the link"]
+          ]
+      , H.text ", and I'm willing to take bets from "
+      , H.select
+          [ HA.disabled True
+          , HA.value "anyone I trust"
+          , HA.class "form-select form-select-sm d-inline-block w-auto"
+          ]
+          [ H.option [] [H.text "anyone I trust"]
+          ]
+      , H.text "."
+      , H.br [] []
+      , H.small [HA.class "mx-4 mt-1 text-secondary"]
+        [ H.text "(I haven't prioritized prediction-level privacy controls very highly, but if you care enough to "
+        , H.a [HA.href "mailto:contact@biatob.com"] [H.text "email me"]
+        , H.text " with a short summary of why you want them, that would definitely bump it up my to-do list!)"
+        ]
+      ]
+  , H.hr [] []
+  , H.div []
       [ H.text "Special rules (e.g. implicit assumptions, what counts as cheating):"
       , H.textarea
           [ HA.style "width" "100%"
