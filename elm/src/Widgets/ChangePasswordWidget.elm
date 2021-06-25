@@ -95,7 +95,7 @@ view config state =
         ]
       , H.div [HA.class "col"]
         [ H.button
-          [ HA.disabled <| state.requestStatus == AwaitingResponse || state.oldPasswordField == "" || (Utils.isErr <| Utils.parsePassword state.newPasswordField)
+          [ HA.disabled <| state.requestStatus == AwaitingResponse || state.oldPasswordField == "" || (Utils.isErr <| Utils.parsePassword state.newPasswordField) || state.confirmNewPasswordField /= state.newPasswordField
           , HE.onClick (config.changePassword {state | requestStatus=AwaitingResponse} {oldPassword=state.oldPasswordField, newPassword=state.newPasswordField})
           , HA.class "btn btn-sm py-0 btn-outline-primary"
           ]
