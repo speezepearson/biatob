@@ -209,6 +209,7 @@ view model =
               , verifyEmail = VerifyEmail
               , updateSettings = UpdateSettings
               , userInfo = userInfo
+              , showAllEmailSettings = True
               }
               model.emailSettingsWidget
           , H.hr [] []

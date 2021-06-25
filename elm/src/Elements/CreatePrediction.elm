@@ -626,6 +626,7 @@ view model =
             , verifyEmail = VerifyEmail
             , updateSettings = UpdateSettings
             , userInfo = Utils.must "checked that user is logged in" model.globals.serverState.settings
+            , showAllEmailSettings = True
             }
             model.emailSettingsWidget
         ]

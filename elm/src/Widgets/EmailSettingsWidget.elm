@@ -19,6 +19,7 @@ type alias Config msg =
   , verifyEmail : State -> Pb.VerifyEmailRequest -> msg
   , updateSettings : State -> Pb.UpdateSettingsRequest -> msg
   , userInfo : Pb.GenericUserInfo
+  , showAllEmailSettings : Bool
   }
 type alias State =
   { emailField : String
@@ -173,8 +174,8 @@ view config state =
   in
     H.div []
       [ registrationBlock
-      , if isRegistered then
-          H.div [HA.class "mx-4"]
+      , if isRegistered || config.showAllEmailSettings then
+        H.div [HA.class "mx-4"]
           [ H.div []
             [ H.input
                 [ HA.type_ "checkbox", HA.checked config.userInfo.allowEmailInvitations
