@@ -4,52 +4,48 @@ import Browser
 import Html as H exposing (Html)
 import Html.Attributes as HA
 import Html.Events as HE
+import Json.Decode exposing (field)
 
+type alias Name = String
 type alias Model =
-  { lowField : String
-  , highField : String
+  { aliceNameField : String
+  , alicePField : String
+  , bobNameField : String
+  , bobPField : String
   , exposureField : String
   }
 
 type Msg
-  = SetLowField String
-  | SetHighField String
+  = SetAliceNameField String
+  | SetAlicePField String
+  | SetBobNameField String
+  | SetBobPField String
   | SetExposureField String
 
 init : () -> ( Model , Cmd never )
 init () =
-  ( { lowField = "0"
-    , highField = "100"
+  ( { aliceNameField = ""
+    , alicePField = "0"
+    , bobNameField = ""
+    , bobPField = "100"
     , exposureField = "10"
     }
   , Cmd.none
   )
 
-parsePLow : Model -> Result String Float
-parsePLow model =
-  case String.toFloat model.lowField of
+parseName : Name -> String -> Name
+parseName default field =
+  if field == "" then default else field
+
+parsePctProb : String -> Result String Float
+parsePctProb s =
+  case String.toFloat s of
     Nothing -> Err "must be a number 0-100"
     Just pct ->
       if pct < 0 || pct > 100 then
         Err "must be a number 0-100"
       else
         Ok (pct/100)
-
-parsePHigh : Model -> Result String Float
-parsePHigh model =
-  case String.toFloat model.highField of
-    Nothing -> Err "must be a number 0-100"
-    Just pct ->
-      if pct < 0 || pct > 100 then
-        Err "must be a number 0-100"
-      else let pHigh = pct/100 in
-        case parsePLow model of
-          Err _ -> Ok pHigh
-          Ok pLow ->
-            if pHigh < pLow then
-              Err "can't be less than the skeptic's probability"
-            else
-              Ok pHigh
 
 parseExposure : Model -> Result String Float
 parseExposure model =
@@ -63,6 +59,7 @@ parseExposure model =
 
 formatDollars : Float -> String
 formatDollars dollars =
+  if dollars < 0 then "-" ++ formatDollars (-dollars) else
   let
     cents = round (100 * dollars)
     wholeDollars = cents // 100
@@ -89,15 +86,22 @@ viewError res = case res of
 view : Model -> Browser.Document Msg
 view model =
   let
-    bet = case (parsePLow model, parsePHigh model, parseExposure model) of
-      (Ok pLow, Ok pHigh, Ok exposure) ->
+    alice = { name = parseName "Alice" model.aliceNameField , p = parsePctProb model.alicePField }
+    bob = { name = parseName "Bob" model.bobNameField , p = parsePctProb model.bobPField }
+    bet = case (alice.p, bob.p, parseExposure model) of
+      (Ok pA, Ok pB, Ok exposure) ->
         let
-          impliedProbability = (pLow + pHigh) / 2
+          impliedProbability = (pA + pB) / 2
           payoutRatioYesOverNo = (1 - impliedProbability) / impliedProbability
           highPaysLowIfNo = exposure / (max 1 payoutRatioYesOverNo)
           lowPaysHighIfYes = highPaysLowIfNo * payoutRatioYesOverNo
+          (aliceWinningsIfYes, aliceWinningsIfNo) =
+            if pA > pB then
+              (lowPaysHighIfYes, -highPaysLowIfNo)
+            else
+              (-lowPaysHighIfYes, highPaysLowIfNo)
         in
-          Just {impliedProbability=impliedProbability, lowPaysHighIfYes=lowPaysHighIfYes, highPaysLowIfNo=highPaysLowIfNo}
+          Just {impliedProbability=impliedProbability, aliceWinningsIfYes=aliceWinningsIfYes, aliceWinningsIfNo=aliceWinningsIfNo}
       _ -> Nothing
   in
   { title = "Fast Bet"
@@ -108,58 +112,75 @@ view model =
         [ H.text <|
             "This page helps you craft a quick bet on a yes/no proposition!"
             ++ " If you and a friend disagree on how likely something is, just enter the probabilities you assign to it below."
-            ++ " The one of you that think it's less likely is the \"skeptic\"; the other is the \"believer.\""
         ]
       , H.div [HA.class "row"]
-        [ let pLow = parsePLow model in
-          H.div [HA.class "mb-3"]
-          [ H.text "What probability does the ", b "skeptic", H.text " assign to the thing in question? "
-          , H.div [HA.class "input-group"]
-            [ H.input
-              [ HA.class "form-control form-control-sm py-0 w-auto"
-              , HA.class (if isOk pLow then "" else "is-invalid")
-              , HA.style "max-width" "20em"
-              , HA.value model.lowField
-              , HE.onInput SetLowField
+        [ H.div [HA.class "align-text-top mb-3"]
+          [ H.input
+              [ HA.class "form-control form-control-sm py-0 d-inline-block"
+              , HA.style "max-width" "13em"
+              , HA.value model.aliceNameField
+              , HA.placeholder "Alice"
+              , HE.onInput SetAliceNameField
               ] []
-            , H.div [HA.class "input-group-append"] [H.div [HA.class "input-group-text"] [H.text "%"]]
-            , H.div [HA.class "invalid-feedback"] [viewError pLow]
+          , H.text " assigns this probability "
+          , H.div [HA.class "d-inline-block align-text-top", HA.style "margin-top" "-0.3em"]
+            [ H.input
+              [ HA.class "form-control form-control-sm py-0 d-inline-block"
+              , HA.class (if model.alicePField == "" || isOk alice.p then "" else "is-invalid")
+              , HA.type_ "number", HA.min "0", HA.max "100"
+              , HA.style "max-width" "7em"
+              , HA.value model.alicePField
+              , HE.onInput SetAlicePField
+              ] []
+            , H.text "%"
+            , H.div [HA.style "height" "1.5em"]
+              [ if model.alicePField == "" then H.text "" else
+                case alice.p of
+                  Err e -> H.span [HA.style "color" "red"] [H.text e]
+                  Ok p -> case rationalApprox {x=p, tolerance=0.13 * min p (1-p)} of
+                    Nothing -> H.text ""
+                    Just (n,d) -> if n==0 || n==d then H.text "" else H.div [HA.class "text-secondary"] [H.text <| "i.e. about " ++ String.fromInt n ++ " out of " ++ String.fromInt d]
+              ]
             ]
-          , case pLow of
-              Err _ -> H.text ""
-              Ok p -> case rationalApprox {x=p, tolerance=0.13 * min p (1-p)} of
-                Nothing -> H.text ""
-                Just (n,d) -> if n==0 || n==d then H.text "" else H.span [HA.class "text-secondary"] [H.text <| "i.e. about " ++ String.fromInt n ++ " out of " ++ String.fromInt d]
           ]
-        , let pHigh = parsePHigh model in
-          H.div [HA.class "mb-3"]
-          [ H.text "What probability does the ", H.strong [] [H.text "believer"], H.text " assign to the thing in question? "
-          , H.div [HA.class "input-group"]
-            [ H.input
-              [ HA.class "form-control form-control-sm py-0 w-auto"
-              , HA.class (if isOk pHigh then "" else "is-invalid")
-              , HA.style "max-width" "20em"
-              , HA.value model.highField
-              , HE.onInput SetHighField
+        , H.div [HA.class "mb-3"]
+          [ H.input
+              [ HA.class "form-control form-control-sm py-0 d-inline-block"
+              , HA.style "max-width" "13em"
+              , HA.value model.bobNameField
+              , HA.placeholder "Bob"
+              , HE.onInput SetBobNameField
               ] []
-            , H.div [HA.class "input-group-append"] [H.div [HA.class "input-group-text"] [H.text "%"]]
-            , H.div [HA.class "invalid-feedback"] [viewError pHigh]
+          , H.text " assigns it probability "
+          , H.div [HA.class "d-inline-block align-text-top", HA.style "margin-top" "-0.3em"]
+            [ H.input
+                [ HA.class "form-control form-control-sm py-0 d-inline-block"
+                , HA.class (if model.bobPField == "" || isOk bob.p then "" else "is-invalid")
+                , HA.type_ "number", HA.min "0", HA.max "100"
+                , HA.style "max-width" "7em"
+                , HA.value model.bobPField
+                , HE.onInput SetBobPField
+                ] []
+            , H.text "%"
+            , H.div [HA.style "height" "1.5em"]
+              [ if model.bobPField == "" then H.text "" else
+                case bob.p of
+                  Err e -> H.span [HA.style "color" "red"] [H.text e]
+                  Ok p -> case rationalApprox {x=p, tolerance=0.13 * min p (1-p)} of
+                    Nothing -> H.text ""
+                    Just (n,d) -> if n==0 || n==d then H.text "" else H.div [HA.class "text-secondary"] [H.text <| "i.e. about " ++ String.fromInt n ++ " out of " ++ String.fromInt d]
+              ]
             ]
-          , case pHigh of
-              Err _ -> H.text ""
-              Ok p -> case rationalApprox {x=p, tolerance=0.13 * min p (1-p)} of
-                Nothing -> H.text ""
-                Just (n,d) -> if n==0 || n==d then H.text "" else H.span [HA.class "text-secondary"] [H.text <| "i.e. about " ++ String.fromInt n ++ " out of " ++ String.fromInt d]
           ]
         , let exposure = parseExposure model in
           H.div [HA.class "mb-3"]
-          [ H.text "How much money are you two willing to stake on this?"
-          , H.div [HA.class "input-group"]
-            [ H.div [HA.class "input-group-prepend"] [H.div [HA.class "input-group-text"] [H.text "$"]]
-            , H.input
-              [ HA.class "form-control form-control-sm py-0 w-auto"
+          [ H.text "How much money are you two willing to stake on this? $"
+          , H.div [HA.class "d-inline-block align-text-top", HA.style "margin-top" "-0.3em"]
+          [ H.input
+              [ HA.class "form-control form-control-sm py-0 d-inline-block"
               , HA.class (if isOk exposure then "" else "is-invalid")
-              , HA.style "max-width" "20em"
+              , HA.type_ "number", HA.min "0"
+              , HA.style "max-width" "7em"
               , HA.value model.exposureField
               , HE.onInput SetExposureField
               ] []
@@ -168,38 +189,46 @@ view model =
           ]
         , H.hr [HA.class "my-2"] []
         , H.h3 [HA.class "text-center mb-2"] [H.text "The bet you should make:"]
-        , H.table [HA.style "max-width" "40em"]
-          [ H.tr []
-            [ H.th [HA.class "pe-3", HA.scope "row"] [H.text "If the thing happens,"]
-            , H.td [HA.class "pe-3" ] [ H.text " the ", b "skeptic", H.text " should pay the ", b "believer" ]
-            , H.td [HA.class "pe-3" ] [ H.text (bet |> Maybe.map (.lowPaysHighIfYes >> formatDollars) |> Maybe.withDefault "???") ]
-            ]
-          , H.tr []
-            [ H.th [HA.scope "row"] [H.text "Otherwise,"]
-            , H.td [] [ H.text " the ", b "believer", H.text " should pay the ", b "skeptic", H.text " " ]
-            , H.td [] [ H.text (bet |> Maybe.map (.highPaysLowIfNo >> formatDollars) |> Maybe.withDefault "???") ]
-            ]
+        , H.div []
+          [ H.text "If the thing ", b "happens:", H.text " "
+          , case bet of
+              Nothing -> b "???"
+              Just details ->
+                if details.aliceWinningsIfYes < 0 then
+                  H.span [] [ H.text <| alice.name ++ " pays " ++ bob.name ++ " ", b <| formatDollars (-details.aliceWinningsIfYes) ]
+                else
+                  H.span [] [ H.text <| bob.name ++ " pays " ++ alice.name ++ " ", b <| formatDollars details.aliceWinningsIfYes ]
+          ]
+        , H.div []
+          [ H.text "If it ", b "doesn't happen:", H.text " "
+          , case bet of
+              Nothing -> b "???"
+              Just details ->
+                if details.aliceWinningsIfNo < 0 then
+                  H.span [] [ H.text <| alice.name ++ " pays " ++ bob.name ++ " ", b <| formatDollars (-details.aliceWinningsIfNo) ]
+                else
+                  H.span [] [ H.text <| bob.name ++ " pays " ++ alice.name ++ " ", b <| formatDollars details.aliceWinningsIfNo ]
           ]
         , H.details [HA.class "m-3 text-secondary"]
           [ H.text <| "You're effectively betting at " ++ (bet |> Maybe.map (.impliedProbability >> (*) 100 >> round >> String.fromInt) |> Maybe.withDefault "???") ++ "% odds. Your expected winnings are:"
           , H.p []
             [ H.ul []
               [ H.li []
-                [ H.strong [] [H.text "Doubter: "]
-                , case (parsePLow model, bet) of
-                    (Ok pLow, Just payouts) ->
+                [ H.strong [] [H.text <| alice.name ++ ": "]
+                , case (alice.p, bet) of
+                    (Ok p, Just payouts) ->
                       H.text <|
-                        (formatDollars <| pLow * (-payouts.lowPaysHighIfYes) + (1-pLow)*payouts.highPaysLowIfNo) ++ " = "
-                        ++ formatProbabilityAsPct pLow ++ " * -" ++ formatDollars payouts.lowPaysHighIfYes ++ " + " ++ formatProbabilityAsPct (1-pLow) ++ " * " ++ formatDollars payouts.highPaysLowIfNo
+                        (formatDollars <| p * payouts.aliceWinningsIfYes + (1-p)*payouts.aliceWinningsIfNo) ++ " = "
+                        ++ formatProbabilityAsPct p ++ " * " ++ formatDollars payouts.aliceWinningsIfYes ++ " + " ++ formatProbabilityAsPct (1-p) ++ " * " ++ formatDollars payouts.aliceWinningsIfNo
                     _ -> H.text "???"
                 ]
               , H.li []
-                [ H.strong [] [H.text "Believer: "]
-                , case (parsePHigh model, bet) of
-                    (Ok pHigh, Just payouts) ->
+                [ H.strong [] [H.text <| bob.name ++ ": "]
+                , case (bob.p, bet) of
+                    (Ok p, Just payouts) ->
                       H.text <|
-                        (formatDollars <| pHigh * payouts.lowPaysHighIfYes + (1-pHigh)*(-payouts.highPaysLowIfNo)) ++ " = "
-                        ++ formatProbabilityAsPct pHigh ++ " * " ++ formatDollars payouts.lowPaysHighIfYes ++ " + " ++ formatProbabilityAsPct (1-pHigh) ++ " * -" ++ formatDollars payouts.highPaysLowIfNo
+                        (formatDollars <| p * (-payouts.aliceWinningsIfYes) + (1-p)*(-payouts.aliceWinningsIfNo)) ++ " = "
+                        ++ formatProbabilityAsPct p ++ " * " ++ formatDollars (-payouts.aliceWinningsIfYes) ++ " + " ++ formatProbabilityAsPct (1-p) ++ " * " ++ formatDollars (-payouts.aliceWinningsIfNo)
                     _ -> H.text "???"
                 ]
               ]
@@ -232,8 +261,10 @@ rationalApprox {x, tolerance} =
 update : Msg -> Model -> ( Model , Cmd never )
 update msg model =
   ( case msg of
-      SetLowField value -> { model | lowField = value }
-      SetHighField value -> { model | highField = value }
+      SetAliceNameField value -> { model | aliceNameField = value }
+      SetAlicePField value -> { model | alicePField = value }
+      SetBobNameField value -> { model | bobNameField = value }
+      SetBobPField value -> { model | bobPField = value }
       SetExposureField value -> { model | exposureField = value }
   , Cmd.none
   )
