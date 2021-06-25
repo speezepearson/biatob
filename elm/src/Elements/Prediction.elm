@@ -514,12 +514,9 @@ viewBody model =
           NeedsToWaitForInvitation ->
             H.div []
             [ H.p []
-              [ Utils.b "Make a bet:"
-              , H.text " Before I let you bet against "
+              [ H.text "I've emailed "
               , Utils.renderUser prediction.creator
-              , H.text ", I have to make sure that they trust you to pay up if you lose!"
-              , H.br [] []
-              , H.text "I've sent them an email asking whether they trust you; you'll have to wait for them to say yes before you can bet on their predictions!"
+              , H.text " asking if they trust you, but they haven't responded yet, so I can't let you bet against them yet. Sorry!"
             ]
             , maybeButHeresAQueueForm
             ]
@@ -542,7 +539,8 @@ viewBody model =
               , H.text "After they tell me that they trust you, I'll let you bet on this prediction!"
               ]
             , H.p []
-              [ H.text "Alternatively, you could "
+              [ Utils.b "Alternatively"
+              , H.text ", you could "
               , if Globals.getRelationship model.globals prediction.creator |> Maybe.map .trustedByYou |> Maybe.withDefault False then
                   H.span []
                   [ H.text " text/email/whatever them a link to "
@@ -593,7 +591,8 @@ viewBody model =
                 ]
               ]
             , H.p []
-              [ H.text "Alternatively, you could "
+              [ Utils.b "Alternatively"
+              , H.text ", you could "
               , if Globals.getRelationship model.globals prediction.creator |> Maybe.map .trustedByYou |> Maybe.withDefault False then
                   H.span []
                   [ H.text " text/email/whatever them a link to "
