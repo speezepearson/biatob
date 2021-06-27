@@ -384,7 +384,7 @@ message SendInvitationRequest {
 }
 message SendInvitationResponse {
   oneof send_invitation_result {
-    Void ok = 1;
+    GenericUserInfo ok = 1;
     Error error = 2;
   }
   message Error {

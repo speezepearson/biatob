@@ -770,7 +770,7 @@ type alias SendInvitationRequest =
 {-| SendInvitationResult
 -}
 type SendInvitationResult
-    = SendInvitationResultOk Void
+    = SendInvitationResultOk GenericUserInfo
     | SendInvitationResultError SendInvitationResponseError
 
 
@@ -1656,7 +1656,7 @@ sendInvitationResponseDecoder : Decode.Decoder SendInvitationResponse
 sendInvitationResponseDecoder =
     Decode.message (SendInvitationResponse Nothing)
         [ Decode.oneOf
-            [ ( 1, Decode.map SendInvitationResultOk voidDecoder )
+            [ ( 1, Decode.map SendInvitationResultOk genericUserInfoDecoder )
             , ( 2, Decode.map SendInvitationResultError sendInvitationResponseErrorDecoder )
             ]
             setSendInvitationResult
@@ -2644,7 +2644,7 @@ toSendInvitationResultEncoder : SendInvitationResult -> ( Int, Encode.Encoder )
 toSendInvitationResultEncoder model =
     case model of
         SendInvitationResultOk value ->
-            ( 1, toVoidEncoder value )
+            ( 1, toGenericUserInfoEncoder value )
 
         SendInvitationResultError value ->
             ( 2, toSendInvitationResponseErrorEncoder value )

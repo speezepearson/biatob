@@ -1352,14 +1352,16 @@ class SendInvitationResponse(google.protobuf.message.Message):
 
     OK_FIELD_NUMBER: builtins.int
     ERROR_FIELD_NUMBER: builtins.int
-    ok: global___Void.V = ...
+
+    @property
+    def ok(self) -> global___GenericUserInfo: ...
 
     @property
     def error(self) -> global___SendInvitationResponse.Error: ...
 
     def __init__(self,
         *,
-        ok : global___Void.V = ...,
+        ok : typing.Optional[global___GenericUserInfo] = ...,
         error : typing.Optional[global___SendInvitationResponse.Error] = ...,
         ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal[u"error",b"error",u"ok",b"ok",u"send_invitation_result",b"send_invitation_result"]) -> builtins.bool: ...

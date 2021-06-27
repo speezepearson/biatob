@@ -99,8 +99,8 @@ def UpdateSettingsOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], *, 
 def UpdateSettingsErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], *, email_resolution_notifications: Optional[bool] = None, email_reminders_to_resolve: Optional[bool] = None, allow_email_invitations: Optional[bool] = None) -> mvp_pb2.UpdateSettingsResponse.Error:
   return assert_oneof(servicer.UpdateSettings(token, mvp_pb2.UpdateSettingsRequest(email_resolution_notifications=None if email_resolution_notifications is None else mvp_pb2.MaybeBool(value=email_resolution_notifications), email_reminders_to_resolve=None if email_reminders_to_resolve is None else mvp_pb2.MaybeBool(value=email_reminders_to_resolve), allow_email_invitations=None if allow_email_invitations is None else mvp_pb2.MaybeBool(value=allow_email_invitations))), 'update_settings_result', 'error', mvp_pb2.UpdateSettingsResponse.Error)
 
-def SendInvitationOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], recipient: str) -> object:
-  return assert_oneof(servicer.SendInvitation(token, mvp_pb2.SendInvitationRequest(recipient=recipient)), 'send_invitation_result', 'ok', int)
+def SendInvitationOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], recipient: str) -> mvp_pb2.GenericUserInfo:
+  return assert_oneof(servicer.SendInvitation(token, mvp_pb2.SendInvitationRequest(recipient=recipient)), 'send_invitation_result', 'ok', mvp_pb2.GenericUserInfo)
 def SendInvitationErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], recipient: str) -> mvp_pb2.SendInvitationResponse.Error:
   return assert_oneof(servicer.SendInvitation(token, mvp_pb2.SendInvitationRequest(recipient=recipient)), 'send_invitation_result', 'error', mvp_pb2.SendInvitationResponse.Error)
 

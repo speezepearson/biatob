@@ -605,7 +605,6 @@ class SqlConn:
     check_resp = self.check_invitation(nonce)
     if check_resp is None:
       return None
-    self.set_trusted(Username(check_resp.inviter), Username(check_resp.recipient), True)
     self.set_trusted(Username(check_resp.recipient), Username(check_resp.inviter), True)
     self._conn.execute(
       sqlalchemy.delete(schema.email_invitations)
@@ -1215,7 +1214,8 @@ class SqlServicer(Servicer):
         logger.warn('trying to send email invitation to user without email set')
         return mvp_pb2.SendInvitationResponse(error=mvp_pb2.SendInvitationResponse.Error(catchall='you need to add an email address before you can send invitations'))
 
-      recipient_settings = self._conn.get_settings(Username(request.recipient))
+      recipient = Username(request.recipient)
+      recipient_settings = self._conn.get_settings(recipient)
       if recipient_settings is None:
         logger.warn('trying to send email invitation to nonexistent user')
         return mvp_pb2.SendInvitationResponse(error=mvp_pb2.SendInvitationResponse.Error(catchall='recipient user does not exist'))
@@ -1226,25 +1226,27 @@ class SqlServicer(Servicer):
         logger.warn('trying to send email invitation to user without email set')
         return mvp_pb2.SendInvitationResponse(error=mvp_pb2.SendInvitationResponse.Error(catchall='recipient user does not accept email invitations'))
 
-      if self._conn.is_invitation_outstanding(inviter=token_owner(token), recipient=Username(request.recipient)):
+      if self._conn.is_invitation_outstanding(inviter=token_owner(token), recipient=recipient):
         logger.warn('trying to send duplicate email invitation', request=request)
         return mvp_pb2.SendInvitationResponse(error=mvp_pb2.SendInvitationResponse.Error(catchall="I've already asked this user if they trust you"))
+
+      self._conn.set_trusted(token_owner(token), recipient, True)
 
       nonce = secrets.token_urlsafe(16)
 
       self._conn.create_invitation(
         nonce=nonce,
         inviter=token_owner(token),
-        recipient=Username(request.recipient),
+        recipient=recipient,
       )
       asyncio.create_task(self._emailer.send_invitation(
         inviter_username=token_owner(token),
         inviter_email=inviter_email.verified,
-        recipient_username=Username(request.recipient),
+        recipient_username=recipient,
         recipient_email=recipient_settings.email.verified,
         nonce=nonce,
       ))
-      return mvp_pb2.SendInvitationResponse(ok=mvp_pb2.VOID)
+      return mvp_pb2.SendInvitationResponse(ok=self._conn.get_settings(token_owner(token), include_relationships_with_users=[recipient]))
 
     @transactional
     @checks_token
