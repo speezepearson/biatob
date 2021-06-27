@@ -106,7 +106,7 @@ update msg model =
           Err _ -> Cmd.none
       )
     SetTrusted trusted ->
-      let req = {who=model.who, whoDepr=Nothing, trusted=trusted} in
+      let req = {who=model.who, trusted=trusted} in
       ( { model | setTrustedRequestStatus = AwaitingResponse }
       , API.postSetTrusted (SetTrustedFinished req) req
       )

@@ -2,17 +2,8 @@ syntax = "proto3";
 
 package biatob.proto.mvp;
 
-message UserId {
-  oneof kind {
-    string username = 1;
-    // string oauth_google_acct = 2;
-    // string oauth_facebook_acct = 3;
-  }
-}
-
 message AuthToken {
   bytes hmac_of_rest = 1;
-  UserId owner_depr = 2;
   string owner = 7;
   double minted_unixtime = 5;
   double expires_unixtime = 6;
@@ -49,7 +40,6 @@ message HashedPassword {
 }
 
 message GenericUserInfo {
-  repeated UserId trusted_users_depr = 1;
   EmailFlowState email = 2;
   bool email_reminders_to_resolve = 3;
   bool email_resolution_notifications = 4;
@@ -224,7 +214,6 @@ message PredictionsById {
 }
 
 message ListPredictionsRequest {
-  UserId creator_depr = 1;
   string creator = 2;
 }
 message ListPredictionsResponse {
@@ -283,7 +272,6 @@ message ResolveResponse {
 }
 
 message SetTrustedRequest {
-  UserId who_depr = 1;
   string who = 3;
   bool trusted = 2;
 }
@@ -298,7 +286,6 @@ message SetTrustedResponse {
 }
 
 message GetUserRequest {
-  UserId who_depr = 1;
   string who = 2;
 }
 message GetUserResponse {

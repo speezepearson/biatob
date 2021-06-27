@@ -62,13 +62,13 @@ view config state =
             , H.td []
               [ if rel.trustedByYou then
                   H.button
-                  [ HE.onClick (config.setTrusted {state | setTrustedRequestStatuses = state.setTrustedRequestStatuses |> D.insert u AwaitingResponse} {whoDepr=Nothing, who=u, trusted=False})
+                  [ HE.onClick (config.setTrusted {state | setTrustedRequestStatuses = state.setTrustedRequestStatuses |> D.insert u AwaitingResponse} {who=u, trusted=False})
                   , HA.disabled <| D.get u state.setTrustedRequestStatuses == Just AwaitingResponse
                   , HA.class "btn btn-sm py-0 btn-outline-primary"
                   ] [H.text "Mark untrusted"]
                 else
                   H.button
-                  [ HE.onClick (config.setTrusted {state | setTrustedRequestStatuses = state.setTrustedRequestStatuses |> D.insert u AwaitingResponse} {whoDepr=Nothing, who=u, trusted=True})
+                  [ HE.onClick (config.setTrusted {state | setTrustedRequestStatuses = state.setTrustedRequestStatuses |> D.insert u AwaitingResponse} {who=u, trusted=True})
                   , HA.disabled <| D.get u state.setTrustedRequestStatuses == Just AwaitingResponse
                   , HA.class "btn btn-sm py-0 btn-outline-primary"
                   ] [H.text "Mark trusted"]

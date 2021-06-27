@@ -147,8 +147,6 @@ class TokenMint:
     def check_token(self, token: Optional[mvp_pb2.AuthToken]) -> Optional[mvp_pb2.AuthToken]:
         if token is None:
             return None
-        if token.HasField('owner_depr') and not token.owner:
-            return None  # token was issued before the UserId -> Username switch
         now = int(self._clock().timestamp())
         if not (token.minted_unixtime <= now < token.expires_unixtime):
             return None

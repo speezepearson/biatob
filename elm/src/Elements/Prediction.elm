@@ -263,7 +263,6 @@ viewBodyMockup globals prediction =
     mockToken : Pb.AuthToken
     mockToken =
       { owner="__previewer__"
-      , ownerDepr=Nothing
       , mintedUnixtime=0
       , expiresUnixtime=0
       , hmacOfRest=emptyBytes
@@ -278,7 +277,6 @@ viewBodyMockup globals prediction =
       , invitations = Dict.empty
       , loginType = Just (Pb.LoginTypeLoginPassword {salt=emptyBytes, scrypt=emptyBytes})
       , relationships = Dict.singleton prediction.creator (Just {trustsYou=True, trustedByYou=True})
-      , trustedUsersDepr = []
       }
   in
   viewBody
@@ -1232,7 +1230,7 @@ update msg model =
       )
     SetCreatorTrusted ->
       ( { model | setTrustedStatus = AwaitingResponse }
-      , let req = {whoDepr=Nothing, who=(mustPrediction model).creator, trusted=True} in API.postSetTrusted (SetCreatorTrustedFinished req) req
+      , let req = {who=(mustPrediction model).creator, trusted=True} in API.postSetTrusted (SetCreatorTrustedFinished req) req
       )
     SetCreatorTrustedFinished req res ->
       ( { model | globals = model.globals |> Globals.handleSetTrustedResponse req res
