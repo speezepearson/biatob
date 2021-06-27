@@ -94,10 +94,20 @@ def GetSettingsOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken]) -> mvp
 def GetSettingsErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken]) -> mvp_pb2.GetSettingsResponse.Error:
   return assert_oneof(servicer.GetSettings(token, mvp_pb2.GetSettingsRequest()), 'get_settings_result', 'error', mvp_pb2.GetSettingsResponse.Error)
 
-def UpdateSettingsOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], *, email_resolution_notifications: Optional[bool] = None, email_reminders_to_resolve: Optional[bool] = None, allow_email_invitations: Optional[bool] = None) -> mvp_pb2.GenericUserInfo:
-  return assert_oneof(servicer.UpdateSettings(token, mvp_pb2.UpdateSettingsRequest(email_resolution_notifications=None if email_resolution_notifications is None else mvp_pb2.MaybeBool(value=email_resolution_notifications), email_reminders_to_resolve=None if email_reminders_to_resolve is None else mvp_pb2.MaybeBool(value=email_reminders_to_resolve), allow_email_invitations=None if allow_email_invitations is None else mvp_pb2.MaybeBool(value=allow_email_invitations))), 'update_settings_result', 'ok', mvp_pb2.GenericUserInfo)
-def UpdateSettingsErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], *, email_resolution_notifications: Optional[bool] = None, email_reminders_to_resolve: Optional[bool] = None, allow_email_invitations: Optional[bool] = None) -> mvp_pb2.UpdateSettingsResponse.Error:
-  return assert_oneof(servicer.UpdateSettings(token, mvp_pb2.UpdateSettingsRequest(email_resolution_notifications=None if email_resolution_notifications is None else mvp_pb2.MaybeBool(value=email_resolution_notifications), email_reminders_to_resolve=None if email_reminders_to_resolve is None else mvp_pb2.MaybeBool(value=email_reminders_to_resolve), allow_email_invitations=None if allow_email_invitations is None else mvp_pb2.MaybeBool(value=allow_email_invitations))), 'update_settings_result', 'error', mvp_pb2.UpdateSettingsResponse.Error)
+def UpdateSettingsOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], *, email_resolution_notifications: Optional[bool] = None, email_reminders_to_resolve: Optional[bool] = None, allow_email_invitations: Optional[bool] = None, email_invitation_acceptance_notifications: Optional[bool] = None) -> mvp_pb2.GenericUserInfo:
+  return assert_oneof(servicer.UpdateSettings(token, mvp_pb2.UpdateSettingsRequest(
+    email_resolution_notifications=None if email_resolution_notifications is None else mvp_pb2.MaybeBool(value=email_resolution_notifications),
+    email_reminders_to_resolve=None if email_reminders_to_resolve is None else mvp_pb2.MaybeBool(value=email_reminders_to_resolve),
+    allow_email_invitations=None if allow_email_invitations is None else mvp_pb2.MaybeBool(value=allow_email_invitations),
+    email_invitation_acceptance_notifications=None if email_invitation_acceptance_notifications is None else mvp_pb2.MaybeBool(value=email_invitation_acceptance_notifications))
+  ), 'update_settings_result', 'ok', mvp_pb2.GenericUserInfo)
+def UpdateSettingsErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], *, email_resolution_notifications: Optional[bool] = None, email_reminders_to_resolve: Optional[bool] = None, allow_email_invitations: Optional[bool] = None, email_invitation_acceptance_notifications: Optional[bool] = None) -> mvp_pb2.UpdateSettingsResponse.Error:
+  return assert_oneof(servicer.UpdateSettings(token, mvp_pb2.UpdateSettingsRequest(
+    email_resolution_notifications=None if email_resolution_notifications is None else mvp_pb2.MaybeBool(value=email_resolution_notifications),
+    email_reminders_to_resolve=None if email_reminders_to_resolve is None else mvp_pb2.MaybeBool(value=email_reminders_to_resolve),
+    allow_email_invitations=None if allow_email_invitations is None else mvp_pb2.MaybeBool(value=allow_email_invitations),
+    email_invitation_acceptance_notifications=None if email_invitation_acceptance_notifications is None else mvp_pb2.MaybeBool(value=email_invitation_acceptance_notifications))
+  ), 'update_settings_result', 'error', mvp_pb2.UpdateSettingsResponse.Error)
 
 def SendInvitationOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], recipient: str) -> mvp_pb2.GenericUserInfo:
   return assert_oneof(servicer.SendInvitation(token, mvp_pb2.SendInvitationRequest(recipient=recipient)), 'send_invitation_result', 'ok', mvp_pb2.GenericUserInfo)
@@ -877,7 +887,7 @@ class TestUpdateSettings:
     with assert_user_unchanged(any_servicer, token, 'rando password'):
       UpdateSettingsOk(any_servicer, token)
 
-  async def test_notification_settings_are_persisted(self, any_servicer: Servicer):
+  async def test_resolution_notification_settings_are_persisted(self, any_servicer: Servicer):
     token = new_user_token(any_servicer, 'rando')
     UpdateSettingsOk(any_servicer, token, email_resolution_notifications=False)
     assert not GetSettingsOk(any_servicer, token).email_resolution_notifications
@@ -897,6 +907,13 @@ class TestUpdateSettings:
     assert not GetSettingsOk(any_servicer, token).allow_email_invitations
     UpdateSettingsOk(any_servicer, token, allow_email_invitations=True)
     assert GetSettingsOk(any_servicer, token).allow_email_invitations
+
+  async def test_invitation_acceptance_notification_settings_are_persisted(self, any_servicer: Servicer):
+    token = new_user_token(any_servicer, 'rando')
+    UpdateSettingsOk(any_servicer, token, email_invitation_acceptance_notifications=False)
+    assert not GetSettingsOk(any_servicer, token).email_invitation_acceptance_notifications
+    UpdateSettingsOk(any_servicer, token, email_invitation_acceptance_notifications=True)
+    assert GetSettingsOk(any_servicer, token).email_invitation_acceptance_notifications
 
   async def test_response_has_new_settings(self, any_servicer: Servicer):
     token = new_user_token(any_servicer, 'rando')
@@ -1031,6 +1048,45 @@ class TestAcceptInvitation:
 
     rel = GetSettingsOk(any_servicer, rando_token).relationships['recipient']
     assert not rel.trusts_you and not rel.trusted_by_you
+
+  async def test_sends_email_to_inviter_if_settings_appropriate(self, any_servicer: Servicer, emailer: Emailer):
+    recipient_token = new_user_token(any_servicer, 'recipient')
+    set_and_verify_email(any_servicer, emailer, recipient_token, 'recipient@example.com')
+    UpdateSettingsOk(any_servicer, recipient_token, allow_email_invitations=True)
+
+    inviter_token = new_user_token(any_servicer, 'inviter')
+    set_and_verify_email(any_servicer, emailer, inviter_token, 'inviter@example.com')
+    UpdateSettingsOk(any_servicer, inviter_token, email_invitation_acceptance_notifications=True)
+
+    SendInvitationOk(any_servicer, inviter_token, 'recipient')
+    AcceptInvitationOk(any_servicer, None, get_call_kwarg(emailer.send_invitation, 'nonce'))
+    emailer.send_invitation_acceptance_notification.assert_called_once_with(inviter_email='inviter@example.com', recipient_username='recipient')  # type: ignore
+
+  async def test_does_not_send_email_to_inviter_if_no_email(self, any_servicer: Servicer, emailer: Emailer):
+    recipient_token = new_user_token(any_servicer, 'recipient')
+    set_and_verify_email(any_servicer, emailer, recipient_token, 'recipient@example.com')
+    UpdateSettingsOk(any_servicer, recipient_token, allow_email_invitations=True)
+
+    inviter_token = new_user_token(any_servicer, 'inviter')
+    set_and_verify_email(any_servicer, emailer, inviter_token, 'inviter@example.com')
+
+    SendInvitationOk(any_servicer, inviter_token, 'recipient')
+    SetEmailOk(any_servicer, inviter_token, '')
+    AcceptInvitationOk(any_servicer, None, get_call_kwarg(emailer.send_invitation, 'nonce'))
+    emailer.send_invitation_acceptance_notification.assert_not_called()  # type: ignore
+
+  async def test_does_not_send_email_to_inviter_if_notifications_disabled(self, any_servicer: Servicer, emailer: Emailer):
+    recipient_token = new_user_token(any_servicer, 'recipient')
+    set_and_verify_email(any_servicer, emailer, recipient_token, 'recipient@example.com')
+    UpdateSettingsOk(any_servicer, recipient_token, allow_email_invitations=True)
+
+    inviter_token = new_user_token(any_servicer, 'inviter')
+    set_and_verify_email(any_servicer, emailer, inviter_token, 'inviter@example.com')
+    UpdateSettingsOk(any_servicer, inviter_token, email_invitation_acceptance_notifications=False)
+
+    SendInvitationOk(any_servicer, inviter_token, 'recipient')
+    AcceptInvitationOk(any_servicer, None, get_call_kwarg(emailer.send_invitation, 'nonce'))
+    emailer.send_invitation_acceptance_notification.assert_not_called()  # type: ignore
 
   async def test_error_when_no_such_invitation(self, any_servicer: Servicer):
     rando_token = new_user_token(any_servicer, 'rando')

@@ -149,6 +149,7 @@ type alias GenericUserInfo =
     , emailRemindersToResolve : Bool
     , emailResolutionNotifications : Bool
     , allowEmailInvitations : Bool
+    , emailInvitationAcceptanceNotifications : Bool
     , invitations : Dict.Dict String (Maybe GenericUserInfoInvitation)
     , relationships : Dict.Dict String (Maybe Relationship)
     , loginType : Maybe LoginType
@@ -736,6 +737,7 @@ type alias UpdateSettingsRequest =
     { emailRemindersToResolve : Maybe MaybeBool
     , emailResolutionNotifications : Maybe MaybeBool
     , allowEmailInvitations : Maybe MaybeBool
+    , emailInvitationAcceptanceNotifications : Maybe MaybeBool
     }
 
 
@@ -975,12 +977,13 @@ hashedPasswordDecoder =
 -}
 genericUserInfoDecoder : Decode.Decoder GenericUserInfo
 genericUserInfoDecoder =
-    Decode.message (GenericUserInfo [] Nothing False False False Dict.empty Dict.empty Nothing)
+    Decode.message (GenericUserInfo [] Nothing False False False False Dict.empty Dict.empty Nothing)
         [ Decode.repeated 1 userIdDecoder .trustedUsersDepr setTrustedUsersDepr
         , Decode.optional 2 (Decode.map Just emailFlowStateDecoder) setEmail
         , Decode.optional 3 Decode.bool setEmailRemindersToResolve
         , Decode.optional 4 Decode.bool setEmailResolutionNotifications
         , Decode.optional 8 Decode.bool setAllowEmailInvitations
+        , Decode.optional 9 Decode.bool setEmailInvitationAcceptanceNotifications
         , Decode.mapped 5 ( "", Nothing ) Decode.string (Decode.map Just genericUserInfoInvitationDecoder) .invitations setInvitations
         , Decode.mapped 6 ( "", Nothing ) Decode.string (Decode.map Just relationshipDecoder) .relationships setRelationships
         , Decode.oneOf
@@ -1614,10 +1617,11 @@ maybeBoolDecoder =
 -}
 updateSettingsRequestDecoder : Decode.Decoder UpdateSettingsRequest
 updateSettingsRequestDecoder =
-    Decode.message (UpdateSettingsRequest Nothing Nothing Nothing)
+    Decode.message (UpdateSettingsRequest Nothing Nothing Nothing Nothing)
         [ Decode.optional 1 (Decode.map Just maybeBoolDecoder) setEmailRemindersToResolve
         , Decode.optional 2 (Decode.map Just maybeBoolDecoder) setEmailResolutionNotifications
         , Decode.optional 3 (Decode.map Just maybeBoolDecoder) setAllowEmailInvitations
+        , Decode.optional 4 (Decode.map Just maybeBoolDecoder) setEmailInvitationAcceptanceNotifications
         ]
 
 
@@ -1878,6 +1882,7 @@ toGenericUserInfoEncoder model =
         , ( 3, Encode.bool model.emailRemindersToResolve )
         , ( 4, Encode.bool model.emailResolutionNotifications )
         , ( 8, Encode.bool model.allowEmailInvitations )
+        , ( 9, Encode.bool model.emailInvitationAcceptanceNotifications )
         , ( 5, Encode.dict Encode.string (Maybe.withDefault Encode.none << Maybe.map toGenericUserInfoInvitationEncoder) model.invitations )
         , ( 6, Encode.dict Encode.string (Maybe.withDefault Encode.none << Maybe.map toRelationshipEncoder) model.relationships )
         , Maybe.withDefault ( 0, Encode.none ) <| Maybe.map toLoginTypeEncoder model.loginType
@@ -2602,6 +2607,7 @@ toUpdateSettingsRequestEncoder model =
         [ ( 1, (Maybe.withDefault Encode.none << Maybe.map toMaybeBoolEncoder) model.emailRemindersToResolve )
         , ( 2, (Maybe.withDefault Encode.none << Maybe.map toMaybeBoolEncoder) model.emailResolutionNotifications )
         , ( 3, (Maybe.withDefault Encode.none << Maybe.map toMaybeBoolEncoder) model.allowEmailInvitations )
+        , ( 4, (Maybe.withDefault Encode.none << Maybe.map toMaybeBoolEncoder) model.emailInvitationAcceptanceNotifications )
         ]
 
 
@@ -2856,6 +2862,11 @@ setEmailResolutionNotifications value model =
 setAllowEmailInvitations : a -> { b | allowEmailInvitations : a } -> { b | allowEmailInvitations : a }
 setAllowEmailInvitations value model =
     { model | allowEmailInvitations = value }
+
+
+setEmailInvitationAcceptanceNotifications : a -> { b | emailInvitationAcceptanceNotifications : a } -> { b | emailInvitationAcceptanceNotifications : a }
+setEmailInvitationAcceptanceNotifications value model =
+    { model | emailInvitationAcceptanceNotifications = value }
 
 
 setInvitations : a -> { b | invitations : a } -> { b | invitations : a }

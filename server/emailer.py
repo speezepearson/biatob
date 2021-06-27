@@ -46,6 +46,7 @@ class Emailer:
         self._Backup_template = jenv.get_template('Backup.html')
         self._InvariantViolations_template = jenv.get_template('InvariantViolations.html')
         self._Invitation_template = jenv.get_template('Invitation.html')
+        self._InvitationAccepted_template = jenv.get_template('InvitationAccepted.html')
 
     async def _send(self, *, to: Optional[str], subject: str, body: str, headers: Mapping[str, str] = {}) -> None:
         # adapted from https://aiosmtplib.readthedocs.io/en/stable/usage.html#authentication
@@ -154,5 +155,19 @@ class Emailer:
                 inviter_email=inviter_email,
                 recipient_username=recipient_username,
                 nonce=nonce,
+            ),
+        )
+
+    async def send_invitation_acceptance_notification(
+        self,
+        inviter_email: str,
+        recipient_username: Username,
+    ) -> None:
+        await self._send(
+            to=inviter_email,
+            subject=f'Invitation accepted by {recipient_username}',
+            body=self._InvitationAccepted_template.render(
+                inviter_email=inviter_email,
+                recipient_username=recipient_username,
             ),
         )

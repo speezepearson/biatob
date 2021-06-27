@@ -274,6 +274,7 @@ viewBodyMockup globals prediction =
       , allowEmailInvitations = True
       , emailRemindersToResolve = True
       , emailResolutionNotifications = True
+      , emailInvitationAcceptanceNotifications = True
       , invitations = Dict.empty
       , loginType = Just (Pb.LoginTypeLoginPassword {salt=emptyBytes, scrypt=emptyBytes})
       , relationships = Dict.singleton prediction.creator (Just {trustsYou=True, trustedByYou=True})

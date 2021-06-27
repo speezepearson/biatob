@@ -542,6 +542,7 @@ class SqlConn:
       email_reminders_to_resolve=row['email_reminders_to_resolve'],
       email_resolution_notifications=row['email_resolution_notifications'],
       allow_email_invitations=row['allow_email_invitations'],
+      email_invitation_acceptance_notifications=row['email_invitation_acceptance_notifications'],
       email=mvp_pb2.EmailFlowState.FromString(row['email_flow_state']),
       relationships={
         who: mvp_pb2.Relationship(
@@ -567,6 +568,8 @@ class SqlConn:
       update_kwargs['email_resolution_notifications'] = request.email_resolution_notifications.value
     if request.HasField('allow_email_invitations'):
       update_kwargs['allow_email_invitations'] = request.allow_email_invitations.value
+    if request.HasField('email_invitation_acceptance_notifications'):
+      update_kwargs['email_invitation_acceptance_notifications'] = request.email_invitation_acceptance_notifications.value
 
     if update_kwargs:
       self._conn.execute(
@@ -1270,6 +1273,12 @@ class SqlServicer(Servicer):
       if result is None:
         logger.warn('trying to accept nonexistent (or completed) invitation')
         return mvp_pb2.AcceptInvitationResponse(error=mvp_pb2.AcceptInvitationResponse.Error(catchall='no such invitation'))
+      inviter_settings = self._conn.get_settings(Username(result.inviter))
+      if inviter_settings and inviter_settings.email_invitation_acceptance_notifications and inviter_settings.email.WhichOneof('email_flow_state_kind') == 'verified':
+        asyncio.create_task(self._emailer.send_invitation_acceptance_notification(
+          inviter_email=inviter_settings.email.verified,
+          recipient_username=Username(result.recipient),
+        ))
       return mvp_pb2.AcceptInvitationResponse(ok=mvp_pb2.GenericUserInfo() if token is None else self._conn.get_settings(token_owner(token)))
 
 

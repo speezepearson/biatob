@@ -54,6 +54,7 @@ message GenericUserInfo {
   bool email_reminders_to_resolve = 3;
   bool email_resolution_notifications = 4;
   bool allow_email_invitations = 8;
+  bool email_invitation_acceptance_notifications = 9;
   map<string, Invitation> invitations = 5;
   map<string, Relationship> relationships = 6;
 
@@ -368,6 +369,7 @@ message UpdateSettingsRequest {
   MaybeBool email_reminders_to_resolve = 1;
   MaybeBool email_resolution_notifications = 2;
   MaybeBool allow_email_invitations = 3;
+  MaybeBool email_invitation_acceptance_notifications = 4;
 }
 message UpdateSettingsResponse {
   oneof update_settings_result {

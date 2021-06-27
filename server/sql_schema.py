@@ -11,6 +11,7 @@ users = Table(
   Column('email_reminders_to_resolve', BOOLEAN(), nullable=False, default=True),
   Column('email_resolution_notifications', BOOLEAN(), nullable=False, default=True),
   Column('allow_email_invitations', BOOLEAN(), nullable=False, default=True),
+  Column('email_invitation_acceptance_notifications', BOOLEAN(), nullable=False, default=True),
   Column('login_password_id', ForeignKey('passwords.password_id'), nullable=False),  # will be nullable someday, if we add OAuth or something
   Column('email_flow_state', BINARY(), nullable=False),
 )
@@ -130,6 +131,7 @@ _MIGRATION_STMTS = [
   'ALTER TABLE users ADD COLUMN allow_email_invitations BOOLEAN NOT NULL DEFAULT 1',
   'DROP TABLE invitation_acceptances',
   'DROP TABLE invitations',
+  'ALTER TABLE users ADD COLUMN email_invitation_acceptance_notifications BOOLEAN NOT NULL DEFAULT 1',
 ]
 _N_MIGRATIONS = len(_MIGRATION_STMTS)
 

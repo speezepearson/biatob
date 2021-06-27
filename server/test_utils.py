@@ -37,6 +37,7 @@ def emailer():
     send_email_verification=unittest.mock.Mock(wraps=lambda *args, **kwargs: asyncio.sleep(0)),
     send_invitation=unittest.mock.Mock(wraps=lambda *args, **kwargs: asyncio.sleep(0)),
     send_backup=unittest.mock.Mock(wraps=lambda *args, **kwargs: asyncio.sleep(0)),
+    send_invitation_acceptance_notification=unittest.mock.Mock(wraps=lambda *args, **kwargs: asyncio.sleep(0)),
   )
 
 @pytest.fixture

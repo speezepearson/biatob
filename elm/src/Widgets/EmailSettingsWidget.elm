@@ -77,6 +77,13 @@ handleVerifyEmailResponse res state =
 view : Config msg -> State -> Html msg
 view config state =
   let
+    nullUpdateSettingsRequest : Pb.UpdateSettingsRequest
+    nullUpdateSettingsRequest =
+      { emailRemindersToResolve = Nothing
+      , emailResolutionNotifications = Nothing
+      , allowEmailInvitations = Nothing
+      , emailInvitationAcceptanceNotifications = Nothing
+      }
     emailFlowState : Pb.EmailFlowStateKind
     emailFlowState = config.userInfo |> Utils.mustUserInfoEmail |> Utils.mustEmailFlowStateKind
 
@@ -165,7 +172,7 @@ view config state =
                 , HA.class "form-check-input"
                 , HA.id "allowEmailInvitationsCheckbox"
                 , HA.disabled (state.updateSettingsRequestStatus == AwaitingResponse || not isRegistered)
-                , HE.onInput (\_ -> config.updateSettings {state | updateSettingsRequestStatus = AwaitingResponse} {emailRemindersToResolve=Nothing, emailResolutionNotifications=Nothing, allowEmailInvitations=Just {value=not config.userInfo.allowEmailInvitations}})
+                , HE.onInput (\_ -> config.updateSettings {state | updateSettingsRequestStatus = AwaitingResponse} { nullUpdateSettingsRequest | allowEmailInvitations=Just {value=not config.userInfo.allowEmailInvitations}})
                 ] []
             , H.label [HA.class "ms-1", HA.for "allowEmailInvitationsCheckbox"] [ H.text " Email notifications when new people want to bet against you?" ]
             , H.div [HA.class "ms-4"]
@@ -180,7 +187,7 @@ view config state =
                   , HA.class "form-check-input"
                   , HA.id "emailRemindersToResolveCheckbox"
                   , HA.disabled (state.updateSettingsRequestStatus == AwaitingResponse || not isRegistered)
-                  , HE.onInput (\_ -> config.updateSettings {state | updateSettingsRequestStatus = AwaitingResponse} {emailRemindersToResolve=Just {value=not config.userInfo.emailRemindersToResolve}, emailResolutionNotifications=Nothing, allowEmailInvitations=Nothing})
+                  , HE.onInput (\_ -> config.updateSettings {state | updateSettingsRequestStatus = AwaitingResponse} { nullUpdateSettingsRequest | emailRemindersToResolve=Just {value=not config.userInfo.emailRemindersToResolve}})
                   ] []
               , H.label [HA.class "ms-1", HA.for "emailRemindersToResolveCheckbox"] [H.text " Email reminders to resolve your predictions, when it's time?"]
               ]
@@ -190,9 +197,19 @@ view config state =
                   , HA.class "form-check-input"
                   , HA.id "emailResolutionNotificationsCheckbox"
                   , HA.disabled (state.updateSettingsRequestStatus == AwaitingResponse || not isRegistered)
-                  , HE.onInput (\_ -> config.updateSettings {state | updateSettingsRequestStatus = AwaitingResponse} {emailRemindersToResolve=Nothing, emailResolutionNotifications=Just {value=not config.userInfo.emailResolutionNotifications}, allowEmailInvitations=Nothing})
+                  , HE.onInput (\_ -> config.updateSettings {state | updateSettingsRequestStatus = AwaitingResponse} { nullUpdateSettingsRequest | emailResolutionNotifications=Just {value=not config.userInfo.emailResolutionNotifications}})
                   ] []
               , H.label [HA.class "ms-1", HA.for "emailResolutionNotificationsCheckbox"] [H.text "Email notifications when predictions you've bet on resolve?"]
+              ]
+          , H.div []
+              [ H.input
+                  [ HA.type_ "checkbox", HA.checked config.userInfo.emailInvitationAcceptanceNotifications
+                  , HA.class "form-check-input"
+                  , HA.id "emailInvitationAcceptanceNotificationsCheckbox"
+                  , HA.disabled (state.updateSettingsRequestStatus == AwaitingResponse || not isRegistered)
+                  , HE.onInput (\_ -> config.updateSettings {state | updateSettingsRequestStatus = AwaitingResponse} { nullUpdateSettingsRequest | emailInvitationAcceptanceNotifications=Just {value=not config.userInfo.emailInvitationAcceptanceNotifications}})
+                  ] []
+              , H.label [HA.class "ms-1", HA.for "emailInvitationAcceptanceNotificationsCheckbox"] [H.text "Email you a notification when you've asked me to send somebody an email asking somebody if they trust you, and then they tell me they do?"]
               ]
           , H.div []
             [ case state.updateSettingsRequestStatus of
