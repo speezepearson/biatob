@@ -648,15 +648,16 @@ class TestResolve:
         assert 'not the creator' in str(ResolveErr(any_servicer, token, prediction_id, mvp_pb2.RESOLUTION_NO))
 
   async def test_sends_notifications(self, emailer: Emailer, any_servicer: Servicer):
-    token = new_user_token(any_servicer, 'rando')
-    set_and_verify_email(any_servicer, emailer, token, 'nobody@example.com')
-    assert_oneof(any_servicer.UpdateSettings(token=token, request=mvp_pb2.UpdateSettingsRequest(email_resolution_notifications=mvp_pb2.MaybeBool(value=True))),
-      'update_settings_result', 'ok', mvp_pb2.GenericUserInfo)
+    alice_token, bob_token = alice_bob_tokens(any_servicer)
+    set_and_verify_email(any_servicer, emailer, bob_token, 'bob@example.com')
+    UpdateSettingsOk(any_servicer, bob_token, email_resolution_notifications=True)
 
-    prediction_id = CreatePredictionOk(any_servicer, token, dict(prediction='a thing will happen'))
-    ResolveOk(any_servicer, token, prediction_id, mvp_pb2.RESOLUTION_YES)
+    prediction_id = CreatePredictionOk(any_servicer, alice_token, dict(prediction='a thing will happen'))
+    StakeOk(any_servicer, bob_token, request=mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_is_a_skeptic=True, bettor_stake_cents=10))
+
+    ResolveOk(any_servicer, alice_token, prediction_id, mvp_pb2.RESOLUTION_YES)
     emailer.send_resolution_notifications.assert_called_once_with(  # type: ignore
-      bccs={'nobody@example.com'},
+      bccs={'bob@example.com'},
       prediction_id=prediction_id,
       prediction_text='a thing will happen',
       resolution=mvp_pb2.RESOLUTION_YES,

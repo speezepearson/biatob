@@ -489,19 +489,6 @@ class SqlConn:
 
   def get_resolution_notification_addrs(self, prediction_id: PredictionId) -> Iterable[str]:
     result = set()
-    creator_efs_bin = self._conn.execute(
-      sqlalchemy.select([schema.users.c.email_flow_state])
-      .where(sqlalchemy.and_(
-        schema.predictions.c.prediction_id == prediction_id,
-        schema.predictions.c.creator == schema.users.c.username,
-        schema.users.c.email_resolution_notifications,
-      ))
-    ).scalar()
-    if creator_efs_bin is not None:
-      creator_efs = mvp_pb2.EmailFlowState.FromString(creator_efs_bin)
-      if creator_efs.WhichOneof('email_flow_state_kind') == 'verified':
-        result.add(creator_efs.verified)
-
     bettor_efs_rows = self._conn.execute(
       sqlalchemy.select([schema.users.c.email_flow_state])
       .where(sqlalchemy.and_(
