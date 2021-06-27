@@ -137,7 +137,7 @@ class WebServer:
         return web.Response(
             content_type='text/html',
             body=self._jinja.get_template('ViewPredictionPage.html').render(
-                title=f'Biatob - Prediction: by {datetime.datetime.fromtimestamp(prediction.resolves_at_unixtime).strftime("%Y-%m-%d")}, {prediction.prediction}',
+                title=f'Prediction: by {datetime.datetime.fromtimestamp(prediction.resolves_at_unixtime).strftime("%Y-%m-%d")}, {prediction.prediction}',
                 auth_success_pb_b64=pb_b64(auth_success),
                 predictions_pb_b64=pb_b64(mvp_pb2.PredictionsById(predictions={prediction_id: prediction})),
                 prediction_id=prediction_id,
