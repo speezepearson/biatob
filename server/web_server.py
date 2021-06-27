@@ -259,6 +259,17 @@ class WebServer:
                 nonce=nonce,
             ))
 
+    async def verify_email(self, req: web.Request) -> web.Response:
+        auth = self._token_glue.parse_cookie(req)
+        auth_success = self._get_auth_success(auth)
+        code = str(req.match_info['code'])
+        return web.Response(
+            content_type='text/html',
+            body=self._jinja.get_template('VerifyEmailPage.html').render(
+                auth_success_pb_b64=pb_b64(auth_success),
+                code=code,
+            ))
+
     def add_to_app(self, app: web.Application) -> None:
 
         self._token_glue.add_to_app(app)
@@ -277,6 +288,7 @@ class WebServer:
         app.router.add_get('/settings', self.get_settings)
         app.router.add_get('/login', self.get_login)
         app.router.add_get('/invitation/{nonce}/accept', self.accept_invitation)
+        app.router.add_get('/verify_email/{code}', self.verify_email)
 
 
 def pb_b64(message: Optional[Message]) -> Optional[str]:

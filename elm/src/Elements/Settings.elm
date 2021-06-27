@@ -48,8 +48,6 @@ type Msg
   | SignOutFinished Pb.SignOutRequest (Result Http.Error Pb.SignOutResponse)
   | UpdateSettings EmailSettingsWidget.State Pb.UpdateSettingsRequest
   | UpdateSettingsFinished Pb.UpdateSettingsRequest (Result Http.Error Pb.UpdateSettingsResponse)
-  | VerifyEmail EmailSettingsWidget.State Pb.VerifyEmailRequest
-  | VerifyEmailFinished Pb.VerifyEmailRequest (Result Http.Error Pb.VerifyEmailResponse)
   | Copy String
   | Tick Time.Posix
   | AuthWidgetExternallyModified AuthWidget.DomModification
@@ -153,16 +151,6 @@ update msg model =
         }
       , Cmd.none
       )
-    VerifyEmail widgetState req ->
-      ( { model | emailSettingsWidget = widgetState }
-      , API.postVerifyEmail (VerifyEmailFinished req) req
-      )
-    VerifyEmailFinished req res ->
-      ( { model | globals = model.globals |> Globals.handleVerifyEmailResponse req res
-                , emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleVerifyEmailResponse res
-        }
-      , Cmd.none
-      )
     Copy s ->
       ( model
       , copy s
@@ -206,7 +194,6 @@ view model =
               { setState = SetEmailWidget
               , ignore = Ignore
               , setEmail = SetEmail
-              , verifyEmail = VerifyEmail
               , updateSettings = UpdateSettings
               , userInfo = userInfo
               , showAllEmailSettings = True

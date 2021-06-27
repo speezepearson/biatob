@@ -1138,7 +1138,7 @@ class SqlServicer(Servicer):
 
       if request.email:
         # TODO: prevent an email address from getting "too many" emails if somebody abuses us
-        code = secrets.token_urlsafe(nbytes=16).replace('-', '')  # hyphens break copy-paste, and the entropy decrease isn't too bad
+        code = secrets.token_urlsafe(nbytes=16)
         asyncio.create_task(self._emailer.send_email_verification(
             to=request.email,
             code=code,
@@ -1157,7 +1157,7 @@ class SqlServicer(Servicer):
     def VerifyEmail(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.VerifyEmailRequest) -> mvp_pb2.VerifyEmailResponse:
       if token is None:
         logger.warn('not logged in')
-        return mvp_pb2.VerifyEmailResponse(error=mvp_pb2.VerifyEmailResponse.Error(catchall='must log in to change your password'))
+        return mvp_pb2.VerifyEmailResponse(error=mvp_pb2.VerifyEmailResponse.Error(catchall='must log in to verify your email address'))
 
       old_efs = self._conn.get_email(token_owner(token))
       if old_efs is None:

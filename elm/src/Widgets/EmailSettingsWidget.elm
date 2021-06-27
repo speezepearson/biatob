@@ -16,7 +16,6 @@ type alias Config msg =
   { setState : State -> msg
   , ignore : msg
   , setEmail : State -> Pb.SetEmailRequest -> msg
-  , verifyEmail : State -> Pb.VerifyEmailRequest -> msg
   , updateSettings : State -> Pb.UpdateSettingsRequest -> msg
   , userInfo : Pb.GenericUserInfo
   , showAllEmailSettings : Bool
@@ -121,38 +120,22 @@ view config state =
             ]
         Pb.EmailFlowStateKindCodeSent {email} ->
           H.div [HA.class "form-group"]
-            [ H.text "I sent a verification code to "
+            [ H.text "I've emailed a magic link to "
             , Utils.b email
-            , H.text ". Enter it here: "
-            , H.input
-              [ HA.disabled <| state.registrationRequestStatus == AwaitingResponse
-              , HA.placeholder "code"
-              , Utils.onEnter (config.verifyEmail {state | registrationRequestStatus = AwaitingResponse} {code=state.codeField}) config.ignore
-              , HE.onInput (\s -> config.setState {state | codeField=s})
-              , HA.value state.codeField
-              , HA.class "form-control form-control-sm mx-1"
-              , HA.style "display" "inline-block"
-              , HA.style "width" "12em"
-              ] []
-            , H.button
-              [ HE.onClick (config.verifyEmail {state | registrationRequestStatus = AwaitingResponse} {code=state.codeField})
-              , HA.disabled <| state.registrationRequestStatus == AwaitingResponse || state.codeField == ""
-              , HA.class "btn btn-sm py-0 btn-primary"
-              ] [H.text "Verify code"]
-            , H.text " "
-            -- TODO: "Resend email"
+            , H.text ". Click the link to verify your email address!"
             , H.text " (Or, "
+            , H.button
+                [ HE.onClick (config.setEmail {state | registrationRequestStatus = AwaitingResponse} {email=email})
+                , HA.class "btn btn-sm py-0 btn-outline-secondary"
+                ]
+                [H.text "re-send email"]
+            , H.text "; or, "
             , H.button
                 [ HE.onClick (config.setEmail {state | registrationRequestStatus = AwaitingResponse} {email=""})
                 , HA.class "btn btn-sm py-0 btn-outline-secondary"
                 ]
                 [H.text "delete email"]
             , H.text ")"
-            , case state.registrationRequestStatus of
-                Unstarted -> H.text ""
-                AwaitingResponse -> H.text ""
-                Succeeded -> H.div [] [Utils.greenText "Success!"]
-                Failed e -> H.div [] [Utils.redText e]
             ]
         Pb.EmailFlowStateKindVerified email ->
           H.div []
