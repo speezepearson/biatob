@@ -13,7 +13,6 @@ import Utils exposing (RequestStatus(..), Username)
 
 import Widgets.AuthWidget as AuthWidget
 import Widgets.Navbar as Navbar
-import Widgets.ViewPredictionsWidget as ViewPredictionsWidget
 import Globals
 import Time
 import Dict exposing (Dict)
@@ -27,14 +26,12 @@ type alias Model =
   { globals : Globals.Globals
   , navbarAuth : AuthWidget.State
   , who : Username
-  , predictionsWidget : ViewPredictionsWidget.State
   , sendInvitationRequestStatus : RequestStatus
   , setTrustedRequestStatus : RequestStatus
   }
 
 type Msg
   = SetAuthWidget AuthWidget.State
-  | SetPredictionsWidget ViewPredictionsWidget.State
   | SendInvitation
   | SendInvitationFinished Pb.SendInvitationRequest (Result Http.Error Pb.SendInvitationResponse)
   | LogInUsername AuthWidget.State Pb.LogInUsernameRequest
@@ -55,7 +52,6 @@ init flags =
   ( { globals = JD.decodeValue Globals.globalsDecoder flags |> Utils.mustResult "flags"
     , navbarAuth = AuthWidget.init
     , who = Utils.mustDecodeFromFlags JD.string "who" flags
-    , predictionsWidget = ViewPredictionsWidget.init
     , sendInvitationRequestStatus = Unstarted
     , setTrustedRequestStatus = Unstarted
     }
@@ -67,8 +63,6 @@ update msg model =
   case msg of
     SetAuthWidget widgetState ->
       ( { model | navbarAuth = widgetState } , Cmd.none )
-    SetPredictionsWidget widgetState ->
-      ( { model | predictionsWidget = widgetState } , Cmd.none )
     SendInvitation ->
       ( { model | sendInvitationRequestStatus = AwaitingResponse }
       , let req = {recipient=model.who} in API.postSendInvitation (SendInvitationFinished req) req
@@ -254,17 +248,6 @@ view model =
                 AwaitingResponse -> H.text ""
                 Succeeded -> Utils.greenText "✓"
                 Failed e -> Utils.redText e
-            , H.hr [HA.class "my-4"] []
-            , H.h3 [HA.class "text-center"] [H.text <| model.who ++ "'s predictions"]
-            , ViewPredictionsWidget.view
-                { setState = SetPredictionsWidget
-                , predictions = Dict.filter (\_ pred -> pred.creator == model.who) model.globals.serverState.predictions
-                , allowFilterByOwner = False
-                , self = Globals.getOwnUsername model.globals |> Maybe.withDefault "TODO"
-                , now = model.globals.now
-                , timeZone = model.globals.timeZone
-                }
-                model.predictionsWidget
             ]
         Globals.TrustsCurrentUser ->
           H.p []

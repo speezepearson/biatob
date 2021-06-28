@@ -13,7 +13,6 @@ import Utils exposing (Username)
 
 import Widgets.AuthWidget as AuthWidget
 import Widgets.Navbar as Navbar
-import Widgets.ViewPredictionsWidget as ViewPredictionsWidget
 import Globals
 import Dict exposing (Dict)
 import Biatob.Proto.Mvp exposing (Relationship)
