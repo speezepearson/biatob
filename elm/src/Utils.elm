@@ -8,10 +8,12 @@ import Set
 import Time
 
 import Base64
+import Iso8601
 import Protobuf.Decode as PD
 import Dict exposing (Dict)
 
 import Biatob.Proto.Mvp as Pb
+import Parser
 
 type alias Username = String
 type alias Password = String
@@ -260,3 +262,15 @@ viewError res =
     Err e -> redText e
 
 type RequestStatus = Unstarted | AwaitingResponse | Succeeded | Failed String
+
+stupidIsoStrToTime : Time.Zone -> String -> Result (List Parser.DeadEnd) Time.Posix
+stupidIsoStrToTime zone str =
+  let
+    t0 = Time.millisToPosix 0
+    timeZoneMinuteOffset : Int
+    timeZoneMinuteOffset =
+      Time.toMinute zone t0 - Time.toMinute Time.utc t0
+      + 60 * (Time.toHour zone t0 - Time.toHour Time.utc t0)
+  in
+  Iso8601.toTime str
+  |> Result.map (addMillis (1000*60*timeZoneMinuteOffset))

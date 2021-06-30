@@ -7,7 +7,6 @@ import Html.Events as HE
 import Http
 import Json.Decode as JD
 import Time
-import Iso8601
 
 import Biatob.Proto.Mvp as Pb
 import Utils exposing (i, isOk, maxLegalStakeCents, viewError, Cents, RequestStatus(..))
@@ -101,9 +100,8 @@ parsePrediction model =
 
 parseResolvesAt : Model -> Result String Time.Posix
 parseResolvesAt model =
-    case Iso8601.toTime model.resolvesAtField of
-      Err _ -> Err ""
-      Ok t -> if Utils.timeToUnixtime t < Utils.timeToUnixtime model.globals.now then Err "must be in the future" else Ok t
+  Utils.stupidIsoStrToTime model.globals.timeZone model.resolvesAtField
+  |> Result.mapError (always "")
 
 parseStake : Model -> Result String Cents
 parseStake model =
