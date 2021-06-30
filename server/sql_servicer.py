@@ -97,17 +97,16 @@ class SqlConn:
     if a == b:
       return True
 
-    row = self._conn.execute(
+    result: Optional[bool] = self._conn.execute(
       sqlalchemy.select([schema.relationships.c.trusted])
       .where(sqlalchemy.and_(
         schema.relationships.c.subject_username == a,
         schema.relationships.c.object_username == b,
+        schema.relationships.c.trusted,
       ))
-    ).first()
-    if row is None:
-      return False
+    ).scalar()
 
-    return bool(row['trusted'])
+    return bool(result)
 
   def view_prediction(self, viewer: Optional[Username], prediction_id: PredictionId) -> Optional[mvp_pb2.UserPredictionView]:
     row = self._conn.execute(sqlalchemy.select(schema.predictions.c).where(schema.predictions.c.prediction_id == prediction_id)).first()
@@ -618,10 +617,6 @@ class SqlConn:
     )
 
   def check_invitation(self, nonce: str) -> Optional[mvp_pb2.CheckInvitationResponse.Result]:
-    self._conn.execute(
-      sqlalchemy.select(schema.email_invitations.c)
-      .where(schema.email_invitations.c.nonce == nonce)
-    )
     row = self._conn.execute(
       sqlalchemy.select(schema.email_invitations.c)
       .where(schema.email_invitations.c.nonce == nonce)
