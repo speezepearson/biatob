@@ -53,7 +53,7 @@ async def test_Whoami_and_RegisterUsername(aiohttp_client, app):
 async def test_CreatePrediction_and_GetPrediction(aiohttp_client, app, clock):
   create_pb_req = mvp_pb2.CreatePredictionRequest(
     prediction="Is 1 > 2?",
-    certainty=mvp_pb2.CertaintyRange(low=0.90, high=1.00),
+    low_probability=0.90,
     maximum_stake_cents=100_00,
     open_seconds=60*60,
     resolves_at_unixtime=int(clock.now().timestamp() + 86400),
@@ -73,10 +73,9 @@ async def test_CreatePrediction_and_GetPrediction(aiohttp_client, app, clock):
   (http_resp, get_pb_resp) = await post_proto(cli, '/api/GetPrediction', mvp_pb2.GetPredictionRequest(prediction_id=create_pb_resp.new_prediction_id), mvp_pb2.GetPredictionResponse)
   returned_prediction = get_pb_resp.prediction
   assert returned_prediction.prediction == create_pb_req.prediction
-  assert returned_prediction.certainty == create_pb_req.certainty
+  assert returned_prediction.low_probability == create_pb_req.low_probability
   assert returned_prediction.maximum_stake_cents == create_pb_req.maximum_stake_cents
-  assert returned_prediction.remaining_stake_cents_vs_believers == create_pb_req.maximum_stake_cents
-  assert returned_prediction.remaining_stake_cents_vs_skeptics == create_pb_req.maximum_stake_cents
+  assert returned_prediction.remaining_stake_cents == create_pb_req.maximum_stake_cents
   assert returned_prediction.created_unixtime == clock.now().timestamp()
   assert returned_prediction.closes_unixtime == returned_prediction.created_unixtime + create_pb_req.open_seconds
   assert returned_prediction.special_rules == create_pb_req.special_rules
@@ -85,7 +84,7 @@ async def test_CreatePrediction_and_GetPrediction(aiohttp_client, app, clock):
 async def test_CreatePrediction_enforces_future_resolution(aiohttp_client, app, clock):
   create_pb_req = mvp_pb2.CreatePredictionRequest(
     prediction="Is 1 > 2?",
-    certainty=mvp_pb2.CertaintyRange(low=0.90, high=1.00),
+    low_probability=0.90,
     maximum_stake_cents=100_00,
     open_seconds=60*60*24*7,
     resolves_at_unixtime=int(clock.now().timestamp() - 1),

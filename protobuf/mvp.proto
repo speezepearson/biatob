@@ -77,7 +77,6 @@ message ResolutionEvent {
 
 message Trade {
   string bettor = 7;
-  bool bettor_is_a_skeptic = 2;
   uint32 bettor_stake_cents = 3;
   uint32 creator_stake_cents = 4;
   double transacted_unixtime = 6;
@@ -85,7 +84,6 @@ message Trade {
 
 message QueuedTrade {
   string bettor = 1;
-  bool bettor_is_a_skeptic = 2;
   uint32 bettor_stake_cents = 3;
   uint32 creator_stake_cents = 4;
   double enqueued_at_unixtime = 6;
@@ -145,14 +143,10 @@ message LogInUsernameResponse {
   }
 }
 
-message CertaintyRange {
-  float low = 1;
-  float high = 2;
-}
 message CreatePredictionRequest {
   string prediction = 2;
   // PredictionPrivacy privacy = 3;
-  CertaintyRange certainty = 4;
+  double low_probability = 10;
   uint32 maximum_stake_cents = 5;
   uint32 open_seconds = 6;
   string special_rules = 7;
@@ -183,10 +177,9 @@ message GetPredictionResponse {
 }
 message UserPredictionView {
   string prediction = 1;
-  CertaintyRange certainty = 2;
+  double low_probability = 18;
   uint32 maximum_stake_cents = 3;
-  uint32 remaining_stake_cents_vs_believers = 4;
-  uint32 remaining_stake_cents_vs_skeptics = 5;
+  uint32 remaining_stake_cents = 5;
   double created_unixtime = 13;
   double closes_unixtime = 14;
   string special_rules = 8;
@@ -228,7 +221,6 @@ message ListPredictionsResponse {
 
 message StakeRequest {
   string prediction_id = 2;
-  bool bettor_is_a_skeptic = 3;
   uint32 bettor_stake_cents = 4;
 }
 message StakeResponse {
@@ -243,7 +235,6 @@ message StakeResponse {
 
 message QueueStakeRequest {
   string prediction_id = 2;
-  bool bettor_is_a_skeptic = 3;
   uint32 bettor_stake_cents = 4;
 }
 message QueueStakeResponse {

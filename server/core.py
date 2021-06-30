@@ -63,10 +63,8 @@ def describe_CreatePredictionRequest_problems(request: mvp_pb2.CreatePredictionR
     problems = []
     if not request.prediction:
         problems.append('must have a prediction field')
-    if not request.certainty:
-        problems.append('must have a certainty')
-    if not (0 < request.certainty.low <= request.certainty.high <= 1):
-        problems.append('must have 0 < lowProb <= highProb <= 1')
+    if not (0 < request.low_probability):
+        problems.append('must have 0 < low_probability')
     if not (request.maximum_stake_cents <= MAX_LEGAL_STAKE_CENTS):
         problems.append(f'stake must not exceed ${MAX_LEGAL_STAKE_CENTS//100}')
     if not (request.open_seconds > 0):

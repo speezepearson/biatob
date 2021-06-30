@@ -44,7 +44,7 @@ async def main(args):
         123: mvp_pb2.WorldState.Prediction(
           prediction='a thing will happen',
           maximum_stake_cents=10000,
-          certainty=mvp_pb2.CertaintyRange(low=0.50, high=0.50),
+          low_probability=0.50,
           creator=mvp_pb2.UserId(username='creator'),
           trades=[mvp_pb2.Trade(bettor=mvp_pb2.UserId(username='participant'), bettor_stake_cents=10, creator_stake_cents=10)],
         ),

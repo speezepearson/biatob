@@ -99,7 +99,7 @@ def alice_bob_tokens(servicer: Servicer) -> Tuple[mvp_pb2.AuthToken, mvp_pb2.Aut
 def some_create_prediction_request(**kwargs) -> mvp_pb2.CreatePredictionRequest:
   init_kwargs = dict(
     prediction='prediction!',
-    certainty=mvp_pb2.CertaintyRange(low=0.80, high=0.90),
+    low_probability=0.80,
     maximum_stake_cents=100_00,
     open_seconds=123,
     resolves_at_unixtime=int(2e9),

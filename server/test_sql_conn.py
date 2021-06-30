@@ -177,7 +177,7 @@ class TestPredictions:
 
     conn.create_prediction(now=T0, prediction_id=predid, creator=ALICE, request=mvp_pb2.CreatePredictionRequest(
       prediction='a thing will happen',
-      certainty=mvp_pb2.CertaintyRange(low=0.25, high=0.75),
+      low_probability=0.25,
       maximum_stake_cents=100,
       open_seconds=86400,
       special_rules='my rules',
@@ -185,10 +185,9 @@ class TestPredictions:
     ))
     assert conn.view_prediction(viewer=ALICE, prediction_id=predid) == mvp_pb2.UserPredictionView(
       prediction='a thing will happen',
-      certainty=mvp_pb2.CertaintyRange(low=0.25, high=0.75),
+      low_probability=0.25,
       maximum_stake_cents=100,
-      remaining_stake_cents_vs_believers=100,
-      remaining_stake_cents_vs_skeptics=100,
+      remaining_stake_cents=100,
       created_unixtime=T0.timestamp(),
       closes_unixtime=T0.timestamp() + 86400,
       special_rules='my rules',
@@ -202,7 +201,6 @@ class TestPredictions:
       conn.stake(
         prediction_id=PredictionId(PRED_ID),
         bettor=ALICE,
-        bettor_is_a_skeptic=True,
         bettor_stake_cents=1,
         creator_stake_cents=1,
         now=T0,
@@ -223,7 +221,7 @@ class TestResolutionNotifications:
     conn.update_settings(BOB, mvp_pb2.UpdateSettingsRequest(email_resolution_notifications=mvp_pb2.MaybeBool(value=wants_notifs)))
 
     conn.create_prediction(now=T0, prediction_id=PRED_ID, creator=ALICE, request=some_create_prediction_request())
-    conn.stake(prediction_id=PRED_ID, bettor=BOB, bettor_is_a_skeptic=True, bettor_stake_cents=1, creator_stake_cents=1, now=T0)
+    conn.stake(prediction_id=PRED_ID, bettor=BOB, bettor_stake_cents=1, creator_stake_cents=1, now=T0)
 
     expected_emails = {efs.verified} if expect_email else set()
     assert set(conn.get_resolution_notification_addrs(PRED_ID)) == expected_emails
@@ -235,7 +233,7 @@ class TestResolutionNotifications:
     conn.register_username(BOB, 'password', password_id='bobpwid')
 
     conn.create_prediction(now=T0, prediction_id=PRED_ID, creator=ALICE, request=some_create_prediction_request())
-    conn.stake(prediction_id=PRED_ID, bettor=BOB, bettor_is_a_skeptic=True, bettor_stake_cents=1, creator_stake_cents=1, now=T0)
+    conn.stake(prediction_id=PRED_ID, bettor=BOB, bettor_stake_cents=1, creator_stake_cents=1, now=T0)
 
     assert not conn.get_resolution_notification_addrs(PRED_ID)
 
@@ -245,7 +243,7 @@ class TestResolutionNotifications:
 
     for creator, bettor, predid in [(ALICE, BOB, '123'), (BOB, CHARLIE, '234'), (ALICE, DOLORES, '345'), (CHARLIE, DOLORES, '456')]:
       conn.create_prediction(now=T0, prediction_id=PredictionId(predid), creator=creator, request=some_create_prediction_request())
-      conn.stake(prediction_id=PredictionId(predid), bettor=bettor, bettor_is_a_skeptic=True, bettor_stake_cents=1, creator_stake_cents=1, now=T0)
+      conn.stake(prediction_id=PredictionId(predid), bettor=bettor, bettor_stake_cents=1, creator_stake_cents=1, now=T0)
 
     assert set(conn.get_resolution_notification_addrs(PredictionId('456'))) == {'dolores@example.com'}
 

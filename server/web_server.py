@@ -157,10 +157,7 @@ class WebServer:
         prediction = get_prediction_resp.prediction
         stake_text = format_stake_concisely(prediction.maximum_stake_cents)
             
-        if prediction.certainty.low == 1:
-            confidence_text = f'{round(prediction.certainty.low*100)}%'
-        else:
-            confidence_text = f'{round(prediction.certainty.low*100)}-{round(prediction.certainty.high*100)}%'
+        confidence_text = f'{round(prediction.low_probability*100)}%'
 
         if prediction.resolutions and prediction.resolutions[-1].resolution != mvp_pb2.RESOLUTION_NONE_YET:
             res = prediction.resolutions[-1].resolution
@@ -168,11 +165,10 @@ class WebServer:
             remaining_text = f" (result: {res_text})"
         elif prediction.closes_unixtime < self._clock().timestamp():
             remaining_text = " (closed)"
-        elif not (prediction.remaining_stake_cents_vs_skeptics == prediction.remaining_stake_cents_vs_believers == prediction.maximum_stake_cents):
+        elif prediction.remaining_stake_cents != prediction.maximum_stake_cents:
             remaining_text = (
                 " ("
-                + format_stake_concisely(prediction.remaining_stake_cents_vs_skeptics)
-                + ("/" + format_stake_concisely(prediction.remaining_stake_cents_vs_believers) if prediction.remaining_stake_cents_vs_believers < prediction.maximum_stake_cents else "")
+                + format_stake_concisely(prediction.remaining_stake_cents)
                 + " remain)"
             )
         else:

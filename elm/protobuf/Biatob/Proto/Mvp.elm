@@ -2,9 +2,9 @@
 
 
 module Biatob.Proto.Mvp exposing
-    ( Void(..), Resolution(..), AuthToken, CredentialsConfig, CredentialsConfigSmtpCredentials, EmailFlowStateKind(..), EmailFlowState, EmailFlowStateCodeSent, HashedPassword, LoginType(..), GenericUserInfo, GenericUserInfoInvitation, Relationship, UsernameInfo, EmailAttempt, ResolutionEvent, Trade, QueuedTrade, WhoamiRequest, WhoamiResponse, SignOutRequest, SignOutResponse, AuthSuccess, RegisterUsernameRequest, RegisterUsernameResult(..), RegisterUsernameResponse, RegisterUsernameResponseError, LogInUsernameRequest, LogInUsernameResult(..), LogInUsernameResponse, LogInUsernameResponseError, CertaintyRange, CreatePredictionRequest, CreatePredictionResult(..), CreatePredictionResponse, CreatePredictionResponseError, GetPredictionRequest, GetPredictionResult(..), GetPredictionResponse, GetPredictionResponseError, UserPredictionView, ListMyStakesRequest, ListMyStakesResult(..), ListMyStakesResponse, ListMyStakesResponseError, PredictionsById, ListPredictionsRequest, ListPredictionsResult(..), ListPredictionsResponse, ListPredictionsResponseError, StakeRequest, StakeResult(..), StakeResponse, StakeResponseError, QueueStakeRequest, QueueStakeResult(..), QueueStakeResponse, QueueStakeResponseError, ResolveRequest, ResolveResult(..), ResolveResponse, ResolveResponseError, SetTrustedRequest, SetTrustedResult(..), SetTrustedResponse, SetTrustedResponseError, GetUserRequest, GetUserResult(..), GetUserResponse, GetUserResponseError, ChangePasswordRequest, ChangePasswordResult(..), ChangePasswordResponse, ChangePasswordResponseError, SetEmailRequest, SetEmailResult(..), SetEmailResponse, SetEmailResponseError, VerifyEmailRequest, VerifyEmailResult(..), VerifyEmailResponse, VerifyEmailResponseError, GetSettingsRequest, GetSettingsResult(..), GetSettingsResponse, GetSettingsResponseError, MaybeBool, UpdateSettingsRequest, UpdateSettingsResult(..), UpdateSettingsResponse, UpdateSettingsResponseError, SendInvitationRequest, SendInvitationResult(..), SendInvitationResponse, SendInvitationResponseError, CheckInvitationRequest, CheckInvitationResult(..), CheckInvitationResponse, CheckInvitationResponseResult, CheckInvitationResponseError, AcceptInvitationRequest, AcceptInvitationResult(..), AcceptInvitationResponse, AcceptInvitationResponseError
-    , authTokenDecoder, credentialsConfigDecoder, emailFlowStateDecoder, hashedPasswordDecoder, genericUserInfoDecoder, relationshipDecoder, usernameInfoDecoder, emailAttemptDecoder, resolutionEventDecoder, tradeDecoder, queuedTradeDecoder, whoamiRequestDecoder, whoamiResponseDecoder, signOutRequestDecoder, signOutResponseDecoder, authSuccessDecoder, registerUsernameRequestDecoder, registerUsernameResponseDecoder, logInUsernameRequestDecoder, logInUsernameResponseDecoder, certaintyRangeDecoder, createPredictionRequestDecoder, createPredictionResponseDecoder, getPredictionRequestDecoder, getPredictionResponseDecoder, userPredictionViewDecoder, listMyStakesRequestDecoder, listMyStakesResponseDecoder, predictionsByIdDecoder, listPredictionsRequestDecoder, listPredictionsResponseDecoder, stakeRequestDecoder, stakeResponseDecoder, queueStakeRequestDecoder, queueStakeResponseDecoder, resolveRequestDecoder, resolveResponseDecoder, setTrustedRequestDecoder, setTrustedResponseDecoder, getUserRequestDecoder, getUserResponseDecoder, changePasswordRequestDecoder, changePasswordResponseDecoder, setEmailRequestDecoder, setEmailResponseDecoder, verifyEmailRequestDecoder, verifyEmailResponseDecoder, getSettingsRequestDecoder, getSettingsResponseDecoder, maybeBoolDecoder, updateSettingsRequestDecoder, updateSettingsResponseDecoder, sendInvitationRequestDecoder, sendInvitationResponseDecoder, checkInvitationRequestDecoder, checkInvitationResponseDecoder, acceptInvitationRequestDecoder, acceptInvitationResponseDecoder
-    , toAuthTokenEncoder, toCredentialsConfigEncoder, toEmailFlowStateEncoder, toHashedPasswordEncoder, toGenericUserInfoEncoder, toRelationshipEncoder, toUsernameInfoEncoder, toEmailAttemptEncoder, toResolutionEventEncoder, toTradeEncoder, toQueuedTradeEncoder, toWhoamiRequestEncoder, toWhoamiResponseEncoder, toSignOutRequestEncoder, toSignOutResponseEncoder, toAuthSuccessEncoder, toRegisterUsernameRequestEncoder, toRegisterUsernameResponseEncoder, toLogInUsernameRequestEncoder, toLogInUsernameResponseEncoder, toCertaintyRangeEncoder, toCreatePredictionRequestEncoder, toCreatePredictionResponseEncoder, toGetPredictionRequestEncoder, toGetPredictionResponseEncoder, toUserPredictionViewEncoder, toListMyStakesRequestEncoder, toListMyStakesResponseEncoder, toPredictionsByIdEncoder, toListPredictionsRequestEncoder, toListPredictionsResponseEncoder, toStakeRequestEncoder, toStakeResponseEncoder, toQueueStakeRequestEncoder, toQueueStakeResponseEncoder, toResolveRequestEncoder, toResolveResponseEncoder, toSetTrustedRequestEncoder, toSetTrustedResponseEncoder, toGetUserRequestEncoder, toGetUserResponseEncoder, toChangePasswordRequestEncoder, toChangePasswordResponseEncoder, toSetEmailRequestEncoder, toSetEmailResponseEncoder, toVerifyEmailRequestEncoder, toVerifyEmailResponseEncoder, toGetSettingsRequestEncoder, toGetSettingsResponseEncoder, toMaybeBoolEncoder, toUpdateSettingsRequestEncoder, toUpdateSettingsResponseEncoder, toSendInvitationRequestEncoder, toSendInvitationResponseEncoder, toCheckInvitationRequestEncoder, toCheckInvitationResponseEncoder, toAcceptInvitationRequestEncoder, toAcceptInvitationResponseEncoder
+    ( Void(..), Resolution(..), AuthToken, CredentialsConfig, CredentialsConfigSmtpCredentials, EmailFlowStateKind(..), EmailFlowState, EmailFlowStateCodeSent, HashedPassword, LoginType(..), GenericUserInfo, GenericUserInfoInvitation, Relationship, UsernameInfo, EmailAttempt, ResolutionEvent, Trade, QueuedTrade, WhoamiRequest, WhoamiResponse, SignOutRequest, SignOutResponse, AuthSuccess, RegisterUsernameRequest, RegisterUsernameResult(..), RegisterUsernameResponse, RegisterUsernameResponseError, LogInUsernameRequest, LogInUsernameResult(..), LogInUsernameResponse, LogInUsernameResponseError, CreatePredictionRequest, CreatePredictionResult(..), CreatePredictionResponse, CreatePredictionResponseError, GetPredictionRequest, GetPredictionResult(..), GetPredictionResponse, GetPredictionResponseError, UserPredictionView, ListMyStakesRequest, ListMyStakesResult(..), ListMyStakesResponse, ListMyStakesResponseError, PredictionsById, ListPredictionsRequest, ListPredictionsResult(..), ListPredictionsResponse, ListPredictionsResponseError, StakeRequest, StakeResult(..), StakeResponse, StakeResponseError, QueueStakeRequest, QueueStakeResult(..), QueueStakeResponse, QueueStakeResponseError, ResolveRequest, ResolveResult(..), ResolveResponse, ResolveResponseError, SetTrustedRequest, SetTrustedResult(..), SetTrustedResponse, SetTrustedResponseError, GetUserRequest, GetUserResult(..), GetUserResponse, GetUserResponseError, ChangePasswordRequest, ChangePasswordResult(..), ChangePasswordResponse, ChangePasswordResponseError, SetEmailRequest, SetEmailResult(..), SetEmailResponse, SetEmailResponseError, VerifyEmailRequest, VerifyEmailResult(..), VerifyEmailResponse, VerifyEmailResponseError, GetSettingsRequest, GetSettingsResult(..), GetSettingsResponse, GetSettingsResponseError, MaybeBool, UpdateSettingsRequest, UpdateSettingsResult(..), UpdateSettingsResponse, UpdateSettingsResponseError, SendInvitationRequest, SendInvitationResult(..), SendInvitationResponse, SendInvitationResponseError, CheckInvitationRequest, CheckInvitationResult(..), CheckInvitationResponse, CheckInvitationResponseResult, CheckInvitationResponseError, AcceptInvitationRequest, AcceptInvitationResult(..), AcceptInvitationResponse, AcceptInvitationResponseError
+    , authTokenDecoder, credentialsConfigDecoder, emailFlowStateDecoder, hashedPasswordDecoder, genericUserInfoDecoder, relationshipDecoder, usernameInfoDecoder, emailAttemptDecoder, resolutionEventDecoder, tradeDecoder, queuedTradeDecoder, whoamiRequestDecoder, whoamiResponseDecoder, signOutRequestDecoder, signOutResponseDecoder, authSuccessDecoder, registerUsernameRequestDecoder, registerUsernameResponseDecoder, logInUsernameRequestDecoder, logInUsernameResponseDecoder, createPredictionRequestDecoder, createPredictionResponseDecoder, getPredictionRequestDecoder, getPredictionResponseDecoder, userPredictionViewDecoder, listMyStakesRequestDecoder, listMyStakesResponseDecoder, predictionsByIdDecoder, listPredictionsRequestDecoder, listPredictionsResponseDecoder, stakeRequestDecoder, stakeResponseDecoder, queueStakeRequestDecoder, queueStakeResponseDecoder, resolveRequestDecoder, resolveResponseDecoder, setTrustedRequestDecoder, setTrustedResponseDecoder, getUserRequestDecoder, getUserResponseDecoder, changePasswordRequestDecoder, changePasswordResponseDecoder, setEmailRequestDecoder, setEmailResponseDecoder, verifyEmailRequestDecoder, verifyEmailResponseDecoder, getSettingsRequestDecoder, getSettingsResponseDecoder, maybeBoolDecoder, updateSettingsRequestDecoder, updateSettingsResponseDecoder, sendInvitationRequestDecoder, sendInvitationResponseDecoder, checkInvitationRequestDecoder, checkInvitationResponseDecoder, acceptInvitationRequestDecoder, acceptInvitationResponseDecoder
+    , toAuthTokenEncoder, toCredentialsConfigEncoder, toEmailFlowStateEncoder, toHashedPasswordEncoder, toGenericUserInfoEncoder, toRelationshipEncoder, toUsernameInfoEncoder, toEmailAttemptEncoder, toResolutionEventEncoder, toTradeEncoder, toQueuedTradeEncoder, toWhoamiRequestEncoder, toWhoamiResponseEncoder, toSignOutRequestEncoder, toSignOutResponseEncoder, toAuthSuccessEncoder, toRegisterUsernameRequestEncoder, toRegisterUsernameResponseEncoder, toLogInUsernameRequestEncoder, toLogInUsernameResponseEncoder, toCreatePredictionRequestEncoder, toCreatePredictionResponseEncoder, toGetPredictionRequestEncoder, toGetPredictionResponseEncoder, toUserPredictionViewEncoder, toListMyStakesRequestEncoder, toListMyStakesResponseEncoder, toPredictionsByIdEncoder, toListPredictionsRequestEncoder, toListPredictionsResponseEncoder, toStakeRequestEncoder, toStakeResponseEncoder, toQueueStakeRequestEncoder, toQueueStakeResponseEncoder, toResolveRequestEncoder, toResolveResponseEncoder, toSetTrustedRequestEncoder, toSetTrustedResponseEncoder, toGetUserRequestEncoder, toGetUserResponseEncoder, toChangePasswordRequestEncoder, toChangePasswordResponseEncoder, toSetEmailRequestEncoder, toSetEmailResponseEncoder, toVerifyEmailRequestEncoder, toVerifyEmailResponseEncoder, toGetSettingsRequestEncoder, toGetSettingsResponseEncoder, toMaybeBoolEncoder, toUpdateSettingsRequestEncoder, toUpdateSettingsResponseEncoder, toSendInvitationRequestEncoder, toSendInvitationResponseEncoder, toCheckInvitationRequestEncoder, toCheckInvitationResponseEncoder, toAcceptInvitationRequestEncoder, toAcceptInvitationResponseEncoder
     )
 
 {-| ProtoBuf module: `Biatob.Proto.Mvp`
@@ -20,17 +20,17 @@ To run it use [`elm-protocol-buffers`](https://package.elm-lang.org/packages/eri
 
 # Model
 
-@docs Void, Resolution, AuthToken, CredentialsConfig, CredentialsConfigSmtpCredentials, EmailFlowStateKind, EmailFlowState, EmailFlowStateCodeSent, HashedPassword, LoginType, GenericUserInfo, GenericUserInfoInvitation, Relationship, UsernameInfo, EmailAttempt, ResolutionEvent, Trade, QueuedTrade, WhoamiRequest, WhoamiResponse, SignOutRequest, SignOutResponse, AuthSuccess, RegisterUsernameRequest, RegisterUsernameResult, RegisterUsernameResponse, RegisterUsernameResponseError, LogInUsernameRequest, LogInUsernameResult, LogInUsernameResponse, LogInUsernameResponseError, CertaintyRange, CreatePredictionRequest, CreatePredictionResult, CreatePredictionResponse, CreatePredictionResponseError, GetPredictionRequest, GetPredictionResult, GetPredictionResponse, GetPredictionResponseError, UserPredictionView, ListMyStakesRequest, ListMyStakesResult, ListMyStakesResponse, ListMyStakesResponseError, PredictionsById, ListPredictionsRequest, ListPredictionsResult, ListPredictionsResponse, ListPredictionsResponseError, StakeRequest, StakeResult, StakeResponse, StakeResponseError, QueueStakeRequest, QueueStakeResult, QueueStakeResponse, QueueStakeResponseError, ResolveRequest, ResolveResult, ResolveResponse, ResolveResponseError, SetTrustedRequest, SetTrustedResult, SetTrustedResponse, SetTrustedResponseError, GetUserRequest, GetUserResult, GetUserResponse, GetUserResponseError, ChangePasswordRequest, ChangePasswordResult, ChangePasswordResponse, ChangePasswordResponseError, SetEmailRequest, SetEmailResult, SetEmailResponse, SetEmailResponseError, VerifyEmailRequest, VerifyEmailResult, VerifyEmailResponse, VerifyEmailResponseError, GetSettingsRequest, GetSettingsResult, GetSettingsResponse, GetSettingsResponseError, MaybeBool, UpdateSettingsRequest, UpdateSettingsResult, UpdateSettingsResponse, UpdateSettingsResponseError, SendInvitationRequest, SendInvitationResult, SendInvitationResponse, SendInvitationResponseError, CheckInvitationRequest, CheckInvitationResult, CheckInvitationResponse, CheckInvitationResponseResult, CheckInvitationResponseError, AcceptInvitationRequest, AcceptInvitationResult, AcceptInvitationResponse, AcceptInvitationResponseError
+@docs Void, Resolution, AuthToken, CredentialsConfig, CredentialsConfigSmtpCredentials, EmailFlowStateKind, EmailFlowState, EmailFlowStateCodeSent, HashedPassword, LoginType, GenericUserInfo, GenericUserInfoInvitation, Relationship, UsernameInfo, EmailAttempt, ResolutionEvent, Trade, QueuedTrade, WhoamiRequest, WhoamiResponse, SignOutRequest, SignOutResponse, AuthSuccess, RegisterUsernameRequest, RegisterUsernameResult, RegisterUsernameResponse, RegisterUsernameResponseError, LogInUsernameRequest, LogInUsernameResult, LogInUsernameResponse, LogInUsernameResponseError, CreatePredictionRequest, CreatePredictionResult, CreatePredictionResponse, CreatePredictionResponseError, GetPredictionRequest, GetPredictionResult, GetPredictionResponse, GetPredictionResponseError, UserPredictionView, ListMyStakesRequest, ListMyStakesResult, ListMyStakesResponse, ListMyStakesResponseError, PredictionsById, ListPredictionsRequest, ListPredictionsResult, ListPredictionsResponse, ListPredictionsResponseError, StakeRequest, StakeResult, StakeResponse, StakeResponseError, QueueStakeRequest, QueueStakeResult, QueueStakeResponse, QueueStakeResponseError, ResolveRequest, ResolveResult, ResolveResponse, ResolveResponseError, SetTrustedRequest, SetTrustedResult, SetTrustedResponse, SetTrustedResponseError, GetUserRequest, GetUserResult, GetUserResponse, GetUserResponseError, ChangePasswordRequest, ChangePasswordResult, ChangePasswordResponse, ChangePasswordResponseError, SetEmailRequest, SetEmailResult, SetEmailResponse, SetEmailResponseError, VerifyEmailRequest, VerifyEmailResult, VerifyEmailResponse, VerifyEmailResponseError, GetSettingsRequest, GetSettingsResult, GetSettingsResponse, GetSettingsResponseError, MaybeBool, UpdateSettingsRequest, UpdateSettingsResult, UpdateSettingsResponse, UpdateSettingsResponseError, SendInvitationRequest, SendInvitationResult, SendInvitationResponse, SendInvitationResponseError, CheckInvitationRequest, CheckInvitationResult, CheckInvitationResponse, CheckInvitationResponseResult, CheckInvitationResponseError, AcceptInvitationRequest, AcceptInvitationResult, AcceptInvitationResponse, AcceptInvitationResponseError
 
 
 # Decoder
 
-@docs authTokenDecoder, credentialsConfigDecoder, emailFlowStateDecoder, hashedPasswordDecoder, genericUserInfoDecoder, relationshipDecoder, usernameInfoDecoder, emailAttemptDecoder, resolutionEventDecoder, tradeDecoder, queuedTradeDecoder, whoamiRequestDecoder, whoamiResponseDecoder, signOutRequestDecoder, signOutResponseDecoder, authSuccessDecoder, registerUsernameRequestDecoder, registerUsernameResponseDecoder, logInUsernameRequestDecoder, logInUsernameResponseDecoder, certaintyRangeDecoder, createPredictionRequestDecoder, createPredictionResponseDecoder, getPredictionRequestDecoder, getPredictionResponseDecoder, userPredictionViewDecoder, listMyStakesRequestDecoder, listMyStakesResponseDecoder, predictionsByIdDecoder, listPredictionsRequestDecoder, listPredictionsResponseDecoder, stakeRequestDecoder, stakeResponseDecoder, queueStakeRequestDecoder, queueStakeResponseDecoder, resolveRequestDecoder, resolveResponseDecoder, setTrustedRequestDecoder, setTrustedResponseDecoder, getUserRequestDecoder, getUserResponseDecoder, changePasswordRequestDecoder, changePasswordResponseDecoder, setEmailRequestDecoder, setEmailResponseDecoder, verifyEmailRequestDecoder, verifyEmailResponseDecoder, getSettingsRequestDecoder, getSettingsResponseDecoder, maybeBoolDecoder, updateSettingsRequestDecoder, updateSettingsResponseDecoder, sendInvitationRequestDecoder, sendInvitationResponseDecoder, checkInvitationRequestDecoder, checkInvitationResponseDecoder, acceptInvitationRequestDecoder, acceptInvitationResponseDecoder
+@docs authTokenDecoder, credentialsConfigDecoder, emailFlowStateDecoder, hashedPasswordDecoder, genericUserInfoDecoder, relationshipDecoder, usernameInfoDecoder, emailAttemptDecoder, resolutionEventDecoder, tradeDecoder, queuedTradeDecoder, whoamiRequestDecoder, whoamiResponseDecoder, signOutRequestDecoder, signOutResponseDecoder, authSuccessDecoder, registerUsernameRequestDecoder, registerUsernameResponseDecoder, logInUsernameRequestDecoder, logInUsernameResponseDecoder, createPredictionRequestDecoder, createPredictionResponseDecoder, getPredictionRequestDecoder, getPredictionResponseDecoder, userPredictionViewDecoder, listMyStakesRequestDecoder, listMyStakesResponseDecoder, predictionsByIdDecoder, listPredictionsRequestDecoder, listPredictionsResponseDecoder, stakeRequestDecoder, stakeResponseDecoder, queueStakeRequestDecoder, queueStakeResponseDecoder, resolveRequestDecoder, resolveResponseDecoder, setTrustedRequestDecoder, setTrustedResponseDecoder, getUserRequestDecoder, getUserResponseDecoder, changePasswordRequestDecoder, changePasswordResponseDecoder, setEmailRequestDecoder, setEmailResponseDecoder, verifyEmailRequestDecoder, verifyEmailResponseDecoder, getSettingsRequestDecoder, getSettingsResponseDecoder, maybeBoolDecoder, updateSettingsRequestDecoder, updateSettingsResponseDecoder, sendInvitationRequestDecoder, sendInvitationResponseDecoder, checkInvitationRequestDecoder, checkInvitationResponseDecoder, acceptInvitationRequestDecoder, acceptInvitationResponseDecoder
 
 
 # Encoder
 
-@docs toAuthTokenEncoder, toCredentialsConfigEncoder, toEmailFlowStateEncoder, toHashedPasswordEncoder, toGenericUserInfoEncoder, toRelationshipEncoder, toUsernameInfoEncoder, toEmailAttemptEncoder, toResolutionEventEncoder, toTradeEncoder, toQueuedTradeEncoder, toWhoamiRequestEncoder, toWhoamiResponseEncoder, toSignOutRequestEncoder, toSignOutResponseEncoder, toAuthSuccessEncoder, toRegisterUsernameRequestEncoder, toRegisterUsernameResponseEncoder, toLogInUsernameRequestEncoder, toLogInUsernameResponseEncoder, toCertaintyRangeEncoder, toCreatePredictionRequestEncoder, toCreatePredictionResponseEncoder, toGetPredictionRequestEncoder, toGetPredictionResponseEncoder, toUserPredictionViewEncoder, toListMyStakesRequestEncoder, toListMyStakesResponseEncoder, toPredictionsByIdEncoder, toListPredictionsRequestEncoder, toListPredictionsResponseEncoder, toStakeRequestEncoder, toStakeResponseEncoder, toQueueStakeRequestEncoder, toQueueStakeResponseEncoder, toResolveRequestEncoder, toResolveResponseEncoder, toSetTrustedRequestEncoder, toSetTrustedResponseEncoder, toGetUserRequestEncoder, toGetUserResponseEncoder, toChangePasswordRequestEncoder, toChangePasswordResponseEncoder, toSetEmailRequestEncoder, toSetEmailResponseEncoder, toVerifyEmailRequestEncoder, toVerifyEmailResponseEncoder, toGetSettingsRequestEncoder, toGetSettingsResponseEncoder, toMaybeBoolEncoder, toUpdateSettingsRequestEncoder, toUpdateSettingsResponseEncoder, toSendInvitationRequestEncoder, toSendInvitationResponseEncoder, toCheckInvitationRequestEncoder, toCheckInvitationResponseEncoder, toAcceptInvitationRequestEncoder, toAcceptInvitationResponseEncoder
+@docs toAuthTokenEncoder, toCredentialsConfigEncoder, toEmailFlowStateEncoder, toHashedPasswordEncoder, toGenericUserInfoEncoder, toRelationshipEncoder, toUsernameInfoEncoder, toEmailAttemptEncoder, toResolutionEventEncoder, toTradeEncoder, toQueuedTradeEncoder, toWhoamiRequestEncoder, toWhoamiResponseEncoder, toSignOutRequestEncoder, toSignOutResponseEncoder, toAuthSuccessEncoder, toRegisterUsernameRequestEncoder, toRegisterUsernameResponseEncoder, toLogInUsernameRequestEncoder, toLogInUsernameResponseEncoder, toCreatePredictionRequestEncoder, toCreatePredictionResponseEncoder, toGetPredictionRequestEncoder, toGetPredictionResponseEncoder, toUserPredictionViewEncoder, toListMyStakesRequestEncoder, toListMyStakesResponseEncoder, toPredictionsByIdEncoder, toListPredictionsRequestEncoder, toListPredictionsResponseEncoder, toStakeRequestEncoder, toStakeResponseEncoder, toQueueStakeRequestEncoder, toQueueStakeResponseEncoder, toResolveRequestEncoder, toResolveResponseEncoder, toSetTrustedRequestEncoder, toSetTrustedResponseEncoder, toGetUserRequestEncoder, toGetUserResponseEncoder, toChangePasswordRequestEncoder, toChangePasswordResponseEncoder, toSetEmailRequestEncoder, toSetEmailResponseEncoder, toVerifyEmailRequestEncoder, toVerifyEmailResponseEncoder, toGetSettingsRequestEncoder, toGetSettingsResponseEncoder, toMaybeBoolEncoder, toUpdateSettingsRequestEncoder, toUpdateSettingsResponseEncoder, toSendInvitationRequestEncoder, toSendInvitationResponseEncoder, toCheckInvitationRequestEncoder, toCheckInvitationResponseEncoder, toAcceptInvitationRequestEncoder, toAcceptInvitationResponseEncoder
 
 -}
 
@@ -184,7 +184,6 @@ type alias ResolutionEvent =
 -}
 type alias Trade =
     { bettor : String
-    , bettorIsASkeptic : Bool
     , bettorStakeCents : Int
     , creatorStakeCents : Int
     , transactedUnixtime : Float
@@ -195,7 +194,6 @@ type alias Trade =
 -}
 type alias QueuedTrade =
     { bettor : String
-    , bettorIsASkeptic : Bool
     , bettorStakeCents : Int
     , creatorStakeCents : Int
     , enqueuedAtUnixtime : Float
@@ -294,19 +292,11 @@ type alias LogInUsernameResponseError =
     }
 
 
-{-| `CertaintyRange` message
--}
-type alias CertaintyRange =
-    { low : Float
-    , high : Float
-    }
-
-
 {-| `CreatePredictionRequest` message
 -}
 type alias CreatePredictionRequest =
     { prediction : String
-    , certainty : Maybe CertaintyRange
+    , lowProbability : Float
     , maximumStakeCents : Int
     , openSeconds : Int
     , specialRules : String
@@ -368,10 +358,9 @@ type alias GetPredictionResponseError =
 -}
 type alias UserPredictionView =
     { prediction : String
-    , certainty : Maybe CertaintyRange
+    , lowProbability : Float
     , maximumStakeCents : Int
-    , remainingStakeCentsVsBelievers : Int
-    , remainingStakeCentsVsSkeptics : Int
+    , remainingStakeCents : Int
     , createdUnixtime : Float
     , closesUnixtime : Float
     , specialRules : String
@@ -450,7 +439,6 @@ type alias ListPredictionsResponseError =
 -}
 type alias StakeRequest =
     { predictionId : String
-    , bettorIsASkeptic : Bool
     , bettorStakeCents : Int
     }
 
@@ -480,7 +468,6 @@ type alias StakeResponseError =
 -}
 type alias QueueStakeRequest =
     { predictionId : String
-    , bettorIsASkeptic : Bool
     , bettorStakeCents : Int
     }
 
@@ -1012,9 +999,8 @@ resolutionEventDecoder =
 -}
 tradeDecoder : Decode.Decoder Trade
 tradeDecoder =
-    Decode.message (Trade "" False 0 0 0)
+    Decode.message (Trade "" 0 0 0)
         [ Decode.optional 7 Decode.string setBettor
-        , Decode.optional 2 Decode.bool setBettorIsASkeptic
         , Decode.optional 3 Decode.uint32 setBettorStakeCents
         , Decode.optional 4 Decode.uint32 setCreatorStakeCents
         , Decode.optional 6 Decode.double setTransactedUnixtime
@@ -1025,9 +1011,8 @@ tradeDecoder =
 -}
 queuedTradeDecoder : Decode.Decoder QueuedTrade
 queuedTradeDecoder =
-    Decode.message (QueuedTrade "" False 0 0 0)
+    Decode.message (QueuedTrade "" 0 0 0)
         [ Decode.optional 1 Decode.string setBettor
-        , Decode.optional 2 Decode.bool setBettorIsASkeptic
         , Decode.optional 3 Decode.uint32 setBettorStakeCents
         , Decode.optional 4 Decode.uint32 setCreatorStakeCents
         , Decode.optional 6 Decode.double setEnqueuedAtUnixtime
@@ -1138,23 +1123,13 @@ logInUsernameResponseErrorDecoder =
         ]
 
 
-{-| `CertaintyRange` decoder
--}
-certaintyRangeDecoder : Decode.Decoder CertaintyRange
-certaintyRangeDecoder =
-    Decode.message (CertaintyRange 0 0)
-        [ Decode.optional 1 Decode.float setLow
-        , Decode.optional 2 Decode.float setHigh
-        ]
-
-
 {-| `CreatePredictionRequest` decoder
 -}
 createPredictionRequestDecoder : Decode.Decoder CreatePredictionRequest
 createPredictionRequestDecoder =
-    Decode.message (CreatePredictionRequest "" Nothing 0 0 "" 0)
+    Decode.message (CreatePredictionRequest "" 0 0 0 "" 0)
         [ Decode.optional 2 Decode.string setPrediction
-        , Decode.optional 4 (Decode.map Just certaintyRangeDecoder) setCertainty
+        , Decode.optional 10 Decode.double setLowProbability
         , Decode.optional 5 Decode.uint32 setMaximumStakeCents
         , Decode.optional 6 Decode.uint32 setOpenSeconds
         , Decode.optional 7 Decode.string setSpecialRules
@@ -1216,12 +1191,11 @@ getPredictionResponseErrorDecoder =
 -}
 userPredictionViewDecoder : Decode.Decoder UserPredictionView
 userPredictionViewDecoder =
-    Decode.message (UserPredictionView "" Nothing 0 0 0 0 0 "" "" [] [] [] 0 False)
+    Decode.message (UserPredictionView "" 0 0 0 0 0 "" "" [] [] [] 0 False)
         [ Decode.optional 1 Decode.string setPrediction
-        , Decode.optional 2 (Decode.map Just certaintyRangeDecoder) setCertainty
+        , Decode.optional 18 Decode.double setLowProbability
         , Decode.optional 3 Decode.uint32 setMaximumStakeCents
-        , Decode.optional 4 Decode.uint32 setRemainingStakeCentsVsBelievers
-        , Decode.optional 5 Decode.uint32 setRemainingStakeCentsVsSkeptics
+        , Decode.optional 5 Decode.uint32 setRemainingStakeCents
         , Decode.optional 13 Decode.double setCreatedUnixtime
         , Decode.optional 14 Decode.double setClosesUnixtime
         , Decode.optional 8 Decode.string setSpecialRules
@@ -1304,9 +1278,8 @@ listPredictionsResponseErrorDecoder =
 -}
 stakeRequestDecoder : Decode.Decoder StakeRequest
 stakeRequestDecoder =
-    Decode.message (StakeRequest "" False 0)
+    Decode.message (StakeRequest "" 0)
         [ Decode.optional 2 Decode.string setPredictionId
-        , Decode.optional 3 Decode.bool setBettorIsASkeptic
         , Decode.optional 4 Decode.uint32 setBettorStakeCents
         ]
 
@@ -1335,9 +1308,8 @@ stakeResponseErrorDecoder =
 -}
 queueStakeRequestDecoder : Decode.Decoder QueueStakeRequest
 queueStakeRequestDecoder =
-    Decode.message (QueueStakeRequest "" False 0)
+    Decode.message (QueueStakeRequest "" 0)
         [ Decode.optional 2 Decode.string setPredictionId
-        , Decode.optional 3 Decode.bool setBettorIsASkeptic
         , Decode.optional 4 Decode.uint32 setBettorStakeCents
         ]
 
@@ -1889,7 +1861,6 @@ toTradeEncoder : Trade -> Encode.Encoder
 toTradeEncoder model =
     Encode.message
         [ ( 7, Encode.string model.bettor )
-        , ( 2, Encode.bool model.bettorIsASkeptic )
         , ( 3, Encode.uint32 model.bettorStakeCents )
         , ( 4, Encode.uint32 model.creatorStakeCents )
         , ( 6, Encode.double model.transactedUnixtime )
@@ -1902,7 +1873,6 @@ toQueuedTradeEncoder : QueuedTrade -> Encode.Encoder
 toQueuedTradeEncoder model =
     Encode.message
         [ ( 1, Encode.string model.bettor )
-        , ( 2, Encode.bool model.bettorIsASkeptic )
         , ( 3, Encode.uint32 model.bettorStakeCents )
         , ( 4, Encode.uint32 model.creatorStakeCents )
         , ( 6, Encode.double model.enqueuedAtUnixtime )
@@ -2025,23 +1995,13 @@ toLogInUsernameResponseErrorEncoder model =
         ]
 
 
-{-| `CertaintyRange` encoder
--}
-toCertaintyRangeEncoder : CertaintyRange -> Encode.Encoder
-toCertaintyRangeEncoder model =
-    Encode.message
-        [ ( 1, Encode.float model.low )
-        , ( 2, Encode.float model.high )
-        ]
-
-
 {-| `CreatePredictionRequest` encoder
 -}
 toCreatePredictionRequestEncoder : CreatePredictionRequest -> Encode.Encoder
 toCreatePredictionRequestEncoder model =
     Encode.message
         [ ( 2, Encode.string model.prediction )
-        , ( 4, (Maybe.withDefault Encode.none << Maybe.map toCertaintyRangeEncoder) model.certainty )
+        , ( 10, Encode.double model.lowProbability )
         , ( 5, Encode.uint32 model.maximumStakeCents )
         , ( 6, Encode.uint32 model.openSeconds )
         , ( 7, Encode.string model.specialRules )
@@ -2117,10 +2077,9 @@ toUserPredictionViewEncoder : UserPredictionView -> Encode.Encoder
 toUserPredictionViewEncoder model =
     Encode.message
         [ ( 1, Encode.string model.prediction )
-        , ( 2, (Maybe.withDefault Encode.none << Maybe.map toCertaintyRangeEncoder) model.certainty )
+        , ( 18, Encode.double model.lowProbability )
         , ( 3, Encode.uint32 model.maximumStakeCents )
-        , ( 4, Encode.uint32 model.remainingStakeCentsVsBelievers )
-        , ( 5, Encode.uint32 model.remainingStakeCentsVsSkeptics )
+        , ( 5, Encode.uint32 model.remainingStakeCents )
         , ( 13, Encode.double model.createdUnixtime )
         , ( 14, Encode.double model.closesUnixtime )
         , ( 8, Encode.string model.specialRules )
@@ -2217,7 +2176,6 @@ toStakeRequestEncoder : StakeRequest -> Encode.Encoder
 toStakeRequestEncoder model =
     Encode.message
         [ ( 2, Encode.string model.predictionId )
-        , ( 3, Encode.bool model.bettorIsASkeptic )
         , ( 4, Encode.uint32 model.bettorStakeCents )
         ]
 
@@ -2254,7 +2212,6 @@ toQueueStakeRequestEncoder : QueueStakeRequest -> Encode.Encoder
 toQueueStakeRequestEncoder model =
     Encode.message
         [ ( 2, Encode.string model.predictionId )
-        , ( 3, Encode.bool model.bettorIsASkeptic )
         , ( 4, Encode.uint32 model.bettorStakeCents )
         ]
 
@@ -2853,11 +2810,6 @@ setBettor value model =
     { model | bettor = value }
 
 
-setBettorIsASkeptic : a -> { b | bettorIsASkeptic : a } -> { b | bettorIsASkeptic : a }
-setBettorIsASkeptic value model =
-    { model | bettorIsASkeptic = value }
-
-
 setBettorStakeCents : a -> { b | bettorStakeCents : a } -> { b | bettorStakeCents : a }
 setBettorStakeCents value model =
     { model | bettorStakeCents = value }
@@ -2913,24 +2865,14 @@ setLogInUsernameResult value model =
     { model | logInUsernameResult = value }
 
 
-setLow : a -> { b | low : a } -> { b | low : a }
-setLow value model =
-    { model | low = value }
-
-
-setHigh : a -> { b | high : a } -> { b | high : a }
-setHigh value model =
-    { model | high = value }
-
-
 setPrediction : a -> { b | prediction : a } -> { b | prediction : a }
 setPrediction value model =
     { model | prediction = value }
 
 
-setCertainty : a -> { b | certainty : a } -> { b | certainty : a }
-setCertainty value model =
-    { model | certainty = value }
+setLowProbability : a -> { b | lowProbability : a } -> { b | lowProbability : a }
+setLowProbability value model =
+    { model | lowProbability = value }
 
 
 setMaximumStakeCents : a -> { b | maximumStakeCents : a } -> { b | maximumStakeCents : a }
@@ -2973,14 +2915,9 @@ setNoSuchPrediction value model =
     { model | noSuchPrediction = value }
 
 
-setRemainingStakeCentsVsBelievers : a -> { b | remainingStakeCentsVsBelievers : a } -> { b | remainingStakeCentsVsBelievers : a }
-setRemainingStakeCentsVsBelievers value model =
-    { model | remainingStakeCentsVsBelievers = value }
-
-
-setRemainingStakeCentsVsSkeptics : a -> { b | remainingStakeCentsVsSkeptics : a } -> { b | remainingStakeCentsVsSkeptics : a }
-setRemainingStakeCentsVsSkeptics value model =
-    { model | remainingStakeCentsVsSkeptics = value }
+setRemainingStakeCents : a -> { b | remainingStakeCents : a } -> { b | remainingStakeCents : a }
+setRemainingStakeCents value model =
+    { model | remainingStakeCents = value }
 
 
 setCreatedUnixtime : a -> { b | createdUnixtime : a } -> { b | createdUnixtime : a }

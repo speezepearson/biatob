@@ -119,9 +119,6 @@ mustDecodeFromFlags dec field val =
   JD.decodeValue (JD.field field dec) val
   |> mustResult field
 
-mustPredictionCertainty : Pb.UserPredictionView -> Pb.CertaintyRange
-mustPredictionCertainty {certainty} = must "all predictions must have certainties" certainty
-
 mustUsernameGenericInfo : Pb.UsernameInfo -> Pb.GenericUserInfo
 mustUsernameGenericInfo {info} = must "all UserInfos must have GenericUserInfos" info
 

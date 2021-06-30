@@ -31,7 +31,6 @@ type alias Model =
   , resolvesAtField : String
   , stakeField : String
   , lowPField : String
-  , highPField : String
   , openForUnitField : String
   , openForSecondsField : String
   , specialRulesField : String
@@ -43,7 +42,6 @@ type Msg
   | SetResolvesAtField String
   | SetStakeField String
   | SetLowPField String
-  | SetHighPField String
   | SetOpenForUnitField String
   | SetOpenForSecondsField String
   | SetSpecialRulesField String
@@ -79,17 +77,16 @@ buildCreateRequest model =
   parseResolvesAt model |> Result.toMaybe |> Maybe.andThen (\resolvesAt ->
   parseStake model |> Result.toMaybe |> Maybe.andThen (\stake ->
   parseLowProbability model |> Result.toMaybe |> Maybe.andThen (\lowP ->
-  parseHighProbability model |> Result.toMaybe |> Maybe.andThen (\highP -> if highP < lowP then Nothing else
   parseOpenForSeconds model |> Result.toMaybe |> Maybe.andThen (\openForSeconds ->
     Just
       { prediction = prediction
-      , certainty = Just { low=lowP, high=highP }
+      , lowProbability = lowP
       , maximumStakeCents = stake
       , openSeconds = openForSeconds
       , specialRules = model.specialRulesField
       , resolvesAtUnixtime = Utils.timeToUnixtime resolvesAt
       }
-  ))))))
+  )))))
 
 parsePrediction : Model -> Result String String
 parsePrediction model =
@@ -129,24 +126,6 @@ parseLowProbability model =
           else
             Ok lowP
 
-parseHighProbability : Model -> Result String Float
-parseHighProbability model =
-    case String.toFloat model.highPField of
-      Nothing -> Err "must be a number 0-100"
-      Just pct ->
-        let
-          highP = pct / 100
-          minAllowed = parseLowProbability model |> Result.withDefault 0
-        in
-          if highP > 1 then
-            Err "must be a number 0-100"
-          else if highP < minAllowed - epsilon then
-            Err "can't be less than your low prob"
-          else if highP < minAllowed then
-            Ok minAllowed
-          else
-            Ok highP
-
 parseOpenForUnit : Model -> OpenForUnit
 parseOpenForUnit model =
     case model.openForUnitField of
@@ -180,7 +159,6 @@ init flags =
     , resolvesAtField = ""
     , stakeField = "20"
     , lowPField = "50"
-    , highPField = "100"
     , openForUnitField = "weeks"
     , openForSecondsField = "2"
     , specialRulesField = ""
@@ -196,7 +174,6 @@ update msg model =
     SetResolvesAtField s -> ( { model | resolvesAtField = s } , Cmd.none )
     SetStakeField s -> ( { model | stakeField = s } , Cmd.none )
     SetLowPField s -> ( { model | lowPField = s } , Cmd.none )
-    SetHighPField s -> ( { model | highPField = s } , Cmd.none )
     SetOpenForUnitField s -> ( { model | openForUnitField = s } , Cmd.none )
     SetOpenForSecondsField s -> ( { model | openForSecondsField = s } , Cmd.none )
     SetSpecialRulesField s -> ( { model | specialRulesField = s } , Cmd.none )
@@ -391,86 +368,7 @@ viewForm model =
                 Just (n, d) -> H.div [] [H.small [HA.class "text-secondary"] [H.text <| "(i.e. about " ++ String.fromInt n ++ " out of " ++ String.fromInt d ++ ")"]]
                 Nothing -> H.text ""
         ]
-      , let
-          isValid = isOk (parseHighProbability model)
-        in
-        H.small [] [H.details [HA.class "px-4"]
-        [ H.summary [HA.style "text-align" "right"] [H.text "Set upper bound too?"]
-        , H.text "...but I think that it would be overconfident to assign it more than a "
-        , H.input
-            [ HA.type_ "number", HA.min (String.toFloat model.lowPField |> Maybe.withDefault 0 |> String.fromFloat), HA.max "100", HA.step "any"
-            , HA.style "width" "7em"
-            , HA.style "display" "inline-block"
-            , HA.disabled disabled
-            , HE.onInput SetHighPField
-            , HA.value model.highPField
-            , HA.class (if isValid then "" else "is-invalid")
-            , HA.class "form-control form-control-sm"
-            ] []
-        , H.text "% chance. "
-        , H.span [HA.class "invalid-feedback"] [viewError (parseHighProbability model)]
-        , H.details [HA.class "px-4"]
-          [ H.summary [HA.style "text-align" "right"] [H.text "Confusing?"]
-          , H.p [] [H.text "Yeah, this is startlingly difficult to think about! Here are some roughly equivalent statements:"]
-          , H.ul []
-            [ H.li []
-              [ H.text "\"I think a significant number of my friends assign this a probability below "
-              , Utils.b <| model.lowPField ++ "%"
-              , H.text ", and I'm pretty sure that they're being too hasty to dismiss this."
-              , case parseHighProbability model of
-                  Ok highP ->
-                    if highP == 1 then H.text "" else
-                    H.span []
-                    [ H.text " And other friends assign this a probability higher than "
-                    , Utils.b <| model.highPField ++ "%"
-                    , H.text " -- I think they're overconfident that this will happen."
-                    ]
-                  Err _ -> H.text ""
-              , H.text "\""
-              ]
-            , H.li []
-              [ H.text "\"I'm pretty sure that, if I researched this question pretty carefully, and at the end of the day I had to put a single number on it,"
-              , H.text " I would end up assigning it a probability between "
-              , Utils.b <| model.lowPField ++ "%"
-              , case parseHighProbability model of
-                  Ok highP ->
-                    if highP == 1 then H.text "" else
-                    H.span []
-                    [ H.text " and "
-                    , Utils.b <| model.highPField ++ "%"
-                    ]
-                  Err _ -> H.text ""
-              , H.text ". If I assigned a number outside that range, I must have learned something really surprising, something that changed my mind significantly!\""
-              ]
-            , H.li []
-              [ H.text "\"I would pay one of my friends about "
-              , Utils.b <| "$" ++ model.lowPField
-              , H.text " for an \"IOU $100 if [this prediction comes true]\" note"
-              , case parseHighProbability model of
-                  Ok highP ->
-                    if highP > 0.9999 then H.text "" else
-                    H.span []
-                    [ H.text ", or sell them such an IOU for about "
-                    , Utils.b <| "$" ++ model.highPField
-                    ]
-                  Err _ -> H.text ""
-              , H.text ".\""
-              ]
-            ]
-          , H.p [] [H.text <| "You can think of the spread as being a measurement of how confident you are:"
-              ++ " a small spread, like 70-73%, means you've thought about this ", i "really carefully,", H.text <| " and"
-              ++ " you don't expect your opinion to be budged by any of your friends' bets or any new information that comes out"
-              ++ " before betting closes; a wide spread, like 30-95%, is sort of off-the-cuff, you just want to throw it out there that"
-              ++ " it's ", i "pretty likely", H.text <| " but you haven't thought ", i "that", H.text <| " hard about it."
-              ++ " Predictions don't have to be effortful, painstakingly researched things!"
-              ++ " It's okay to throw out half-formed thoughts with wide spreads."
-              ]
-          , H.p [] [H.text <| "If you still confused, hey, don't worry about it! This is really remarkably counterintuitive stuff."
-              ++ " Just leave the high probability at 100%."
-              ]
-          ]
-        ]
-      ]]
+      ]
     , H.hr [] []
     , let
         isValid = isOk (parseStake model)
@@ -499,17 +397,10 @@ viewForm model =
                   parseLowProbability model
                   |> Result.toMaybe
                   |> Maybe.andThen (\lowP -> if lowP == 0 then Nothing else Just <| Utils.formatCents stakeCents ++ " against " ++ Utils.formatCents (round <| toFloat stakeCents * (1-lowP)/lowP))
-                betVsBelievers : Maybe String
-                betVsBelievers =
-                  parseHighProbability model
-                  |> Result.toMaybe
-                  |> Maybe.andThen (\highP -> if highP == 1 then Nothing else Just <| Utils.formatCents stakeCents ++ " against " ++ Utils.formatCents (round <| toFloat stakeCents * highP/(1-highP)))
               in
-                case (betVsSkeptics, betVsBelievers) of
-                  (Nothing, Nothing) -> H.text ""
-                  (Just s, Nothing) -> H.div [] [H.small [HA.class "text-secondary"] [H.text "(In other words, I'd happily bet ", Utils.b s, H.text " that this will happen.)"]]
-                  (Nothing, Just s) -> H.div [] [H.small [HA.class "text-secondary"] [H.text "(In other words, I'd happily bet ", Utils.b s, H.text " that this won't happen.)"]]
-                  (Just skep, Just bel)  -> H.div [] [H.small [HA.class "text-secondary"] [H.text "(In other words, I'd happily bet ", Utils.b skep, H.text " that this will happen, or ", Utils.b bel, H.text " that it won't.)"]]
+                case betVsSkeptics of
+                  Nothing -> H.text ""
+                  Just s -> H.div [] [H.small [HA.class "text-secondary"] [H.text "(In other words, I'd happily bet ", Utils.b s, H.text " that this will happen.)"]]
       ]
     , H.hr [] []
     , let
@@ -670,10 +561,9 @@ view model =
 previewPrediction : {request:Pb.CreatePredictionRequest, creatorName:String, createdAt:Time.Posix} -> Pb.UserPredictionView
 previewPrediction {request, creatorName, createdAt} =
   { prediction = request.prediction
-  , certainty = request.certainty
+  , lowProbability = request.lowProbability
   , maximumStakeCents = request.maximumStakeCents
-  , remainingStakeCentsVsBelievers = request.maximumStakeCents
-  , remainingStakeCentsVsSkeptics = request.maximumStakeCents
+  , remainingStakeCents = request.maximumStakeCents
   , createdUnixtime = Utils.timeToUnixtime createdAt
   , closesUnixtime = Utils.timeToUnixtime createdAt + toFloat request.openSeconds
   , specialRules = request.specialRules
