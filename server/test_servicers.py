@@ -1013,6 +1013,29 @@ class TestAcceptInvitation:
     rel = GetSettingsOk(any_servicer, recipient_token).relationships['inviter']
     assert rel.trusts_you and rel.trusted_by_you
 
+  async def test_commits_queued_trades(self, any_servicer: Servicer, emailer: Emailer, clock: MockClock):
+    creator_token = new_user_token(any_servicer, 'creator')
+    set_and_verify_email(any_servicer, emailer, creator_token, 'recipient@example.com')
+    bettor_token = new_user_token(any_servicer, 'bettor')
+    set_and_verify_email(any_servicer, emailer, bettor_token, 'inviter@example.com')
+
+    prediction_id = CreatePredictionOk(any_servicer, creator_token, dict(
+      certainty=mvp_pb2.CertaintyRange(low=0.50, high=1.00),
+      maximum_stake_cents=100_00,
+    ))
+    SendInvitationOk(any_servicer, bettor_token, 'creator')
+    QueueStakeOk(any_servicer, bettor_token, mvp_pb2.QueueStakeRequest(
+      prediction_id=prediction_id,
+      bettor_is_a_skeptic=True,
+      bettor_stake_cents=20_00,
+    ))
+    AcceptInvitationOk(any_servicer, creator_token, get_call_kwarg(emailer.send_invitation, 'nonce'))
+
+    prediction = GetPredictionOk(any_servicer, creator_token, prediction_id)
+    assert prediction.remaining_stake_cents_vs_skeptics == 80_00
+    assert prediction.your_trades
+    assert not prediction.your_queued_trades
+
   async def test_successfully_creates_trust_even_if_logged_out(self, any_servicer: Servicer, emailer: Emailer):
     recipient_token = new_user_token(any_servicer, 'recipient')
     set_and_verify_email(any_servicer, emailer, recipient_token, 'recipient@example.com')

@@ -323,6 +323,9 @@ class SqlConn:
         transacted_at_unixtime=enqueued_at_unixtime,
       )
     )
+    self.delete_queued_trade(prediction_id=prediction_id, bettor=bettor, enqueued_at_unixtime=enqueued_at_unixtime)
+
+  def delete_queued_trade(self, prediction_id: PredictionId, bettor: Username, enqueued_at_unixtime: float) -> None:
     self._conn.execute(
       sqlalchemy.delete(schema.queued_trades)
       .where(sqlalchemy.and_(
@@ -456,6 +459,45 @@ class SqlConn:
           schema.relationships.c.object_username == object_username,
         ))
       )
+
+    if self.trusts(subject_username, object_username) and self.trusts(object_username, subject_username):
+      self._dequeue_trades_between(subject_username, object_username)
+
+  def _dequeue_trades_between(self, user_1: Username, user_2: Username) -> None:
+    queued_trades = [
+      *self.get_queued_trades(bettor=user_1, creator=user_2),
+      *self.get_queued_trades(bettor=user_2, creator=user_1),
+    ]
+    predinfos_ = {predid: self.get_prediction_info(predid) for predid in {qt['prediction_id'] for qt in queued_trades}}
+    predinfos = {predid: predinfo for predid, predinfo in predinfos_.items() if predinfo}
+    if predinfos != predinfos_:
+      logger.error('queued trades reference nonexistent predictions', missing_predids={predid for predid, predinfo in predinfos_ if predinfo is None})
+
+    for qt in queued_trades:
+      predinfo = predinfos[qt['prediction_id']]
+
+      existing_creator_exposure = self.get_creator_exposure_cents(PredictionId(qt['prediction_id']), against_skeptics=qt['bettor_is_a_skeptic'])
+      existing_bettor_exposure = self.get_bettor_exposure_cents(PredictionId(qt['prediction_id']), qt['bettor'], bettor_is_a_skeptic=qt['bettor_is_a_skeptic'])
+      if (existing_creator_exposure + qt['creator_stake_cents'] > predinfo['maximum_stake_cents']):
+        logger.warn('failed to dequeue a bet that would exceed creator tolerance', queued_trade=qt, predinfo=predinfo)
+        self.delete_queued_trade(
+          prediction_id=PredictionId(qt['prediction_id']),
+          bettor=qt['bettor'],
+          enqueued_at_unixtime=qt['enqueued_at_unixtime'],
+        )
+      elif existing_bettor_exposure + qt['bettor_stake_cents'] > MAX_LEGAL_STAKE_CENTS:
+        logger.warn('failed to dequeue a bet that would exceed per-market stake limit', queued_trade=qt, predinfo=predinfo)
+        self.delete_queued_trade(
+          prediction_id=PredictionId(qt['prediction_id']),
+          bettor=qt['bettor'],
+          enqueued_at_unixtime=qt['enqueued_at_unixtime'],
+        )
+      else:
+        self.commit_queued_trade(
+          prediction_id=PredictionId(qt['prediction_id']),
+          bettor=qt['bettor'],
+          enqueued_at_unixtime=qt['enqueued_at_unixtime']
+        )
 
   def change_password(self, user: Username, new_password: str) -> None:
     pwid = self._conn.execute(
@@ -1041,36 +1083,6 @@ class SqlServicer(Servicer):
       self._conn.set_trusted(token_owner(token), Username(request.who), request.trusted)
       if not request.trusted:
         self._conn.delete_invitation(inviter=token_owner(token), recipient=Username(request.who))
-      if request.trusted and self._conn.trusts(Username(request.who), token_owner(token)):
-        queued_trades = [
-          *self._conn.get_queued_trades(bettor=token_owner(token), creator=Username(request.who)),
-          *self._conn.get_queued_trades(bettor=Username(request.who), creator=token_owner(token)),
-        ]
-        predinfos_ = {predid: self._conn.get_prediction_info(predid) for predid in {qt['prediction_id'] for qt in queued_trades}}
-        predinfos = {predid: predinfo for predid, predinfo in predinfos_.items() if predinfo}
-        if predinfos != predinfos_:
-          logger.error('queued trades reference nonexistent predictions', missing_predids={predid for predid, predinfo in predinfos_ if predinfo is None})
-
-        for qt in queued_trades:
-          predinfo = predinfos[qt['prediction_id']]
-          existing_creator_exposure = self._conn.get_creator_exposure_cents(PredictionId(qt['prediction_id']), against_skeptics=qt['bettor_is_a_skeptic'])
-          if (existing_creator_exposure
-          + qt['creator_stake_cents']
-          > predinfo['maximum_stake_cents']):
-            logger.warn('failed to dequeue a bet that would exceed creator tolerance', queued_trade=qt, predinfo=predinfo)
-            continue
-
-          existing_bettor_exposure = self._conn.get_bettor_exposure_cents(PredictionId(qt['prediction_id']), qt['bettor'], bettor_is_a_skeptic=qt['bettor_is_a_skeptic'])
-          if existing_bettor_exposure + qt['bettor_stake_cents'] > MAX_LEGAL_STAKE_CENTS:
-            logger.warn('failed to dequeue a bet that would exceed per-market stake limit', queued_trade=qt, predinfo=predinfo)
-            continue
-
-          self._conn.commit_queued_trade(
-            prediction_id=PredictionId(qt['prediction_id']),
-            bettor=qt['bettor'],
-            enqueued_at_unixtime=qt['enqueued_at_unixtime']
-          )
-
 
       return mvp_pb2.SetTrustedResponse(ok=self._conn.get_settings(token_owner(token)))
 
