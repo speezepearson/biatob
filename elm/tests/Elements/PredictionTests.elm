@@ -1,13 +1,26 @@
 module Elements.PredictionTests exposing (..)
 
+import  Bytes.Encode
+import Json.Decode as JD
+import Json.Encode as JE
 import Expect exposing (Expectation)
 import Fuzz exposing (Fuzzer, intRange, percentage)
+import Html as H
+import Html.Attributes as HA
 import Test exposing (..)
-import Time
+import Test.Html.Event as HEM
+import Test.Html.Query as HQ
+import Test.Html.Selector as HS
 
+import Globals
 import Biatob.Proto.Mvp as Pb
+import Widgets.AuthWidget as AuthWidget
+import Widgets.EmailSettingsWidget as EmailSettingsWidget
 import Elements.Prediction exposing (..)
 import Utils exposing (unixtimeToTime)
+import Time
+import Dict
+import Utils exposing (Username)
 
 exampleOrigin = "https://example.com"
 examplePredictionId = "my-test-prediction"
@@ -146,4 +159,37 @@ getBetParametersTest =
         in
         Expect.true "" (creatorStake > 0 || bettorStake == 0)
     ]
+  ]
+
+exampleModel : Pb.UserPredictionView -> Model
+exampleModel prediction =
+  { globals =
+      { authToken = Nothing
+      , serverState = {settings = Nothing , predictions = Dict.singleton "my-predid" prediction}
+      , now = Time.millisToPosix 0
+      , timeZone = Time.utc
+      , httpOrigin = "https://example.com"
+      }
+  , navbarAuth = AuthWidget.init
+  , authWidget = AuthWidget.init
+  , predictionId = "my-predid"
+  , emailSettingsWidget = EmailSettingsWidget.init
+  , resolveNotesField = ""
+  , resolveStatus = Unstarted
+  , stakeStatus = Unstarted
+  , setTrustedStatus = Unstarted
+  , sendInvitationStatus = Unstarted
+  , stakeField = "10"
+  , bettorIsASkeptic = True
+  , shareEmbedding = { format = EmbedHtml, contentType = Image , color = DarkGreen , fontSize = FourteenPt }
+  } |> updateBettorInputFields prediction
+viewModelForTest : Model -> HQ.Single Msg
+viewModelForTest model =
+  HQ.fromHtml <| H.div [] <| .body <| view model
+
+viewTest : Test
+viewTest =
+  describe "view"
+  [ test "header describes prediction and due date" <|
+    \() -> exampleModel mockPrediction |> viewModelForTest |> HQ.has [HS.tag "h2", HS.containing [HS.text "Prediction: by 1970 Jan 1, a thing will happen"]]
   ]
