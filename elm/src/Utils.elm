@@ -170,8 +170,8 @@ unixtimeToTime n = Time.millisToPosix <| round <| n*1000
 timeToUnixtime : Time.Posix -> Float
 timeToUnixtime t = toFloat (Time.posixToMillis t) / 1000
 
-monthNum_ : Time.Month -> Int
-monthNum_ month =
+monthNum : Time.Month -> Int
+monthNum month =
   case month of
     Time.Jan -> 1
     Time.Feb -> 2
@@ -186,11 +186,25 @@ monthNum_ month =
     Time.Nov -> 11
     Time.Dec -> 12
 
+monthName : Time.Month -> String
+monthName m = case m of
+  Time.Jan -> "Jan"
+  Time.Feb -> "Feb"
+  Time.Mar -> "Mar"
+  Time.Apr -> "Apr"
+  Time.May -> "May"
+  Time.Jun -> "Jun"
+  Time.Jul -> "Jul"
+  Time.Aug -> "Aug"
+  Time.Sep -> "Sep"
+  Time.Oct -> "Oct"
+  Time.Nov -> "Nov"
+  Time.Dec -> "Dec"
 isoStr : Time.Zone -> Time.Posix -> String
 isoStr zone t =
   String.fromInt (Time.toYear zone t)
   ++ "-"
-  ++ String.padLeft 2 '0' (String.fromInt (monthNum_ <| Time.toMonth zone t))
+  ++ String.padLeft 2 '0' (String.fromInt (monthNum <| Time.toMonth zone t))
   ++ "-"
   ++ String.padLeft 2 '0' (String.fromInt (Time.toDay zone t))
   ++ "T"
@@ -202,7 +216,9 @@ isoStr zone t =
 
 dateStr : Time.Zone -> Time.Posix -> String
 dateStr zone t =
-  isoStr zone t |> String.left (4+1+2+1+2)
+  String.fromInt (Time.toYear zone t)
+  ++ " " ++ monthName (Time.toMonth zone t)
+  ++ " " ++ String.fromInt (Time.toDay zone t)
 
 addMillis : Int -> Time.Posix -> Time.Posix
 addMillis n t =
