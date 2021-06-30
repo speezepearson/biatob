@@ -314,15 +314,15 @@ pendingEmailInvitation model =
     _ -> False
 
 
-userHasEmailAddress : Model -> Bool
-userHasEmailAddress model =
+userEmailAddress : Model -> Maybe String
+userEmailAddress model =
   case model.globals.serverState.settings of
     Just settings -> case settings.email of
       Just efs -> case efs.emailFlowStateKind of
-        Just (Pb.EmailFlowStateKindVerified _) -> True
-        _ -> False
-      _ -> False
-    _ -> False
+        Just (Pb.EmailFlowStateKindVerified addr) -> Just addr
+        _ -> Nothing
+      _ -> Nothing
+    _ -> Nothing
 
 type PrereqsForStaking
   = CanAlreadyStake
@@ -385,12 +385,12 @@ getPrereqsForStaking model =
     CreatorStakeExhausted
   else if Globals.getTrustRelationship model.globals creator == Globals.Friends then
     CanAlreadyStake
-  else if Globals.getTrustRelationship model.globals creator == Globals.TrustsCurrentUser then
+  else if not (Globals.getRelationship model.globals creator |> Maybe.map .trustedByYou |> Maybe.withDefault False) then
     NeedsToSetTrusted
   else if predictionAllowsEmailInvitation model then
     if pendingEmailInvitation model then
       NeedsToWaitForInvitation
-    else if userHasEmailAddress model then
+    else if userEmailAddress model /= Nothing then
       NeedsToSendEmailInvitation
     else
       NeedsEmailAddress
@@ -402,51 +402,17 @@ viewBody model =
   let
     prediction = mustPrediction model
     isOwnPrediction = Globals.isSelf model.globals prediction.creator
+    trustsCreator = Globals.getRelationship model.globals prediction.creator |> Maybe.map .trustedByYou |> Maybe.withDefault False
     maybeOrYouCouldSwapUserPages =
       case Globals.getOwnUsername model.globals of
         Nothing -> H.text ""
         Just self ->
-          H.details [HA.class "text-secondary"]
-          [ H.summary [] [H.text "Alternatively..."]
-          , H.text "...you could "
-          , if Globals.getRelationship model.globals prediction.creator |> Maybe.map .trustedByYou |> Maybe.withDefault False then
-              H.span []
-              [ H.text " text/email/whatever them a link to "
-              , H.a [HA.href <| Utils.pathToUserPage self] [H.text "your user page"]
-              , H.text " and ask them to mark you as trusted."
-              ]
-            else
-              H.span []
-              [ H.text " click "
-              , H.button
-                [ HA.disabled (model.setTrustedStatus == AwaitingResponse)
-                , HE.onClick SetCreatorTrusted
-                , HA.class "btn btn-sm btn-primary"
-                ]
-                [ H.text <| "I trust '" ++ prediction.creator ++ "'" ]
-              , case model.setTrustedStatus of
-                  Unstarted -> H.text ""
-                  AwaitingResponse -> H.text ""
-                  Succeeded -> Utils.greenText "(success!)"
-                  Failed e -> Utils.redText e
-              , H.text " and text/email/whatever them a link to "
-              , H.a [HA.href <| Utils.pathToUserPage self] [H.text "your user page"]
-              , H.text " and ask them to mark you as trusted."
-              ]
-            ]
-
-    maybeButHeresAQueueForm =
-      if Globals.getRelationship model.globals prediction.creator |> Maybe.map .trustedByYou |> Maybe.withDefault False then
-        H.p []
-        [ H.text "...but, in the meantime, I'll let you tell me about the bets you "
-        , Utils.i "want"
-        , H.text " to make, and I'll apply them once "
-        , Utils.renderUser prediction.creator
-        , H.text " tells me they trust you."
-        , viewStakeWidget QueueingNecessary model
-        ]
-      else
-        H.text ""
+          H.small [] [H.details [HA.class "text-secondary"]
+          [ H.summary [] [H.text "But I hate giving out my email address!"]
+          , H.text "Well, since you have ", Utils.renderUser prediction.creator, H.text " marked as trusted, I assume that you have some way to communicate with them over SMS or email or whatever. You could send them a link to "
+          , H.a [HA.href <| Utils.pathToUserPage self] [H.text "your user page"]
+          , H.text " and ask them to mark you as trusted."
+          ]]
   in
   [ H.h2 [HA.class "text-center"] [H.text <| getTitleText model.globals.timeZone prediction]
   , H.hr [] []
@@ -457,39 +423,47 @@ viewBody model =
           H.text ""
         else
           H.div []
-          [ Utils.b "Your existing stake: "
-          , if isOwnPrediction then
-              viewTradesAsCreator model.globals.timeZone prediction
-            else
-              viewTradesAsBettor model.globals.timeZone prediction prediction.yourTrades
-          , H.hr [] []
+          [ H.h4 [HA.class "text-center"] [H.text "Your stake"]
+          , H.div [HA.class "mx-lg-5"]
+            [ if isOwnPrediction then
+                viewTradesAsCreator model.globals.timeZone prediction
+              else
+                viewTradesAsBettor model.globals.timeZone prediction prediction.yourTrades
+            ]
+          , H.hr [HA.class "my-4"] []
           ]
       , if isOwnPrediction || List.isEmpty prediction.yourQueuedTrades then
           H.text ""
         else
           H.div []
-          [ Utils.b "Your queued stake"
-          , H.text " (from bets that I'll apply once "
-          , Utils.renderUser prediction.creator
-          , H.text " tells me they trust you): "
-          , viewTradesAsBettor model.globals.timeZone prediction
-            <| List.map
-                (\qt -> {bettor=qt.bettor, bettorIsASkeptic=qt.bettorIsASkeptic, bettorStakeCents=qt.bettorStakeCents, creatorStakeCents=qt.creatorStakeCents, transactedUnixtime=qt.enqueuedAtUnixtime})
-                prediction.yourQueuedTrades
-          , H.hr [] []
+          [ H.h4 [HA.class "text-center"] [H.text "Your queued stake"]
+          , H.div [HA.class "mx-lg-5"]
+            [ H.div [HA.class "text-center text-secondary"]
+              [ H.text " (from bets that I'll apply once "
+              , Utils.renderUser prediction.creator
+              , H.text " tells me they trust you)"
+              ]
+            , H.br [] []
+            , viewTradesAsBettor model.globals.timeZone prediction
+              <| List.map
+                  (\qt -> {bettor=qt.bettor, bettorIsASkeptic=qt.bettorIsASkeptic, bettorStakeCents=qt.bettorStakeCents, creatorStakeCents=qt.creatorStakeCents, transactedUnixtime=qt.enqueuedAtUnixtime})
+                  prediction.yourQueuedTrades
+            ]
+          , H.hr [HA.class "my-4"] []
           ]
 
       , case getPrereqsForStaking model of
           IsCreator ->
             H.div []
-            [ viewResolveButtons model
+            [ H.h4 [HA.class "text-center"] [H.text "Resolve this prediction"]
+            , viewResolveButtons model
             , H.hr [HA.style "margin" "2em 0"] []
             , H.text "If you want to link to your prediction, here's some code you could copy-paste:"
             , viewEmbedInfo model
             ]
           CreatorStakeExhausted ->
-            H.div []
-            [ Utils.b "Make a bet: "
+            H.div [HA.class "text-secondary"]
+            [ H.h4 [HA.class "text-center"] [H.text "Make a bet"]
             , Utils.renderUser prediction.creator
             , H.text " has already accepted so many bets that they've reached their maximum risk of "
             , H.text <| Utils.formatCents prediction.maximumStakeCents
@@ -497,7 +471,7 @@ viewBody model =
             ]
           NeedsAccount ->
             H.div []
-            [ Utils.b "Make a bet:"
+            [ H.h4 [HA.class "text-center"] [H.text "Make a bet"]
             , H.text " Before I let you bet against "
             , Utils.renderUser prediction.creator
             , H.text ", I have to make sure that they trust you to pay up if you lose!"
@@ -518,96 +492,98 @@ viewBody model =
             ]
           CanAlreadyStake ->
             H.div []
-            [ viewStakeWidget QueueingUnnecessary model
+            [ H.h4 [HA.class "text-center"] [H.text "Make a bet"]
+            , viewStakeWidget QueueingUnnecessary model
             ]
           NeedsToSetTrusted ->
-            H.div []
-            [ Utils.b "Make a bet:"
-            , H.text " Before I let you bet against "
-            , Utils.renderUser prediction.creator
-            , H.text ", I have to make sure that you trust them to pay up if they lose!"
-            , H.br [] []
-            , H.text "If you know who this account belongs to, and you trust them to pay up if they lose, then click "
+            H.div [HA.class "text-center"]
+            [ H.h4 [] [H.text "Make a bet"]
             , H.button
               [ HA.disabled (model.setTrustedStatus == AwaitingResponse)
               , HE.onClick SetCreatorTrusted
               , HA.class "btn btn-sm btn-primary"
               ]
-              [ H.text <| "I trust '" ++ prediction.creator ++ "'" ]
+              [ H.text <| "I know @" ++ prediction.creator ++ ", and I trust them to pay up"]
             , case model.setTrustedStatus of
                 Unstarted -> H.text ""
                 AwaitingResponse -> H.text ""
                 Succeeded -> Utils.greenText "(success!)"
                 Failed e -> Utils.redText e
-            , H.text " and then I'll let you bet on this!"
             ]
           NeedsToWaitForInvitation ->
             H.div []
-            [ H.p []
-              [ H.text "I've emailed "
-              , Utils.renderUser prediction.creator
-              , H.text " asking if they trust you, but they haven't responded yet, so I can't let you bet against them yet. Sorry!"
-            ]
-            , maybeButHeresAQueueForm
+            [ H.h4 [HA.class "text-center"] [H.text "Make a bet"]
+            , viewStakeWidget
+              ( QueueingNecessary <| H.span [] [H.text "I've emailed them to ask, but they haven't responded yet."])
+              model
             ]
           NeedsToSendEmailInvitation ->
             H.div []
             [ H.p []
-              [ Utils.b "Make a bet:"
-              , H.text " Before I let you bet against "
-              , Utils.renderUser prediction.creator
-              , H.text ", I have to make sure that they trust you to pay up if you lose!"
-              , H.br [] []
-              , H.text "May I share your email address with them so that they know who you are? "
-              , H.button
-                [ HA.disabled (model.sendInvitationStatus == AwaitingResponse)
-                , HE.onClick SendInvitation
-                , HA.class "btn btn-sm btn-primary"
-                ]
-                [ H.text <| "Yes, I trust '" ++ prediction.creator ++ "', and I'm pretty sure they trust me too." ]
-              , H.br [] []
-              , H.text "After they tell me that they trust you, I'll let you bet on this prediction!"
+              [ H.h4 [HA.class "text-center"] [H.text "Make a bet"]
+              , viewStakeWidget
+                ( QueueingNecessary <|
+                    H.span []
+                    [ H.button
+                      [ HA.disabled (model.sendInvitationStatus == AwaitingResponse)
+                      , HE.onClick SendInvitation
+                      , HA.class "btn btn-sm py-0 btn-primary"
+                      ]
+                      [ H.text <| "Ask @" ++ prediction.creator ++ " if they trust me ("
+                      , H.code [HA.style "color" "inherit"] [ H.text <| Utils.must "must have email address, else would take the NeedsEmailAddress branch" <| userEmailAddress model ]
+                      , H.text ")"
+                      ]
+                    , H.text " "
+                    , case model.sendInvitationStatus of
+                        Unstarted -> H.text ""
+                        AwaitingResponse -> H.text ""
+                        Succeeded -> H.text "Success!"
+                        Failed e -> Utils.redText e
+                    , maybeOrYouCouldSwapUserPages
+                    ]
+                )
+                model
               ]
-            , maybeOrYouCouldSwapUserPages
-            , maybeButHeresAQueueForm
             ]
           NeedsEmailAddress ->
             H.div []
             [ H.p []
-              [ Utils.b "Make a bet:"
-              , H.text " Before I let you bet against "
-              , Utils.renderUser prediction.creator
-              , H.text ", I have to make sure that they trust you to pay up if you lose!"
-              , H.br [] []
-              , H.text "I can ask them if they trust you, but first, could I trouble you to add an email address to your account, as a way to identify you to them?"
-              , H.div [HA.class "m-1 mx-4"]
-                [ EmailSettingsWidget.view
-                  { setState = SetEmailWidget
-                  , ignore = Ignore
-                  , setEmail = SetEmail
-                  , updateSettings = UpdateSettings
-                  , userInfo = Utils.must "checked that user is logged in" model.globals.serverState.settings
-                  , showAllEmailSettings = False
-                  }
-                  model.emailSettingsWidget
-                ]
+              [ H.h4 [HA.class "text-center"] [H.text "Make a bet"]
+              , viewStakeWidget
+                ( QueueingNecessary <|
+                    H.span []
+                    [ H.text "If you told me your email address, I could ask them."
+                    , H.div [HA.class "m-1 mx-4"]
+                      [ EmailSettingsWidget.view
+                        { setState = SetEmailWidget
+                        , ignore = Ignore
+                        , setEmail = SetEmail
+                        , updateSettings = UpdateSettings
+                        , userInfo = Utils.must "checked that user is logged in" model.globals.serverState.settings
+                        , showAllEmailSettings = False
+                        }
+                        model.emailSettingsWidget
+                      ]
+                    , maybeOrYouCouldSwapUserPages
+                    ]
+                )
+                model
               ]
-            , maybeOrYouCouldSwapUserPages
-            , maybeButHeresAQueueForm
             ]
           NeedsToTextUserPageLink ->
             H.div []
             [ H.p []
-              [ Utils.b "Make a bet:"
-              , H.text " Before I let you bet against "
-              , Utils.renderUser prediction.creator
-              , H.text ", I have to make sure that they trust you to pay up if you lose!"
-              , H.br [] []
-              , H.text "Normally, I'd offer to ask them for you, but they don't have that setting enabled, so you'll need to send them a link to "
-              , H.a [HA.href <| Utils.pathToUserPage <| Utils.must "checked user is logged in" <| Globals.getOwnUsername model.globals] [H.text "your user page"]
-              , H.text ", over SMS/IM/email/whatever, and ask them to mark you as trusted."
+              [ H.h4 [HA.class "text-center"] [H.text "Make a bet"]
+              , viewStakeWidget
+                ( QueueingNecessary <|
+                    H.span []
+                    [ H.text "Normally, I'd offer to ask them, but they don't have that setting enabled! You'll need to send them a link to "
+                    , H.a [HA.href <| Utils.pathToUserPage <| Utils.must "checked user is logged in" <| Globals.getOwnUsername model.globals] [H.text "your user page"]
+                    , H.text ", over SMS/IM/email/whatever, and ask them to mark you as trusted."
+                    ]
+                )
+                model
               ]
-            , maybeButHeresAQueueForm
             ]
       ]
     , if not (Globals.isLoggedIn model.globals) then
@@ -639,8 +615,7 @@ viewResolveButtons model =
         ]
   in
     H.div []
-    [ Utils.b "Resolve this prediction: "
-    , case Utils.currentResolution prediction of
+    [ case Utils.currentResolution prediction of
         Pb.ResolutionYes ->
           mistakeInfo "HAPPENED"
         Pb.ResolutionNo ->
@@ -649,12 +624,7 @@ viewResolveButtons model =
           mistakeInfo "was INVALID"
         Pb.ResolutionNoneYet ->
           H.div []
-          [ H.div []
-            [ H.button [HA.class "btn btn-sm py-0 btn-outline-primary mx-2", HA.disabled (model.resolveStatus == AwaitingResponse), HE.onClick <| Resolve Pb.ResolutionYes    ] [H.text "It happened!"]
-            , H.button [HA.class "btn btn-sm py-0 btn-outline-primary mx-2", HA.disabled (model.resolveStatus == AwaitingResponse), HE.onClick <| Resolve Pb.ResolutionNo     ] [H.text "It didn't happen!"]
-            , H.button [HA.class "btn btn-sm py-0 btn-outline-secondary mx-2", HA.disabled (model.resolveStatus == AwaitingResponse), HE.onClick <| Resolve Pb.ResolutionInvalid] [H.text "Invalid prediction / impossible to resolve"]
-            ]
-          , H.div [HA.class "mx-4 mt-2"]
+          [ H.div [HA.class "mx-4 my-4"]
             [ H.text "Explanation / supporting evidence:"
             , H.textarea
               [ HA.class "form-control"
@@ -664,6 +634,11 @@ viewResolveButtons model =
               , HA.disabled (model.resolveStatus == AwaitingResponse)
               ]
               []
+            , H.div [HA.class "my-2"]
+              [ H.button [HA.class "btn btn-sm py-0 btn-outline-primary mx-1", HA.disabled (model.resolveStatus == AwaitingResponse), HE.onClick <| Resolve Pb.ResolutionYes    ] [H.text "It happened!"]
+              , H.button [HA.class "btn btn-sm py-0 btn-outline-primary mx-1", HA.disabled (model.resolveStatus == AwaitingResponse), HE.onClick <| Resolve Pb.ResolutionNo     ] [H.text "It didn't happen!"]
+              , H.button [HA.class "btn btn-sm py-0 btn-outline-secondary mx-1", HA.disabled (model.resolveStatus == AwaitingResponse), HE.onClick <| Resolve Pb.ResolutionInvalid] [H.text "Invalid prediction / impossible to resolve"]
+              ]
             ]
           ]
         Pb.ResolutionUnrecognized_ _ ->
@@ -698,7 +673,9 @@ viewWillWontDropdown model =
       , H.option [HA.value "will", HA.selected <| not <| model.bettorIsASkeptic] [H.text "will"]
       ]
 
-type Bettability = QueueingNecessary | QueueingUnnecessary
+type Bettability
+  = QueueingNecessary (Html Msg)
+  | QueueingUnnecessary
 viewStakeWidget : Bettability -> Model -> Html Msg
 viewStakeWidget bettability model =
   let
@@ -719,7 +696,7 @@ viewStakeWidget bettability model =
         else
           Ok n
   in
-  H.div [HA.class "mx-5 my-3"]
+  H.div [HA.class "mx-lg-5 my-3"]
     [ H.text " Bet $"
     , H.input
         [ HA.style "width" "7em"
@@ -738,20 +715,25 @@ viewStakeWidget bettability model =
     , H.text " that it "
     , H.text <| if model.bettorIsASkeptic then "will" else "won't"
     , H.text ". "
-    , H.button
-        (HA.class "btn btn-sm py-0 btn-primary" :: case stakeCents of
+    , let
+        primarity = case bettability of
+          QueueingNecessary _ -> "btn-outline-secondary"
+          QueueingUnnecessary -> "btn-primary"
+      in
+      H.button
+        (HA.class ("btn btn-sm py-0 " ++ primarity) :: case stakeCents of
           Ok 0 ->
             [ HA.disabled True ]
           Ok cents ->
             [ HE.onClick <| case bettability of
-                QueueingNecessary -> QueueStake cents
+                QueueingNecessary _ -> QueueStake cents
                 QueueingUnnecessary -> Stake cents
             ]
           Err _ ->
             [ HA.disabled True ]
         )
         [ H.text <| case bettability of
-            QueueingNecessary -> "Queue"
+            QueueingNecessary _ -> "Queue"
             QueueingUnnecessary -> "Commit"
         ]
     , case model.stakeStatus of
@@ -760,11 +742,12 @@ viewStakeWidget bettability model =
         Succeeded -> Utils.greenText "Success!"
         Failed e -> Utils.redText e
     , case bettability of
-        QueueingNecessary ->
+        QueueingNecessary instructions ->
           H.div [HA.class "text-secondary"]
-          [ H.text " (Your bet won't take effect until "
+          [ H.text "Your bet won't take effect until "
           , Utils.renderUser prediction.creator
-          , H.text " tells me they trust you.)"
+          , H.text " tells me they trust you. "
+          , instructions
           ]
         QueueingUnnecessary -> H.text ""
     , if model.bettorIsASkeptic then
