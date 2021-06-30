@@ -402,6 +402,39 @@ viewBody model =
   let
     prediction = mustPrediction model
     isOwnPrediction = Globals.isSelf model.globals prediction.creator
+    maybeOrYouCouldSwapUserPages =
+      case Globals.getOwnUsername model.globals of
+        Nothing -> H.text ""
+        Just self ->
+          H.details [HA.class "text-secondary"]
+          [ H.summary [] [H.text "Alternatively..."]
+          , H.text "...you could "
+          , if Globals.getRelationship model.globals prediction.creator |> Maybe.map .trustedByYou |> Maybe.withDefault False then
+              H.span []
+              [ H.text " text/email/whatever them a link to "
+              , H.a [HA.href <| Utils.pathToUserPage self] [H.text "your user page"]
+              , H.text " and ask them to mark you as trusted."
+              ]
+            else
+              H.span []
+              [ H.text " click "
+              , H.button
+                [ HA.disabled (model.setTrustedStatus == AwaitingResponse)
+                , HE.onClick SetCreatorTrusted
+                , HA.class "btn btn-sm btn-primary"
+                ]
+                [ H.text <| "I trust '" ++ prediction.creator ++ "'" ]
+              , case model.setTrustedStatus of
+                  Unstarted -> H.text ""
+                  AwaitingResponse -> H.text ""
+                  Succeeded -> Utils.greenText "(success!)"
+                  Failed e -> Utils.redText e
+              , H.text " and text/email/whatever them a link to "
+              , H.a [HA.href <| Utils.pathToUserPage self] [H.text "your user page"]
+              , H.text " and ask them to mark you as trusted."
+              ]
+            ]
+
     maybeButHeresAQueueForm =
       if Globals.getRelationship model.globals prediction.creator |> Maybe.map .trustedByYou |> Maybe.withDefault False then
         H.p []
@@ -535,34 +568,7 @@ viewBody model =
               , H.br [] []
               , H.text "After they tell me that they trust you, I'll let you bet on this prediction!"
               ]
-            , H.p []
-              [ Utils.b "Alternatively"
-              , H.text ", you could "
-              , if Globals.getRelationship model.globals prediction.creator |> Maybe.map .trustedByYou |> Maybe.withDefault False then
-                  H.span []
-                  [ H.text " text/email/whatever them a link to "
-                  , H.a [HA.href <| Utils.pathToUserPage <| Utils.must "NeedsEmailAddress only possible for logged-in users" <| Globals.getOwnUsername model.globals] [H.text "your user page"]
-                  , H.text " and ask them to mark you as trusted."
-                  ]
-                else
-                  H.span []
-                  [ H.text " click "
-                  , H.button
-                    [ HA.disabled (model.setTrustedStatus == AwaitingResponse)
-                    , HE.onClick SetCreatorTrusted
-                    , HA.class "btn btn-sm btn-primary"
-                    ]
-                    [ H.text <| "I trust '" ++ prediction.creator ++ "'" ]
-                  , case model.setTrustedStatus of
-                      Unstarted -> H.text ""
-                      AwaitingResponse -> H.text ""
-                      Succeeded -> Utils.greenText "(success!)"
-                      Failed e -> Utils.redText e
-                  , H.text " and text/email/whatever them a link to "
-                  , H.a [HA.href <| Utils.pathToUserPage <| Utils.must "NeedsEmailAddress only possible for logged-in users" <| Globals.getOwnUsername model.globals] [H.text "your user page"]
-                  , H.text " and ask them to mark you as trusted."
-                  ]
-                ]
+            , maybeOrYouCouldSwapUserPages
             , maybeButHeresAQueueForm
             ]
           NeedsEmailAddress ->
@@ -586,34 +592,7 @@ viewBody model =
                   model.emailSettingsWidget
                 ]
               ]
-            , H.p []
-              [ Utils.b "Alternatively"
-              , H.text ", you could "
-              , if Globals.getRelationship model.globals prediction.creator |> Maybe.map .trustedByYou |> Maybe.withDefault False then
-                  H.span []
-                  [ H.text " text/email/whatever them a link to "
-                  , H.a [HA.href <| Utils.pathToUserPage <| Utils.must "NeedsEmailAddress only possible for logged-in users" <| Globals.getOwnUsername model.globals] [H.text "your user page"]
-                  , H.text " and ask them to mark you as trusted."
-                  ]
-                else
-                  H.span []
-                  [ H.text " click "
-                  , H.button
-                    [ HA.disabled (model.setTrustedStatus == AwaitingResponse)
-                    , HE.onClick SetCreatorTrusted
-                    , HA.class "btn btn-sm btn-primary"
-                    ]
-                    [ H.text <| "I trust '" ++ prediction.creator ++ "'" ]
-                  , case model.setTrustedStatus of
-                      Unstarted -> H.text ""
-                      AwaitingResponse -> H.text ""
-                      Succeeded -> Utils.greenText "(success!)"
-                      Failed e -> Utils.redText e
-                  , H.text " and text/email/whatever them a link to "
-                  , H.a [HA.href <| Utils.pathToUserPage <| Utils.must "NeedsEmailAddress only possible for logged-in users" <| Globals.getOwnUsername model.globals] [H.text "your user page"]
-                  , H.text " and ask them to mark you as trusted."
-                  ]
-                ]
+            , maybeOrYouCouldSwapUserPages
             , maybeButHeresAQueueForm
             ]
           NeedsToTextUserPageLink ->
