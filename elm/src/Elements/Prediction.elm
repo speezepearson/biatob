@@ -1,4 +1,4 @@
-port module Elements.Prediction exposing (main, viewBodyMockup)
+port module Elements.Prediction exposing (..)
 
 import Browser
 import Dict exposing (Dict)
@@ -93,9 +93,9 @@ embeddedLinkText httpOrigin predictionId prediction =
   let
     certainty = Utils.mustPredictionCertainty prediction
   in
-    "(bet "
+    "(bet: "
     ++ Utils.formatCents (prediction.maximumStakeCents // 100 * 100)
-    ++ " @ "
+    ++ " at "
     ++ String.fromInt (round <| certainty.low * 100)
     ++ (if certainty.high < 1 then
           "-"
@@ -361,7 +361,7 @@ getBetParameters bettorIsASkeptic prediction =
     { remainingCreatorStake = remainingCreatorStake
     , creatorStakeFactor = creatorStakeFactor
     , maxBettorStake = maxBettorStake
-    } |> Debug.log "bet params"
+    }
 
 
 canAnySkepticsBet : Pb.UserPredictionView -> Bool

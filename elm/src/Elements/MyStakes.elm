@@ -1,4 +1,4 @@
-port module Elements.MyStakes exposing (main)
+port module Elements.MyStakes exposing (..)
 
 import Html as H exposing (Html)
 import Html.Attributes as HA

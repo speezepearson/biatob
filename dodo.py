@@ -63,7 +63,8 @@ def task_elm():
     'file_dep': [
       'elm/elm.json',
       *src.glob('**/*.elm'),
-      *[t for d in task_proto() for t in d['targets'] if d['name']=='elm']],
+      *[t for d in task_proto() for t in d['targets'] if d['name']=='elm'],
+    ],
     'targets': [
       *[dist/f'{mod}.js' for mod in modules],
     ],
@@ -81,6 +82,18 @@ def task_test():
     'actions': [
       # 'pip3 install -r server/requirements.txt',
       'mypy server',
+    ]
+  }
+  yield {
+    'name': 'elm',
+    'file_dep': [
+      'elm/elm.json',
+      *Path('elm/src').glob('**/*.elm'),
+      *[t for d in task_proto() for t in d['targets'] if d['name']=='elm'],
+      *Path('elm/tests').glob('**/*.elm'),
+    ],
+    'actions': [
+      'cd elm && elm-test',
     ]
   }
   yield {
@@ -119,6 +132,8 @@ def task_devsetup():
     print("[to edit the server] Install Python dependencies: `pip install -r server/requirements.txt`", file=sys.stderr)
     if not has_executable('elm'):
       print("[to edit the UI] Install Elm: https://github.com/elm/compiler/blob/master/installers/linux/README.md", file=sys.stderr)
+    if not has_executable('elm-test'):
+      print("[to edit the UI] Install `elm-test`: https://elmprogramming.com/easy-to-test.html", file=sys.stderr)
     if not has_executable('protoc'):
       print("[to edit the UI] Install protoc: https://github.com/elm/compiler/blob/master/installers/linux/README.md", file=sys.stderr)
     if not has_executable('protoc-gen-elm'):
