@@ -744,7 +744,7 @@ viewStakeWidget bettability model =
     , case bettability of
         QueueingNecessary instructions ->
           H.div [HA.class "text-secondary"]
-          [ H.text "Your bet won't take effect until "
+          [ H.text "Your queued bet won't take effect until "
           , Utils.renderUser prediction.creator
           , H.text " tells me they trust you. "
           , instructions
