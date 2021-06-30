@@ -464,7 +464,7 @@ viewBody model =
               viewTradesAsBettor model.globals.timeZone prediction prediction.yourTrades
           , H.hr [] []
           ]
-      , if (not isOwnPrediction) || List.isEmpty prediction.yourQueuedTrades then
+      , if isOwnPrediction || List.isEmpty prediction.yourQueuedTrades then
           H.text ""
         else
           H.div []
