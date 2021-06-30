@@ -158,7 +158,7 @@ view model =
         model.navbarAuth
     ,
     H.main_ [HA.class "container", HA.style "text-align" "justify"]
-    [ H.h1 [HA.class "text-center"] [H.text "Betting is a tax on BS."]
+    [ H.h1 [HA.class "text-center my-5"] [H.text "Betting is a tax on BS."]
     , H.p []
         [ H.text "Hi! This is a tool that helps people make friendly wagers, thereby clarifying and concretizing their beliefs and making the world a better, saner place."
         ]
@@ -189,7 +189,7 @@ view model =
     , H.p []
         [ H.text "Biatob provides a place for you to advertise things like this to your friends: "
         , H.p [HA.class "mt-2 mb-2 mx-4"]
-            [ Utils.i "  Hey, I think that X has at least a 2/3 chance of happening!   If you think I'm overconfident, let's bet: I'll pay you $20 if I'm wrong, against your $10 if I'm right. "
+            [ Utils.i "  Hey, I think that X is pretty likely! If you disagree, let's bet: I'll pay you $20 if I'm wrong, against your mere $10 if I'm right. "
             ]
         , H.text "Then, you publish a link to that page, and any of your friends can take you up on that bet. Biatob handles the bookkeeping, emails you (if you want) to make sure you remember to resolve the prediction when the answer becomes clear, and calculates and informs everybody of their net winnings so that they can settle up."
         ]
@@ -206,8 +206,8 @@ view model =
             [ H.text "PredictIt"
             ]
         , H.text " or "
-        , H.a [HA.href "https://www.metaculus.com/"]
-            [ H.text "Metaculus"
+        , H.a [HA.href "https://www.betfair.com/"]
+            [ H.text "Betfair"
             ]
         , H.text ". This is a different beast."
         ]
@@ -232,7 +232,7 @@ view model =
                 ]
             ]
         , H.li [HA.style "margin-bottom" "1em"]
-            [ H.text " Consider adding an email address, so I can remind you to resolve your predictions, notify you when predictions resolve, and ask you if you trust people who want to bet on your predictions: "
+            [ H.text " I strongly recommend adding an email address, so I can remind you to resolve your predictions, notify you when predictions resolve, and ask you if you trust people who want to bet on your predictions: "
             , H.div [HA.style "border" "1px solid gray", HA.style "padding" "0.5em", HA.style "margin" "0.5em"]
                 [ case Globals.getUserInfo model.globals of
                     Nothing -> H.text "(first, log in)"
