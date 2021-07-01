@@ -200,27 +200,31 @@ type Msg
 
 init : JD.Value -> ( Model, Cmd Msg )
 init flags =
-  let
-    globals = JD.decodeValue Globals.globalsDecoder flags |> Utils.mustResult "flags"
-    predictionId = Utils.mustDecodeFromFlags JD.string "predictionId" flags
-    prediction = Utils.must "must have loaded prediction being viewed" <| Dict.get predictionId globals.serverState.predictions
-  in
-  ( { globals = globals
-    , navbarAuth = AuthWidget.init
-    , authWidget = AuthWidget.init
-    , predictionId = predictionId
-    , emailSettingsWidget = EmailSettingsWidget.init
-    , resolveNotesField = ""
-    , resolveStatus = Unstarted
-    , stakeStatus = Unstarted
-    , setTrustedStatus = Unstarted
-    , sendInvitationStatus = Unstarted
-    , stakeField = "10"
-    , bettorIsASkeptic = True
-    , shareEmbedding = { format = EmbedHtml, contentType = Image , color = DarkGreen , fontSize = FourteenPt }
-    } |> updateBettorInputFields prediction
+  ( initInternal
+      (JD.decodeValue Globals.globalsDecoder flags |> Utils.mustResult "flags")
+      (Utils.mustDecodeFromFlags JD.string "predictionId" flags)
   , Cmd.none
   )
+
+initInternal : Globals.Globals -> PredictionId -> Model
+initInternal globals predictionId =
+  let
+    prediction = Utils.must "must have loaded prediction being viewed" <| Dict.get predictionId globals.serverState.predictions
+  in
+  { globals = globals
+  , navbarAuth = AuthWidget.init
+  , authWidget = AuthWidget.init
+  , predictionId = predictionId
+  , emailSettingsWidget = EmailSettingsWidget.init
+  , resolveNotesField = ""
+  , resolveStatus = Unstarted
+  , stakeStatus = Unstarted
+  , setTrustedStatus = Unstarted
+  , sendInvitationStatus = Unstarted
+  , stakeField = "10"
+  , bettorIsASkeptic = True
+  , shareEmbedding = { format = EmbedHtml, contentType = Image , color = DarkGreen , fontSize = FourteenPt }
+  } |> updateBettorInputFields prediction
 
 updateBettorInputFields : Pb.UserPredictionView -> Model -> Model
 updateBettorInputFields prediction model =
@@ -240,7 +244,7 @@ view model =
   let
     prediction = mustPrediction model
   in
-  { title = "Prediction: by " ++ Utils.dateStr model.globals.timeZone (Utils.unixtimeToTime prediction.resolvesAtUnixtime) ++ ", " ++ prediction.prediction
+  { title = String.concat <| getTitleTextChunks model.globals.timeZone prediction
   , body =
     [ Navbar.view
         { setState = SetAuthWidget Navbar
@@ -278,25 +282,15 @@ viewBodyMockup globals prediction =
       , loginType = Just (Pb.LoginTypeLoginPassword {salt=emptyBytes, scrypt=emptyBytes})
       , relationships = Dict.singleton prediction.creator (Just {trustsYou=True, trustedByYou=True})
       }
+
+    newGlobals =
+      globals
+      |> Globals.handleGetPredictionResponse {predictionId="my-predid"} (Ok {getPredictionResult=Just <| Pb.GetPredictionResultPrediction prediction})
+      |> Globals.handleSignOutResponse {} (Ok {})
+      |> Globals.handleLogInUsernameResponse {username="__previewer__", password=""} (Ok {logInUsernameResult=Just <| Pb.LogInUsernameResultOk {token=Just mockToken, userInfo=Just mockSettings}})
   in
-  viewBody
-    ({ globals = globals
-        |> Globals.handleGetPredictionResponse {predictionId="12345"} (Ok {getPredictionResult=Just <| Pb.GetPredictionResultPrediction prediction})
-        |> Globals.handleSignOutResponse {} (Ok {})
-        |> Globals.handleLogInUsernameResponse {username="__previewer__", password=""} (Ok {logInUsernameResult=Just <| Pb.LogInUsernameResultOk {token=Just mockToken, userInfo=Just mockSettings}})
-    , navbarAuth = AuthWidget.init
-    , authWidget = AuthWidget.init
-    , predictionId = "12345"
-    , emailSettingsWidget = EmailSettingsWidget.init
-    , resolveNotesField = ""
-    , resolveStatus = Unstarted
-    , stakeStatus = Unstarted
-    , setTrustedStatus = Unstarted
-    , sendInvitationStatus = Unstarted
-    , stakeField = "10"
-    , bettorIsASkeptic = True
-    , shareEmbedding = { format = EmbedHtml, contentType = Image , color = DarkGreen , fontSize = FourteenPt }
-    } |> updateBettorInputFields prediction)
+  initInternal newGlobals "my-predid"
+  |> viewBody
   |> H.div []
   |> H.map (\_ -> ())
 
@@ -414,7 +408,7 @@ viewBody model =
           , H.text " and ask them to mark you as trusted."
           ]]
   in
-  [ H.h2 [HA.class "text-center"] [H.text <| getTitleText model.globals.timeZone prediction]
+  [ H.h2 [HA.id "prediction-title", HA.class "text-center"] <| List.map H.text <| getTitleTextChunks model.globals.timeZone prediction
   , H.hr [] []
   , H.div [HA.class "row row-cols-12"]
     [ H.div [HA.class "col-md-4"] [viewSummaryTable model.globals.now model.globals.timeZone prediction]
@@ -454,7 +448,7 @@ viewBody model =
 
       , case getPrereqsForStaking model of
           IsCreator ->
-            H.div []
+            H.div [HA.id "resolve-section"]
             [ H.h4 [HA.class "text-center"] [H.text "Resolve this prediction"]
             , viewResolveButtons model
             , H.hr [HA.style "margin" "2em 0"] []
@@ -462,7 +456,7 @@ viewBody model =
             , viewEmbedInfo model
             ]
           CreatorStakeExhausted ->
-            H.div [HA.class "text-secondary"]
+            H.div [HA.id "make-a-bet-section", HA.class "text-secondary"]
             [ H.h4 [HA.class "text-center"] [H.text "Make a bet"]
             , Utils.renderUser prediction.creator
             , H.text " has already accepted so many bets that they've reached their maximum risk of "
@@ -470,7 +464,7 @@ viewBody model =
             , H.text "! So, sadly, no further betting is possible."
             ]
           NeedsAccount ->
-            H.div []
+            H.div [HA.id "make-a-bet-section"]
             [ H.h4 [HA.class "text-center"] [H.text "Make a bet"]
             , H.text " Before I let you bet against "
             , Utils.renderUser prediction.creator
@@ -491,12 +485,12 @@ viewBody model =
               ]
             ]
           CanAlreadyStake ->
-            H.div []
+            H.div [HA.id "make-a-bet-section"]
             [ H.h4 [HA.class "text-center"] [H.text "Make a bet"]
             , viewStakeWidget QueueingUnnecessary model
             ]
           NeedsToSetTrusted ->
-            H.div [HA.class "text-center"]
+            H.div [HA.id "make-a-bet-section", HA.class "text-center"]
             [ H.h4 [] [H.text "Make a bet"]
             , H.button
               [ HA.disabled (model.setTrustedStatus == AwaitingResponse)
@@ -511,14 +505,14 @@ viewBody model =
                 Failed e -> Utils.redText e
             ]
           NeedsToWaitForInvitation ->
-            H.div []
+            H.div [HA.id "make-a-bet-section"]
             [ H.h4 [HA.class "text-center"] [H.text "Make a bet"]
             , viewStakeWidget
               ( QueueingNecessary <| H.span [] [H.text "I've emailed them to ask, but they haven't responded yet."])
               model
             ]
           NeedsToSendEmailInvitation ->
-            H.div []
+            H.div [HA.id "make-a-bet-section"]
             [ H.p []
               [ H.h4 [HA.class "text-center"] [H.text "Make a bet"]
               , viewStakeWidget
@@ -546,7 +540,7 @@ viewBody model =
               ]
             ]
           NeedsEmailAddress ->
-            H.div []
+            H.div [HA.id "make-a-bet-section"]
             [ H.p []
               [ H.h4 [HA.class "text-center"] [H.text "Make a bet"]
               , viewStakeWidget
@@ -571,7 +565,7 @@ viewBody model =
               ]
             ]
           NeedsToTextUserPageLink ->
-            H.div []
+            H.div [HA.id "make-a-bet-section"]
             [ H.p []
               [ H.h4 [HA.class "text-center"] [H.text "Make a bet"]
               , viewStakeWidget
@@ -783,9 +777,13 @@ viewStakeWidget bettability model =
     , H.div [HA.class "invalid-feedback"] [viewError stakeCents]
     ]
 
-getTitleText : Time.Zone -> Pb.UserPredictionView -> String
-getTitleText timeZone prediction =
-  "Prediction: by " ++ (Utils.dateStr timeZone <| Utils.unixtimeToTime prediction.resolvesAtUnixtime) ++ ", " ++ prediction.prediction
+getTitleTextChunks : Time.Zone -> Pb.UserPredictionView -> List String
+getTitleTextChunks timeZone prediction =
+  [ "Prediction: by "
+  , (Utils.dateStr timeZone <| Utils.unixtimeToTime prediction.resolvesAtUnixtime)
+  , ", "
+  , prediction.prediction
+  ]
 
 
 viewSummaryTable : Time.Posix -> Time.Zone -> Pb.UserPredictionView -> Html Msg

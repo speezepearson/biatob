@@ -21,6 +21,8 @@ import Utils exposing (unixtimeToTime)
 import Time
 import Dict
 import Utils exposing (Username)
+import TestUtils as TU exposing (exampleGlobals)
+import Elements.MyStakesTests exposing (exampleResolutionEvent)
 
 exampleOrigin = "https://example.com"
 examplePredictionId = "my-test-prediction"
@@ -144,13 +146,13 @@ getBetParametersTest =
     ]
   , describe "maxBettorStake"
     [ fuzz2 percentage (intRange 0 100) "never exceeds creator risk tolerance" <|
-      \lowP remainingStake -> 
+      \lowP remainingStake ->
         if lowP == 0 || lowP == 1 then Expect.pass else
         Expect.atMost remainingStake
         <| (\bet -> floor (toFloat bet.maxBettorStake * bet.creatorStakeFactor))
         <| getBetParameters True { mockPrediction | certainty = Just {low=lowP, high=1.00} , remainingStakeCentsVsSkeptics = remainingStake }
     , fuzz2 percentage (intRange 0 100) "never suggests a zero-to-nonzero-stake bet" <|
-      \lowP remainingStake -> 
+      \lowP remainingStake ->
         if lowP == 0 || lowP == 1 then Expect.pass else
         let
           bet = getBetParameters True { mockPrediction | certainty = Just {low=lowP, high=1.00} , remainingStakeCentsVsSkeptics = remainingStake }
@@ -161,35 +163,118 @@ getBetParametersTest =
     ]
   ]
 
-exampleModel : Pb.UserPredictionView -> Model
-exampleModel prediction =
-  { globals =
-      { self = Nothing
-      , serverState = {predictions = Dict.singleton "my-predid" prediction}
-      , now = Time.millisToPosix 0
-      , timeZone = Time.utc
-      , httpOrigin = "https://example.com"
-      }
-  , navbarAuth = AuthWidget.init
-  , authWidget = AuthWidget.init
-  , predictionId = "my-predid"
-  , emailSettingsWidget = EmailSettingsWidget.init
-  , resolveNotesField = ""
-  , resolveStatus = Unstarted
-  , stakeStatus = Unstarted
-  , setTrustedStatus = Unstarted
-  , sendInvitationStatus = Unstarted
-  , stakeField = "10"
-  , bettorIsASkeptic = True
-  , shareEmbedding = { format = EmbedHtml, contentType = Image , color = DarkGreen , fontSize = FourteenPt }
-  } |> updateBettorInputFields prediction
+makeModel : Globals.Globals -> Pb.UserPredictionView -> Model
+makeModel globals prediction =
+  initInternal (globals |> TU.addPrediction "my-predid" prediction) "my-predid"
+
 viewModelForTest : Model -> HQ.Single Msg
 viewModelForTest model =
   HQ.fromHtml <| H.div [] <| .body <| view model
 
 viewTest : Test
 viewTest =
+  let
+    titleSelector : HS.Selector
+    titleSelector = HS.all [HS.id "prediction-title", HS.tag "h2"]
+    testHasTitle : Globals.Globals -> Pb.UserPredictionView -> Test
+    testHasTitle globals prediction =
+      test "has title" <|
+      \() -> makeModel globals prediction
+              |> viewModelForTest
+              |> HQ.find [titleSelector]
+              |> HQ.has [HS.containing [HS.text "Prediction: by "], HS.containing [HS.text prediction.prediction]]
+
+    resolveSectionSelector : HS.Selector
+    resolveSectionSelector = HS.all [HS.id "resolve-section", HS.containing [HS.tag "h4", HS.containing [HS.text "Resolve this prediction"]]]
+    yesButtonSelector : HS.Selector
+    yesButtonSelector = HS.all [HS.tag "button", HS.containing [HS.text "It happened!"]]
+    noButtonSelector : HS.Selector
+    noButtonSelector = HS.all [HS.tag "button", HS.containing [HS.text "It didn't happen!"]]
+    invalidButtonSelector : HS.Selector
+    invalidButtonSelector = HS.all [HS.tag "button", HS.containing [HS.text "Invalid prediction / impossible to resolve"]]
+    unresolveButtonSelector : HS.Selector
+    unresolveButtonSelector = HS.all [HS.tag "button", HS.containing [HS.text "un-resolve it."]]
+
+    stakeButtonSelector : HS.Selector
+    stakeButtonSelector = HS.all [HS.tag "button", HS.containing [HS.text "Stake"]]
+    queueStakeButtonSelector : HS.Selector
+    queueStakeButtonSelector = HS.all [HS.tag "button", HS.containing [HS.text "Queue"]]
+  in
   describe "view"
-  [ test "header describes prediction and due date" <|
-    \() -> exampleModel mockPrediction |> viewModelForTest |> HQ.has [HS.tag "h2", HS.containing [HS.text "Prediction: by 1970 Jan 1, a thing will happen"]]
+  [ describe "logged out"
+    [ testHasTitle (exampleGlobals |> TU.logOut) mockPrediction
+    ]
+
+  , let globals = exampleGlobals |> TU.logInAs mockPrediction.creator TU.exampleSettings in
+    describe "creator"
+    [ testHasTitle globals mockPrediction
+    , describe "resolution section"
+      [ let section = makeModel globals {mockPrediction | resolutions = []} |> viewModelForTest |> HQ.find [resolveSectionSelector] in
+        describe "never-resolved prediction"
+        [ test "section exists" <| \() -> HQ.has [] section
+        , test "yes/no/invalid buttons send appropriate Msgs" <|
+          \() -> Expect.all
+                  [ HQ.find [yesButtonSelector] >> HEM.simulate HEM.click >> HEM.expect (Resolve Pb.ResolutionYes)
+                  , HQ.find [noButtonSelector] >> HEM.simulate HEM.click >> HEM.expect (Resolve Pb.ResolutionNo)
+                  , HQ.find [invalidButtonSelector] >> HEM.simulate HEM.click >> HEM.expect (Resolve Pb.ResolutionInvalid)
+                  ]
+                  section
+        , test "section has no unresolve button" <| \() -> HQ.hasNot [HS.containing [unresolveButtonSelector]] section
+        ]
+      , let section = makeModel globals {mockPrediction | resolutions = [{exampleResolutionEvent | resolution = Pb.ResolutionNoneYet}]} |> viewModelForTest |> HQ.find [HS.id "resolve-section"] in
+        describe "prediction explicitly resolved to NoneYet"
+        [ test "section exists" <| \() -> HQ.has [] section
+        , test "yes/no/invalid buttons send appropriate Msgs" <|
+          \() -> Expect.all
+                  [ HQ.find [yesButtonSelector] >> HEM.simulate HEM.click >> HEM.expect (Resolve Pb.ResolutionYes)
+                  , HQ.find [noButtonSelector] >> HEM.simulate HEM.click >> HEM.expect (Resolve Pb.ResolutionNo)
+                  , HQ.find [invalidButtonSelector] >> HEM.simulate HEM.click >> HEM.expect (Resolve Pb.ResolutionInvalid)
+                  ]
+                  section
+        , test "section has no unresolve button" <| \() -> HQ.hasNot [HS.containing [unresolveButtonSelector]] section
+        ]
+      , let section = makeModel globals {mockPrediction | resolutions = [{exampleResolutionEvent | resolution = Pb.ResolutionYes}]} |> viewModelForTest |> HQ.find [HS.id "resolve-section"] in
+        describe "conclusively resolved prediction"
+        [ test "section exists" <| \() -> HQ.has [] section
+        , test "yes/no/invalid buttons send appropriate Msgs" <|
+          \() -> section |> HQ.find [unresolveButtonSelector] |> HEM.simulate HEM.click |> HEM.expect (Resolve Pb.ResolutionNoneYet)
+        ]
+      ]
+    ]
+
+  , describe "rando"
+    [ testHasTitle (exampleGlobals |> TU.logInAs "rando" TU.exampleSettings) mockPrediction
+    ]
+
+  , describe "betting section"
+    [ test "absent for creator" <|
+      \() -> makeModel (exampleGlobals |> TU.logInAs mockPrediction.creator TU.exampleSettings) mockPrediction
+              |> viewModelForTest
+              |> HQ.hasNot [HS.id "h4", HS.containing [HS.text "Make a bet"]]
+    , test "present for non-creator" <|
+      \() -> makeModel (exampleGlobals |> TU.logInAs ("not"++mockPrediction.creator) TU.exampleSettings) mockPrediction
+              |> viewModelForTest
+              |> HQ.has [HS.tag "h4", HS.containing [HS.text "Make a bet"]]
+    , describe "logged out"
+      [ test "is present" <|
+        \() -> makeModel (exampleGlobals |> TU.logOut) mockPrediction
+                |> viewModelForTest
+                |> HQ.has [HS.tag "h4", HS.containing [HS.text "Make a bet"]]
+      , test "encourages logging in" <|
+        \() -> makeModel (exampleGlobals |> TU.logOut) mockPrediction
+                |> viewModelForTest
+                |> HQ.has [HS.tag "main", HS.containing [HS.tag "button", HS.containing [HS.text "Log in"]]]
+      ]
+    ]
+
+  , describe "resolution section"
+    [ test "present for creator" <|
+      \() -> makeModel (exampleGlobals |> TU.logInAs mockPrediction.creator TU.exampleSettings) mockPrediction
+              |> viewModelForTest
+              |> HQ.has [HS.tag "h4", HS.containing [HS.text "Resolve this prediction"]]
+    , test "absent for non-creator" <|
+      \() -> makeModel (exampleGlobals |> TU.logInAs ("not"++mockPrediction.creator) TU.exampleSettings) mockPrediction
+              |> viewModelForTest
+              |> HQ.hasNot [HS.tag "h4", HS.containing [HS.text "Resolve this prediction"]]
+    ]
   ]
