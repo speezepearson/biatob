@@ -152,7 +152,7 @@ view model =
         , register = RegisterUsername Navbar
         , signOut = SignOut Navbar
         , ignore = Ignore
-        , auth = Globals.getAuth model.globals
+        , username = Globals.getOwnUsername model.globals
         , id = "navbar-auth"
         }
         model.navbarAuth
@@ -225,7 +225,7 @@ view model =
                   , register = RegisterUsername Inline
                   , signOut = SignOut Inline
                   , ignore = Ignore
-                  , auth = Globals.getAuth model.globals
+                  , username = Globals.getOwnUsername model.globals
                   , id = "inline-auth"
                   }
                   model.authWidget

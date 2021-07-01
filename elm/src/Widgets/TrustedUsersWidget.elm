@@ -17,7 +17,6 @@ type alias Config msg =
   { setState : State -> msg
   , setTrusted : State -> Pb.SetTrustedRequest -> msg
   , copy : String -> msg
-  , auth : Pb.AuthToken
   , userInfo : Pb.GenericUserInfo
   , timeZone : Time.Zone
   , httpOrigin : String

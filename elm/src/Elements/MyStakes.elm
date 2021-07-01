@@ -72,7 +72,7 @@ view model =
         , register = RegisterUsername
         , signOut = SignOut
         , ignore = Ignore
-        , auth = Globals.getAuth model.globals
+        , username = Globals.getOwnUsername model.globals
         , id = "navbar-auth"
         }
         model.navbarAuth

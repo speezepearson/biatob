@@ -177,15 +177,15 @@ view model =
         , register = RegisterUsername
         , signOut = SignOut
         , ignore = Ignore
-        , auth = Globals.getAuth model.globals
+        , username = Globals.getOwnUsername model.globals
         , id = "navbar-auth"
         }
         model.navbarAuth
     ,
     H.main_ [HA.class "container"]
-    [ case model.globals.serverState.settings of
+    [ case model.globals.self of
         Nothing -> H.text "You need to log in to view your settings!"
-        Just userInfo ->
+        Just {username, settings} ->
           H.div []
           [ H.h2 [] [H.text "Settings"]
           , H.hr [] []
@@ -195,7 +195,7 @@ view model =
               , ignore = Ignore
               , setEmail = SetEmail
               , updateSettings = UpdateSettings
-              , userInfo = userInfo
+              , userInfo = settings
               , showAllEmailSettings = True
               }
               model.emailSettingsWidget
@@ -205,8 +205,7 @@ view model =
               { setState = SetTrustedUsersWidget
               , setTrusted = SetTrusted
               , copy = Copy
-              , auth = model.globals.authToken |> Utils.must "should condense Globals.auth and .serverState.settings into a single type, since they Nothing together"
-              , userInfo = userInfo
+              , userInfo = settings
               , timeZone = model.globals.timeZone
               , httpOrigin = model.globals.httpOrigin
               }

@@ -600,22 +600,22 @@ view model =
         , register = RegisterUsername
         , signOut = SignOut
         , ignore = Ignore
-        , auth = Globals.getAuth model.globals
+        , username = Globals.getOwnUsername model.globals
         , id = "navbar-auth"
         }
         model.navbarAuth
     , H.main_ [HA.class "container"]
     [ H.h2 [HA.class "text-center"] [H.text "New Prediction"]
-    , case Globals.getAuth model.globals of
-       Just _ -> H.text ""
-       Nothing ->
+    , if Globals.isLoggedIn model.globals then
+        H.text ""
+      else
         H.div []
           [ H.span [HA.style "color" "red"] [H.text "You need to log in to create a new prediction!"]
           , H.hr [] []
           ]
     , viewForm model
     , let
-        allowsEmailInvitation = Globals.hasEmailAddress model.globals && (model.globals.serverState.settings |> Maybe.map .allowEmailInvitations |> Maybe.withDefault False)
+        allowsEmailInvitation = Globals.hasEmailAddress model.globals && (Globals.getUserInfo model.globals |> Maybe.map .allowEmailInvitations |> Maybe.withDefault False)
       in
       if allowsEmailInvitation || not (Globals.isLoggedIn model.globals) then
         H.text ""
@@ -636,7 +636,7 @@ view model =
             , ignore = Ignore
             , setEmail = SetEmail
             , updateSettings = UpdateSettings
-            , userInfo = Utils.must "checked that user is logged in" model.globals.serverState.settings
+            , userInfo = Utils.must "checked that user is logged in" (Globals.getUserInfo model.globals)
             , showAllEmailSettings = True
             }
             model.emailSettingsWidget

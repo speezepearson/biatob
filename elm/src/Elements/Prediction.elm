@@ -248,7 +248,7 @@ view model =
         , register = RegisterUsername Navbar
         , signOut = SignOut Navbar
         , ignore = Ignore
-        , auth = Globals.getAuth model.globals
+        , username = Globals.getOwnUsername model.globals
         , id = "navbar-auth"
         }
         model.navbarAuth
@@ -306,7 +306,7 @@ predictionAllowsEmailInvitation model =
 
 pendingEmailInvitation : Model -> Bool
 pendingEmailInvitation model =
-  case model.globals.serverState.settings of
+  case Globals.getUserInfo model.globals of
     Just settings ->
       Dict.member
         (mustPrediction model).creator
@@ -316,7 +316,7 @@ pendingEmailInvitation model =
 
 userEmailAddress : Model -> Maybe String
 userEmailAddress model =
-  case model.globals.serverState.settings of
+  case Globals.getUserInfo model.globals of
     Just settings -> case settings.email of
       Just efs -> case efs.emailFlowStateKind of
         Just (Pb.EmailFlowStateKindVerified addr) -> Just addr
@@ -484,7 +484,7 @@ viewBody model =
                 , register = RegisterUsername Inline
                 , signOut = SignOut Inline
                 , ignore = Ignore
-                , auth = Globals.getAuth model.globals
+                , username = Globals.getOwnUsername model.globals
                 , id = "inline-auth"
                 }
                 model.authWidget
@@ -559,7 +559,7 @@ viewBody model =
                         , ignore = Ignore
                         , setEmail = SetEmail
                         , updateSettings = UpdateSettings
-                        , userInfo = Utils.must "checked that user is logged in" model.globals.serverState.settings
+                        , userInfo = Utils.must "checked that user is logged in" (Globals.getUserInfo model.globals)
                         , showAllEmailSettings = False
                         }
                         model.emailSettingsWidget

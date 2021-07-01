@@ -18,7 +18,7 @@ view config state =
     navItems : List (Html msg)
     navItems =
       H.li [HA.class "nav-item"] [H.a [HA.class "nav-link", HA.href "/"] [H.text "Home"]]
-      :: if config.auth == Nothing then [] else loggedInItems
+      :: if config.username == Nothing then [] else loggedInItems
 
   in
   H.nav [HA.class "navbar navbar-expand-lg navbar-light bg-light mb-3", HA.style "border-bottom" "1px solid black"]

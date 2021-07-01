@@ -121,7 +121,7 @@ type Relationship
   | Related Pb.Relationship
 getRelationship : Username -> Globals.Globals -> Relationship
 getRelationship who globals =
-  case globals.serverState.settings of
+  case Globals.getUserInfo globals of
     Nothing -> LoggedOut
     Just {relationships} ->
       if Globals.getOwnUsername globals == Just who then Self else
@@ -139,7 +139,7 @@ view model =
         , register = RegisterUsername
         , signOut = SignOut
         , ignore = Ignore
-        , auth = Globals.getAuth model.globals
+        , username = Globals.getOwnUsername model.globals
         , id = "navbar-auth"
         }
         model.navbarAuth

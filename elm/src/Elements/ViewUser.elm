@@ -146,7 +146,7 @@ type Relationship
   | Related Pb.Relationship
 getRelationship : Username -> Globals.Globals -> Relationship
 getRelationship who globals =
-  case globals.serverState.settings of
+  case Globals.getUserInfo globals of
     Nothing -> LoggedOut
     Just {relationships} ->
       if Globals.getOwnUsername globals == Just who then Self else
@@ -163,14 +163,14 @@ view model =
         , register = RegisterUsername
         , signOut = SignOut
         , ignore = Ignore
-        , auth = Globals.getAuth model.globals
+        , username = Globals.getOwnUsername model.globals
         , id = "navbar-auth"
         }
         model.navbarAuth
     , H.main_ [HA.class "container"]
     [ H.h2 [HA.class "text-center"] [H.text <| "User '" ++ model.who ++ "'"]
     , let
-        haveSentInvitation = case model.globals.serverState.settings of
+        haveSentInvitation = case Globals.getUserInfo model.globals of
           Nothing -> False
           Just {invitations} -> Dict.member model.who invitations
       in

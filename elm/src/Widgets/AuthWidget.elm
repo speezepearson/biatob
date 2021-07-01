@@ -9,7 +9,7 @@ import Biatob.Proto.Mvp as Pb
 import Http
 
 import API
-import Utils exposing (isOk, viewError, RequestStatus(..))
+import Utils exposing (isOk, viewError, RequestStatus(..), Username)
 
 type alias Config msg =
   { setState : State -> msg
@@ -17,7 +17,7 @@ type alias Config msg =
   , register : State -> Pb.RegisterUsernameRequest -> msg
   , signOut : State -> Pb.SignOutRequest -> msg
   , ignore : msg
-  , auth : Maybe Pb.AuthToken
+  , username : Maybe Username
   , id : String
   }
 type alias State =
@@ -76,7 +76,7 @@ view config state =
   [ HA.id config.id
   , HA.class "row row-cols-sm-auto g-2"
   ]
-  <| case config.auth of
+  <| case config.username of
     Nothing ->
       let
         canSubmit = case (Utils.parseUsername state.usernameField, Utils.parsePassword state.passwordField) of
@@ -152,9 +152,9 @@ view config state =
           Succeeded -> H.text ""
           Failed e -> Utils.redText e
       ]
-    Just auth ->
+    Just username ->
         [ H.div [HA.class "col-8"]
-          [ H.span [HA.class "align-middle"] [H.text <| "Signed in as ", Utils.b auth.owner]
+          [ H.span [HA.class "align-middle"] [H.text <| "Signed in as ", Utils.b username]
           ]
         , H.div [HA.class "col-4"]
           [ H.button

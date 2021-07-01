@@ -45,9 +45,10 @@ init flags =
       }
   in
     ( model
-    , case model.globals.authToken of
-        Nothing -> Cmd.none
-        Just _ -> navigate <| Just model.destination
+    , if Globals.isLoggedIn model.globals then
+        navigate <| Just model.destination
+      else
+        Cmd.none
     )
 
 update : Msg -> Model -> (Model, Cmd Msg)
@@ -113,7 +114,7 @@ view model =
         , register = RegisterUsername
         , signOut = SignOut
         , ignore = Ignore
-        , auth = Globals.getAuth model.globals
+        , username = Globals.getOwnUsername model.globals
         , id = "navbar-auth"
         }
         model.navbarAuth

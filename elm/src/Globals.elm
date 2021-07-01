@@ -1,6 +1,5 @@
 module Globals exposing
   ( Globals
-  , getAuth
   , getUserInfo
   , isLoggedIn
   , isSelf
@@ -43,7 +42,7 @@ import Biatob.Proto.Mvp as Pb
 import Utils exposing (Username, PredictionId)
 
 type alias Globals =
-  { authToken : Maybe Pb.AuthToken
+  { self : Maybe {username:Username, settings:Pb.GenericUserInfo}
   , serverState : ServerState
   , now : Time.Posix
   , timeZone : Time.Zone
@@ -51,8 +50,7 @@ type alias Globals =
   }
 
 type alias ServerState =
-  { settings : Maybe Pb.GenericUserInfo
-  , predictions : Dict PredictionId Pb.UserPredictionView
+  { predictions : Dict PredictionId Pb.UserPredictionView
   }
 
 type TrustRelationship = LoggedOut | Self | Friends | TrustsCurrentUser | TrustedByCurrentUser | NoRelation
@@ -73,20 +71,20 @@ handleWhoamiResponse _ _ globals = globals
 handleSignOutResponse : Pb.SignOutRequest -> Result Http.Error Pb.SignOutResponse -> Globals -> Globals
 handleSignOutResponse _ res globals =
   case res of
-    Ok _ -> { globals | authToken = Nothing , serverState = globals.serverState |> \s -> { s | settings = Nothing } }
+    Ok _ -> { globals | self = Nothing }
     Err _ -> globals
 handleRegisterUsernameResponse : Pb.RegisterUsernameRequest -> Result Http.Error Pb.RegisterUsernameResponse -> Globals -> Globals
 handleRegisterUsernameResponse _ res globals =
   case res of
     Ok {registerUsernameResult} -> case registerUsernameResult of
-      Just (Pb.RegisterUsernameResultOk authSuccess) -> { globals | authToken = Just (authSuccess |> Utils.mustAuthSuccessToken) , serverState = globals.serverState |> \s -> { s | settings = Just (Utils.mustAuthSuccessUserInfo authSuccess)} }
+      Just (Pb.RegisterUsernameResultOk authSuccess) -> { globals | self = Just {username=Utils.mustAuthSuccessToken authSuccess |> .owner, settings=Utils.mustAuthSuccessUserInfo authSuccess} }
       _ -> globals
     Err _ -> globals
 handleLogInUsernameResponse : Pb.LogInUsernameRequest -> Result Http.Error Pb.LogInUsernameResponse -> Globals -> Globals
 handleLogInUsernameResponse _ res globals =
   case res of
     Ok {logInUsernameResult} -> case logInUsernameResult of
-      Just (Pb.LogInUsernameResultOk authSuccess) -> { globals | authToken = Just (authSuccess |> Utils.mustAuthSuccessToken) , serverState = globals.serverState |> \s -> { s | settings = Just (Utils.mustAuthSuccessUserInfo authSuccess)} }
+      Just (Pb.LogInUsernameResultOk authSuccess) -> { globals | self = Just {username=Utils.mustAuthSuccessToken authSuccess |> .owner, settings=Utils.mustAuthSuccessUserInfo authSuccess} }
       _ -> globals
     Err _ -> globals
 handleCreatePredictionResponse : Pb.CreatePredictionRequest -> Result Http.Error Pb.CreatePredictionResponse -> Globals -> Globals
@@ -144,7 +142,7 @@ handleGetUserResponse : Pb.GetUserRequest -> Result Http.Error Pb.GetUserRespons
 handleGetUserResponse req res globals =
   case res of
     Ok {getUserResult} -> case Debug.log "getUserResult" getUserResult of
-      Just (Pb.GetUserResultOk relationship) -> { globals | serverState = globals.serverState |> addRelationship req.who relationship }
+      Just (Pb.GetUserResultOk relationship) -> globals |> addRelationship req.who relationship
       _ -> globals
     Err _ -> globals
 handleChangePasswordResponse : Pb.ChangePasswordRequest -> Result Http.Error Pb.ChangePasswordResponse -> Globals -> Globals
@@ -201,39 +199,35 @@ addPredictions : Pb.PredictionsById -> ServerState -> ServerState
 addPredictions predictions state =
   { state | predictions = state.predictions |> Dict.union (Utils.mustMapValues predictions.predictions) }
 
-addRelationship : Username -> Pb.Relationship -> ServerState -> ServerState
-addRelationship username relationship state =
-  { state | settings = state.settings |> Maybe.map (\s -> { s | relationships = s.relationships |> Dict.insert username (Just relationship) }) }
+addRelationship : Username -> Pb.Relationship -> Globals -> Globals
+addRelationship username relationship globals =
+  { globals | self = globals.self |> Maybe.map (\self -> { self | settings = self.settings |> (\settings -> { settings | relationships = settings.relationships |> Dict.insert username (Just relationship) }) }) }
 
 updateUserInfo : (Pb.GenericUserInfo -> Pb.GenericUserInfo) -> Globals -> Globals
 updateUserInfo f globals =
-  { globals | serverState = globals.serverState |> \s -> {s | settings = s.settings |> Maybe.map f } }
+  { globals | self = globals.self |> Maybe.map (\self -> {self | settings = self.settings |> f}) }
 
 getUserInfo : Globals -> Maybe Pb.GenericUserInfo
 getUserInfo globals =
-  globals.serverState.settings
-
-getAuth : Globals -> Maybe Pb.AuthToken
-getAuth globals =
-  globals.authToken
+  globals.self |> Maybe.map .settings
 
 tick : Time.Posix -> Globals -> Globals
 tick now globals =
   { globals | now = now }
 
 isLoggedIn : Globals -> Bool
-isLoggedIn globals = globals.authToken /= Nothing
+isLoggedIn globals = globals.self /= Nothing
 
 isSelf : Globals -> Username -> Bool
 isSelf globals who =
-  case getAuth globals of
+  case globals.self of
     Nothing -> False
-    Just token -> token.owner == who
+    Just {username} -> username == who
 
 getRelationship : Globals -> Username -> Maybe Pb.Relationship
 getRelationship globals who =
-  globals.serverState.settings
-  |> Maybe.map .relationships
+  globals.self
+  |> Maybe.map (.settings >> .relationships)
   |> Maybe.andThen (Dict.get who)
   |> Maybe.andThen identity
 
@@ -245,10 +239,9 @@ globalsDecoder =
   (JD.field "timeZoneOffsetMinutes" JD.int |> JD.map (\n -> Time.customZone n [])) |> JD.andThen (\timeZone ->
   (JD.field "httpOrigin" JD.string) |> JD.andThen (\httpOrigin ->
     JD.succeed
-      { authToken = Maybe.map Utils.mustAuthSuccessToken authSuccess
+      { self = authSuccess |> Maybe.map (\succ -> {username=Utils.mustAuthSuccessToken succ |> .owner , settings=Utils.mustAuthSuccessUserInfo succ})
       , serverState =
-          { settings = Maybe.map Utils.mustAuthSuccessUserInfo authSuccess
-          , predictions = predictions |> Utils.mustMapValues
+          { predictions = predictions |> Utils.mustMapValues
           }
       , now = now
       , timeZone = timeZone
@@ -258,11 +251,11 @@ globalsDecoder =
 
 getOwnUsername : Globals -> Maybe Username
 getOwnUsername globals =
-  globals.authToken |> Maybe.map .owner
+  globals.self |> Maybe.map .username
 
 hasEmailAddress : Globals -> Bool
 hasEmailAddress globals =
-  case globals.serverState.settings of
+  case getUserInfo globals of
     Nothing -> False
     Just settings ->
       case Utils.mustUserInfoEmail settings |> Utils.mustEmailFlowStateKind of

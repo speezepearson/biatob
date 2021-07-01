@@ -164,8 +164,8 @@ getBetParametersTest =
 exampleModel : Pb.UserPredictionView -> Model
 exampleModel prediction =
   { globals =
-      { authToken = Nothing
-      , serverState = {settings = Nothing , predictions = Dict.singleton "my-predid" prediction}
+      { self = Nothing
+      , serverState = {predictions = Dict.singleton "my-predid" prediction}
       , now = Time.millisToPosix 0
       , timeZone = Time.utc
       , httpOrigin = "https://example.com"

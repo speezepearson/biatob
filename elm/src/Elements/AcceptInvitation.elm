@@ -136,7 +136,7 @@ view model =
         , register = RegisterUsername
         , signOut = SignOut
         , ignore = Ignore
-        , auth = Globals.getAuth model.globals
+        , username = Globals.getOwnUsername model.globals
         , id = "navbar-auth"
         }
         model.navbarAuth
@@ -159,7 +159,7 @@ view model =
             [ H.text "Thanks! I now know that you and "
             , Utils.renderUser model.inviter
             , H.text " trust each other, and I'll let you bet on each other's predictions!"
-            , case Globals.getAuth model.globals |> Maybe.map .owner of
+            , case Globals.getOwnUsername model.globals of
                 Nothing -> H.text ""
                 Just currentUser ->
                   if currentUser == model.recipient then
@@ -216,7 +216,7 @@ view model =
   --                 , register = RegisterUsername
   --                 , signOut = SignOut
   --                 , ignore = Ignore
-  --                 , auth = Globals.getAuth model.globals
+  --                 , username = Globals.getOwnUsername model.globals
   --                 , id = "inline-auth"
   --                 }
   --                 model.authWidget
