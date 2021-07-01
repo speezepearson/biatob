@@ -1219,7 +1219,7 @@ update msg model =
     SignOutFinished loc req res ->
       ( updateAuthWidget loc (AuthWidget.handleSignOutResponse res) { model | globals = model.globals |> Globals.handleSignOutResponse req res }
       , case API.simplifySignOutResponse res of
-          Ok _ -> navigate <| Just "/"
+          Ok _ -> navigate <| Nothing
           Err _ -> Cmd.none
       )
     Stake cents ->
