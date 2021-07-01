@@ -49,25 +49,28 @@ type alias EmbeddingFields =
   , fontSize : EmbeddedImageFontSize
   }
 
-type EmbeddedImageColor = Red | DarkGreen | DarkBlue | Black | White
+type EmbeddedImageColor = Red | DarkGreen | DarkBlue | Black | White | LinkBlue
 imageColorIdString color = case color of
   Red -> "red"
   DarkGreen -> "darkgreen"
   DarkBlue -> "darkblue"
   Black -> "black"
   White -> "white"
+  LinkBlue -> "linkblue"
 imageColorDisplayName color = case color of
   Red -> "red"
   DarkGreen -> "green"
   DarkBlue -> "blue"
   Black -> "black"
   White -> "white"
+  LinkBlue -> "link-blue"
 imageColorCssCode color = case color of
   Red ->       "rgb(255, 0  , 0  )"
   DarkGreen -> "rgb(0  , 128, 0  )"
   DarkBlue ->  "rgb(0  , 0  , 128)"
   Black ->     "rgb(0  , 0  , 0  )"
   White ->     "rgb(255, 255, 255)"
+  LinkBlue ->  "#0158ca"
 type EmbeddedImageFontSize = SixPt | EightPt | TenPt | TwelvePt | FourteenPt | EighteenPt | TwentyFourPt
 imageFontSizeIdString size = case size of
   SixPt -> "6pt"
@@ -222,7 +225,7 @@ initInternal globals predictionId =
   , sendInvitationStatus = Unstarted
   , stakeField = "10"
   , bettorIsASkeptic = True
-  , shareEmbedding = { format = EmbedHtml, contentType = Image , color = DarkGreen , fontSize = FourteenPt }
+  , shareEmbedding = { format = EmbedHtml, contentType = Image , color = LinkBlue , fontSize = FourteenPt }
   } |> updateBettorInputFields prediction
 
 updateBettorInputFields : Pb.UserPredictionView -> Model -> Model
@@ -1049,7 +1052,7 @@ viewEmbedInfo model =
     displayNameToFormat s = Utils.must ("somehow got input " ++ s) <| List.head <| List.filter (formatDisplayName >> (==) s) allFormats
     allContentTypes = [Link, Image]
     displayNameToContentType s = Utils.must ("somehow got input " ++ s) <| List.head <| List.filter (contentTypeDisplayName >> (==) s) allContentTypes
-    allColors = [DarkGreen, DarkBlue, Red, Black, White]
+    allColors = [LinkBlue, DarkGreen, DarkBlue, Red, Black, White]
     displayNameToColor s = Utils.must ("somehow got input " ++ s) <| List.head <| List.filter (imageColorDisplayName >> (==) s) allColors
     allFontSizes = [SixPt, EightPt, TenPt, TwelvePt, FourteenPt, EighteenPt, TwentyFourPt]
     displayNameToFontSize s = Utils.must ("somehow got input " ++ s) <| List.head <| List.filter (imageFontSizeDisplayName >> (==) s) allFontSizes

@@ -27,6 +27,7 @@ COLOR_NAME_TO_COLOR = {
     'darkblue' : (0  , 0  , 128),
     'black'    : (0  , 0  , 0  ),
     'white'    : (255, 255, 255),
+    'linkblue' : (0x0a, 0x58, 0xca),
 }
 DEFAULT_COLOR = COLOR_NAME_TO_COLOR['darkgreen']
 
@@ -161,7 +162,7 @@ class WebServer:
         stake_text = format_stake_concisely(prediction.maximum_stake_cents)
             
         if prediction.certainty.low == 1:
-            confidence_text = f'{round(prediction.certainty.low*100)}%'
+            confidence_text = f'{round(prediction.certainty.low*100)}%+'
         else:
             confidence_text = f'{round(prediction.certainty.low*100)}-{round(prediction.certainty.high*100)}%'
 
