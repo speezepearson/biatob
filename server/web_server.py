@@ -181,7 +181,7 @@ class WebServer:
         else:
             remaining_text = ""
 
-        text = f'[bet {stake_text} @ {confidence_text}{remaining_text}]'
+        text = f'[bet: {stake_text} at {confidence_text}{remaining_text}]'
 
         try: font = FONT_SIZE_TO_FONT[int(req.match_info['fontsize'].replace('-', '').replace('pt', ''))]
         except Exception: font = DEFAULT_FONT
