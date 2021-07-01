@@ -38,9 +38,12 @@ DEFAULT_FONT = FONT_SIZE_TO_FONT[12]
 
 @functools.lru_cache(maxsize=256)
 def render_text(text: str, font: ImageFont, color: Color, file_format: str = 'png') -> bytes:
-    size = font.getsize(text)
-    img = Image.new('RGBA', size, color=(255,255,255,0))
-    ImageDraw.Draw(img).text((0,0), text, fill=(*color, 255), font=font)
+    w, h = font.getsize(text)
+    h += 2
+    img = Image.new('RGBA', (w, h), color=(255,255,255,0))
+    draw = ImageDraw.Draw(img)
+    draw.text((0,0), text, fill=color, font=font)
+    draw.line([(0, h-1), (w, h-1)], fill=color)
     buf = io.BytesIO()
     img.save(buf, format=file_format)
     return buf.getvalue()

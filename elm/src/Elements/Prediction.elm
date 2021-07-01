@@ -113,9 +113,8 @@ embeddedImageUrl httpOrigin predictionId color size =
   ++ "-" ++ imageFontSizeIdString size
   ++ ".png"
 embeddedImageStyles : EmbeddingFields -> List (String, String)
-embeddedImageStyles fields =
+embeddedImageStyles _ =
   [ ("max-height", "1.5em")
-  , ("border-bottom", "1px solid " ++ imageColorCssCode fields.color)
   ]
 embeddingPreview : String -> PredictionId -> Pb.UserPredictionView -> EmbeddingFields -> Html msg
 embeddingPreview httpOrigin predictionId prediction fields =
