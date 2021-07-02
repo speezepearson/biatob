@@ -789,7 +789,7 @@ class SqlServicer(Servicer):
         hashed_password = self._conn.get_username_password_info(Username(request.username))
         if hashed_password is None:
             logger.debug('login attempt for nonexistent user', username=request.username)
-            return mvp_pb2.LogInUsernameResponse(error=mvp_pb2.LogInUsernameResponse.Error(catchall='no such user'))
+            return mvp_pb2.LogInUsernameResponse(error=mvp_pb2.LogInUsernameResponse.Error(catchall='no such user; maybe you want to sign up?'))
         if not check_password(request.password, hashed_password):
             logger.info('login attempt has bad password', possible_malice=True)
             return mvp_pb2.LogInUsernameResponse(error=mvp_pb2.LogInUsernameResponse.Error(catchall='bad password'))
