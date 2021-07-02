@@ -302,28 +302,6 @@ class SqlConn:
       )
     ]
 
-  def commit_queued_trade(self, prediction_id: PredictionId, bettor: Username, enqueued_at_unixtime: float) -> None:
-    row = self._conn.execute(
-      sqlalchemy.select(schema.queued_trades.c)
-      .where(sqlalchemy.and_(
-        schema.queued_trades.c.prediction_id == prediction_id,
-        schema.queued_trades.c.bettor == bettor,
-        schema.queued_trades.c.enqueued_at_unixtime == enqueued_at_unixtime,
-      ))
-    ).fetchone()
-    self._conn.execute(
-      sqlalchemy.insert(schema.trades)
-      .values(
-        prediction_id=prediction_id,
-        bettor=bettor,
-        bettor_is_a_skeptic=row['bettor_is_a_skeptic'],
-        bettor_stake_cents=row['bettor_stake_cents'],
-        creator_stake_cents=row['creator_stake_cents'],
-        transacted_at_unixtime=enqueued_at_unixtime,
-      )
-    )
-    self.delete_queued_trade(prediction_id=prediction_id, bettor=bettor, enqueued_at_unixtime=enqueued_at_unixtime)
-
   def delete_queued_trade(self, prediction_id: PredictionId, bettor: Username, enqueued_at_unixtime: float) -> None:
     self._conn.execute(
       sqlalchemy.delete(schema.queued_trades)
@@ -476,27 +454,32 @@ class SqlConn:
       predinfo = predinfos[qt['prediction_id']]
 
       existing_creator_exposure = self.get_creator_exposure_cents(PredictionId(qt['prediction_id']), against_skeptics=qt['bettor_is_a_skeptic'])
-      existing_bettor_exposure = self.get_bettor_exposure_cents(PredictionId(qt['prediction_id']), qt['bettor'], bettor_is_a_skeptic=qt['bettor_is_a_skeptic'])
-      if (existing_creator_exposure + qt['creator_stake_cents'] > predinfo['maximum_stake_cents']):
-        logger.warn('failed to dequeue a bet that would exceed creator tolerance', queued_trade=qt, predinfo=predinfo)
-        self.delete_queued_trade(
-          prediction_id=PredictionId(qt['prediction_id']),
-          bettor=qt['bettor'],
-          enqueued_at_unixtime=qt['enqueued_at_unixtime'],
-        )
-      elif existing_bettor_exposure + qt['bettor_stake_cents'] > MAX_LEGAL_STAKE_CENTS:
-        logger.warn('failed to dequeue a bet that would exceed per-market stake limit', queued_trade=qt, predinfo=predinfo)
-        self.delete_queued_trade(
-          prediction_id=PredictionId(qt['prediction_id']),
-          bettor=qt['bettor'],
-          enqueued_at_unixtime=qt['enqueued_at_unixtime'],
-        )
+
+      creator_stake_cents = min(qt['creator_stake_cents'], predinfo['maximum_stake_cents']-existing_creator_exposure)
+      bettor_stake_cents = round(qt['bettor_stake_cents'] * creator_stake_cents/qt['creator_stake_cents'])
+      if creator_stake_cents == 0:
+        logger.warn('dropping a queued bet instead of committing it, because that would exceed creator tolerance', queued_trade=qt, predinfo=predinfo, new_creator_stake=creator_stake_cents, new_bettor_stake=bettor_stake_cents)
+      elif creator_stake_cents < 10 and bettor_stake_cents < 10:
+        logger.warn('dropping a queued bet instead of partially committing a trivial trade', queued_trade=qt, predinfo=predinfo, new_creator_stake=creator_stake_cents, new_bettor_stake=bettor_stake_cents)
       else:
-        self.commit_queued_trade(
-          prediction_id=PredictionId(qt['prediction_id']),
-          bettor=qt['bettor'],
-          enqueued_at_unixtime=qt['enqueued_at_unixtime']
+        if creator_stake_cents < qt['creator_stake_cents']:
+          logger.warn('queued trade will be only partially applied', queued_trade=qt, predinfo=predinfo, new_creator_stake=creator_stake_cents, new_bettor_stake=bettor_stake_cents)
+        self._conn.execute(
+          sqlalchemy.insert(schema.trades)
+          .values(
+            prediction_id=qt['prediction_id'],
+            bettor=qt['bettor'],
+            bettor_is_a_skeptic=qt['bettor_is_a_skeptic'],
+            bettor_stake_cents=bettor_stake_cents,
+            creator_stake_cents=creator_stake_cents,
+            transacted_at_unixtime=qt['enqueued_at_unixtime'],
+          )
         )
+      self.delete_queued_trade(
+        prediction_id=PredictionId(qt['prediction_id']),
+        bettor=qt['bettor'],
+        enqueued_at_unixtime=qt['enqueued_at_unixtime'],
+      )
 
   def change_password(self, user: Username, new_password: str) -> None:
     pwid = self._conn.execute(
