@@ -196,7 +196,7 @@ class WebServer:
         prediction = get_prediction_resp.prediction
         stake_text = format_stake_concisely(prediction.maximum_stake_cents)
 
-        if prediction.certainty.low == 1:
+        if prediction.certainty.high == 1:
             confidence_text = f'{round(prediction.certainty.low*100)}%+'
         else:
             confidence_text = f'{round(prediction.certainty.low*100)}-{round(prediction.certainty.high*100)}%'
