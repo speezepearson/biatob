@@ -26,7 +26,7 @@ import Elements.MyStakesTests exposing (exampleResolutionEvent)
 
 exampleOrigin = "https://example.com"
 examplePredictionId = "my-test-prediction"
-exampleFields = {color=DarkGreen, fontSize=TwelvePt, contentType=Link, format=EmbedHtml}
+exampleFields = {style=PlainLink, fontSize=TwelvePt, contentType=Link, format=EmbedHtml}
 
 mockPrediction : Pb.UserPredictionView
 mockPrediction =

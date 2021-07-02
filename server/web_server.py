@@ -3,9 +3,11 @@ import datetime
 import functools
 import io
 from pathlib import Path
+import re
 from typing import Callable, Optional, Tuple
 
 from aiohttp import web
+from attr import dataclass
 from google.protobuf.message import Message
 import jinja2
 from PIL import Image, ImageDraw, ImageFont  # type: ignore
@@ -19,7 +21,42 @@ logger = structlog.get_logger()
 
 _HERE = Path(__file__).parent
 
-Color = Tuple[int, int, int]
+ARIAL_PATH = _HERE / 'arial.ttf'
+WARNOCK_PRO_PATH = _HERE / 'warnock-pro.otf'
+
+
+@dataclass(frozen=True)
+class Style:
+    color: Tuple[int, int, int]
+    fontpath: Path
+    fontsize: int
+    underline: bool
+
+    @staticmethod
+    def parse(s: str) -> 'Style':
+        s = s.lstrip('-')
+        print('s =', s)
+        m = re.search(r'(?:-|^)([0-9]{1,2})pt\b', s)
+        if m:
+            fontsize = min(30, int(m.group(1)))
+            print('extracted font size', fontsize)
+            s = s.replace(m.group(), '', 1)
+        else:
+            fontsize = 12
+
+        print('s =', s)
+        if s == 'lesswrong':
+            print('noticed lesswrong')
+            return Style(color=(0x5f, 0x9b, 0x65), fontpath=WARNOCK_PRO_PATH, fontsize=fontsize, underline=False)
+
+        m = re.search('(?:-|^)(' + '|'.join(COLOR_NAME_TO_COLOR.keys()) + r')\b', s)
+        if m:
+            color = COLOR_NAME_TO_COLOR[m.group(1)]
+            s = s.replace(m.group(), '', 1)
+        else:
+            color = COLOR_NAME_TO_COLOR['darkgreen']
+
+        return Style(color=color, fontpath=ARIAL_PATH, fontsize=fontsize, underline=True)
 
 COLOR_NAME_TO_COLOR = {
     'red'      : (255, 0  , 0  ),
@@ -27,24 +64,22 @@ COLOR_NAME_TO_COLOR = {
     'darkblue' : (0  , 0  , 128),
     'black'    : (0  , 0  , 0  ),
     'white'    : (255, 255, 255),
-    'linkblue' : (0x0a, 0x58, 0xca),
+    'plainlink' : (0x0a, 0x58, 0xca),
+    'lwlinkgreen': (0x5f, 0x9b, 0x65),
 }
-DEFAULT_COLOR = COLOR_NAME_TO_COLOR['darkgreen']
-
-FONT_SIZE_TO_FONT = {
-    size: ImageFont.truetype(str((_HERE / 'arial.ttf').resolve()), size)
-    for size in (6, 8, 10, 12, 14, 18, 24)
-}
-DEFAULT_FONT = FONT_SIZE_TO_FONT[12]
 
 @functools.lru_cache(maxsize=256)
-def render_text(text: str, font: ImageFont, color: Color, file_format: str = 'png') -> bytes:
+def render_text(text: str, style: Style, file_format: str = 'png') -> bytes:
+    print('rendering with style', style)
+    font = ImageFont.truetype(str(style.fontpath.resolve()), style.fontsize)
     w, h = font.getsize(text)
-    h += 2
+    if style.underline:
+        h += 2
     img = Image.new('RGBA', (w, h), color=(255,255,255,0))
     draw = ImageDraw.Draw(img)
-    draw.text((0,0), text, fill=color, font=font)
-    draw.line([(0, h-1), (w, h-1)], fill=color)
+    draw.text((0,0), text, fill=style.color, font=font)
+    if style.underline:
+        draw.line([(0, h-1), (w, h-1)], fill=style.color)
     buf = io.BytesIO()
     img.save(buf, format=file_format)
     return buf.getvalue()
@@ -160,7 +195,7 @@ class WebServer:
             return f'${n_cents//100}'
         prediction = get_prediction_resp.prediction
         stake_text = format_stake_concisely(prediction.maximum_stake_cents)
-            
+
         if prediction.certainty.low == 1:
             confidence_text = f'{round(prediction.certainty.low*100)}%+'
         else:
@@ -183,14 +218,9 @@ class WebServer:
             remaining_text = ""
 
         text = f'[bet: {stake_text} at {confidence_text}{remaining_text}]'
+        style = Style.parse(req.match_info['style'])
 
-        try: font = FONT_SIZE_TO_FONT[int(req.match_info['fontsize'].replace('-', '').replace('pt', ''))]
-        except Exception: font = DEFAULT_FONT
-
-        try: color = COLOR_NAME_TO_COLOR[req.match_info['color'].replace('-', '')]
-        except Exception: color = DEFAULT_COLOR
-
-        return web.Response(content_type='image/png', body=render_text(text=text, font=font, color=color, file_format='png'))
+        return web.Response(content_type='image/png', body=render_text(text=text, style=style, file_format='png'))
 
     async def get_my_stakes(self, req: web.Request) -> web.Response:
         auth = self._token_glue.parse_cookie(req)
@@ -286,7 +316,7 @@ class WebServer:
         app.router.add_get('/welcome', self.get_welcome)
         app.router.add_get('/new', self.get_create_prediction_page)
         app.router.add_get('/p/{prediction_id:[0-9]+}', self.get_view_prediction_page)
-        app.router.add_get('/p/{prediction_id:[0-9]+}/embed-{color:COLORPAT}-{fontsize:FONTPAT}.png'.replace('COLORPAT', '|'.join(COLOR_NAME_TO_COLOR.keys())).replace('FONTPAT', '|'.join(f'{size}pt' for size in FONT_SIZE_TO_FONT.keys())), self.get_prediction_img_embed)
+        app.router.add_get('/p/{prediction_id:[0-9]+}/embed{style}.png', self.get_prediction_img_embed)
         app.router.add_get('/my_stakes', self.get_my_stakes)
         app.router.add_get('/username/{username:[a-zA-Z0-9_-]+}', self.get_username)
         app.router.add_get('/settings', self.get_settings)

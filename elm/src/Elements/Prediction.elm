@@ -45,32 +45,27 @@ type alias Model =
 type alias EmbeddingFields =
   { format : EmbeddingFormat
   , contentType : EmbeddingContentType
-  , color : EmbeddedImageColor
   , fontSize : EmbeddedImageFontSize
+  , style : EmbeddedImageStyle
   }
 
-type EmbeddedImageColor = Red | DarkGreen | DarkBlue | Black | White | LinkBlue
-imageColorIdString color = case color of
+type EmbeddedImageStyle = PlainLink | LessWrong | Red | DarkGreen | DarkBlue | Black | White
+imageStyleIdString color = case color of
+  PlainLink -> "plainlink"
+  LessWrong -> "lesswrong"
   Red -> "red"
   DarkGreen -> "darkgreen"
   DarkBlue -> "darkblue"
   Black -> "black"
   White -> "white"
-  LinkBlue -> "linkblue"
-imageColorDisplayName color = case color of
+imageStyleDisplayName color = case color of
+  PlainLink -> "plain link"
+  LessWrong -> "LessWrong"
   Red -> "red"
   DarkGreen -> "green"
   DarkBlue -> "blue"
   Black -> "black"
   White -> "white"
-  LinkBlue -> "link-blue"
-imageColorCssCode color = case color of
-  Red ->       "rgb(255, 0  , 0  )"
-  DarkGreen -> "rgb(0  , 128, 0  )"
-  DarkBlue ->  "rgb(0  , 0  , 128)"
-  Black ->     "rgb(0  , 0  , 0  )"
-  White ->     "rgb(255, 255, 255)"
-  LinkBlue ->  "#0158ca"
 type EmbeddedImageFontSize = SixPt | EightPt | TenPt | TwelvePt | FourteenPt | EighteenPt | TwentyFourPt
 imageFontSizeIdString size = case size of
   SixPt -> "6pt"
@@ -108,11 +103,11 @@ embeddedLinkText httpOrigin predictionId prediction =
           ""
        )
     ++ "%)"
-embeddedImageUrl : String -> PredictionId -> EmbeddedImageColor -> EmbeddedImageFontSize -> String
-embeddedImageUrl httpOrigin predictionId color size =
+embeddedImageUrl : String -> PredictionId -> EmbeddedImageStyle -> EmbeddedImageFontSize -> String
+embeddedImageUrl httpOrigin predictionId style size =
   httpOrigin
   ++ Utils.pathToPrediction predictionId
-  ++ "/embed-" ++ imageColorIdString color
+  ++ "/embed-" ++ imageStyleIdString style
   ++ "-" ++ imageFontSizeIdString size
   ++ ".png"
 embeddedImageStyles : EmbeddingFields -> List (String, String)
@@ -131,7 +126,7 @@ embeddingPreview httpOrigin predictionId prediction fields =
       H.a [HA.href linkUrl]
         [ H.img
           ( [ HA.alt text
-            , HA.src <| embeddedImageUrl httpOrigin predictionId fields.color fields.fontSize
+            , HA.src <| embeddedImageUrl httpOrigin predictionId fields.style fields.fontSize
             ]
             ++ (embeddedImageStyles fields |> List.map (\(k,v) -> HA.style k v))
           )
@@ -151,7 +146,7 @@ embeddingCode httpOrigin predictionId prediction fields =
         EmbedMarkdown -> "[" ++ text ++ "](" ++ linkUrl ++ ")"
     Image ->
       let
-        imageUrl = embeddedImageUrl httpOrigin predictionId fields.color fields.fontSize
+        imageUrl = embeddedImageUrl httpOrigin predictionId fields.style fields.fontSize
         imageStyles = embeddedImageStyles fields
       in
       case fields.format of
@@ -225,7 +220,7 @@ initInternal globals predictionId =
   , sendInvitationStatus = Unstarted
   , stakeField = "10"
   , bettorIsASkeptic = True
-  , shareEmbedding = { format = EmbedHtml, contentType = Image , color = LinkBlue , fontSize = FourteenPt }
+  , shareEmbedding = { format = EmbedHtml, contentType = Image , style = PlainLink , fontSize = FourteenPt }
   } |> updateBettorInputFields prediction
 
 updateBettorInputFields : Pb.UserPredictionView -> Model -> Model
@@ -1052,8 +1047,8 @@ viewEmbedInfo model =
     displayNameToFormat s = Utils.must ("somehow got input " ++ s) <| List.head <| List.filter (formatDisplayName >> (==) s) allFormats
     allContentTypes = [Link, Image]
     displayNameToContentType s = Utils.must ("somehow got input " ++ s) <| List.head <| List.filter (contentTypeDisplayName >> (==) s) allContentTypes
-    allColors = [LinkBlue, DarkGreen, DarkBlue, Red, Black, White]
-    displayNameToColor s = Utils.must ("somehow got input " ++ s) <| List.head <| List.filter (imageColorDisplayName >> (==) s) allColors
+    allColors = [PlainLink, LessWrong, DarkGreen, DarkBlue, Red, Black, White]
+    displayNameToColor s = Utils.must ("somehow got input " ++ s) <| List.head <| List.filter (imageStyleDisplayName >> (==) s) allColors
     allFontSizes = [SixPt, EightPt, TenPt, TwelvePt, FourteenPt, EighteenPt, TwentyFourPt]
     displayNameToFontSize s = Utils.must ("somehow got input " ++ s) <| List.head <| List.filter (imageFontSizeDisplayName >> (==) s) allFontSizes
 
@@ -1073,7 +1068,7 @@ viewEmbedInfo model =
       , dropdown (\contentType embedding -> {embedding | contentType = contentType}) allContentTypes model.shareEmbedding.contentType contentTypeDisplayName
       , case model.shareEmbedding.contentType of
           Link -> H.text ""
-          Image -> dropdown (\newColor embedding -> {embedding | color = newColor}) allColors model.shareEmbedding.color imageColorDisplayName
+          Image -> dropdown (\newStyle embedding -> {embedding | style = newStyle}) allColors model.shareEmbedding.style imageStyleDisplayName
       , case model.shareEmbedding.contentType of
           Link -> H.text ""
           Image -> dropdown (\newSize embedding -> {embedding | fontSize = newSize}) allFontSizes model.shareEmbedding.fontSize imageFontSizeDisplayName
