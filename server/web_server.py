@@ -66,7 +66,6 @@ COLOR_NAME_TO_COLOR = {
 
 @functools.lru_cache(maxsize=256)
 def render_text(text: str, style: Style, file_format: str = 'png') -> bytes:
-    print('rendering with style', style)
     font = ImageFont.truetype(str(style.fontpath.resolve()), style.fontsize)
     w, h = font.getsize(text)
     if style.underline:
