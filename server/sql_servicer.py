@@ -751,6 +751,7 @@ class SqlServicer(Servicer):
     @checks_token
     @log_action
     def RegisterUsername(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.RegisterUsernameRequest) -> mvp_pb2.RegisterUsernameResponse:
+      logger.debug('API call', username=request.username)
       if token is not None:
         logger.warn('logged-in user trying to register a username', new_username=request.username)
         return mvp_pb2.RegisterUsernameResponse(error=mvp_pb2.RegisterUsernameResponse.Error(catchall='already authenticated; first, log out'))
@@ -804,6 +805,7 @@ class SqlServicer(Servicer):
     @checks_token
     @log_action
     def CreatePrediction(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.CreatePredictionRequest) -> mvp_pb2.CreatePredictionResponse:
+      logger.debug('API call', request=request)
       if token is None:
         logger.warn('not logged in')
         return mvp_pb2.CreatePredictionResponse(error=mvp_pb2.CreatePredictionResponse.Error(catchall='must log in to create predictions'))
@@ -877,6 +879,7 @@ class SqlServicer(Servicer):
     @checks_token
     @log_action
     def Stake(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.StakeRequest) -> mvp_pb2.StakeResponse:
+      logger.debug('API call', request=request)
       if token is None:
         logger.warn('not logged in')
         return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall='must log in to bet'))
@@ -944,6 +947,7 @@ class SqlServicer(Servicer):
     @checks_token
     @log_action
     def QueueStake(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.QueueStakeRequest) -> mvp_pb2.QueueStakeResponse:
+      logger.debug('API call', request=request)
       if token is None:
         logger.warn('not logged in')
         return mvp_pb2.QueueStakeResponse(error=mvp_pb2.QueueStakeResponse.Error(catchall='must log in to bet'))
@@ -1011,6 +1015,7 @@ class SqlServicer(Servicer):
     @checks_token
     @log_action
     def Resolve(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.ResolveRequest) -> mvp_pb2.ResolveResponse:
+      logger.debug('API call', request=request)
       if token is None:
         logger.warn('not logged in')
         return mvp_pb2.ResolveResponse(error=mvp_pb2.ResolveResponse.Error(catchall='must log in to resolve a prediction'))
@@ -1046,6 +1051,7 @@ class SqlServicer(Servicer):
     @checks_token
     @log_action
     def SetTrusted(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.SetTrustedRequest) -> mvp_pb2.SetTrustedResponse:
+      logger.debug('API call', request=request)
       if token is None:
         logger.warn('not logged in')
         return mvp_pb2.SetTrustedResponse(error=mvp_pb2.SetTrustedResponse.Error(catchall='must log in to trust folks'))
@@ -1081,6 +1087,7 @@ class SqlServicer(Servicer):
     @checks_token
     @log_action
     def ChangePassword(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.ChangePasswordRequest) -> mvp_pb2.ChangePasswordResponse:
+      logger.debug('API call')
       if token is None:
         logger.warn('not logged in')
         return mvp_pb2.ChangePasswordResponse(error=mvp_pb2.ChangePasswordResponse.Error(catchall='must log in to change your password'))
@@ -1107,6 +1114,7 @@ class SqlServicer(Servicer):
     @checks_token
     @log_action
     def SetEmail(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.SetEmailRequest) -> mvp_pb2.SetEmailResponse:
+      logger.debug('API call', request=request)
       if token is None:
         logger.warn('not logged in')
         return mvp_pb2.SetEmailResponse(error=mvp_pb2.SetEmailResponse.Error(catchall='must log in to set an email'))
@@ -1134,6 +1142,7 @@ class SqlServicer(Servicer):
     @checks_token
     @log_action
     def VerifyEmail(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.VerifyEmailRequest) -> mvp_pb2.VerifyEmailResponse:
+      logger.debug('API call', request=request)  # okay to log the nonce because it's one-time-use
       if token is None:
         logger.warn('not logged in')
         return mvp_pb2.VerifyEmailResponse(error=mvp_pb2.VerifyEmailResponse.Error(catchall='must log in to verify your email address'))
@@ -1172,6 +1181,7 @@ class SqlServicer(Servicer):
     @checks_token
     @log_action
     def UpdateSettings(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.UpdateSettingsRequest) -> mvp_pb2.UpdateSettingsResponse:
+      logger.debug('API call', request=request)
       if token is None:
         logger.warn('not logged in')
         return mvp_pb2.UpdateSettingsResponse(error=mvp_pb2.UpdateSettingsResponse.Error(catchall='must log in to update your settings'))
@@ -1184,6 +1194,7 @@ class SqlServicer(Servicer):
     @checks_token
     @log_action
     def SendInvitation(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.SendInvitationRequest) -> mvp_pb2.SendInvitationResponse:
+      logger.debug('API call', request=request)
       if token is None:
         logger.warn('not logged in')
         return mvp_pb2.SendInvitationResponse(error=mvp_pb2.SendInvitationResponse.Error(catchall='must log in to create an invitation'))
@@ -1244,6 +1255,7 @@ class SqlServicer(Servicer):
     @checks_token
     @log_action
     def AcceptInvitation(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.AcceptInvitationRequest) -> mvp_pb2.AcceptInvitationResponse:
+      logger.debug('API call', request=request)  # okay to log the nonce because it's one-time-use
       result = self._conn.accept_invitation(
         nonce=request.nonce,
       )
