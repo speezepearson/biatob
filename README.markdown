@@ -2,7 +2,7 @@
 
 **Target audiences:** people who want to get better at operationalizing their beliefs; people who want to publish bets in order to signal confidence and trustworthiness; people who think they have better world-models than their friends, and want to make money off that.
 
-**Biatob's "market differentiator"** or whatever is that it doesn't handle any actual money, instead relying on an honor system: you can only make bets against people you trust to pay up. This greatly reduces the number of potential counterparties for your bets, but also simplifies things greatly and removes the need to trust the site with your money.
+**Biatob's "market differentiator"** or whatever, vs other prediction-market-type things, is that it doesn't handle any actual money, instead relying on an honor system: you can only make bets against people you trust to pay up. This greatly reduces the number of potential counterparties for your bets, but also simplifies things greatly and removes the need to trust the site with your money.
 
 How to develop
 --------------
