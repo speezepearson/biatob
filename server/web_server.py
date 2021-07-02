@@ -35,18 +35,14 @@ class Style:
     @staticmethod
     def parse(s: str) -> 'Style':
         s = s.lstrip('-')
-        print('s =', s)
         m = re.search(r'(?:-|^)([0-9]{1,2})pt\b', s)
         if m:
             fontsize = min(30, int(m.group(1)))
-            print('extracted font size', fontsize)
             s = s.replace(m.group(), '', 1)
         else:
             fontsize = 12
 
-        print('s =', s)
         if s == 'lesswrong':
-            print('noticed lesswrong')
             return Style(color=(0x5f, 0x9b, 0x65), fontpath=WARNOCK_PRO_PATH, fontsize=fontsize, underline=False)
 
         m = re.search('(?:-|^)(' + '|'.join(COLOR_NAME_TO_COLOR.keys()) + r')\b', s)
