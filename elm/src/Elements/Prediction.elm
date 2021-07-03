@@ -370,10 +370,10 @@ getPrereqsForStaking model =
   in
   if Globals.isSelf model.globals creator then
     IsCreator
-  else if not (Globals.isLoggedIn model.globals) then
-    NeedsAccount
   else if not (canAnySkepticsBet prediction) && not (canAnyBelieversBet prediction) then
     CreatorStakeExhausted
+  else if not (Globals.isLoggedIn model.globals) then
+    NeedsAccount
   else if Globals.getTrustRelationship model.globals creator == Globals.Friends then
     CanAlreadyStake
   else if not (Globals.getRelationship model.globals creator |> Maybe.map .trustedByYou |> Maybe.withDefault False) then
