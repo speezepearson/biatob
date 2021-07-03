@@ -398,7 +398,7 @@ viewBody model =
       case Globals.getOwnUsername model.globals of
         Nothing -> H.text ""
         Just self ->
-          H.small [] [H.details [HA.class "text-secondary"]
+          H.small [] [H.details [HA.class "mt-2 text-secondary"]
           [ H.summary [] [H.text "But I hate giving out my email address!"]
           , H.text "Well, since you have ", Utils.renderUser prediction.creator, H.text " marked as trusted, I assume that you have some way to communicate with them over SMS or email or whatever. You could send them a link to "
           , H.a [HA.href <| Utils.pathToUserPage self] [H.text "your user page"]
