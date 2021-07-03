@@ -122,7 +122,7 @@ view config state =
                   Failed e -> Utils.redText e
             , H.div [HA.class "invalid-feedback"] [viewError (parseEmailAddress state)]
             , H.div [HA.class "mx-2 text-secondary"]
-              [ H.small [] [H.text "I will never ever intentionally share this with anybody."]
+              [ H.small [] [H.text "I will never ever intentionally share this with anybody unless you tell me to."]
               ]
             ]
         Pb.EmailFlowStateKindCodeSent {email} ->
