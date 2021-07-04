@@ -20,6 +20,8 @@ import API
 
 port navigate : Maybe String -> Cmd msg
 port authWidgetExternallyChanged : (AuthWidget.DomModification -> msg) -> Sub msg
+port saveFormState : String -> Cmd msg
+port unloadImminent : (() -> msg) -> Sub msg
 
 epsilon = 0.000001
 
@@ -63,6 +65,7 @@ type Msg
   | UpdateSettings EmailSettingsWidget.State Pb.UpdateSettingsRequest
   | UpdateSettingsFinished Pb.UpdateSettingsRequest (Result Http.Error Pb.UpdateSettingsResponse)
   | ToggleEmailAddressWarning
+  | SaveFormState
   | Tick Time.Posix
   | AuthWidgetExternallyModified AuthWidget.DomModification
   | Ignore
@@ -74,6 +77,31 @@ unitToSeconds u =
   case u of
     Days -> 60 * 60 * 24
     Weeks -> unitToSeconds Days * 7
+
+extractSavedFormState : Model -> Pb.SavedCreatedPredictionFormState
+extractSavedFormState model =
+  { predictionField = model.predictionField
+  , resolvesAtField = model.resolvesAtField
+  , stakeField = model.stakeField
+  , lowPField = model.lowPField
+  , highPField = model.highPField
+  , openForUnitField = model.openForUnitField
+  , openForSecondsField = model.openForSecondsField
+  , specialRulesField = model.specialRulesField
+  }
+
+loadFormState : Pb.SavedCreatedPredictionFormState -> Model -> Model
+loadFormState state model =
+  { model
+  | predictionField = state.predictionField
+  , resolvesAtField = state.resolvesAtField
+  , stakeField = state.stakeField
+  , lowPField = state.lowPField
+  , highPField = state.highPField
+  , openForUnitField = state.openForUnitField
+  , openForSecondsField = state.openForSecondsField
+  , specialRulesField = state.specialRulesField
+  }
 
 buildCreateRequest : Model -> Maybe Pb.CreatePredictionRequest
 buildCreateRequest model =
@@ -188,7 +216,9 @@ init flags =
     , specialRulesField = ""
     , disableEmailAddressWarning = False
     , createRequestStatus = Unstarted
-    }
+    } |> case Utils.decodePbFromFlags Pb.savedCreatedPredictionFormStateDecoder "formStatePbB64" flags of
+          Nothing -> identity
+          Just state -> loadFormState state
   , Cmd.none
   )
 
@@ -286,6 +316,10 @@ update msg model =
     ToggleEmailAddressWarning ->
       ( { model | disableEmailAddressWarning = model.disableEmailAddressWarning |> not }
       , Cmd.none
+      )
+    SaveFormState ->
+      ( model
+      , saveFormState (extractSavedFormState model |> Pb.toSavedCreatedPredictionFormStateEncoder |> Utils.encodePbB64)
       )
     Tick now ->
       ( { model | globals = model.globals |> Globals.tick now }
@@ -704,6 +738,10 @@ previewPrediction {request, creatorName, createdAt} =
   }
 
 subscriptions : Model -> Sub Msg
-subscriptions _ = authWidgetExternallyChanged AuthWidgetExternallyModified
+subscriptions _ =
+  Sub.batch
+  [ authWidgetExternallyChanged AuthWidgetExternallyModified
+  , unloadImminent (\() -> SaveFormState)
+  ]
 
 main = Browser.document {init=init, view=view, update=update, subscriptions=subscriptions}

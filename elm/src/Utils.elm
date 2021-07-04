@@ -10,6 +10,7 @@ import Time
 import Base64
 import Iso8601
 import Protobuf.Decode as PD
+import Protobuf.Encode as PE
 import Dict exposing (Dict)
 
 import Biatob.Proto.Mvp as Pb
@@ -97,6 +98,13 @@ pbB64Decoder dec =
         Just a -> JD.succeed a
         Nothing -> JD.fail "invalid b64 protobuf"
       )
+
+encodePbB64 : PE.Encoder -> String
+encodePbB64 enc =
+  enc
+  |> PE.encode
+  |> Base64.fromBytes
+  |> must "Base64.fromBytes docs say it should never return Nothing"
 
 mustResult : String -> Result e x -> x
 mustResult reason res =

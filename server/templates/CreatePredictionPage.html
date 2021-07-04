@@ -4,7 +4,23 @@
   <script type="text/javascript" src="/elm/CreatePrediction.js"></script>
   <script type="text/javascript">
 
-    main({elmApp: Elm.Elements.CreatePrediction, flags: {}});
+    var oldFormStatePbB64 = sessionStorage.getItem('create-prediction-form-state-pb-b64');
+    var oldFormStateSavedAtUnixtime = (() => {
+      var str = sessionStorage.getItem('create-prediction-form-state-saved-at-posixmillis');
+      return str ? parseFloat(str) : null;
+    })();
+    var app = main({elmApp: Elm.Elements.CreatePrediction, flags: {formStatePbB64: (oldFormStatePbB64 && oldFormStateSavedAtUnixtime && oldFormStateSavedAtUnixtime > (new Date()) - 5*1000) ? oldFormStatePbB64 : null}});
+    ((oldOnBeforeUnload) => {
+      app.ports.saveFormState.subscribe(s => {
+        console.log('saving form state', s)
+        sessionStorage.setItem('create-prediction-form-state-pb-b64', s);
+        sessionStorage.setItem('create-prediction-form-state-saved-at-posixmillis', (+(new Date())).toString());
+      });
+      window.onbeforeunload = () => {
+        if (oldOnBeforeUnload) oldOnBeforeUnload();
+        app.ports.unloadImminent.send(null);
+      };
+    })(window.onbeforeunload);
 
     var resolvesAtField = document.getElementById('resolves-at');
     if (resolvesAtField) resolvesAtField.focus();

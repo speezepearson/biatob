@@ -410,3 +410,15 @@ message AcceptInvitationResponse {
     string catchall = 1;
   }
 }
+
+
+message SavedCreatedPredictionFormState {
+  string prediction_field = 1;
+  string resolves_at_field = 2;
+  string stake_field = 3;
+  string low_p_field = 4;
+  string high_p_field = 5;
+  string open_for_unit_field = 6;
+  string open_for_seconds_field = 7;
+  string special_rules_field = 8;
+}
