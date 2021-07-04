@@ -335,11 +335,16 @@ getBetParameters bettorIsASkeptic prediction =
         certainty.low / (1 - certainty.low)
       else
         (1 - certainty.high) / certainty.high
+    queuedCreatorStake =
+      prediction.yourQueuedTrades
+      |> List.filter (.bettorIsASkeptic >> (==) bettorIsASkeptic)
+      |> List.map .creatorStakeCents
+      |> List.sum
     remainingCreatorStake =
       if bettorIsASkeptic then
-        prediction.remainingStakeCentsVsSkeptics
+        (prediction.remainingStakeCentsVsSkeptics - queuedCreatorStake)
       else
-        prediction.remainingStakeCentsVsBelievers
+        (prediction.remainingStakeCentsVsBelievers - queuedCreatorStake)
     maxBettorStake =
       (if creatorStakeFactor == 0 then
         0
