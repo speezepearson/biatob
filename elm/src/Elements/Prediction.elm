@@ -376,7 +376,9 @@ getPrereqsForStaking model =
     NeedsAccount
   else if Globals.getTrustRelationship model.globals creator == Globals.Friends then
     CanAlreadyStake
-  else if not (Globals.getRelationship model.globals creator |> Maybe.map .trustedByYou |> Maybe.withDefault False) then
+  else if Globals.getRelationship model.globals creator |> Maybe.map (\r -> r.trustsYou && not r.trustedByYou) |> Maybe.withDefault False then
+    NeedsToSetTrusted
+  else if Globals.getRelationship model.globals creator |> Maybe.map (not << .trustedByYou) |> Maybe.withDefault False |> (&&) (not (predictionAllowsEmailInvitation model)) then
     NeedsToSetTrusted
   else if predictionAllowsEmailInvitation model then
     if pendingEmailInvitation model then
@@ -393,14 +395,13 @@ viewBody model =
   let
     prediction = mustPrediction model
     isOwnPrediction = Globals.isSelf model.globals prediction.creator
-    trustsCreator = Globals.getRelationship model.globals prediction.creator |> Maybe.map .trustedByYou |> Maybe.withDefault False
     maybeOrYouCouldSwapUserPages =
       case Globals.getOwnUsername model.globals of
         Nothing -> H.text ""
         Just self ->
           H.small [] [H.details [HA.class "mt-2 text-secondary"]
           [ H.summary [] [H.text "But I hate giving out my email address!"]
-          , H.text "Well, since you have ", Utils.renderUser prediction.creator, H.text " marked as trusted, I assume that you have some way to communicate with them over SMS or email or whatever. You could send them a link to "
+          , H.text "Well, if you trust ", Utils.renderUser prediction.creator, H.text ", you presumably have some way to communicate with them over SMS or email or whatever. You could send them a link to "
           , H.a [HA.href <| Utils.pathToUserPage self] [H.text "your user page"]
           , H.text " and ask them to mark you as trusted."
           ]]
@@ -463,11 +464,13 @@ viewBody model =
           NeedsAccount ->
             H.div [HA.id "make-a-bet-section"]
             [ H.h4 [HA.class "text-center"] [H.text "Make a bet"]
-            , H.text " Before I let you bet against "
-            , Utils.renderUser prediction.creator
-            , H.text ", I have to make sure that they trust you to pay up if you lose!"
+            , H.text " Only people with accounts can bet!"
             , H.br [] []
-            , H.text "Could I trouble you to log in or sign up, so I have some idea who you are?"
+            , H.small [HA.class "mx-3 text-secondary"]
+              [ H.text " Otherwise, how will "
+              , Utils.renderUser prediction.creator
+              , H.text " know who you are?"
+              ]
             , H.div [HA.class "m-1 mx-4"]
               [ AuthWidget.view
                 { setState = SetAuthWidget Inline
@@ -510,55 +513,52 @@ viewBody model =
             ]
           NeedsToSendEmailInvitation ->
             H.div [HA.id "make-a-bet-section"]
-            [ H.p []
-              [ H.h4 [HA.class "text-center"] [H.text "Make a bet"]
-              , viewStakeWidget
-                ( QueueingNecessary <|
-                    H.span []
-                    [ H.button
-                      [ HA.disabled (model.sendInvitationStatus == AwaitingResponse)
-                      , HE.onClick SendInvitation
-                      , HA.class "btn btn-sm py-0 btn-primary"
-                      ]
-                      [ H.text <| "Ask @" ++ prediction.creator ++ " if they trust me ("
-                      , H.code [HA.style "color" "inherit"] [ H.text <| Utils.must "must have email address, else would take the NeedsEmailAddress branch" <| userEmailAddress model ]
-                      , H.text ")"
-                      ]
-                    , H.text " "
-                    , case model.sendInvitationStatus of
-                        Unstarted -> H.text ""
-                        AwaitingResponse -> H.text ""
-                        Succeeded -> H.text "Success!"
-                        Failed e -> Utils.redText e
-                    , maybeOrYouCouldSwapUserPages
-                    ]
-                )
-                model
+            [ H.h4 [HA.class "text-center"] [H.text "Make a bet"]
+            , H.div [HA.class "text-center"]
+              [ H.button
+                [ HA.disabled (model.sendInvitationStatus == AwaitingResponse)
+                , HE.onClick SendInvitation
+                , HA.class "btn btn-sm py-0 btn-primary"
+                ]
+                [ H.text <| "Ask @" ++ prediction.creator ++ " if they trust me"
+                ]
+              , H.text " "
+              , case model.sendInvitationStatus of
+                  Unstarted -> H.text ""
+                  AwaitingResponse -> H.text ""
+                  Succeeded -> H.text "Success!"
+                  Failed e -> Utils.redText e
               ]
+            , H.div [HA.class "text-center text-secondary"]
+              [ H.text "This will require sharing your email address ("
+              , H.code [HA.style "color" "inherit"] [ H.text <| Utils.must "must have email address, else would take the NeedsEmailAddress branch" <| userEmailAddress model ]
+              , H.text ") with them."
+              ]
+            , maybeOrYouCouldSwapUserPages
             ]
           NeedsEmailAddress ->
             H.div [HA.id "make-a-bet-section"]
             [ H.p []
               [ H.h4 [HA.class "text-center"] [H.text "Make a bet"]
-              , viewStakeWidget
-                ( QueueingNecessary <|
-                    H.span []
-                    [ H.text "If you told me your email address, I could ask them."
-                    , H.div [HA.class "m-1 mx-4"]
-                      [ EmailSettingsWidget.view
-                        { setState = SetEmailWidget
-                        , ignore = Ignore
-                        , setEmail = SetEmail
-                        , updateSettings = UpdateSettings
-                        , userInfo = Utils.must "checked that user is logged in" (Globals.getUserInfo model.globals)
-                        , showAllEmailSettings = False
-                        }
-                        model.emailSettingsWidget
-                      ]
-                    , maybeOrYouCouldSwapUserPages
-                    ]
-                )
-                model
+              , H.text "You need an email address in order to bet!"
+              , H.br [] []
+              , H.small [HA.class "mx-3 text-secondary"]
+                [ H.text " I need it so I can identify you to "
+                , Utils.renderUser prediction.creator
+                , H.text " when I ask them whether they trust you."
+                ]
+              , H.div [HA.class "m-1 mx-4"]
+                [ EmailSettingsWidget.view
+                  { setState = SetEmailWidget
+                  , ignore = Ignore
+                  , setEmail = SetEmail
+                  , updateSettings = UpdateSettings
+                  , userInfo = Utils.must "checked that user is logged in" (Globals.getUserInfo model.globals)
+                  , showAllEmailSettings = False
+                  }
+                  model.emailSettingsWidget
+                ]
+              , maybeOrYouCouldSwapUserPages
               ]
             ]
           NeedsToTextUserPageLink ->
@@ -567,11 +567,14 @@ viewBody model =
               [ H.h4 [HA.class "text-center"] [H.text "Make a bet"]
               , viewStakeWidget
                 ( QueueingNecessary <|
-                    H.span []
-                    [ H.text "Normally, I'd offer to ask them, but they don't have that setting enabled! You'll need to send them a link to "
-                    , H.a [HA.href <| Utils.pathToUserPage <| Utils.must "checked user is logged in" <| Globals.getOwnUsername model.globals] [H.text "your user page"]
-                    , H.text ", over SMS/IM/email/whatever, and ask them to mark you as trusted."
+                  H.span []
+                  [ H.span [HA.class "text-danger"]
+                    [ H.text "You'll need to contact them over SMS/IM/email/whatever,"
                     ]
+                  , H.text " send them a link to "
+                  , H.a [HA.href <| Utils.pathToUserPage <| Utils.must "checked user is logged in" <| Globals.getOwnUsername model.globals] [H.text "your user page"]
+                  , H.text ", and ask them to mark you as trusted. Sorry it's such a hassle. I'd normally offer to ask them for you, but they disabled that option."
+                  ]
                 )
                 model
               ]
@@ -724,7 +727,7 @@ viewStakeWidget bettability model =
             [ HA.disabled True ]
         )
         [ H.text <| case bettability of
-            QueueingNecessary _ -> "Queue"
+            QueueingNecessary _ -> "Queue, pending @" ++ prediction.creator ++ "'s approval"
             QueueingUnnecessary -> "Commit"
         ]
     , case model.stakeStatus of

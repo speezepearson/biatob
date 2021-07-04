@@ -35,6 +35,7 @@ type alias Model =
   , openForUnitField : String
   , openForSecondsField : String
   , specialRulesField : String
+  , disableEmailAddressWarning : Bool
   , createRequestStatus : RequestStatus
   }
 
@@ -61,6 +62,7 @@ type Msg
   | SetEmailFinished Pb.SetEmailRequest (Result Http.Error Pb.SetEmailResponse)
   | UpdateSettings EmailSettingsWidget.State Pb.UpdateSettingsRequest
   | UpdateSettingsFinished Pb.UpdateSettingsRequest (Result Http.Error Pb.UpdateSettingsResponse)
+  | ToggleEmailAddressWarning
   | Tick Time.Posix
   | AuthWidgetExternallyModified AuthWidget.DomModification
   | Ignore
@@ -184,6 +186,7 @@ init flags =
     , openForUnitField = "weeks"
     , openForSecondsField = "2"
     , specialRulesField = ""
+    , disableEmailAddressWarning = False
     , createRequestStatus = Unstarted
     }
   , Cmd.none
@@ -278,6 +281,10 @@ update msg model =
       ( { model | globals = model.globals |> Globals.handleUpdateSettingsResponse req res
                 , emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleUpdateSettingsResponse res
         }
+      , Cmd.none
+      )
+    ToggleEmailAddressWarning ->
+      ( { model | disableEmailAddressWarning = model.disableEmailAddressWarning |> not }
       , Cmd.none
       )
     Tick now ->
@@ -615,21 +622,19 @@ view model =
           ]
     , viewForm model
     , let
-        allowsEmailInvitation = Globals.hasEmailAddress model.globals && (Globals.getUserInfo model.globals |> Maybe.map .allowEmailInvitations |> Maybe.withDefault False)
+
+        showEmailAddressWarning =
+          (not model.disableEmailAddressWarning) &&
+          case Globals.getUserInfo model.globals of
+            Nothing -> False
+            Just settings -> not (Globals.hasEmailAddress model.globals) || (not settings.allowEmailInvitations)
       in
-      if allowsEmailInvitation || not (Globals.isLoggedIn model.globals) then
-        H.text ""
-      else
+      H.div []
+      [ if not showEmailAddressWarning then
+          H.text ""
+        else
         H.div [HA.class "pre-creation-plea-for-email"]
-        [ H.text "Hey! It'll be annoying and awkward for new people to bet against you unless I can ask you if you trust them. This requires emailing you. I won't force you to sign up for this, but I strongly recommend it!"
-        , H.details []
-          [ H.ul []
-            [ H.li [] [H.text "Since bets are all honor-system, people can only bet against each other if they trust each other to pay up."]
-            , H.li [] [H.text "If you register an email address, I'll be able to email you to ask you whether you trust potential bettors."]
-            , H.li [] [H.text "Otherwise, potential bettors will have to text/email/... you themselves to ask you to click buttons to tell me you trust them."]
-            , H.li [] [H.text "(Don't worry, I won't share your email address with anyone unless you ask me to.)"]
-            ]
-          ]
+        [ H.text "When somebody new wants to bet on this prediction, I would ", Utils.i "really", H.text " like to be able to email you to ask you whether you trust them."
         , H.hr [] []
         , EmailSettingsWidget.view
             { setState = SetEmailWidget
@@ -640,13 +645,25 @@ view model =
             , showAllEmailSettings = True
             }
             model.emailSettingsWidget
-        ]
-
-    , H.div [HA.style "text-align" "center", HA.style "margin-bottom" "2em"]
+        , H.small [] [H.details [HA.class "text-secondary"]
+          [ H.summary [HA.class "mx-1 mt-2"] [H.text "But I hate getting emails from weird web sites!"]
+          , H.div [HA.class "mx-3"]
+            [ H.text "Ugh, fine. I can sympathize."
+            , H.div [HA.class "mx-3"]
+              [ H.button [HA.class "btn btn-sm btn-outline-secondary", HE.onClick ToggleEmailAddressWarning] [H.text "I'm okay with it being somewhat awkward for new people to bet against me."]
+              ]
+            ]
+          ]
+        ]]
+      , H.div [HA.style "text-align" "center", HA.style "margin-bottom" "2em"]
         [ H.button
             [ HE.onClick Create
             , HA.class "btn btn-primary mt-2"
-            , HA.disabled (not (Globals.isLoggedIn model.globals) || buildCreateRequest model == Nothing || model.createRequestStatus == AwaitingResponse)
+            , HA.disabled <|
+                not (Globals.isLoggedIn model.globals)
+                || showEmailAddressWarning
+                || buildCreateRequest model == Nothing
+                || model.createRequestStatus == AwaitingResponse
             ]
             [ H.text <| if Globals.isLoggedIn model.globals then "Post prediction" else "Log in to post prediction" ]
         , case model.createRequestStatus of
@@ -655,6 +672,7 @@ view model =
             Succeeded -> Utils.greenText "Success!"
             Failed e -> H.div [HA.style "color" "red"] [H.text e]
         ]
+      ]
     , H.hr [] []
     , H.text "Preview:"
     , H.div [HA.style "border" "1px solid black", HA.style "padding" "1em", HA.style "margin" "1em"]
