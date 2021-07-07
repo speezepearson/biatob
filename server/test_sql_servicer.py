@@ -30,16 +30,16 @@ class TestFindInvariantViolations:
       conn.register_username(BOB, 'secret', 'bob_pwid')
       predid = PredictionId('my_pred')
       conn.create_prediction(now, predid, ALICE, some_create_prediction_request(
-        maximum_stake_cents=100,
+        maximum_stake=100,
         certainty=mvp_pb2.CertaintyRange(low=0.5, high=1.0),
       ))
-      conn.stake(predid, BOB, True, 80, creator_stake_cents=80, now=now)
-      conn.stake(predid, BOB, True, 70, creator_stake_cents=70, now=now)
+      conn.stake(predid, BOB, True, 80, creator_stake=80, now=now)
+      conn.stake(predid, BOB, True, 70, creator_stake=70, now=now)
 
       assert find_invariant_violations(raw_conn) == [{
         'type': 'exposure exceeded',
         'prediction_id': predid,
-        'maximum_stake_cents': 100,
+        'maximum_stake': 100,
         'actual_exposure': 150,
       }]
 

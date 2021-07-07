@@ -9,7 +9,7 @@ import Json.Decode as JD
 import Time
 
 import Biatob.Proto.Mvp as Pb
-import Utils exposing (i, isOk, maxLegalStakeCents, viewError, Cents, RequestStatus(..))
+import Utils exposing (i, isOk, maxLegalStake, viewError, Cents, RequestStatus(..))
 import Elements.Prediction as Prediction
 
 import Widgets.AuthWidget as AuthWidget
@@ -114,7 +114,7 @@ buildCreateRequest model =
     Just
       { prediction = prediction
       , certainty = Just { low=lowP, high=highP }
-      , maximumStakeCents = stake
+      , maximumStake = stake
       , openSeconds = openForSeconds
       , specialRules = model.specialRulesField
       , resolvesAtUnixtime = Utils.timeToUnixtime resolvesAt
@@ -139,7 +139,7 @@ parseStake model =
       Nothing -> Err "must be a positive number"
       Just dollars ->
         if dollars <= 0 then Err "must be a positive number" else
-        if dollars > toFloat maxLegalStakeCents / 100 then Err "Sorry, I hate to be paternalistic, but I don't want to let people bet more than they can afford to lose, so I put in a semi-arbitrary $5000-per-prediction limit. I *do* plan to lift this restriction someday, there are just some site design issues I need to work out first, and they're not on top of my priority queue. Thanks for your patience! [dated 2021-02]" else
+        if dollars > toFloat maxLegalStake / 100 then Err "Sorry, I hate to be paternalistic, but I don't want to let people bet more than they can afford to lose, so I put in a semi-arbitrary $5000-per-prediction limit. I *do* plan to lift this restriction someday, there are just some site design issues I need to work out first, and they're not on top of my priority queue. Thanks for your patience! [dated 2021-02]" else
         Ok <| round (100*dollars)
 
 parseLowProbability : Model -> Result String Float
@@ -519,7 +519,7 @@ viewForm model =
       H.div [HA.class ""]
       [ H.text "I'm willing to lose up to $"
       , H.input
-          [ HA.type_ "number", HA.min "0", HA.max (String.fromInt <| maxLegalStakeCents//100)
+          [ HA.type_ "number", HA.min "0", HA.max (String.fromInt <| maxLegalStake//100)
           , HA.style "width" "7em"
           , HA.style "display" "inline-block"
           , HA.placeholder placeholders.stake
@@ -533,18 +533,18 @@ viewForm model =
       , H.div [HA.class "invalid-feedback"] [viewError (parseStake model)]
       , case parseStake model of
             Err _ -> H.text ""
-            Ok stakeCents ->
+            Ok stake ->
               let
                 betVsSkeptics : Maybe String
                 betVsSkeptics =
                   parseLowProbability model
                   |> Result.toMaybe
-                  |> Maybe.andThen (\lowP -> if lowP == 0 then Nothing else Just <| Utils.formatCents stakeCents ++ " against " ++ Utils.formatCents (round <| toFloat stakeCents * (1-lowP)/lowP))
+                  |> Maybe.andThen (\lowP -> if lowP == 0 then Nothing else Just <| Utils.formatCents stake ++ " against " ++ Utils.formatCents (round <| toFloat stake * (1-lowP)/lowP))
                 betVsBelievers : Maybe String
                 betVsBelievers =
                   parseHighProbability model
                   |> Result.toMaybe
-                  |> Maybe.andThen (\highP -> if highP == 1 then Nothing else Just <| Utils.formatCents stakeCents ++ " against " ++ Utils.formatCents (round <| toFloat stakeCents * highP/(1-highP)))
+                  |> Maybe.andThen (\highP -> if highP == 1 then Nothing else Just <| Utils.formatCents stake ++ " against " ++ Utils.formatCents (round <| toFloat stake * highP/(1-highP)))
               in
                 case (betVsSkeptics, betVsBelievers) of
                   (Nothing, Nothing) -> H.text ""
@@ -723,9 +723,9 @@ previewPrediction : {request:Pb.CreatePredictionRequest, creatorName:String, cre
 previewPrediction {request, creatorName, createdAt} =
   { prediction = request.prediction
   , certainty = request.certainty
-  , maximumStakeCents = request.maximumStakeCents
-  , remainingStakeCentsVsBelievers = request.maximumStakeCents
-  , remainingStakeCentsVsSkeptics = request.maximumStakeCents
+  , maximumStake = request.maximumStake
+  , remainingStakeVsBelievers = request.maximumStake
+  , remainingStakeVsSkeptics = request.maximumStake
   , createdUnixtime = Utils.timeToUnixtime createdAt
   , closesUnixtime = Utils.timeToUnixtime createdAt + toFloat request.openSeconds
   , specialRules = request.specialRules

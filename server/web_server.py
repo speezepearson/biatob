@@ -188,7 +188,7 @@ class WebServer:
         def format_stake_concisely(n_cents: int) -> str:
             return f'${n_cents//100}'
         prediction = get_prediction_resp.prediction
-        stake_text = format_stake_concisely(prediction.maximum_stake_cents)
+        stake_text = format_stake_concisely(prediction.maximum_stake)
 
         if prediction.certainty.high == 1:
             confidence_text = f'{round(prediction.certainty.low*100)}%+'
@@ -201,11 +201,11 @@ class WebServer:
             remaining_text = f" (resolved: {res_text})"
         elif prediction.closes_unixtime < self._clock().timestamp():
             remaining_text = " (closed)"
-        elif not (prediction.remaining_stake_cents_vs_skeptics == prediction.remaining_stake_cents_vs_believers == prediction.maximum_stake_cents):
+        elif not (prediction.remaining_stake_vs_skeptics == prediction.remaining_stake_vs_believers == prediction.maximum_stake):
             remaining_text = (
                 " ("
-                + format_stake_concisely(prediction.remaining_stake_cents_vs_skeptics)
-                + ("/" + format_stake_concisely(prediction.remaining_stake_cents_vs_believers) if prediction.remaining_stake_cents_vs_believers < prediction.maximum_stake_cents else "")
+                + format_stake_concisely(prediction.remaining_stake_vs_skeptics)
+                + ("/" + format_stake_concisely(prediction.remaining_stake_vs_believers) if prediction.remaining_stake_vs_believers < prediction.maximum_stake else "")
                 + " remain)"
             )
         else:

@@ -78,16 +78,16 @@ message ResolutionEvent {
 message Trade {
   string bettor = 7;
   bool bettor_is_a_skeptic = 2;
-  uint32 bettor_stake_cents = 3;
-  uint32 creator_stake_cents = 4;
+  uint32 bettor_stake = 3;
+  uint32 creator_stake = 4;
   double transacted_unixtime = 6;
 }
 
 message QueuedTrade {
   string bettor = 1;
   bool bettor_is_a_skeptic = 2;
-  uint32 bettor_stake_cents = 3;
-  uint32 creator_stake_cents = 4;
+  uint32 bettor_stake = 3;
+  uint32 creator_stake = 4;
   double enqueued_at_unixtime = 6;
 }
 
@@ -101,6 +101,15 @@ enum Resolution {
   RESOLUTION_YES = 1;
   RESOLUTION_NO = 2;
   RESOLUTION_INVALID = 3;
+}
+
+enum Currency {
+  CURRENCY_US_CENTS = 0;
+  CURRENCY_EURO_CENTS = 1;
+  CURRENCY_JAPANESE_YEN = 2;
+  CURRENCY_ENGLISH_PENCE = 3;
+  CURRENCY_CANADA_CENTS = 4;
+  CURRENCY_AUSTRALIA_CENTS = 5;
 }
 
 message WhoamiRequest {}
@@ -153,7 +162,8 @@ message CreatePredictionRequest {
   string prediction = 2;
   // PredictionPrivacy privacy = 3;
   CertaintyRange certainty = 4;
-  uint32 maximum_stake_cents = 5;
+  uint32 maximum_stake = 5;
+  Currency stake_denomination = 10;
   uint32 open_seconds = 6;
   string special_rules = 7;
   double resolves_at_unixtime = 9;
@@ -184,9 +194,10 @@ message GetPredictionResponse {
 message UserPredictionView {
   string prediction = 1;
   CertaintyRange certainty = 2;
-  uint32 maximum_stake_cents = 3;
-  uint32 remaining_stake_cents_vs_believers = 4;
-  uint32 remaining_stake_cents_vs_skeptics = 5;
+  Currency stake_denomination = 18;
+  uint32 maximum_stake = 3;
+  uint32 remaining_stake_vs_believers = 4;
+  uint32 remaining_stake_vs_skeptics = 5;
   double created_unixtime = 13;
   double closes_unixtime = 14;
   string special_rules = 8;
@@ -229,7 +240,7 @@ message ListPredictionsResponse {
 message StakeRequest {
   string prediction_id = 2;
   bool bettor_is_a_skeptic = 3;
-  uint32 bettor_stake_cents = 4;
+  uint32 bettor_stake = 4;
 }
 message StakeResponse {
   oneof stake_result {
@@ -244,7 +255,7 @@ message StakeResponse {
 message QueueStakeRequest {
   string prediction_id = 2;
   bool bettor_is_a_skeptic = 3;
-  uint32 bettor_stake_cents = 4;
+  uint32 bettor_stake = 4;
 }
 message QueueStakeResponse {
   oneof queue_stake_result {

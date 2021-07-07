@@ -82,7 +82,7 @@ class SqlConn:
       prediction=request.prediction,
       certainty_low_p=request.certainty.low,
       certainty_high_p=request.certainty.high,
-      maximum_stake_cents=request.maximum_stake_cents,
+      maximum_stake=request.maximum_stake,
       created_at_unixtime=now_unixtime,
       closes_at_unixtime=now_unixtime + request.open_seconds,
       resolves_at_unixtime=request.resolves_at_unixtime,
@@ -149,15 +149,15 @@ class SqlConn:
       .order_by(schema.queued_trades.c.enqueued_at_unixtime)
     ).fetchall()
 
-    remaining_stake_cents_vs_believers = row['maximum_stake_cents'] - self._conn.execute(
-      sqlalchemy.select([sqlalchemy.sql.func.coalesce(sqlalchemy.sql.func.sum(schema.trades.c.creator_stake_cents), 0)])
+    remaining_stake_vs_believers = row['maximum_stake'] - self._conn.execute(
+      sqlalchemy.select([sqlalchemy.sql.func.coalesce(sqlalchemy.sql.func.sum(schema.trades.c.creator_stake), 0)])
       .where(sqlalchemy.and_(
         schema.trades.c.prediction_id == prediction_id,
         sqlalchemy.not_(schema.trades.c.bettor_is_a_skeptic)
       ))
     ).scalar()
-    remaining_stake_cents_vs_skeptics = row['maximum_stake_cents'] - self._conn.execute(
-      sqlalchemy.select([sqlalchemy.sql.func.coalesce(sqlalchemy.sql.func.sum(schema.trades.c.creator_stake_cents), 0)])
+    remaining_stake_vs_skeptics = row['maximum_stake'] - self._conn.execute(
+      sqlalchemy.select([sqlalchemy.sql.func.coalesce(sqlalchemy.sql.func.sum(schema.trades.c.creator_stake), 0)])
       .where(sqlalchemy.and_(
         schema.trades.c.prediction_id == prediction_id,
         schema.trades.c.bettor_is_a_skeptic
@@ -167,9 +167,9 @@ class SqlConn:
     return mvp_pb2.UserPredictionView(
       prediction=row['prediction'],
       certainty=mvp_pb2.CertaintyRange(low=row['certainty_low_p'], high=row['certainty_high_p']),
-      maximum_stake_cents=row['maximum_stake_cents'],
-      remaining_stake_cents_vs_believers=remaining_stake_cents_vs_believers,
-      remaining_stake_cents_vs_skeptics=remaining_stake_cents_vs_skeptics,
+      maximum_stake=row['maximum_stake'],
+      remaining_stake_vs_believers=remaining_stake_vs_believers,
+      remaining_stake_vs_skeptics=remaining_stake_vs_skeptics,
       created_unixtime=row['created_at_unixtime'],
       closes_unixtime=row['closes_at_unixtime'],
       resolves_at_unixtime=row['resolves_at_unixtime'],
@@ -188,8 +188,8 @@ class SqlConn:
         mvp_pb2.Trade(
           bettor=t['bettor'],
           bettor_is_a_skeptic=t['bettor_is_a_skeptic'],
-          creator_stake_cents=t['creator_stake_cents'],
-          bettor_stake_cents=t['bettor_stake_cents'],
+          creator_stake=t['creator_stake'],
+          bettor_stake=t['bettor_stake'],
           transacted_unixtime=t['transacted_at_unixtime'],
         )
         for t in trade_rows
@@ -198,8 +198,8 @@ class SqlConn:
         mvp_pb2.QueuedTrade(
           bettor=t['bettor'],
           bettor_is_a_skeptic=t['bettor_is_a_skeptic'],
-          creator_stake_cents=t['creator_stake_cents'],
-          bettor_stake_cents=t['bettor_stake_cents'],
+          creator_stake=t['creator_stake'],
+          bettor_stake=t['bettor_stake'],
           enqueued_at_unixtime=t['enqueued_at_unixtime'],
         )
         for t in queued_trade_rows
@@ -236,7 +236,7 @@ class SqlConn:
                   'closes_at_unixtime': int,
                   'certainty_low_p': float,
                   'certainty_high_p': float,
-                  'maximum_stake_cents': int,
+                  'maximum_stake': int,
                  })
   def get_prediction_info(
     self,
@@ -255,7 +255,7 @@ class SqlConn:
       'closes_at_unixtime': int(row['closes_at_unixtime']),
       'certainty_low_p': float(row['certainty_low_p']),
       'certainty_high_p': float(row['certainty_high_p']),
-      'maximum_stake_cents': int(row['maximum_stake_cents']),
+      'maximum_stake': int(row['maximum_stake']),
     }
 
   def get_trades(
@@ -270,8 +270,8 @@ class SqlConn:
       mvp_pb2.Trade(
         bettor=row['bettor'],
         bettor_is_a_skeptic=row['bettor_is_a_skeptic'],
-        bettor_stake_cents=row['bettor_stake_cents'],
-        creator_stake_cents=row['creator_stake_cents'],
+        bettor_stake=row['bettor_stake'],
+        creator_stake=row['creator_stake'],
         transacted_unixtime=row['transacted_at_unixtime'],
       )
       for row in rows
@@ -280,16 +280,16 @@ class SqlConn:
   QueuedTradeInfo = TypedDict('QueuedTradeInfo', {'prediction_id': PredictionId,
                                                   'bettor': Username,
                                                   'bettor_is_a_skeptic': bool,
-                                                  'bettor_stake_cents': int,
-                                                  'creator_stake_cents': int,
+                                                  'bettor_stake': int,
+                                                  'creator_stake': int,
                                                   'enqueued_at_unixtime': float})
   def get_queued_trades(self, bettor: Username, creator: Username) -> Iterable[QueuedTradeInfo]:
     return [
       {'prediction_id': PredictionId(str(row['prediction_id'])),
        'bettor': Username(str(row['bettor'])),
        'bettor_is_a_skeptic': bool(row['bettor_is_a_skeptic']),
-       'bettor_stake_cents': int(row['bettor_stake_cents']),
-       'creator_stake_cents': int(row['creator_stake_cents']),
+       'bettor_stake': int(row['bettor_stake']),
+       'creator_stake': int(row['creator_stake']),
        'enqueued_at_unixtime': float(row['enqueued_at_unixtime']),
        }
       for row in self._conn.execute(
@@ -336,7 +336,7 @@ class SqlConn:
   ) -> int:
     return self._conn.execute(
       sqlalchemy.select([
-        sqlalchemy.sql.func.sum(schema.trades.c.creator_stake_cents).label('exposure'),
+        sqlalchemy.sql.func.sum(schema.trades.c.creator_stake).label('exposure'),
       ])
       .select_from(schema.predictions.join(schema.trades))
       .where(sqlalchemy.and_(
@@ -353,7 +353,7 @@ class SqlConn:
   ) -> int:
     return self._conn.execute(
       sqlalchemy.select([
-        sqlalchemy.sql.func.sum(schema.trades.c.bettor_stake_cents).label('exposure'),
+        sqlalchemy.sql.func.sum(schema.trades.c.bettor_stake).label('exposure'),
       ])
       .select_from(schema.predictions.join(schema.trades))
       .where(sqlalchemy.and_(
@@ -368,16 +368,16 @@ class SqlConn:
     prediction_id: PredictionId,
     bettor: Username,
     bettor_is_a_skeptic: bool,
-    bettor_stake_cents: int,
-    creator_stake_cents: int,
+    bettor_stake: int,
+    creator_stake: int,
     now: datetime.datetime,
   ) -> None:
     self._conn.execute(sqlalchemy.insert(schema.trades).values(
       prediction_id=prediction_id,
       bettor=bettor,
       bettor_is_a_skeptic=bettor_is_a_skeptic,
-      bettor_stake_cents=bettor_stake_cents,
-      creator_stake_cents=creator_stake_cents,
+      bettor_stake=bettor_stake,
+      creator_stake=creator_stake,
       transacted_at_unixtime=now.timestamp(),
     ))
 
@@ -386,16 +386,16 @@ class SqlConn:
     prediction_id: PredictionId,
     bettor: Username,
     bettor_is_a_skeptic: bool,
-    bettor_stake_cents: int,
-    creator_stake_cents: int,
+    bettor_stake: int,
+    creator_stake: int,
     now: datetime.datetime,
   ) -> None:
     self._conn.execute(sqlalchemy.insert(schema.queued_trades).values(
       prediction_id=prediction_id,
       bettor=bettor,
       bettor_is_a_skeptic=bettor_is_a_skeptic,
-      bettor_stake_cents=bettor_stake_cents,
-      creator_stake_cents=creator_stake_cents,
+      bettor_stake=bettor_stake,
+      creator_stake=creator_stake,
       enqueued_at_unixtime=now.timestamp(),
     ))
 
@@ -455,23 +455,23 @@ class SqlConn:
 
       existing_creator_exposure = self.get_creator_exposure_cents(PredictionId(qt['prediction_id']), against_skeptics=qt['bettor_is_a_skeptic'])
 
-      creator_stake_cents = min(qt['creator_stake_cents'], predinfo['maximum_stake_cents']-existing_creator_exposure)
-      bettor_stake_cents = round(qt['bettor_stake_cents'] * creator_stake_cents/qt['creator_stake_cents'])
-      if creator_stake_cents == 0:
-        logger.warn('dropping a queued bet instead of committing it, because that would exceed creator tolerance', queued_trade=qt, predinfo=predinfo, new_creator_stake=creator_stake_cents, new_bettor_stake=bettor_stake_cents)
-      elif creator_stake_cents < 10 and bettor_stake_cents < 10:
-        logger.warn('dropping a queued bet instead of partially committing a trivial trade', queued_trade=qt, predinfo=predinfo, new_creator_stake=creator_stake_cents, new_bettor_stake=bettor_stake_cents)
+      creator_stake = min(qt['creator_stake'], predinfo['maximum_stake']-existing_creator_exposure)
+      bettor_stake = round(qt['bettor_stake'] * creator_stake/qt['creator_stake'])
+      if creator_stake == 0:
+        logger.warn('dropping a queued bet instead of committing it, because that would exceed creator tolerance', queued_trade=qt, predinfo=predinfo, new_creator_stake=creator_stake, new_bettor_stake=bettor_stake)
+      elif creator_stake < 10 and bettor_stake < 10:
+        logger.warn('dropping a queued bet instead of partially committing a trivial trade', queued_trade=qt, predinfo=predinfo, new_creator_stake=creator_stake, new_bettor_stake=bettor_stake)
       else:
-        if creator_stake_cents < qt['creator_stake_cents']:
-          logger.warn('queued trade will be only partially applied', queued_trade=qt, predinfo=predinfo, new_creator_stake=creator_stake_cents, new_bettor_stake=bettor_stake_cents)
+        if creator_stake < qt['creator_stake']:
+          logger.warn('queued trade will be only partially applied', queued_trade=qt, predinfo=predinfo, new_creator_stake=creator_stake, new_bettor_stake=bettor_stake)
         self._conn.execute(
           sqlalchemy.insert(schema.trades)
           .values(
             prediction_id=qt['prediction_id'],
             bettor=qt['bettor'],
             bettor_is_a_skeptic=qt['bettor_is_a_skeptic'],
-            bettor_stake_cents=bettor_stake_cents,
-            creator_stake_cents=creator_stake_cents,
+            bettor_stake=bettor_stake,
+            creator_stake=creator_stake,
             transacted_at_unixtime=qt['enqueued_at_unixtime'],
           )
         )
@@ -883,9 +883,9 @@ class SqlServicer(Servicer):
       if token is None:
         logger.warn('not logged in')
         return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall='must log in to bet'))
-      assert request.bettor_stake_cents >= 0, 'protobuf should enforce this being a uint, but just in case...'
+      assert request.bettor_stake >= 0, 'protobuf should enforce this being a uint, but just in case...'
 
-      if request.bettor_stake_cents == 0:
+      if request.bettor_stake == 0:
         logger.warn('trying to stake 0 cents', prediction_id=request.prediction_id)
         return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall='betting 0 cents doesn\'t make sense'))
 
@@ -913,31 +913,31 @@ class SqlServicer(Servicer):
 
       if request.bettor_is_a_skeptic:
         lowP = predinfo['certainty_low_p']
-        creator_stake_cents = int(request.bettor_stake_cents * lowP/(1-lowP))
+        creator_stake = int(request.bettor_stake * lowP/(1-lowP))
       else:
         highP = predinfo['certainty_high_p']
-        creator_stake_cents = int(request.bettor_stake_cents * (1-highP)/highP)
+        creator_stake = int(request.bettor_stake * (1-highP)/highP)
 
-      if creator_stake_cents == 0:
+      if creator_stake == 0:
         logger.warn('trying to make a bet that results in the creator staking 0 cents', prediction_id=request.prediction_id, request=request)
         return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall='creator would bet 0 cents against you'))
 
       existing_creator_exposure = self._conn.get_creator_exposure_cents(PredictionId(request.prediction_id), against_skeptics=request.bettor_is_a_skeptic)
-      if existing_creator_exposure + creator_stake_cents > predinfo['maximum_stake_cents']:
+      if existing_creator_exposure + creator_stake > predinfo['maximum_stake']:
           logger.warn('trying to make a bet that would exceed creator tolerance', request=request)
-          return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall=f'bet would exceed creator tolerance ({existing_creator_exposure} existing + {creator_stake_cents} new stake > {predinfo["maximum_stake_cents"]} max)'))
+          return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall=f'bet would exceed creator tolerance ({existing_creator_exposure} existing + {creator_stake} new stake > {predinfo["maximum_stake"]} max)'))
 
       existing_bettor_exposure = self._conn.get_bettor_exposure_cents(PredictionId(request.prediction_id), token_owner(token), bettor_is_a_skeptic=request.bettor_is_a_skeptic)
-      if existing_bettor_exposure + request.bettor_stake_cents > MAX_LEGAL_STAKE_CENTS:
+      if existing_bettor_exposure + request.bettor_stake > MAX_LEGAL_STAKE_CENTS:
         logger.warn('trying to make a bet that would exceed per-market stake limit', request=request)
-        return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall=f'your existing stake of ~${existing_bettor_exposure//100} plus your new stake of ~${request.bettor_stake_cents//100} would put you over the limit of ${MAX_LEGAL_STAKE_CENTS//100} staked in a single prediction; sorry, I hate to be paternalistic, but this site is not yet ready for Big Bets.'))
+        return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall=f'your existing stake of ~${existing_bettor_exposure//100} plus your new stake of ~${request.bettor_stake//100} would put you over the limit of ${MAX_LEGAL_STAKE_CENTS//100} staked in a single prediction; sorry, I hate to be paternalistic, but this site is not yet ready for Big Bets.'))
 
       self._conn.stake(
         prediction_id=PredictionId(request.prediction_id),
         bettor=token_owner(token),
         bettor_is_a_skeptic=request.bettor_is_a_skeptic,
-        bettor_stake_cents=request.bettor_stake_cents,
-        creator_stake_cents=creator_stake_cents,
+        bettor_stake=request.bettor_stake,
+        creator_stake=creator_stake,
         now=now,
       )
       logger.info('trade executed', prediction_id=request.prediction_id, request=request)
@@ -951,9 +951,9 @@ class SqlServicer(Servicer):
       if token is None:
         logger.warn('not logged in')
         return mvp_pb2.QueueStakeResponse(error=mvp_pb2.QueueStakeResponse.Error(catchall='must log in to bet'))
-      assert request.bettor_stake_cents >= 0, 'protobuf should enforce this being a uint, but just in case...'
+      assert request.bettor_stake >= 0, 'protobuf should enforce this being a uint, but just in case...'
 
-      if request.bettor_stake_cents == 0:
+      if request.bettor_stake == 0:
         logger.warn('trying to stake 0 cents', prediction_id=request.prediction_id)
         return mvp_pb2.QueueStakeResponse(error=mvp_pb2.QueueStakeResponse.Error(catchall='betting 0 cents doesn\'t make sense'))
 
@@ -981,31 +981,31 @@ class SqlServicer(Servicer):
 
       if request.bettor_is_a_skeptic:
         lowP = predinfo['certainty_low_p']
-        creator_stake_cents = int(request.bettor_stake_cents * lowP/(1-lowP))
+        creator_stake = int(request.bettor_stake * lowP/(1-lowP))
       else:
         highP = predinfo['certainty_high_p']
-        creator_stake_cents = int(request.bettor_stake_cents * (1-highP)/highP)
+        creator_stake = int(request.bettor_stake * (1-highP)/highP)
 
-      if creator_stake_cents == 0:
+      if creator_stake == 0:
         logger.warn('trying to make a bet that results in the creator staking 0 cents', prediction_id=request.prediction_id, request=request)
         return mvp_pb2.QueueStakeResponse(error=mvp_pb2.QueueStakeResponse.Error(catchall='creator would bet 0 cents against you'))
 
       existing_creator_exposure = self._conn.get_creator_exposure_cents(PredictionId(request.prediction_id), against_skeptics=request.bettor_is_a_skeptic)
-      if existing_creator_exposure + creator_stake_cents > predinfo['maximum_stake_cents']:
+      if existing_creator_exposure + creator_stake > predinfo['maximum_stake']:
           logger.warn('trying to make a bet that would exceed creator tolerance', request=request)
-          return mvp_pb2.QueueStakeResponse(error=mvp_pb2.QueueStakeResponse.Error(catchall=f'bet would exceed creator tolerance ({existing_creator_exposure} existing + {creator_stake_cents} new stake > {predinfo["maximum_stake_cents"]} max)'))
+          return mvp_pb2.QueueStakeResponse(error=mvp_pb2.QueueStakeResponse.Error(catchall=f'bet would exceed creator tolerance ({existing_creator_exposure} existing + {creator_stake} new stake > {predinfo["maximum_stake"]} max)'))
 
       existing_bettor_exposure = self._conn.get_bettor_exposure_cents(PredictionId(request.prediction_id), token_owner(token), bettor_is_a_skeptic=request.bettor_is_a_skeptic)
-      if existing_bettor_exposure + request.bettor_stake_cents > MAX_LEGAL_STAKE_CENTS:
+      if existing_bettor_exposure + request.bettor_stake > MAX_LEGAL_STAKE_CENTS:
         logger.warn('trying to make a bet that would exceed per-market stake limit', request=request)
-        return mvp_pb2.QueueStakeResponse(error=mvp_pb2.QueueStakeResponse.Error(catchall=f'your existing stake of ~${existing_bettor_exposure//100} plus your new stake of ~${request.bettor_stake_cents//100} would put you over the limit of ${MAX_LEGAL_STAKE_CENTS//100} staked in a single prediction; sorry, I hate to be paternalistic, but this site is not yet ready for Big Bets.'))
+        return mvp_pb2.QueueStakeResponse(error=mvp_pb2.QueueStakeResponse.Error(catchall=f'your existing stake of ~${existing_bettor_exposure//100} plus your new stake of ~${request.bettor_stake//100} would put you over the limit of ${MAX_LEGAL_STAKE_CENTS//100} staked in a single prediction; sorry, I hate to be paternalistic, but this site is not yet ready for Big Bets.'))
 
       self._conn.queue_stake(
         prediction_id=PredictionId(request.prediction_id),
         bettor=token_owner(token),
         bettor_is_a_skeptic=request.bettor_is_a_skeptic,
-        bettor_stake_cents=request.bettor_stake_cents,
-        creator_stake_cents=creator_stake_cents,
+        bettor_stake=request.bettor_stake,
+        creator_stake=creator_stake,
         now=now,
       )
       logger.info('trade executed', prediction_id=request.prediction_id, request=request)
@@ -1278,8 +1278,8 @@ def find_invariant_violations(conn: sqlalchemy.engine.base.Connection) -> Sequen
     sqlalchemy.select([
       schema.trades.c.prediction_id,
       schema.trades.c.bettor_is_a_skeptic,
-      schema.predictions.c.maximum_stake_cents,
-      sqlalchemy.sql.func.sum(schema.trades.c.creator_stake_cents).label('exposure'),
+      schema.predictions.c.maximum_stake,
+      sqlalchemy.sql.func.sum(schema.trades.c.creator_stake).label('exposure'),
     ])
     .select_from(schema.trades.join(
       schema.predictions,
@@ -1291,11 +1291,11 @@ def find_invariant_violations(conn: sqlalchemy.engine.base.Connection) -> Sequen
     )
   )
   for row in overstaked_rows:
-    if row['exposure'] > row['maximum_stake_cents']:
+    if row['exposure'] > row['maximum_stake']:
       violations.append({
         'type':'exposure exceeded',
         'prediction_id': row['prediction_id'],
-        'maximum_stake_cents': row['maximum_stake_cents'],
+        'maximum_stake': row['maximum_stake'],
         'actual_exposure': row['exposure'],
       })
   return violations

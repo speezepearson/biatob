@@ -2,6 +2,8 @@ from sqlalchemy import event
 from sqlalchemy import MetaData, Table, Column, Integer, String, BOOLEAN, ForeignKey, BINARY, Index, REAL, CheckConstraint
 import sqlalchemy
 
+from .protobuf import mvp_pb2
+
 metadata = MetaData()
 
 users = Table(
@@ -55,13 +57,14 @@ predictions = Table(
   Column('prediction', String(1024), CheckConstraint('LENGTH(prediction) > 0'), nullable=False),
   Column('certainty_low_p', REAL(), CheckConstraint('0 < certainty_low_p AND certainty_low_p < 1'), nullable=False),
   Column('certainty_high_p', REAL(), CheckConstraint('certainty_low_p <= certainty_high_p AND certainty_high_p <= 1'), nullable=False),
-  Column('maximum_stake_cents', Integer(), CheckConstraint('maximum_stake_cents > 0'), nullable=False),
+  Column('maximum_stake', Integer(), CheckConstraint('maximum_stake > 0'), nullable=False),
   Column('created_at_unixtime', REAL(), nullable=False),
   Column('closes_at_unixtime', REAL(), CheckConstraint('closes_at_unixtime > created_at_unixtime'), nullable=False),
   Column('resolves_at_unixtime', REAL(), CheckConstraint('resolves_at_unixtime > created_at_unixtime'), nullable=False),
   Column('special_rules', String(65535), nullable=False),
   Column('creator', ForeignKey('users.username'), nullable=False),
   Column('resolution_reminder_sent', BOOLEAN(), nullable=False, default=False),
+  Column('currency', String(64), CheckConstraint('resolution IN ({})'.format(', '.join(f"'{r}'" for r in mvp_pb2.Currency.keys()))), nullable=False),
 )
 
 trades = Table(
@@ -70,8 +73,8 @@ trades = Table(
   Column('prediction_id', ForeignKey('predictions.prediction_id'), nullable=False),
   Column('bettor', ForeignKey('users.username'), nullable=False),
   Column('bettor_is_a_skeptic', BOOLEAN(), nullable=False),
-  Column('bettor_stake_cents', Integer(), CheckConstraint('bettor_stake_cents > 0'), nullable=False),
-  Column('creator_stake_cents', Integer(), CheckConstraint('creator_stake_cents > 0'), nullable=False),
+  Column('bettor_stake', Integer(), CheckConstraint('bettor_stake > 0'), nullable=False),
+  Column('creator_stake', Integer(), CheckConstraint('creator_stake > 0'), nullable=False),
   Column('transacted_at_unixtime', REAL(), nullable=False)
 )
 Index('trades_by_prediction_id', trades.c.prediction_id)
@@ -83,8 +86,8 @@ queued_trades = Table(
   Column('prediction_id', ForeignKey('predictions.prediction_id'), nullable=False),
   Column('bettor', ForeignKey('users.username'), nullable=False),
   Column('bettor_is_a_skeptic', BOOLEAN(), nullable=False),
-  Column('bettor_stake_cents', Integer(), CheckConstraint('bettor_stake_cents > 0'), nullable=False),
-  Column('creator_stake_cents', Integer(), CheckConstraint('creator_stake_cents > 0'), nullable=False),
+  Column('bettor_stake', Integer(), CheckConstraint('bettor_stake > 0'), nullable=False),
+  Column('creator_stake', Integer(), CheckConstraint('creator_stake > 0'), nullable=False),
   Column('enqueued_at_unixtime', REAL(), nullable=False),
 )
 Index('queued_trades_by_prediction_id', queued_trades.c.prediction_id)
@@ -95,7 +98,7 @@ resolutions = Table(
   metadata,
   Column('prediction_id', ForeignKey('predictions.prediction_id'), primary_key=True, nullable=False),
   Column('resolved_at_unixtime', REAL(), primary_key=True, nullable=False),
-  Column('resolution', String(64), CheckConstraint("resolution IN ('RESOLUTION_NONE_YET', 'RESOLUTION_YES', 'RESOLUTION_NO', 'RESOLUTION_INVALID')"), nullable=False),
+  Column('resolution', String(64), CheckConstraint('resolution IN ({})'.format(', '.join(f"'{r}'" for r in mvp_pb2.Resolution.keys()))), nullable=False),
   Column('notes', String(65535), nullable=False, default=''),
 )
 Index('resolutions_by_prediction_id', resolutions.c.prediction_id)
@@ -132,6 +135,7 @@ _MIGRATION_STMTS = [
   'DROP TABLE invitation_acceptances',
   'DROP TABLE invitations',
   'ALTER TABLE users ADD COLUMN email_invitation_acceptance_notifications BOOLEAN NOT NULL DEFAULT 1',
+  "ALTER TABLE predictions ADD COLUMN currency BOOLEAN NOT NULL DEFAULT 'USD_CENTS'",
 ]
 _N_MIGRATIONS = len(_MIGRATION_STMTS)
 

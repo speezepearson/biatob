@@ -138,7 +138,7 @@ class TestCUJs:
         prediction='a thing will happen',
         resolves_at_unixtime=clock.now().timestamp() + 86400,
         certainty=mvp_pb2.CertaintyRange(low=0.40, high=0.60),
-        maximum_stake_cents=100_00,
+        maximum_stake=100_00,
         open_seconds=3600,
       ))
 
@@ -150,12 +150,12 @@ class TestCUJs:
     assert GetSettingsOk(any_servicer, friend_token).relationships['creator'].trusts_you
     assert GetSettingsOk(any_servicer, friend_token).relationships['creator'].trusted_by_you
 
-    prediction = StakeOk(any_servicer, friend_token, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_is_a_skeptic=True, bettor_stake_cents=6_00))
+    prediction = StakeOk(any_servicer, friend_token, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_is_a_skeptic=True, bettor_stake=6_00))
     assert list(prediction.your_trades) == [mvp_pb2.Trade(
       bettor=friend_token.owner,
       bettor_is_a_skeptic=True,
-      bettor_stake_cents=6_00,
-      creator_stake_cents=4_00,
+      bettor_stake=6_00,
+      creator_stake=4_00,
       transacted_unixtime=clock.now().timestamp(),
     )]
 
@@ -275,7 +275,7 @@ class TestGetPrediction:
     req_kwargs = dict(
       prediction='a thing will happen',
       special_rules='some special rules',
-      maximum_stake_cents=100_00,
+      maximum_stake=100_00,
       certainty=mvp_pb2.CertaintyRange(low=0.50, high=1.00),
     )
     req = some_create_prediction_request(**req_kwargs)
@@ -286,7 +286,7 @@ class TestGetPrediction:
 
     clock.tick()
     stake_time = clock.now().timestamp()
-    StakeOk(any_servicer, bob_token, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_is_a_skeptic=True, bettor_stake_cents=1_00))
+    StakeOk(any_servicer, bob_token, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_is_a_skeptic=True, bettor_stake=1_00))
 
     clock.tick()
     resolve_time = clock.now().timestamp()
@@ -296,16 +296,16 @@ class TestGetPrediction:
     assert resp == mvp_pb2.UserPredictionView(
       prediction=req.prediction,
       certainty=req.certainty,
-      maximum_stake_cents=req.maximum_stake_cents,
-      remaining_stake_cents_vs_believers=req.maximum_stake_cents,
-      remaining_stake_cents_vs_skeptics=req.maximum_stake_cents - resp.your_trades[0].creator_stake_cents,
+      maximum_stake=req.maximum_stake,
+      remaining_stake_vs_believers=req.maximum_stake,
+      remaining_stake_vs_skeptics=req.maximum_stake - resp.your_trades[0].creator_stake,
       created_unixtime=create_time,
       closes_unixtime=create_time + req.open_seconds,
       resolves_at_unixtime=req.resolves_at_unixtime,
       special_rules=req.special_rules,
       creator='Alice',
       resolutions=[mvp_pb2.ResolutionEvent(unixtime=resolve_time, resolution=mvp_pb2.RESOLUTION_YES)],
-      your_trades=[mvp_pb2.Trade(bettor=bob_token.owner, bettor_is_a_skeptic=True, bettor_stake_cents=1_00, creator_stake_cents=1_00, transacted_unixtime=stake_time)],
+      your_trades=[mvp_pb2.Trade(bettor=bob_token.owner, bettor_is_a_skeptic=True, bettor_stake=1_00, creator_stake=1_00, transacted_unixtime=stake_time)],
     )
 
 
@@ -335,7 +335,7 @@ class TestListMyStakes:
     alice_token, bob_token = alice_bob_tokens(any_servicer)
     prediction_id = CreatePredictionOk(any_servicer, bob_token, {})
     irrelevant_prediction_id = CreatePredictionOk(any_servicer, new_user_token(any_servicer, 'otherrando'), {})
-    StakeOk(any_servicer, alice_token, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_stake_cents=1_00))
+    StakeOk(any_servicer, alice_token, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_stake=1_00))
     assert set(ListMyStakesOk(any_servicer, alice_token).predictions.keys()) == {prediction_id}
 
 
@@ -371,7 +371,7 @@ class TestStake:
     ResolveOk(any_servicer, alice_token, prediction_id, mvp_pb2.RESOLUTION_YES)
 
     with assert_prediction_unchanged(any_servicer, prediction_id=prediction_id, creator_token=alice_token):
-      assert 'prediction has already resolved' in str(StakeErr(any_servicer, bob_token, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_stake_cents=1_00)))
+      assert 'prediction has already resolved' in str(StakeErr(any_servicer, bob_token, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_stake=1_00)))
 
   async def test_error_if_closed(self, clock: MockClock, any_servicer: Servicer):
     alice_token, bob_token = alice_bob_tokens(any_servicer)
@@ -379,38 +379,38 @@ class TestStake:
 
     clock.tick(86401)
     with assert_prediction_unchanged(any_servicer, prediction_id=prediction_id, creator_token=alice_token):
-      assert 'prediction is no longer open for betting' in str(StakeErr(any_servicer, bob_token, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_stake_cents=1_00)))
+      assert 'prediction is no longer open for betting' in str(StakeErr(any_servicer, bob_token, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_stake=1_00)))
 
   async def test_happy_path(self, any_servicer: Servicer, clock: MockClock):
     alice_token, bob_token = alice_bob_tokens(any_servicer)
     prediction_id = CreatePredictionOk(any_servicer, alice_token, dict(
         certainty=mvp_pb2.CertaintyRange(low=0.80, high=0.90),
-        maximum_stake_cents=100_00,
+        maximum_stake=100_00,
     ))
 
     StakeOk(any_servicer, bob_token, mvp_pb2.StakeRequest(
       prediction_id=prediction_id,
       bettor_is_a_skeptic=True,
-      bettor_stake_cents=20_00,
+      bettor_stake=20_00,
     ))
     StakeOk(any_servicer, bob_token, mvp_pb2.StakeRequest(
       prediction_id=prediction_id,
       bettor_is_a_skeptic=False,
-      bettor_stake_cents=90_00,
+      bettor_stake=90_00,
     ))
     assert list(GetPredictionOk(any_servicer, alice_token, prediction_id).your_trades) == [
       mvp_pb2.Trade(
         bettor=bob_token.owner,
         bettor_is_a_skeptic=True,
-        bettor_stake_cents=20_00,
-        creator_stake_cents=80_00,
+        bettor_stake=20_00,
+        creator_stake=80_00,
         transacted_unixtime=clock.now().timestamp(),
       ),
       mvp_pb2.Trade(
         bettor=bob_token.owner,
         bettor_is_a_skeptic=False,
-        bettor_stake_cents=90_00,
-        creator_stake_cents=10_00,
+        bettor_stake=90_00,
+        creator_stake=10_00,
         transacted_unixtime=clock.now().timestamp(),
       ),
     ]
@@ -419,31 +419,31 @@ class TestStake:
     alice_token, bob_token = alice_bob_tokens(any_servicer)
     prediction_id = CreatePredictionOk(any_servicer, alice_token, dict(
         certainty=mvp_pb2.CertaintyRange(low=0.80, high=0.90),
-        maximum_stake_cents=100_00,
+        maximum_stake=100_00,
     ))
 
     StakeOk(any_servicer, bob_token, mvp_pb2.StakeRequest(
       prediction_id=prediction_id,
       bettor_is_a_skeptic=True,
-      bettor_stake_cents=25_00,
+      bettor_stake=25_00,
     ))
     with assert_prediction_unchanged(any_servicer, prediction_id=prediction_id, creator_token=alice_token):
       assert 'bet would exceed creator tolerance' in str(StakeErr(any_servicer, bob_token, mvp_pb2.StakeRequest(
         prediction_id=prediction_id,
         bettor_is_a_skeptic=True,
-        bettor_stake_cents=1,
+        bettor_stake=1,
       )))
 
     StakeOk(any_servicer, bob_token, mvp_pb2.StakeRequest(
       prediction_id=prediction_id,
       bettor_is_a_skeptic=False,
-      bettor_stake_cents=900_00,
+      bettor_stake=900_00,
     ))
     with assert_prediction_unchanged(any_servicer, prediction_id=prediction_id, creator_token=alice_token):
       assert 'bet would exceed creator tolerance' in str(StakeErr(any_servicer, bob_token, mvp_pb2.StakeRequest(
         prediction_id=prediction_id,
         bettor_is_a_skeptic=False,
-        bettor_stake_cents=9,
+        bettor_stake=9,
       )))
 
   async def test_error_if_logged_out(self, any_servicer: Servicer):
@@ -458,7 +458,7 @@ class TestStake:
     bettor_token = new_user_token(any_servicer, 'bettor')
     SetTrustedOk(any_servicer, bettor_token, creator_token.owner, True)
     with assert_prediction_unchanged(any_servicer, prediction_id=prediction_id, creator_token=creator_token):
-      assert "creator doesn\\'t trust you" in str(StakeErr(any_servicer, bettor_token, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_stake_cents=10)))
+      assert "creator doesn\\'t trust you" in str(StakeErr(any_servicer, bettor_token, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_stake=10)))
 
   async def test_error_if_bettor_doesnt_trust_creator(self, any_servicer: Servicer):
     creator_token = new_user_token(any_servicer, 'creator')
@@ -466,7 +466,7 @@ class TestStake:
     bettor_token = new_user_token(any_servicer, 'bettor')
     SetTrustedOk(any_servicer, creator_token, bettor_token.owner, True)
     with assert_prediction_unchanged(any_servicer, prediction_id=prediction_id, creator_token=creator_token):
-      assert "you don\\'t trust the creator" in str(StakeErr(any_servicer, bettor_token, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_stake_cents=10)))
+      assert "you don\\'t trust the creator" in str(StakeErr(any_servicer, bettor_token, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_stake=10)))
 
 
 class TestQueueStake:
@@ -479,7 +479,7 @@ class TestQueueStake:
     ResolveOk(any_servicer, creator_token, prediction_id, mvp_pb2.RESOLUTION_YES)
 
     with assert_prediction_unchanged(any_servicer, prediction_id=prediction_id, creator_token=creator_token):
-      assert 'prediction has already resolved' in str(QueueStakeErr(any_servicer, bettor_token, mvp_pb2.QueueStakeRequest(prediction_id=prediction_id, bettor_stake_cents=1_00)))
+      assert 'prediction has already resolved' in str(QueueStakeErr(any_servicer, bettor_token, mvp_pb2.QueueStakeRequest(prediction_id=prediction_id, bettor_stake=1_00)))
 
   async def test_error_if_closed(self, clock: MockClock, any_servicer: Servicer):
     creator_token = new_user_token(any_servicer, 'creator')
@@ -489,7 +489,7 @@ class TestQueueStake:
 
     clock.tick(86401)
     with assert_prediction_unchanged(any_servicer, prediction_id=prediction_id, creator_token=creator_token):
-      assert 'prediction is no longer open for betting' in str(QueueStakeErr(any_servicer, bettor_token, mvp_pb2.QueueStakeRequest(prediction_id=prediction_id, bettor_stake_cents=1_00)))
+      assert 'prediction is no longer open for betting' in str(QueueStakeErr(any_servicer, bettor_token, mvp_pb2.QueueStakeRequest(prediction_id=prediction_id, bettor_stake=1_00)))
 
   async def test_appears_in_your_queued_trades(self, any_servicer: Servicer, clock: MockClock):
     creator_token = new_user_token(any_servicer, 'creator')
@@ -497,20 +497,20 @@ class TestQueueStake:
     SetTrustedOk(any_servicer, bettor_token, creator_token.owner, True)
     prediction_id = CreatePredictionOk(any_servicer, creator_token, dict(
         certainty=mvp_pb2.CertaintyRange(low=0.80, high=0.90),
-        maximum_stake_cents=100_00,
+        maximum_stake=100_00,
     ))
 
     QueueStakeOk(any_servicer, bettor_token, mvp_pb2.QueueStakeRequest(
       prediction_id=prediction_id,
       bettor_is_a_skeptic=True,
-      bettor_stake_cents=20_00,
+      bettor_stake=20_00,
     ))
     assert list(GetPredictionOk(any_servicer, creator_token, prediction_id).your_queued_trades) == [
       mvp_pb2.QueuedTrade(
         bettor=bettor_token.owner,
         bettor_is_a_skeptic=True,
-        bettor_stake_cents=20_00,
-        creator_stake_cents=80_00,
+        bettor_stake=20_00,
+        creator_stake=80_00,
         enqueued_at_unixtime=clock.now().timestamp(),
       ),
     ]
@@ -519,13 +519,13 @@ class TestQueueStake:
     alice_token, bob_token = alice_bob_tokens(any_servicer)
     prediction_id = CreatePredictionOk(any_servicer, alice_token, dict(
         certainty=mvp_pb2.CertaintyRange(low=0.80, high=0.90),
-        maximum_stake_cents=100_00,
+        maximum_stake=100_00,
     ))
 
     assert 'you already trust the creator, so you should be using the Stake endpoint, not QueueStake' in str(QueueStakeErr(any_servicer, bob_token, mvp_pb2.QueueStakeRequest(
       prediction_id=prediction_id,
       bettor_is_a_skeptic=True,
-      bettor_stake_cents=20_00,
+      bettor_stake=20_00,
     )))
 
   async def test_queued_stakes_dont_count_against_exposure(self, any_servicer: Servicer):
@@ -534,23 +534,23 @@ class TestQueueStake:
     SetTrustedOk(any_servicer, bettor_token, creator_token.owner, True)
     prediction_id = CreatePredictionOk(any_servicer, creator_token, dict(
         certainty=mvp_pb2.CertaintyRange(low=0.50, high=1.00),
-        maximum_stake_cents=100_00,
+        maximum_stake=100_00,
     ))
 
     QueueStakeOk(any_servicer, bettor_token, mvp_pb2.QueueStakeRequest(
       prediction_id=prediction_id,
       bettor_is_a_skeptic=True,
-      bettor_stake_cents=100_00,
+      bettor_stake=100_00,
     ))
 
     prediction = GetPredictionOk(any_servicer, creator_token, prediction_id)
-    assert prediction.remaining_stake_cents_vs_skeptics == prediction.maximum_stake_cents
+    assert prediction.remaining_stake_vs_skeptics == prediction.maximum_stake
 
     # ensure an actual friend can come along and bet for the full amount
     StakeOk(any_servicer, friend_token, mvp_pb2.StakeRequest(
       prediction_id=prediction_id,
       bettor_is_a_skeptic=True,
-      bettor_stake_cents=100_00,
+      bettor_stake=100_00,
     ))
 
   async def test_prevents_overpromising(self, any_servicer: Servicer):
@@ -559,19 +559,19 @@ class TestQueueStake:
     SetTrustedOk(any_servicer, bettor_token, creator_token.owner, True)
     prediction_id = CreatePredictionOk(any_servicer, creator_token, dict(
         certainty=mvp_pb2.CertaintyRange(low=0.80, high=0.90),
-        maximum_stake_cents=100_00,
+        maximum_stake=100_00,
     ))
 
     StakeOk(any_servicer, friend_token, mvp_pb2.StakeRequest(  # This is an ACTUAL stake, not just a queued stake, since queued stakes don't count against exposure
       prediction_id=prediction_id,
       bettor_is_a_skeptic=True,
-      bettor_stake_cents=25_00,
+      bettor_stake=25_00,
     ))
     with assert_prediction_unchanged(any_servicer, prediction_id=prediction_id, creator_token=creator_token):
       assert 'bet would exceed creator tolerance' in str(QueueStakeErr(any_servicer, bettor_token, mvp_pb2.QueueStakeRequest(
         prediction_id=prediction_id,
         bettor_is_a_skeptic=True,
-        bettor_stake_cents=1,
+        bettor_stake=1,
       )))
 
   async def test_partially_applies_queued_trade(self, any_servicer: Servicer):
@@ -580,26 +580,26 @@ class TestQueueStake:
     SetTrustedOk(any_servicer, bettor_token, creator_token.owner, True)
     prediction_id = CreatePredictionOk(any_servicer, creator_token, dict(
         certainty=mvp_pb2.CertaintyRange(low=0.80, high=1.00),
-        maximum_stake_cents=100_00,
+        maximum_stake=100_00,
     ))
 
     QueueStakeOk(any_servicer, bettor_token, mvp_pb2.QueueStakeRequest(  # This is an ACTUAL stake, not just a queued stake, since queued stakes don't count against exposure
       prediction_id=prediction_id,
       bettor_is_a_skeptic=True,
-      bettor_stake_cents=20_00,
+      bettor_stake=20_00,
     ))
     StakeOk(any_servicer, friend_token, mvp_pb2.StakeRequest(  # This is an ACTUAL stake, not just a queued stake, since queued stakes don't count against exposure
       prediction_id=prediction_id,
       bettor_is_a_skeptic=True,
-      bettor_stake_cents=10_00,
+      bettor_stake=10_00,
     ))
 
     SetTrustedOk(any_servicer, creator_token, bettor_token.owner, True)
     pred = GetPredictionOk(any_servicer, creator_token, prediction_id)
     [first_trade] = [t for t in pred.your_trades if t.bettor == friend_token.owner]
     [dequeued_trade] = [t for t in pred.your_trades if t.bettor == bettor_token.owner]
-    assert dequeued_trade.creator_stake_cents == pred.maximum_stake_cents - first_trade.creator_stake_cents
-    assert dequeued_trade.bettor_stake_cents == dequeued_trade.creator_stake_cents / 4
+    assert dequeued_trade.creator_stake == pred.maximum_stake - first_trade.creator_stake
+    assert dequeued_trade.bettor_stake == dequeued_trade.creator_stake / 4
     assert not GetPredictionOk(any_servicer, bettor_token, prediction_id).your_queued_trades
 
   async def test_does_not_apply_trivial_partial_queued_trade(self, any_servicer: Servicer):
@@ -608,24 +608,24 @@ class TestQueueStake:
     SetTrustedOk(any_servicer, bettor_token, creator_token.owner, True)
     prediction_id = CreatePredictionOk(any_servicer, creator_token, dict(
         certainty=mvp_pb2.CertaintyRange(low=0.50, high=1.00),
-        maximum_stake_cents=100_00,
+        maximum_stake=100_00,
     ))
 
     QueueStakeOk(any_servicer, bettor_token, mvp_pb2.QueueStakeRequest(  # This is an ACTUAL stake, not just a queued stake, since queued stakes don't count against exposure
       prediction_id=prediction_id,
       bettor_is_a_skeptic=True,
-      bettor_stake_cents=20_00,
+      bettor_stake=20_00,
     ))
     StakeOk(any_servicer, friend_token, mvp_pb2.StakeRequest(  # This is an ACTUAL stake, not just a queued stake, since queued stakes don't count against exposure
       prediction_id=prediction_id,
       bettor_is_a_skeptic=True,
-      bettor_stake_cents=99_99,
+      bettor_stake=99_99,
     ))
 
     SetTrustedOk(any_servicer, creator_token, bettor_token.owner, True)
     pred = GetPredictionOk(any_servicer, creator_token, prediction_id)
     assert [t.bettor for t in pred.your_trades] == [friend_token.owner]
-    assert pred.remaining_stake_cents_vs_skeptics == pred.maximum_stake_cents - 99_99
+    assert pred.remaining_stake_vs_skeptics == pred.maximum_stake - 99_99
     assert not GetPredictionOk(any_servicer, bettor_token, prediction_id).your_queued_trades
 
   async def test_error_if_logged_out(self, any_servicer: Servicer):
@@ -639,7 +639,7 @@ class TestQueueStake:
     prediction_id = CreatePredictionOk(any_servicer, creator_token, {})
     bettor_token = new_user_token(any_servicer, 'bettor')
     SetTrustedOk(any_servicer, bettor_token, creator_token.owner, True)
-    QueueStakeOk(any_servicer, bettor_token, mvp_pb2.QueueStakeRequest(prediction_id=prediction_id, bettor_stake_cents=10))
+    QueueStakeOk(any_servicer, bettor_token, mvp_pb2.QueueStakeRequest(prediction_id=prediction_id, bettor_stake=10))
     assert GetPredictionOk(any_servicer, bettor_token, prediction_id).your_queued_trades
 
   async def test_error_if_bettor_doesnt_trust_creator(self, any_servicer: Servicer):
@@ -648,7 +648,7 @@ class TestQueueStake:
     bettor_token = new_user_token(any_servicer, 'bettor')
     SetTrustedOk(any_servicer, creator_token, bettor_token.owner, True)
     with assert_prediction_unchanged(any_servicer, prediction_id=prediction_id, creator_token=creator_token):
-      assert "you don\\'t trust the creator" in str(QueueStakeErr(any_servicer, bettor_token, mvp_pb2.QueueStakeRequest(prediction_id=prediction_id, bettor_stake_cents=10)))
+      assert "you don\\'t trust the creator" in str(QueueStakeErr(any_servicer, bettor_token, mvp_pb2.QueueStakeRequest(prediction_id=prediction_id, bettor_stake=10)))
 
 
 class TestResolve:
@@ -707,7 +707,7 @@ class TestResolve:
     UpdateSettingsOk(any_servicer, bob_token, email_resolution_notifications=True)
 
     prediction_id = CreatePredictionOk(any_servicer, alice_token, dict(prediction='a thing will happen'))
-    StakeOk(any_servicer, bob_token, request=mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_is_a_skeptic=True, bettor_stake_cents=10))
+    StakeOk(any_servicer, bob_token, request=mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_is_a_skeptic=True, bettor_stake=10))
 
     ResolveOk(any_servicer, alice_token, prediction_id, mvp_pb2.RESOLUTION_YES)
     emailer.send_resolution_notifications.assert_called_once_with(  # type: ignore
@@ -765,22 +765,22 @@ class TestSetTrusted:
     SetTrustedOk(any_servicer, bettor_token, creator_token.owner, True)
     prediction_id = CreatePredictionOk(any_servicer, creator_token, dict(
       certainty=mvp_pb2.CertaintyRange(low=0.50, high=1.00),
-      maximum_stake_cents=100_00,
+      maximum_stake=100_00,
     ))
     QueueStakeOk(any_servicer, bettor_token, mvp_pb2.QueueStakeRequest(
       prediction_id=prediction_id,
       bettor_is_a_skeptic=True,
-      bettor_stake_cents=20_00,
+      bettor_stake=20_00,
     ))
     prediction = GetPredictionOk(any_servicer, creator_token, prediction_id)
-    assert prediction.remaining_stake_cents_vs_skeptics == 100_00
+    assert prediction.remaining_stake_vs_skeptics == 100_00
     assert not prediction.your_trades
     assert prediction.your_queued_trades
 
     SetTrustedOk(any_servicer, creator_token, bettor_token.owner, True)
 
     prediction = GetPredictionOk(any_servicer, creator_token, prediction_id)
-    assert prediction.remaining_stake_cents_vs_skeptics == 80_00
+    assert prediction.remaining_stake_vs_skeptics == 80_00
     assert prediction.your_trades
     assert not prediction.your_queued_trades
 
@@ -1075,18 +1075,18 @@ class TestAcceptInvitation:
 
     prediction_id = CreatePredictionOk(any_servicer, creator_token, dict(
       certainty=mvp_pb2.CertaintyRange(low=0.50, high=1.00),
-      maximum_stake_cents=100_00,
+      maximum_stake=100_00,
     ))
     SendInvitationOk(any_servicer, bettor_token, 'creator')
     QueueStakeOk(any_servicer, bettor_token, mvp_pb2.QueueStakeRequest(
       prediction_id=prediction_id,
       bettor_is_a_skeptic=True,
-      bettor_stake_cents=20_00,
+      bettor_stake=20_00,
     ))
     AcceptInvitationOk(any_servicer, creator_token, get_call_kwarg(emailer.send_invitation, 'nonce'))
 
     prediction = GetPredictionOk(any_servicer, creator_token, prediction_id)
-    assert prediction.remaining_stake_cents_vs_skeptics == 80_00
+    assert prediction.remaining_stake_vs_skeptics == 80_00
     assert prediction.your_trades
     assert not prediction.your_queued_trades
 

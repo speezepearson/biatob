@@ -32,9 +32,10 @@ mockPrediction : Pb.UserPredictionView
 mockPrediction =
   { prediction = "a thing will happen"
   , certainty = Just {low = 0.10 , high = 0.70}
-  , maximumStakeCents = 10000
-  , remainingStakeCentsVsBelievers = 10000
-  , remainingStakeCentsVsSkeptics = 10000
+  , stakeDenomination = Pb.CurrencyUsCents
+  , maximumStake = 10000
+  , remainingStakeVsBelievers = 10000
+  , remainingStakeVsSkeptics = 10000
   , createdUnixtime = 0
   , closesUnixtime = 100
   , specialRules = ""
@@ -50,8 +51,8 @@ exampleTrade : Pb.Trade
 exampleTrade =
   { bettor = "bettor"
   , bettorIsASkeptic = False
-  , bettorStakeCents = 7
-  , creatorStakeCents = 13
+  , bettorStake = 7
+  , creatorStake = 13
   , transactedUnixtime = 0
   }
 embeddedLinkTextTest : Test
@@ -59,10 +60,10 @@ embeddedLinkTextTest =
   describe "embeddedLinkText"
   [ test "with both low and high probs set" <|
     \() -> Expect.equal "(bet: $100 at 10-30%)"
-          <| embeddedLinkText exampleOrigin examplePredictionId { mockPrediction | certainty = Just {low = 0.10 , high = 0.30} , maximumStakeCents = 10000 }
+          <| embeddedLinkText exampleOrigin examplePredictionId { mockPrediction | certainty = Just {low = 0.10 , high = 0.30} , maximumStake = 10000 }
   , test "with only low prob set" <|
     \() -> Expect.equal "(bet: $100 at 10%)"
-          <| embeddedLinkText exampleOrigin examplePredictionId { mockPrediction | certainty = Just {low = 0.10 , high = 1.00} , maximumStakeCents = 10000 }
+          <| embeddedLinkText exampleOrigin examplePredictionId { mockPrediction | certainty = Just {low = 0.10 , high = 1.00} , maximumStake = 10000 }
   ]
 
 embeddedImageUrlTest : Test
@@ -79,7 +80,7 @@ expectContains q s =
 embeddingCodeTest : Test
 embeddingCodeTest =
   let
-    prediction = { mockPrediction | certainty = Just {low = 0.10 , high = 1.00} , maximumStakeCents = 10000 }
+    prediction = { mockPrediction | certainty = Just {low = 0.10 , high = 1.00} , maximumStake = 10000 }
   in
   describe "embeddingCode"
   [ describe "links"
@@ -128,11 +129,11 @@ getBetParametersTest =
     [ test "uses VsSkeptics vs skeptics" <|
       \() -> Expect.equal 4358
             <| .remainingCreatorStake
-            <| getBetParameters True { mockPrediction | remainingStakeCentsVsSkeptics = 4358 }
+            <| getBetParameters True { mockPrediction | remainingStakeVsSkeptics = 4358 }
     , test "uses VsBelievers vs believers" <|
       \() -> Expect.equal 56484
             <| .remainingCreatorStake
-            <| getBetParameters False { mockPrediction | remainingStakeCentsVsBelievers = 56484 }
+            <| getBetParameters False { mockPrediction | remainingStakeVsBelievers = 56484 }
     ]
   , describe "creatorStakeFactor"
     [ test "computes correct ratio against skeptics" <|
@@ -150,12 +151,12 @@ getBetParametersTest =
         if lowP == 0 || lowP == 1 then Expect.pass else
         Expect.atMost remainingStake
         <| (\bet -> floor (toFloat bet.maxBettorStake * bet.creatorStakeFactor))
-        <| getBetParameters True { mockPrediction | certainty = Just {low=lowP, high=1.00} , remainingStakeCentsVsSkeptics = remainingStake }
+        <| getBetParameters True { mockPrediction | certainty = Just {low=lowP, high=1.00} , remainingStakeVsSkeptics = remainingStake }
     , fuzz2 percentage (intRange 0 100) "never suggests a zero-to-nonzero-stake bet" <|
       \lowP remainingStake ->
         if lowP == 0 || lowP == 1 then Expect.pass else
         let
-          bet = getBetParameters True { mockPrediction | certainty = Just {low=lowP, high=1.00} , remainingStakeCentsVsSkeptics = remainingStake }
+          bet = getBetParameters True { mockPrediction | certainty = Just {low=lowP, high=1.00} , remainingStakeVsSkeptics = remainingStake }
           bettorStake = bet.maxBettorStake
           creatorStake = floor (toFloat bet.maxBettorStake * bet.creatorStakeFactor)
         in

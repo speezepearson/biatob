@@ -92,7 +92,7 @@ embeddedLinkText httpOrigin predictionId prediction =
     certainty = Utils.mustPredictionCertainty prediction
   in
     "(bet: "
-    ++ Utils.formatCents (prediction.maximumStakeCents // 100 * 100)
+    ++ Utils.formatCents (prediction.maximumStake // 100 * 100)
     ++ " at "
     ++ String.fromInt (round <| certainty.low * 100)
     ++ (if certainty.high < 1 then
@@ -120,7 +120,7 @@ embeddingPreview httpOrigin predictionId prediction fields =
     linkUrl = httpOrigin ++ Utils.pathToPrediction predictionId
     text = embeddedLinkText httpOrigin predictionId prediction
   in
-  case fields.contentType |> Debug.log "contentType" of
+  case fields.contentType of
     Link -> H.a [HA.href linkUrl] [H.text text]
     Image ->
       H.a [HA.href linkUrl]
@@ -338,13 +338,13 @@ getBetParameters bettorIsASkeptic prediction =
     queuedCreatorStake =
       prediction.yourQueuedTrades
       |> List.filter (.bettorIsASkeptic >> (==) bettorIsASkeptic)
-      |> List.map .creatorStakeCents
+      |> List.map .creatorStake
       |> List.sum
     remainingCreatorStake =
       if bettorIsASkeptic then
-        (prediction.remainingStakeCentsVsSkeptics - queuedCreatorStake)
+        (prediction.remainingStakeVsSkeptics - queuedCreatorStake)
       else
-        (prediction.remainingStakeCentsVsBelievers - queuedCreatorStake)
+        (prediction.remainingStakeVsBelievers - queuedCreatorStake)
     maxBettorStake =
       (if creatorStakeFactor == 0 then
         0
@@ -352,7 +352,7 @@ getBetParameters bettorIsASkeptic prediction =
         toFloat remainingCreatorStake / creatorStakeFactor + epsilon |> floor
       )
       |> (\n -> if toFloat n * creatorStakeFactor < 1 then 0 else n )
-      |> min Utils.maxLegalStakeCents
+      |> min Utils.maxLegalStake
   in
     { remainingCreatorStake = remainingCreatorStake
     , creatorStakeFactor = creatorStakeFactor
@@ -443,7 +443,7 @@ viewBody model =
             , H.br [] []
             , viewTradesAsBettor model.globals.timeZone prediction
               <| List.map
-                  (\qt -> {bettor=qt.bettor, bettorIsASkeptic=qt.bettorIsASkeptic, bettorStakeCents=qt.bettorStakeCents, creatorStakeCents=qt.creatorStakeCents, transactedUnixtime=qt.enqueuedAtUnixtime})
+                  (\qt -> {bettor=qt.bettor, bettorIsASkeptic=qt.bettorIsASkeptic, bettorStake=qt.bettorStake, creatorStake=qt.creatorStake, transactedUnixtime=qt.enqueuedAtUnixtime})
                   prediction.yourQueuedTrades
             ]
           , H.hr [HA.class "my-4"] []
@@ -463,7 +463,7 @@ viewBody model =
             [ H.h4 [HA.class "text-center"] [H.text "Make a bet"]
             , Utils.renderUser prediction.creator
             , H.text " has already accepted so many bets that they've reached their maximum risk of "
-            , H.text <| Utils.formatCents prediction.maximumStakeCents
+            , H.text <| Utils.formatCents prediction.maximumStake
             , H.text "! So, sadly, no further betting is possible."
             ]
           NeedsAccount ->
@@ -681,14 +681,14 @@ viewStakeWidget bettability model =
     prediction = mustPrediction model
 
     betParameters = getBetParameters model.bettorIsASkeptic prediction
-    stakeCents = case String.toFloat model.stakeField of
+    stake = case String.toFloat model.stakeField of
       Nothing -> Err "must be a number"
       Just dollars ->
         let n = floor (100*dollars) in
         if n < 0 || n > betParameters.maxBettorStake then
           Err <|
             "must be between $0 and " ++ Utils.formatCents betParameters.maxBettorStake
-            ++ ": " ++ if betParameters.maxBettorStake == Utils.maxLegalStakeCents then
+            ++ ": " ++ if betParameters.maxBettorStake == Utils.maxLegalStake then
                 "I don't (yet) want this site used for enormous bets"
               else
                 (prediction.creator ++ " isn't willing to make larger bets")
@@ -704,13 +704,13 @@ viewStakeWidget bettability model =
         , HA.id "stakeField"
         , HE.onInput SetStakeField
         , HA.value model.stakeField
-        , HA.class (if isOk stakeCents then "" else "is-invalid")
+        , HA.class (if isOk stake then "" else "is-invalid")
         ]
         []
     , H.text " that this "
     , viewWillWontDropdown model
     , H.text <| " happen, against " ++ prediction.creator ++ "'s "
-    , Utils.b (stakeCents |> Result.map (toFloat >> (*) betParameters.creatorStakeFactor >> floor >> Utils.formatCents) |> Result.withDefault "???")
+    , Utils.b (stake |> Result.map (toFloat >> (*) betParameters.creatorStakeFactor >> floor >> Utils.formatCents) |> Result.withDefault "???")
     , H.text " that it "
     , H.text <| if model.bettorIsASkeptic then "will" else "won't"
     , H.text ". "
@@ -720,7 +720,7 @@ viewStakeWidget bettability model =
           QueueingUnnecessary -> "btn-primary"
       in
       H.button
-        (HA.class ("btn btn-sm py-0 " ++ primarity) :: case stakeCents of
+        (HA.class ("btn btn-sm py-0 " ++ primarity) :: case stake of
           Ok 0 ->
             [ HA.disabled True ]
           Ok cents ->
@@ -750,36 +750,36 @@ viewStakeWidget bettability model =
           ]
         QueueingUnnecessary -> H.text ""
     , if model.bettorIsASkeptic then
-        if prediction.remainingStakeCentsVsSkeptics /= prediction.maximumStakeCents then
+        if prediction.remainingStakeVsSkeptics /= prediction.maximumStake then
           H.div [HA.style "opacity" "50%"]
-          <|  if prediction.remainingStakeCentsVsSkeptics == 0 then
+          <|  if prediction.remainingStakeVsSkeptics == 0 then
                 [ Utils.renderUser prediction.creator
-                , H.text <| " has reached their limit of " ++ Utils.formatCents prediction.maximumStakeCents
+                , H.text <| " has reached their limit of " ++ Utils.formatCents prediction.maximumStake
                 , H.text " on this bet, and isn't willing to risk losing any more!"
                 ]
               else
-                [ H.text <| "Only " ++ Utils.formatCents prediction.remainingStakeCentsVsSkeptics ++ " of "
+                [ H.text <| "Only " ++ Utils.formatCents prediction.remainingStakeVsSkeptics ++ " of "
                 , Utils.renderUser prediction.creator
                 , H.text <| "'s initial stake remains, since they've already accepted some bets."
                 ]
         else
           H.text ""
       else
-        if prediction.remainingStakeCentsVsBelievers /= prediction.maximumStakeCents then
+        if prediction.remainingStakeVsBelievers /= prediction.maximumStake then
           H.div [HA.style "opacity" "50%"]
-          <|  if prediction.remainingStakeCentsVsBelievers == 0 then
+          <|  if prediction.remainingStakeVsBelievers == 0 then
                 [ Utils.renderUser prediction.creator
-                , H.text <| " has reached their limit of " ++ Utils.formatCents prediction.maximumStakeCents
+                , H.text <| " has reached their limit of " ++ Utils.formatCents prediction.maximumStake
                 , H.text " on this bet, and isn't willing to risk losing any more!"
                 ]
               else
-                [ H.text <| "Only " ++ Utils.formatCents prediction.remainingStakeCentsVsBelievers ++ " of "
+                [ H.text <| "Only " ++ Utils.formatCents prediction.remainingStakeVsBelievers ++ " of "
                 , Utils.renderUser prediction.creator
                 , H.text <| "'s initial stake remains, since they've already accepted some bets."
                 ]
         else
           H.text ""
-    , H.div [HA.class "invalid-feedback"] [viewError stakeCents]
+    , H.div [HA.class "invalid-feedback"] [viewError stake]
     ]
 
 getTitleTextChunks : Time.Zone -> Pb.UserPredictionView -> List String
@@ -809,7 +809,7 @@ viewSummaryTable now timeZone prediction =
       ]
     , H.tr []
       [ H.th [HA.scope "row"] [H.text "Stakes:"]
-      , H.td [] [H.text <| "up to " ++ Utils.formatCents prediction.maximumStakeCents]
+      , H.td [] [H.text <| "up to " ++ Utils.formatCents prediction.maximumStake]
       ]
     , H.tr []
       [ H.th [HA.scope "row"] [H.text "Created on:"]
@@ -909,10 +909,10 @@ viewTradesAsCreator timeZone prediction =
           , \t -> [H.text <| if t.bettorIsASkeptic then "will happen" else "will not happen"]
           )
         , ( [H.text "Your stake"]
-          , \t -> [H.text <| Utils.formatCents t.creatorStakeCents]
+          , \t -> [H.text <| Utils.formatCents t.creatorStake]
           )
         , ( [Utils.renderUser bettor, H.text "'s stake"]
-          , \t -> [H.text <| Utils.formatCents t.bettorStakeCents]
+          , \t -> [H.text <| Utils.formatCents t.bettorStake]
           )
         ]
         trades
@@ -973,10 +973,10 @@ viewTradesAsBettor timeZone prediction trades =
           , \t -> [H.text <| if t.bettorIsASkeptic then "it won't happen" else "it will happen"]
           )
         , ( [H.text "You staked"]
-          , \t -> [H.text <| Utils.formatCents t.bettorStakeCents]
+          , \t -> [H.text <| Utils.formatCents t.bettorStake]
           )
         , ( [Utils.renderUser prediction.creator, H.text "'s stake"]
-          , \t -> [H.text <| Utils.formatCents t.creatorStakeCents]
+          , \t -> [H.text <| Utils.formatCents t.creatorStake]
           )
         ]
         trades
@@ -1015,7 +1015,7 @@ viewTradesAsBettor timeZone prediction trades =
 getTotalCreatorWinnings : Bool -> List Pb.Trade -> Cents
 getTotalCreatorWinnings resolvedYes trades =
   trades
-  |> List.map (\t -> if (resolvedYes == t.bettorIsASkeptic) then t.bettorStakeCents else -t.creatorStakeCents)
+  |> List.map (\t -> if (resolvedYes == t.bettorIsASkeptic) then t.bettorStake else -t.creatorStake)
   |> List.sum
 
 groupTradesByBettor : List Pb.Trade -> Dict Username (List Pb.Trade)
@@ -1100,7 +1100,7 @@ viewWhatIsThis predictionId prediction =
       ]
   , H.p []
       [ Utils.renderUser prediction.creator
-      , H.text <| " is putting their money where their mouth is: they've staked " ++ Utils.formatCents prediction.maximumStakeCents ++ " of real-life money on this prediction,"
+      , H.text <| " is putting their money where their mouth is: they've staked " ++ Utils.formatCents prediction.maximumStake ++ " of real-life money on this prediction,"
           ++ " and they're willing to bet at the above odds against anybody they trust. Good for them!"
       ]
   , H.p []
@@ -1227,7 +1227,7 @@ update msg model =
       )
     Stake cents ->
       ( { model | stakeStatus = AwaitingResponse }
-      , let req = {predictionId=model.predictionId, bettorIsASkeptic=model.bettorIsASkeptic, bettorStakeCents=cents} in API.postStake (StakeFinished req) req
+      , let req = {predictionId=model.predictionId, bettorIsASkeptic=model.bettorIsASkeptic, bettorStake=cents} in API.postStake (StakeFinished req) req
       )
     StakeFinished req res ->
       ( case API.simplifyStakeResponse res of
@@ -1243,7 +1243,7 @@ update msg model =
       )
     QueueStake cents ->
       ( { model | stakeStatus = AwaitingResponse }
-      , let req = {predictionId=model.predictionId, bettorIsASkeptic=model.bettorIsASkeptic, bettorStakeCents=cents} in API.postQueueStake (QueueStakeFinished req) req
+      , let req = {predictionId=model.predictionId, bettorIsASkeptic=model.bettorIsASkeptic, bettorStake=cents} in API.postQueueStake (QueueStakeFinished req) req
       )
     QueueStakeFinished req res ->
       ( case API.simplifyQueueStakeResponse res of

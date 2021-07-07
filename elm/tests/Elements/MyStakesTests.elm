@@ -13,9 +13,10 @@ mockPrediction : Pb.UserPredictionView
 mockPrediction =
   { prediction = "a thing will happen"
   , certainty = Just {low = 0.10 , high = 0.90}
-  , maximumStakeCents = 10000
-  , remainingStakeCentsVsBelievers = 10000
-  , remainingStakeCentsVsSkeptics = 10000
+  , stakeDenomination = Pb.CurrencyUsCents
+  , maximumStake = 10000
+  , remainingStakeVsBelievers = 10000
+  , remainingStakeVsSkeptics = 10000
   , createdUnixtime = 0
   , closesUnixtime = 100
   , specialRules = ""
