@@ -23,6 +23,15 @@ type alias Cents = Int
 type alias PredictionId = String
 type alias InvitationNonce = String
 
+type BetSide = Skeptic | Believer
+betSideToIsSkeptical : BetSide -> Bool
+betSideToIsSkeptical side = case side of
+  Skeptic -> True
+  Believer -> False
+betSideFromIsSkeptical : Bool -> BetSide
+betSideFromIsSkeptical isSkeptical =
+  if isSkeptical then Skeptic else Believer
+
 maxLegalStakeCents = 500000
 
 illegalUsernameCharacters : String -> Set.Set Char
