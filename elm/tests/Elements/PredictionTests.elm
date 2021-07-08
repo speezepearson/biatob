@@ -1,10 +1,7 @@
 module Elements.PredictionTests exposing (..)
 
-import  Bytes.Encode
-import Json.Decode as JD
-import Json.Encode as JE
-import Expect exposing (Expectation)
-import Fuzz exposing (Fuzzer, intRange, percentage)
+import Expect
+import Fuzz exposing (intRange, percentage)
 import Html as H
 import Html.Attributes as HA
 import Test exposing (..)
@@ -14,13 +11,7 @@ import Test.Html.Selector as HS
 
 import Globals
 import Biatob.Proto.Mvp as Pb
-import Widgets.AuthWidget as AuthWidget
-import Widgets.EmailSettingsWidget as EmailSettingsWidget
 import Elements.Prediction exposing (..)
-import Utils exposing (unixtimeToTime)
-import Time
-import Dict
-import Utils exposing (Username)
 import TestUtils as TU exposing (exampleGlobals)
 import Elements.MyStakesTests exposing (exampleResolutionEvent)
 
@@ -168,8 +159,167 @@ makeModel globals prediction =
   initInternal (globals |> TU.addPrediction "my-predid" prediction) "my-predid"
 
 viewModelForTest : Model -> HQ.Single Msg
-viewModelForTest model =
-  HQ.fromHtml <| H.div [] <| .body <| view model
+viewModelForTest =
+  view >> .body >> H.div [] >> HQ.fromHtml
+
+buttonSelector : String -> HS.Selector
+buttonSelector text =
+  HS.all [HS.tag "button", HS.containing [HS.text text]]
+
+findButton : String -> HQ.Single msg -> HQ.Single msg
+findButton text =
+  HQ.find [buttonSelector text]
+
+fuzzFinalResolutions : Fuzz.Fuzzer Pb.Resolution
+fuzzFinalResolutions =
+  Fuzz.oneOf
+  <| List.map Fuzz.constant
+  <| [ Pb.ResolutionYes
+     , Pb.ResolutionNoneYet
+     , Pb.ResolutionInvalid
+     ]
+fuzzResolutions : Fuzz.Fuzzer Pb.Resolution
+fuzzResolutions =
+  Fuzz.oneOf
+  <| List.map Fuzz.constant
+  <| [ Pb.ResolutionNoneYet
+     , Pb.ResolutionYes
+     , Pb.ResolutionNoneYet
+     , Pb.ResolutionInvalid
+     ]
+
+fuzzRequestStatus : Fuzz.Fuzzer RequestStatus
+fuzzRequestStatus =
+  Fuzz.oneOf
+  <| [ Fuzz.constant Unstarted
+     , Fuzz.constant AwaitingResponse
+     , Fuzz.constant Succeeded
+     , Fuzz.map Failed Fuzz.string
+     ]
+
+viewResolutionFormTest : Test
+viewResolutionFormTest =
+  let
+    yesButtonText = "It happened!"
+    noButtonText = "It didn't happen!"
+    invalidButtonText = "Invalid prediction / impossible to resolve"
+    unresolveButtonText = "un-resolve it."
+  in
+  describe "viewResolutionForm"
+  [ describe "unresolved"
+    [ test "has buttons for yes/no/invalid" <|
+      \() -> viewResolutionForm "" Unstarted Pb.ResolutionNoneYet
+              |> HQ.fromHtml
+              |> Expect.all
+                  [ findButton yesButtonText     >> HEM.simulate HEM.click >> HEM.expect (Resolve Pb.ResolutionYes)
+                  , findButton noButtonText      >> HEM.simulate HEM.click >> HEM.expect (Resolve Pb.ResolutionNo)
+                  , findButton invalidButtonText >> HEM.simulate HEM.click >> HEM.expect (Resolve Pb.ResolutionInvalid)
+                  ]
+    , test "has no button for un-resolving" <|
+      \() -> viewResolutionForm "" Unstarted Pb.ResolutionNoneYet
+              |> HQ.fromHtml
+              |> HQ.hasNot [buttonSelector unresolveButtonText]
+    ]
+  , describe "resolved"
+    [ test "has button for un-resolving" <|
+      \() -> viewResolutionForm "" Unstarted Pb.ResolutionYes
+              |> HQ.fromHtml
+              |> findButton unresolveButtonText
+              |> HEM.simulate HEM.click
+              |> HEM.expect (Resolve Pb.ResolutionNoneYet)
+    , test "has no buttons for yes/no/invalid" <|
+      \() -> viewResolutionForm "" Unstarted Pb.ResolutionYes
+              |> HQ.fromHtml
+              |> Expect.all
+                  [ HQ.hasNot [HS.containing [buttonSelector yesButtonText]]
+                  , HQ.hasNot [HS.containing [buttonSelector noButtonText]]
+                  , HQ.hasNot [HS.containing [buttonSelector invalidButtonText]]
+                  ]
+    ]
+  , describe "notes field"
+    [ fuzz2 fuzzResolutions Fuzz.string "value is notes field" <| \res val ->
+        viewResolutionForm val Unstarted res
+        |> HQ.fromHtml
+        |> HQ.find [HS.tag "textarea"]
+        |> HQ.has [HS.attribute (HA.value val)]
+    , fuzz fuzzResolutions "sets notes field on input" <| \res ->
+        viewResolutionForm "old val" Unstarted res
+        |> HQ.fromHtml
+        |> HQ.find [HS.tag "textarea"]
+        |> HEM.simulate (HEM.input "new val!")
+        |> HEM.expect (SetResolveNotesField "new val!")
+    , fuzz fuzzResolutions "buttons are disabled when awaiting response" <| \res ->
+        viewResolutionForm "old val" AwaitingResponse res
+        |> HQ.fromHtml
+        |> HQ.findAll [HS.tag "button"]
+        |> HQ.each (HQ.has [HS.disabled True])
+    , fuzz2 fuzzRequestStatus fuzzResolutions "buttons are enabled when passive" <| \status res ->
+        if status == AwaitingResponse then Expect.pass else
+        viewResolutionForm "old val" status res
+        |> HQ.fromHtml
+        |> HQ.findAll [HS.tag "button"]
+        |> HQ.each (HQ.has [HS.disabled False])
+    ]
+  ]
+
+creatorViewTest : Test
+creatorViewTest =
+  let
+    creator = "creator"
+    predictionId = "my-predid"
+    prediction = { mockPrediction | creator = creator }
+    globals = exampleGlobals |> TU.logInAs creator TU.exampleSettings |> TU.addPrediction predictionId prediction
+  in
+  describe "view for creator"
+  [ test "displays title" <|
+    \() -> initInternal globals predictionId
+            |> viewModelForTest
+            |> HQ.find [HS.id "prediction-title"]
+            |> HQ.has [HS.tag "h2", HS.containing [HS.text "Prediction: by "], HS.containing [HS.text prediction.prediction]]
+  , let
+      yesButtonSelector : HS.Selector
+      yesButtonSelector = buttonSelector "It happened!"
+      noButtonSelector : HS.Selector
+      noButtonSelector = buttonSelector "It didn't happen!"
+      invalidButtonSelector : HS.Selector
+      invalidButtonSelector = buttonSelector "Invalid prediction / impossible to resolve"
+      unresolveButtonSelector : HS.Selector
+      unresolveButtonSelector = buttonSelector "un-resolve it."
+
+    in
+    describe "resolution section"
+    [ let section = makeModel globals {mockPrediction | resolutions = []} |> viewModelForTest |> HQ.find [HS.id "resolve-section"] in
+      describe "never-resolved prediction"
+      [ test "section exists" <| \() -> HQ.has [] section
+      , test "yes/no/invalid buttons send appropriate Msgs" <|
+        \() -> Expect.all
+                [ HQ.find [yesButtonSelector] >> HEM.simulate HEM.click >> HEM.expect (Resolve Pb.ResolutionYes)
+                , HQ.find [noButtonSelector] >> HEM.simulate HEM.click >> HEM.expect (Resolve Pb.ResolutionNo)
+                , HQ.find [invalidButtonSelector] >> HEM.simulate HEM.click >> HEM.expect (Resolve Pb.ResolutionInvalid)
+                ]
+                section
+      , test "section has no unresolve button" <| \() -> HQ.hasNot [HS.containing [unresolveButtonSelector]] section
+      ]
+    , let section = makeModel globals {mockPrediction | resolutions = [{exampleResolutionEvent | resolution = Pb.ResolutionNoneYet}]} |> viewModelForTest |> HQ.find [HS.id "resolve-section"] in
+      describe "prediction explicitly resolved to NoneYet"
+      [ test "section exists" <| \() -> HQ.has [] section
+      , test "yes/no/invalid buttons send appropriate Msgs" <|
+        \() -> Expect.all
+                [ HQ.find [yesButtonSelector] >> HEM.simulate HEM.click >> HEM.expect (Resolve Pb.ResolutionYes)
+                , HQ.find [noButtonSelector] >> HEM.simulate HEM.click >> HEM.expect (Resolve Pb.ResolutionNo)
+                , HQ.find [invalidButtonSelector] >> HEM.simulate HEM.click >> HEM.expect (Resolve Pb.ResolutionInvalid)
+                ]
+                section
+      , test "section has no unresolve button" <| \() -> HQ.hasNot [HS.containing [unresolveButtonSelector]] section
+      ]
+    , let section = makeModel globals {mockPrediction | resolutions = [{exampleResolutionEvent | resolution = Pb.ResolutionYes}]} |> viewModelForTest |> HQ.find [HS.id "resolve-section"] in
+      describe "conclusively resolved prediction"
+      [ test "section exists" <| \() -> HQ.has [] section
+      , test "yes/no/invalid buttons send appropriate Msgs" <|
+        \() -> section |> HQ.find [unresolveButtonSelector] |> HEM.simulate HEM.click |> HEM.expect (Resolve Pb.ResolutionNoneYet)
+      ]
+    ]
+  ]
 
 viewTest : Test
 viewTest =
@@ -183,63 +333,10 @@ viewTest =
               |> viewModelForTest
               |> HQ.find [titleSelector]
               |> HQ.has [HS.containing [HS.text "Prediction: by "], HS.containing [HS.text prediction.prediction]]
-
-    resolveSectionSelector : HS.Selector
-    resolveSectionSelector = HS.all [HS.id "resolve-section", HS.containing [HS.tag "h4", HS.containing [HS.text "Resolve this prediction"]]]
-    yesButtonSelector : HS.Selector
-    yesButtonSelector = HS.all [HS.tag "button", HS.containing [HS.text "It happened!"]]
-    noButtonSelector : HS.Selector
-    noButtonSelector = HS.all [HS.tag "button", HS.containing [HS.text "It didn't happen!"]]
-    invalidButtonSelector : HS.Selector
-    invalidButtonSelector = HS.all [HS.tag "button", HS.containing [HS.text "Invalid prediction / impossible to resolve"]]
-    unresolveButtonSelector : HS.Selector
-    unresolveButtonSelector = HS.all [HS.tag "button", HS.containing [HS.text "un-resolve it."]]
-
-    stakeButtonSelector : HS.Selector
-    stakeButtonSelector = HS.all [HS.tag "button", HS.containing [HS.text "Stake"]]
-    queueStakeButtonSelector : HS.Selector
-    queueStakeButtonSelector = HS.all [HS.tag "button", HS.containing [HS.text "Queue"]]
   in
   describe "view"
   [ describe "logged out"
     [ testHasTitle (exampleGlobals |> TU.logOut) mockPrediction
-    ]
-
-  , let globals = exampleGlobals |> TU.logInAs mockPrediction.creator TU.exampleSettings in
-    describe "creator"
-    [ testHasTitle globals mockPrediction
-    , describe "resolution section"
-      [ let section = makeModel globals {mockPrediction | resolutions = []} |> viewModelForTest |> HQ.find [resolveSectionSelector] in
-        describe "never-resolved prediction"
-        [ test "section exists" <| \() -> HQ.has [] section
-        , test "yes/no/invalid buttons send appropriate Msgs" <|
-          \() -> Expect.all
-                  [ HQ.find [yesButtonSelector] >> HEM.simulate HEM.click >> HEM.expect (Resolve Pb.ResolutionYes)
-                  , HQ.find [noButtonSelector] >> HEM.simulate HEM.click >> HEM.expect (Resolve Pb.ResolutionNo)
-                  , HQ.find [invalidButtonSelector] >> HEM.simulate HEM.click >> HEM.expect (Resolve Pb.ResolutionInvalid)
-                  ]
-                  section
-        , test "section has no unresolve button" <| \() -> HQ.hasNot [HS.containing [unresolveButtonSelector]] section
-        ]
-      , let section = makeModel globals {mockPrediction | resolutions = [{exampleResolutionEvent | resolution = Pb.ResolutionNoneYet}]} |> viewModelForTest |> HQ.find [HS.id "resolve-section"] in
-        describe "prediction explicitly resolved to NoneYet"
-        [ test "section exists" <| \() -> HQ.has [] section
-        , test "yes/no/invalid buttons send appropriate Msgs" <|
-          \() -> Expect.all
-                  [ HQ.find [yesButtonSelector] >> HEM.simulate HEM.click >> HEM.expect (Resolve Pb.ResolutionYes)
-                  , HQ.find [noButtonSelector] >> HEM.simulate HEM.click >> HEM.expect (Resolve Pb.ResolutionNo)
-                  , HQ.find [invalidButtonSelector] >> HEM.simulate HEM.click >> HEM.expect (Resolve Pb.ResolutionInvalid)
-                  ]
-                  section
-        , test "section has no unresolve button" <| \() -> HQ.hasNot [HS.containing [unresolveButtonSelector]] section
-        ]
-      , let section = makeModel globals {mockPrediction | resolutions = [{exampleResolutionEvent | resolution = Pb.ResolutionYes}]} |> viewModelForTest |> HQ.find [HS.id "resolve-section"] in
-        describe "conclusively resolved prediction"
-        [ test "section exists" <| \() -> HQ.has [] section
-        , test "yes/no/invalid buttons send appropriate Msgs" <|
-          \() -> section |> HQ.find [unresolveButtonSelector] |> HEM.simulate HEM.click |> HEM.expect (Resolve Pb.ResolutionNoneYet)
-        ]
-      ]
     ]
 
   , describe "rando"

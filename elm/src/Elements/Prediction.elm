@@ -453,7 +453,7 @@ viewBody model =
           IsCreator ->
             H.div [HA.id "resolve-section"]
             [ H.h4 [HA.class "text-center"] [H.text "Resolve this prediction"]
-            , viewResolveButtons model
+            , viewResolutionForm model.resolveNotesField model.resolveStatus (Utils.currentResolution prediction)
             , H.hr [HA.style "margin" "2em 0"] []
             , H.text "If you want to link to your prediction, here's some code you could copy-paste:"
             , viewEmbedInfo model
@@ -595,10 +595,22 @@ viewBody model =
     ]
   ]
 
-viewResolveButtons : Model -> Html Msg
-viewResolveButtons model =
+viewResolutionForm : String -> RequestStatus -> Pb.Resolution -> Html Msg
+viewResolutionForm notesField resolveStatus currentResolution =
   let
-    prediction = mustPrediction model
+    working = (resolveStatus == AwaitingResponse)
+    notesFieldBlock =
+      H.div [HA.class "mx-4 my-4"]
+      [ H.text "Explanation / supporting evidence:"
+      , H.textarea
+        [ HA.class "form-control"
+        , HA.id "resolveNotesField"
+        , HE.onInput SetResolveNotesField
+        , HA.value notesField
+        , HA.disabled (working)
+        ]
+        []
+      ]
     mistakeInfo : String -> Html Msg
     mistakeInfo s =
       H.span [HA.style "color" "gray"]
@@ -606,15 +618,16 @@ viewResolveButtons model =
         , H.text s
         , H.text ". If that was a mistake, you can always "
         , H.button
-          [ HA.disabled (model.resolveStatus == AwaitingResponse)
+          [ HA.disabled working
           , HE.onClick <| Resolve Pb.ResolutionNoneYet
           , HA.class "btn btn-sm py-0 btn-outline-secondary"
           ]
           [ H.text "un-resolve it." ]
+        , notesFieldBlock
         ]
   in
     H.div []
-    [ case Utils.currentResolution prediction of
+    [ case currentResolution of
         Pb.ResolutionYes ->
           mistakeInfo "HAPPENED"
         Pb.ResolutionNo ->
@@ -623,21 +636,11 @@ viewResolveButtons model =
           mistakeInfo "was INVALID"
         Pb.ResolutionNoneYet ->
           H.div []
-          [ H.div [HA.class "mx-4 my-4"]
-            [ H.text "Explanation / supporting evidence:"
-            , H.textarea
-              [ HA.class "form-control"
-              , HA.id "resolveNotesField"
-              , HE.onInput SetResolveNotesField
-              , HA.value model.resolveNotesField
-              , HA.disabled (model.resolveStatus == AwaitingResponse)
-              ]
-              []
-            , H.div [HA.class "my-2"]
-              [ H.button [HA.class "btn btn-sm py-0 btn-outline-primary mx-1", HA.disabled (model.resolveStatus == AwaitingResponse), HE.onClick <| Resolve Pb.ResolutionYes    ] [H.text "It happened!"]
-              , H.button [HA.class "btn btn-sm py-0 btn-outline-primary mx-1", HA.disabled (model.resolveStatus == AwaitingResponse), HE.onClick <| Resolve Pb.ResolutionNo     ] [H.text "It didn't happen!"]
-              , H.button [HA.class "btn btn-sm py-0 btn-outline-secondary mx-1", HA.disabled (model.resolveStatus == AwaitingResponse), HE.onClick <| Resolve Pb.ResolutionInvalid] [H.text "Invalid prediction / impossible to resolve"]
-              ]
+          [ notesFieldBlock
+          , H.div [HA.class "my-2"]
+            [ H.button [HA.class "btn btn-sm py-0 btn-outline-primary   mx-1", HA.disabled working, HE.onClick <| Resolve Pb.ResolutionYes    ] [H.text "It happened!"]
+            , H.button [HA.class "btn btn-sm py-0 btn-outline-primary   mx-1", HA.disabled working, HE.onClick <| Resolve Pb.ResolutionNo     ] [H.text "It didn't happen!"]
+            , H.button [HA.class "btn btn-sm py-0 btn-outline-secondary mx-1", HA.disabled working, HE.onClick <| Resolve Pb.ResolutionInvalid] [H.text "Invalid prediction / impossible to resolve"]
             ]
           ]
         Pb.ResolutionUnrecognized_ _ ->
@@ -646,7 +649,7 @@ viewResolveButtons model =
           , mistakeInfo "??????"
           ]
     , H.text " "
-    , case model.resolveStatus of
+    , case resolveStatus of
         Unstarted -> H.text ""
         AwaitingResponse -> H.text ""
         Succeeded -> Utils.greenText "Resolution updated!"
