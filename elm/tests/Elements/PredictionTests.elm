@@ -453,13 +453,20 @@ embeddingPreviewTest =
 viewEmbedInfoTest : Test
 viewEmbedInfoTest =
   describe "viewEmbedInfo"
-  [ fuzz3 fuzzContentType fuzzFormat fuzzImageStyle "shows style dropdowns for image only" <|
+  [ fuzz3 fuzzContentType fuzzFormat fuzzImageStyle "shows style dropdown for image only" <|
     \ctype format style ->
       viewEmbedInfo "https://example.com" {format=format, style=style, contentType=ctype, fontSize=TwelvePt} "my-predid" mockPrediction
       |> HQ.fromHtml
       |>  case ctype of
-            Image -> Expect.all [HQ.has [HS.class "embedding-style-field"], HQ.has [HS.class "embedding-font-size-field"]]
-            Link -> Expect.all [HQ.hasNot [HS.class "embedding-style-field"], HQ.hasNot [HS.class "embedding-font-size-field"]]
+            Image -> HQ.has [HS.tag "option", HS.containing [HS.text "plain link"]]
+            Link -> HQ.hasNot [HS.tag "option", HS.containing [HS.text "plain link"]]
+  , fuzz3 fuzzContentType fuzzFormat fuzzImageStyle "shows font-size dropdown for image only" <|
+    \ctype format style ->
+      viewEmbedInfo "https://example.com" {format=format, style=style, contentType=ctype, fontSize=TwelvePt} "my-predid" mockPrediction
+      |> HQ.fromHtml
+      |>  case ctype of
+            Image -> HQ.has [HS.tag "option", HS.containing [HS.text "12pt"]]
+            Link -> HQ.hasNot [HS.tag "option", HS.containing [HS.text "12pt"]]
   , fuzz3 fuzzContentType fuzzFormat fuzzImageStyle "copy widget has appropriate code" <|
     \ctype format style ->
       let fields = {format=format, style=style, contentType=ctype, fontSize=TwelvePt} in
@@ -531,49 +538,16 @@ creatorViewTest =
             |> viewModelForTest
             |> HQ.find [HS.id "prediction-title"]
             |> HQ.has [HS.tag "h2", HS.containing [HS.text "Prediction: by "], HS.containing [HS.text prediction.prediction]]
-  , let
-      yesButtonSelector : HS.Selector
-      yesButtonSelector = buttonSelector "It happened!"
-      noButtonSelector : HS.Selector
-      noButtonSelector = buttonSelector "It didn't happen!"
-      invalidButtonSelector : HS.Selector
-      invalidButtonSelector = buttonSelector "Invalid prediction / impossible to resolve"
-      unresolveButtonSelector : HS.Selector
-      unresolveButtonSelector = buttonSelector "un-resolve it."
-
-    in
-    describe "resolution section"
-    [ let section = makeModel globals {mockPrediction | resolutions = []} |> viewModelForTest |> HQ.find [HS.id "resolve-section"] in
-      describe "never-resolved prediction"
-      [ test "section exists" <| \() -> HQ.has [] section
-      , test "yes/no/invalid buttons send appropriate Msgs" <|
-        \() -> Expect.all
-                [ HQ.find [yesButtonSelector] >> HEM.simulate HEM.click >> HEM.expect (Resolve Pb.ResolutionYes)
-                , HQ.find [noButtonSelector] >> HEM.simulate HEM.click >> HEM.expect (Resolve Pb.ResolutionNo)
-                , HQ.find [invalidButtonSelector] >> HEM.simulate HEM.click >> HEM.expect (Resolve Pb.ResolutionInvalid)
-                ]
-                section
-      , test "section has no unresolve button" <| \() -> HQ.hasNot [HS.containing [unresolveButtonSelector]] section
-      ]
-    , let section = makeModel globals {mockPrediction | resolutions = [{exampleResolutionEvent | resolution = Pb.ResolutionNoneYet}]} |> viewModelForTest |> HQ.find [HS.id "resolve-section"] in
-      describe "prediction explicitly resolved to NoneYet"
-      [ test "section exists" <| \() -> HQ.has [] section
-      , test "yes/no/invalid buttons send appropriate Msgs" <|
-        \() -> Expect.all
-                [ HQ.find [yesButtonSelector] >> HEM.simulate HEM.click >> HEM.expect (Resolve Pb.ResolutionYes)
-                , HQ.find [noButtonSelector] >> HEM.simulate HEM.click >> HEM.expect (Resolve Pb.ResolutionNo)
-                , HQ.find [invalidButtonSelector] >> HEM.simulate HEM.click >> HEM.expect (Resolve Pb.ResolutionInvalid)
-                ]
-                section
-      , test "section has no unresolve button" <| \() -> HQ.hasNot [HS.containing [unresolveButtonSelector]] section
-      ]
-    , let section = makeModel globals {mockPrediction | resolutions = [{exampleResolutionEvent | resolution = Pb.ResolutionYes}]} |> viewModelForTest |> HQ.find [HS.id "resolve-section"] in
-      describe "conclusively resolved prediction"
-      [ test "section exists" <| \() -> HQ.has [] section
-      , test "yes/no/invalid buttons send appropriate Msgs" <|
-        \() -> section |> HQ.find [unresolveButtonSelector] |> HEM.simulate HEM.click |> HEM.expect (Resolve Pb.ResolutionNoneYet)
-      ]
-    ]
+  , test "contains embed info" <|
+    \() -> let m = initInternal globals predictionId in
+            m
+            |> viewModelForTest
+            |> HQ.contains [embeddingPreview exampleGlobals.httpOrigin predictionId prediction m.shareEmbedding]
+  , test "contains resolution form" <|
+    \() -> initInternal globals predictionId
+            |> (\m -> { m | resolveNotesField = "potato"})
+            |> viewModelForTest
+            |> HQ.contains [viewResolutionForm "potato" Unstarted Pb.ResolutionNoneYet]
   ]
 
 viewTest : Test

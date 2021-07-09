@@ -307,3 +307,32 @@ stupidIsoStrToTime zone str =
   in
   Iso8601.toTime str
   |> Result.map (addMillis (1000*60*timeZoneMinuteOffset))
+
+invert : (a -> b) -> List a -> b -> Maybe a
+invert f xs fx =
+  xs
+  |> List.filter (\x -> f x == fx)
+  |> List.head
+
+dropdown : (a -> msg) -> msg -> List a -> (a -> String) -> a -> List (H.Attribute msg) -> Html msg
+dropdown toMsg ignore options toDisplayName =
+  let
+    onInput : String -> msg
+    onInput s =
+      options
+      |> List.filter (\o -> toDisplayName o == s)
+      |> List.head
+      |> Maybe.map toMsg
+      |> Maybe.withDefault ignore
+    impl : a -> List (H.Attribute msg) -> Html msg
+    impl selected attrs =
+      options
+      |> List.map (\opt -> H.option [HA.selected (opt == selected), HA.value (toDisplayName opt)] [H.text (toDisplayName opt)])
+      |> H.select
+          ( [ HA.class "form-select py-0 ps-0 d-inline-block w-auto"
+            , HE.onInput onInput
+            ]
+            ++ attrs
+          )
+  in
+  impl

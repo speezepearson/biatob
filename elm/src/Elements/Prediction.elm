@@ -86,6 +86,12 @@ contentTypeDisplayName ct = case ct of
   Link -> "link"
   Image -> "image"
 
+allFormats = [EmbedHtml, EmbedMarkdown]
+allContentTypes = [Link, Image]
+allStyles = [PlainLink, LessWrong, DarkGreen, DarkBlue, Red, Black, White]
+allFontSizes = [SixPt, EightPt, TenPt, TwelvePt, FourteenPt, EighteenPt, TwentyFourPt]
+
+
 embeddedLinkText : Pb.UserPredictionView -> String
 embeddedLinkText prediction =
   let
@@ -188,7 +194,10 @@ type Msg
   | UpdateSettingsFinished Pb.UpdateSettingsRequest (Result Http.Error Pb.UpdateSettingsResponse)
   | SetBettorSide Utils.BetSide
   | SetStakeField String
-  | SetEmbedding EmbeddingFields
+  | SetEmbeddingFormat EmbeddingFormat
+  | SetEmbeddingContentType EmbeddingContentType
+  | SetEmbeddingStyle EmbeddedImageStyle
+  | SetEmbeddingFontSize EmbeddedImageFontSize
   | SetResolveNotesField String
   | Copy String
   | Tick Time.Posix
@@ -1057,45 +1066,35 @@ makeTable tableAttrs columns xs =
   ]
 
 viewEmbedInfo : String -> EmbeddingFields -> PredictionId -> Pb.UserPredictionView -> Html Msg
-viewEmbedInfo httpOrigin fields predictionId prediction =
+viewEmbedInfo =
   let
-    allFormats = [EmbedHtml, EmbedMarkdown]
-    allContentTypes = [Link, Image]
-    allStyles = [PlainLink, LessWrong, DarkGreen, DarkBlue, Red, Black, White]
-    allFontSizes = [SixPt, EightPt, TenPt, TwelvePt, FourteenPt, EighteenPt, TwentyFourPt]
-
-    dropdown : List (H.Attribute Msg) -> (a -> EmbeddingFields -> EmbeddingFields) -> List a -> a -> (a -> String) -> Html Msg
-    dropdown attrs updateEmbedding options selected toDisplayName =
-      let mustFromDisplayName s = options |> List.filter (\o -> toDisplayName o == s) |> List.head |> Utils.must ("somehow got input " ++ s) in
-      options
-      |> List.map (\opt -> H.option [HA.selected (opt == selected), HA.value (toDisplayName opt)] [H.text (toDisplayName opt)])
-      |> H.select
-          ( [ HA.class "form-select py-0 ps-0 d-inline-block w-auto"
-            , HE.onInput (\s -> SetEmbedding (fields |> updateEmbedding (mustFromDisplayName s)))
-            ]
-            ++ attrs
-          )
+    formatDropdown = Utils.dropdown SetEmbeddingFormat Ignore allFormats formatDisplayName
+    contentTypeDropdown = Utils.dropdown SetEmbeddingContentType Ignore allContentTypes contentTypeDisplayName
+    styleDropdown = Utils.dropdown SetEmbeddingStyle Ignore allStyles imageStyleDisplayName
+    fontSizeDropdown = Utils.dropdown SetEmbeddingFontSize Ignore allFontSizes imageFontSizeDisplayName
+    impl httpOrigin fields predictionId prediction = 
+      H.div [HA.class "embed-info"]
+      [ H.div []
+        [ formatDropdown fields.format []
+        , contentTypeDropdown fields.contentType []
+        , case fields.contentType of
+            Link -> H.text ""
+            Image -> styleDropdown fields.style []
+        , case fields.contentType of
+            Link -> H.text ""
+            Image -> fontSizeDropdown fields.fontSize []
+        ]
+      , H.div []
+        [ CopyWidget.view Copy (embeddingCode httpOrigin predictionId prediction fields)
+        , H.text " renders as "
+        , embeddingPreview httpOrigin predictionId prediction fields
+        , case fields.contentType of
+            Link -> H.text ""
+            Image -> H.div [HA.class " mx-3 my-1 text-secondary"] [H.small [] [H.text " (This image's main advantage over a bare link is that it will always show the current state of the prediction, e.g. whether it's resolved and how much people have bet against you.)"]]
+        ]
+      ]
   in
-    H.div [HA.class "embed-info"]
-    [ H.div []
-      [ dropdown [HA.class "embedding-format-field"] (\format embedding -> {embedding | format = format}) allFormats fields.format formatDisplayName
-      , dropdown [HA.class "embedding-content-type-field"] (\contentType embedding -> {embedding | contentType = contentType}) allContentTypes fields.contentType contentTypeDisplayName
-      , case fields.contentType of
-          Link -> H.text ""
-          Image -> dropdown [HA.class "embedding-style-field"] (\newStyle embedding -> {embedding | style = newStyle}) allStyles fields.style imageStyleDisplayName
-      , case fields.contentType of
-          Link -> H.text ""
-          Image -> dropdown [HA.class "embedding-font-size-field"] (\newSize embedding -> {embedding | fontSize = newSize}) allFontSizes fields.fontSize imageFontSizeDisplayName
-      ]
-    , H.div []
-      [ CopyWidget.view Copy (embeddingCode httpOrigin predictionId prediction fields)
-      , H.text " renders as "
-      , embeddingPreview httpOrigin predictionId prediction fields
-      , case fields.contentType of
-          Link -> H.text ""
-          Image -> H.div [HA.class " mx-3 my-1 text-secondary"] [H.small [] [H.text " (This image's main advantage over a bare link is that it will always show the current state of the prediction, e.g. whether it's resolved and how much people have bet against you.)"]]
-      ]
-    ]
+  impl
 
 viewWhatIsThis : PredictionId -> Pb.UserPredictionView -> Html msg
 viewWhatIsThis predictionId prediction =
@@ -1281,8 +1280,20 @@ update msg model =
       ( { model | stakeField = value , stakeStatus = Unstarted }
       , Cmd.none
       )
-    SetEmbedding value ->
-      ( { model | shareEmbedding = value }
+    SetEmbeddingFormat value ->
+      ( { model | shareEmbedding = model.shareEmbedding |> \e -> { e | format = value } }
+      , Cmd.none
+      )
+    SetEmbeddingContentType value ->
+      ( { model | shareEmbedding = model.shareEmbedding |> \e -> { e | contentType = value } }
+      , Cmd.none
+      )
+    SetEmbeddingStyle value ->
+      ( { model | shareEmbedding = model.shareEmbedding |> \e -> { e | style = value } }
+      , Cmd.none
+      )
+    SetEmbeddingFontSize value ->
+      ( { model | shareEmbedding = model.shareEmbedding |> \e -> { e | fontSize = value } }
       , Cmd.none
       )
     SetResolveNotesField value ->
