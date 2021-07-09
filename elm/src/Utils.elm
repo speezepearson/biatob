@@ -314,20 +314,45 @@ invert f xs fx =
   |> List.filter (\x -> f x == fx)
   |> List.head
 
-dropdown : (a -> msg) -> msg -> List a -> (a -> String) -> a -> List (H.Attribute msg) -> Html msg
-dropdown toMsg ignore options toDisplayName =
+{-|
+  "Why this funny DropdownBuilder thing?"
+  Ugh. https://github.com/eeue56/elm-html-test/issues/50
+  For ease of testing, we need the `onInput` handler to have _referential equality_ between the actual Html and the expected Html.
+  The best way I've thought of achieving that is by currying in this funny way, and making a slight imposition on client code.
+  For example, client code might look like:
+
+      fooDropdown : DropdownBuilder Foo Msg
+      fooDropdown = Utils.dropdown SetFoo Ignore [...]
+
+      viewFoo : Model -> Html Msg
+      viewFoo model =
+        H.div []
+        [ fooDropdown model.foo []
+        ]
+
+  If the client code does this, then `fooDropdown` is a static global singleton,
+    with its `onInput` handler in that singleton's closure, rather than constructed anew for each `H.select` element it churns out.
+
+  And the test:
+
+      test "view contains the dropdown" <|
+      \() -> view testModel |> HQ.fromHtml |> HQ.contains (viewFoo testModel)
+-}
+type alias DropdownBuilder a msg = a -> List (H.Attribute msg) -> Html msg
+dropdown : (a -> msg) -> msg -> List (a, String) -> DropdownBuilder a msg
+dropdown toMsg ignore options =
   let
     onInput : String -> msg
     onInput s =
       options
-      |> List.filter (\o -> toDisplayName o == s)
+      |> List.filter (\(_, displayName) -> displayName == s)
       |> List.head
-      |> Maybe.map toMsg
+      |> Maybe.map (Tuple.first >> toMsg)
       |> Maybe.withDefault ignore
-    impl : a -> List (H.Attribute msg) -> Html msg
-    impl selected attrs =
+    builder : DropdownBuilder a msg
+    builder selected attrs =
       options
-      |> List.map (\opt -> H.option [HA.selected (opt == selected), HA.value (toDisplayName opt)] [H.text (toDisplayName opt)])
+      |> List.map (\(opt, displayName) -> H.option [HA.selected (opt == selected), HA.value displayName] [H.text displayName])
       |> H.select
           ( [ HA.class "form-select py-0 ps-0 d-inline-block w-auto"
             , HE.onInput onInput
@@ -335,4 +360,4 @@ dropdown toMsg ignore options toDisplayName =
             ++ attrs
           )
   in
-  impl
+  builder

@@ -82,7 +82,7 @@ view model =
           Nothing -> H.text "You're not logged in!"
           Just self ->
             H.div []
-            [ viewControls model
+            [ viewControls model.filter model.order
             , H.table [HA.class "table mt-1"]
                 [ H.thead []
                   [ viewRow
@@ -118,74 +118,43 @@ view model =
     ]
   }
 
-viewControls : Model -> Html Msg
-viewControls model =
+ownnessDropdown : Utils.DropdownBuilder (Maybe Bool) Msg
+ownnessDropdown =
+  Utils.dropdown SetFilterOwn Ignore
+    [ (Nothing, "all owners")
+    , (Just True, "my own")
+    , (Just False, "not mine")
+    ]
+phaseDropdown : Utils.DropdownBuilder (Maybe LifecyclePhase) Msg
+phaseDropdown =
+  Utils.dropdown SetFilterPhase Ignore
+    [ (Nothing, "all phases")
+    , (Just Open, "open")
+    , (Just NeedsResolution, "needs resolution")
+    , (Just Resolved, "resolved")
+    ]
+orderDropdown : Utils.DropdownBuilder SortOrder Msg
+orderDropdown =
+  Utils.dropdown SetSortOrder Ignore
+    [ (CreatedDate Desc, "created, desc")
+    , (CreatedDate Asc, "created, asc")
+    , (ResolutionDate Asc, "resolves, desc")
+    , (ResolutionDate Asc, "resolves, asc")
+    ]
+viewControls : Filter -> SortOrder -> Html Msg
+viewControls filter order =
   H.div [HA.class "row"]
   [ H.div [HA.class "col-md-3"]
     [ H.text "Creator: "
-    , H.select
-        [ HE.onInput <| \s -> SetFilterOwn (case s of
-            "all owners" -> Nothing
-            "my own" -> Just True
-            "not mine" -> Just False
-            _ -> Debug.todo <| "unrecognized value: " ++ s
-            )
-        , HA.value <| case model.filter.own of
-            Nothing -> "all owners"
-            Just True -> "my own"
-            Just False -> "not mine"
-        , HA.class "form-select d-inline-block w-auto"
-        ]
-        [ H.option [HA.value "all owners"] [H.text "all owners"]
-        , H.option [HA.value "my own"] [H.text "my own"]
-        , H.option [HA.value "not mine"] [H.text "not mine"]
-        ]
+    , ownnessDropdown filter.own [HA.class "form-select d-inline-block w-auto"]
     ]
   , H.div [HA.class "col-md-3"]
     [ H.text " Phase: "
-    , H.select
-        [ HE.onInput <| \s -> SetFilterPhase (case s of
-            "all phases" -> Nothing
-            "open" -> Just Open
-            "needs resolution" -> Just NeedsResolution
-            "resolved" -> Just Resolved
-            _ -> Debug.todo <| "unrecognized value: " ++ s
-            )
-        , HA.value <| case model.filter.phase of
-            Nothing -> "all phases"
-            Just Open -> "open"
-            Just NeedsResolution -> "needs resolution"
-            Just Resolved -> "resolved"
-        , HA.class "form-select d-inline-block w-auto"
-        ]
-        [ H.option [HA.value "all phases"] [H.text "all phases"]
-        , H.option [HA.value "open"] [H.text "open"]
-        , H.option [HA.value "needs resolution"] [H.text "needs resolution"]
-        , H.option [HA.value "resolved"] [H.text "resolved"]
-        ]
+    , phaseDropdown filter.phase [HA.class "form-select d-inline-block w-auto"]
     ]
   , H.div [HA.class "col-md-3"]
     [ H.text " Order: "
-    , H.select
-      [ HE.onInput <| \s -> SetSortOrder (case s of
-          "created, desc" -> CreatedDate Desc
-          "created, asc" -> CreatedDate Asc
-          "resolves, desc" -> ResolutionDate Asc
-          "resolves, asc" -> ResolutionDate Asc
-          _ -> Debug.todo <| "unrecognized value: " ++ s
-        )
-      , HA.value <| case model.order of
-          CreatedDate Desc -> "created, desc"
-          CreatedDate Asc -> "created, asc"
-          ResolutionDate Desc -> "resolves, desc"
-          ResolutionDate Asc -> "resolves, asc"
-      , HA.class "form-select d-inline-block w-auto"
-      ]
-      [ H.option [HA.value "created, desc"] [H.text "created, desc"]
-      , H.option [HA.value "created, asc"] [H.text "created, asc"]
-      , H.option [HA.value "resolves, desc"] [H.text "resolves, desc"]
-      , H.option [HA.value "resolves, asc"] [H.text "resolves, asc"]
-      ]
+    , orderDropdown order [HA.class "form-select d-inline-block w-auto"]
     ]
   ]
 

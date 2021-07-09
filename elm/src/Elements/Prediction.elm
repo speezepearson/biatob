@@ -58,14 +58,6 @@ imageStyleIdString color = case color of
   DarkBlue -> "darkblue"
   Black -> "black"
   White -> "white"
-imageStyleDisplayName color = case color of
-  PlainLink -> "plain link"
-  LessWrong -> "LessWrong"
-  Red -> "red"
-  DarkGreen -> "green"
-  DarkBlue -> "blue"
-  Black -> "black"
-  White -> "white"
 type EmbeddedImageFontSize = SixPt | EightPt | TenPt | TwelvePt | FourteenPt | EighteenPt | TwentyFourPt
 imageFontSizeIdString size = case size of
   SixPt -> "6pt"
@@ -75,21 +67,9 @@ imageFontSizeIdString size = case size of
   FourteenPt -> "14pt"
   EighteenPt -> "18pt"
   TwentyFourPt -> "24pt"
-imageFontSizeDisplayName = imageFontSizeIdString
 type EmbeddingFormat = EmbedHtml | EmbedMarkdown
-formatDisplayName fmt = case fmt of
-  EmbedHtml -> "HTML"
-  EmbedMarkdown -> "Markdown"
 
 type EmbeddingContentType = Link | Image
-contentTypeDisplayName ct = case ct of
-  Link -> "link"
-  Image -> "image"
-
-allFormats = [EmbedHtml, EmbedMarkdown]
-allContentTypes = [Link, Image]
-allStyles = [PlainLink, LessWrong, DarkGreen, DarkBlue, Red, Black, White]
-allFontSizes = [SixPt, EightPt, TenPt, TwelvePt, FourteenPt, EighteenPt, TwentyFourPt]
 
 
 embeddedLinkText : Pb.UserPredictionView -> String
@@ -1065,36 +1045,58 @@ makeTable tableAttrs columns xs =
   , H.tbody [] dataRows
   ]
 
+embedFormatDropdown : Utils.DropdownBuilder EmbeddingFormat Msg
+embedFormatDropdown = Utils.dropdown SetEmbeddingFormat Ignore
+  [ (EmbedHtml, "HTML")
+  , (EmbedMarkdown, "Markdown")
+  ]
+embedContentTypeDropdown : Utils.DropdownBuilder EmbeddingContentType Msg
+embedContentTypeDropdown = Utils.dropdown SetEmbeddingContentType Ignore
+  [ (Image, "image")
+  , (Link, "link")
+  ]
+embedStyleDropdown : Utils.DropdownBuilder EmbeddedImageStyle Msg
+embedStyleDropdown = Utils.dropdown SetEmbeddingStyle Ignore
+  [ (PlainLink, "plain link")
+  , (LessWrong, "LessWrong")
+  , (DarkGreen, "green")
+  , (DarkBlue, "blue")
+  , (Red, "red")
+  , (Black, "black")
+  , (White, "white")
+  ]
+embedFontSizeDropdown : Utils.DropdownBuilder EmbeddedImageFontSize Msg
+embedFontSizeDropdown = Utils.dropdown SetEmbeddingFontSize Ignore
+  [ (SixPt, "6pt")
+  , (EightPt, "8pt")
+  , (TenPt, "10pt")
+  , (TwelvePt, "12pt")
+  , (FourteenPt, "14pt")
+  , (EighteenPt, "18pt")
+  , (TwentyFourPt, "24pt")
+  ]
 viewEmbedInfo : String -> EmbeddingFields -> PredictionId -> Pb.UserPredictionView -> Html Msg
-viewEmbedInfo =
-  let
-    formatDropdown = Utils.dropdown SetEmbeddingFormat Ignore allFormats formatDisplayName
-    contentTypeDropdown = Utils.dropdown SetEmbeddingContentType Ignore allContentTypes contentTypeDisplayName
-    styleDropdown = Utils.dropdown SetEmbeddingStyle Ignore allStyles imageStyleDisplayName
-    fontSizeDropdown = Utils.dropdown SetEmbeddingFontSize Ignore allFontSizes imageFontSizeDisplayName
-    impl httpOrigin fields predictionId prediction = 
-      H.div [HA.class "embed-info"]
-      [ H.div []
-        [ formatDropdown fields.format []
-        , contentTypeDropdown fields.contentType []
-        , case fields.contentType of
-            Link -> H.text ""
-            Image -> styleDropdown fields.style []
-        , case fields.contentType of
-            Link -> H.text ""
-            Image -> fontSizeDropdown fields.fontSize []
-        ]
-      , H.div []
-        [ CopyWidget.view Copy (embeddingCode httpOrigin predictionId prediction fields)
-        , H.text " renders as "
-        , embeddingPreview httpOrigin predictionId prediction fields
-        , case fields.contentType of
-            Link -> H.text ""
-            Image -> H.div [HA.class " mx-3 my-1 text-secondary"] [H.small [] [H.text " (This image's main advantage over a bare link is that it will always show the current state of the prediction, e.g. whether it's resolved and how much people have bet against you.)"]]
-        ]
-      ]
-  in
-  impl
+viewEmbedInfo httpOrigin fields predictionId prediction =
+  H.div [HA.class "embed-info"]
+  [ H.div []
+    [ embedFormatDropdown fields.format []
+    , embedContentTypeDropdown fields.contentType []
+    , case fields.contentType of
+        Link -> H.text ""
+        Image -> embedStyleDropdown fields.style []
+    , case fields.contentType of
+        Link -> H.text ""
+        Image -> embedFontSizeDropdown fields.fontSize []
+    ]
+  , H.div []
+    [ CopyWidget.view Copy (embeddingCode httpOrigin predictionId prediction fields)
+    , H.text " renders as "
+    , embeddingPreview httpOrigin predictionId prediction fields
+    , case fields.contentType of
+        Link -> H.text ""
+        Image -> H.div [HA.class " mx-3 my-1 text-secondary"] [H.small [] [H.text " (This image's main advantage over a bare link is that it will always show the current state of the prediction, e.g. whether it's resolved and how much people have bet against you.)"]]
+    ]
+  ]
 
 viewWhatIsThis : PredictionId -> Pb.UserPredictionView -> Html msg
 viewWhatIsThis predictionId prediction =
