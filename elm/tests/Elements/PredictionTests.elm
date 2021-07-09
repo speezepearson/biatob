@@ -4,6 +4,7 @@ import Expect
 import Fuzz exposing (intRange, percentage)
 import Html as H
 import Html.Attributes as HA
+import Time
 import Test exposing (..)
 import Test.Html.Event as HEM
 import Test.Html.Query as HQ
@@ -16,6 +17,7 @@ import TestUtils as TU exposing (exampleGlobals)
 import Elements.MyStakesTests exposing (exampleResolutionEvent)
 import Utils
 import Widgets.CopyWidget as CopyWidget
+import Dict
 
 exampleOrigin = "https://example.com"
 examplePredictionId = "my-test-prediction"
@@ -470,6 +472,49 @@ viewEmbedInfoTest =
       viewEmbedInfo "https://example.com" fields "my-predid" mockPrediction
       |> HQ.fromHtml
       |> HQ.contains [embeddingPreview "https://example.com" "my-predid" mockPrediction fields]
+  ]
+
+viewYourStakeTest : Test
+viewYourStakeTest =
+  describe "viewYourStake"
+  [ describe "as bettor"
+    [ fuzz (intRange 0 3) "includes one row per trade" <|
+      \nTrades -> viewYourStake (Just "me") Time.utc {mockPrediction | yourTrades = List.repeat nTrades {bettor="me", bettorIsASkeptic=True, bettorStakeCents=1, creatorStakeCents=1, transactedUnixtime=mockPrediction.createdUnixtime}}
+        |> HQ.fromHtml
+        |>  if nTrades == 0 then
+              HQ.hasNot [HS.containing [HS.tag "table"]]
+            else
+              HQ.find [HS.tag "tbody"]
+              >> HQ.findAll [HS.tag "tr"]
+              >> HQ.count (Expect.equal nTrades)
+    ]
+  , fuzz2 Fuzz.bool (fuzzConstants ["me", "rando"]) "ignores queued trades" <|
+    \hasTrade creator -> expectMapEqual
+      (\qts -> viewYourStake (Just "me") Time.utc {mockPrediction | creator = creator , yourQueuedTrades = qts , yourTrades = if hasTrade then [{bettor="me", bettorIsASkeptic=True, bettorStakeCents=1, creatorStakeCents=1, transactedUnixtime=mockPrediction.createdUnixtime}] else []})
+      [{bettor="me", bettorIsASkeptic=True, bettorStakeCents=1, creatorStakeCents=1, enqueuedAtUnixtime=mockPrediction.createdUnixtime}]
+      []
+  ]
+
+viewAsFriendTest : Test
+viewAsFriendTest =
+  let
+    creator = "creator"
+    predictionId = "my-predid"
+    prediction = { mockPrediction | creator = creator }
+    exampleSettings = TU.exampleSettings
+    globals =
+      exampleGlobals
+      |> TU.logInAs "friend"
+          { exampleSettings
+          | relationships = exampleSettings.relationships |> Dict.insert creator (Just {trustsYou = True , trustedByYou = True})
+          }
+      |> TU.addPrediction predictionId prediction
+  in
+  describe "view as friend"
+  [ test "has stake widget" <|
+    \() -> initInternal globals predictionId
+      |> viewModelForTest
+      |> HQ.contains [viewStakeWidget QueueingUnnecessary "10" Unstarted Utils.Skeptic prediction]
   ]
 
 creatorViewTest : Test

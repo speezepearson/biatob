@@ -120,7 +120,7 @@ embeddingPreview httpOrigin predictionId prediction fields =
     linkUrl = httpOrigin ++ Utils.pathToPrediction predictionId
     text = embeddedLinkText prediction
   in
-  case fields.contentType |> Debug.log "contentType" of
+  case fields.contentType of
     Link -> H.a [HA.href linkUrl] [H.text text]
     Image ->
       H.a [HA.href linkUrl]
@@ -659,6 +659,12 @@ viewResolutionForm notesField resolveStatus currentResolution =
         Failed e -> Utils.redText e
     ]
 
+willWontDropdownOnInput : String -> Msg
+willWontDropdownOnInput s =
+  case s of
+    "won't" -> SetBettorSide Utils.Skeptic
+    "will" -> SetBettorSide Utils.Believer
+    _ -> Ignore |> Debug.log ("invalid value" ++ Debug.toString s ++ "for skepticism dropdown")
 viewWillWontDropdown : Utils.BetSide -> Pb.UserPredictionView -> Html Msg
 viewWillWontDropdown side prediction =
   if not (isSideAvailable Utils.Believer prediction) then
@@ -667,11 +673,7 @@ viewWillWontDropdown side prediction =
     Utils.b "will"
   else
     H.select
-      [ HE.onInput (\s -> SetBettorSide (case s of
-          "won't" -> Utils.Skeptic
-          "will" -> Utils.Believer
-          _ -> Debug.todo <| "invalid value" ++ Debug.toString s ++ "for skepticism dropdown"
-        ))
+      [ HE.onInput willWontDropdownOnInput
       , HA.class "form-select form-select-sm d-inline-block w-auto"
       ]
       [ H.option [HA.value "won't", HA.selected <| side == Utils.Skeptic] [H.text "won't"]
