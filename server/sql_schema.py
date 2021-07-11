@@ -72,7 +72,10 @@ trades = Table(
   Column('bettor_is_a_skeptic', BOOLEAN(), nullable=False),
   Column('bettor_stake_cents', Integer(), CheckConstraint('bettor_stake_cents > 0'), nullable=False),
   Column('creator_stake_cents', Integer(), CheckConstraint('creator_stake_cents > 0'), nullable=False),
-  Column('transacted_at_unixtime', REAL(), nullable=False)
+  Column('transacted_at_unixtime', REAL(), nullable=False),
+  Column('disavowed_by', String(64), nullable=True),
+  Column('disavowed_reason', String(1024), CheckConstraint("(disavowed_reason IS NULL) = (disavowed_by IS NULL)"), nullable=True),
+  Column('disavowed_at_unixtime', REAL(), CheckConstraint("(disavowed_at_unixtime IS NULL) = (disavowed_by IS NULL)"), nullable=True),
 )
 Index('trades_by_prediction_id', trades.c.prediction_id)
 Index('trades_by_bettor', trades.c.bettor)
@@ -132,6 +135,9 @@ _MIGRATION_STMTS = [
   'DROP TABLE invitation_acceptances',
   'DROP TABLE invitations',
   'ALTER TABLE users ADD COLUMN email_invitation_acceptance_notifications BOOLEAN NOT NULL DEFAULT 1',
+  'ALTER TABLE trades ADD COLUMN disavowed_by VARCHAR(64)',
+  'ALTER TABLE trades ADD COLUMN disavowed_reason VARCHAR(64) CHECK((disavowed_reason IS NULL) = (disavowed_by IS NULL))',
+  'ALTER TABLE trades ADD COLUMN disavowed_at_unixtime REAL() CHECK((disavowed_at_unixtime IS NULL) = (disavowed_by IS NULL))',
 ]
 _N_MIGRATIONS = len(_MIGRATION_STMTS)
 

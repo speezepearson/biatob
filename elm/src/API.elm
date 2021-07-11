@@ -40,6 +40,8 @@ postStake : (Result Http.Error Pb.StakeResponse -> msg) -> Pb.StakeRequest -> Cm
 postStake = hit {url="/api/Stake", encoder=Pb.toStakeRequestEncoder, decoder=Pb.stakeResponseDecoder}
 postQueueStake : (Result Http.Error Pb.QueueStakeResponse -> msg) -> Pb.QueueStakeRequest -> Cmd msg
 postQueueStake = hit {url="/api/QueueStake", encoder=Pb.toQueueStakeRequestEncoder, decoder=Pb.queueStakeResponseDecoder}
+postDisavowTrade : (Result Http.Error Pb.DisavowTradeResponse -> msg) -> Pb.DisavowTradeRequest -> Cmd msg
+postDisavowTrade = hit {url="/api/DisavowTrade", encoder=Pb.toDisavowTradeRequestEncoder, decoder=Pb.disavowTradeResponseDecoder}
 postResolve : (Result Http.Error Pb.ResolveResponse -> msg) -> Pb.ResolveRequest -> Cmd msg
 postResolve = hit {url="/api/Resolve", encoder=Pb.toResolveRequestEncoder, decoder=Pb.resolveResponseDecoder}
 postSetTrusted : (Result Http.Error Pb.SetTrustedResponse -> msg) -> Pb.SetTrustedRequest -> Cmd msg
@@ -163,6 +165,19 @@ simplifyQueueStakeResponse res =
         Just (Pb.QueueStakeResultOk result) ->
           Ok result
         Just (Pb.QueueStakeResultError e) ->
+          Err e.catchall
+        Nothing ->
+          Err "Invalid server response (neither Ok nor Error in protobuf)"
+
+simplifyDisavowTradeResponse : Result Http.Error Pb.DisavowTradeResponse -> Result String Pb.UserPredictionView
+simplifyDisavowTradeResponse res =
+  case res of
+    Err e -> Err (httpErrorToString e)
+    Ok resp ->
+      case resp.disavowTradeResult of
+        Just (Pb.DisavowTradeResultOk result) ->
+          Ok result
+        Just (Pb.DisavowTradeResultError e) ->
           Err e.catchall
         Nothing ->
           Err "Invalid server response (neither Ok nor Error in protobuf)"

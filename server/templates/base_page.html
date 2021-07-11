@@ -48,6 +48,13 @@
         e.remove();
       })})
       if (app.ports.navigate) app.ports.navigate.subscribe(dest => {console.log('navigating', {dest}); if (dest) {window.location=dest} else window.location.reload()});
+      if (app.ports.showModal) {
+        var modal = new bootstrap.Modal(document.getElementById('modal'));
+        app.ports.showModal.subscribe(show => {
+          console.log("setting modal visibility", {show});
+          if (show) modal.show(); else modal.hide();
+        })
+      };
 
       // Elm doesn't watch for external DOM modification, so when password managers fill things in,
       // we need to notify Elm.

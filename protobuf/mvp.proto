@@ -81,6 +81,13 @@ message Trade {
   uint32 bettor_stake_cents = 3;
   uint32 creator_stake_cents = 4;
   double transacted_unixtime = 6;
+  Disavowal disavowal = 8;
+
+  message Disavowal {
+    string disavower = 1;
+    double disavowed_at_unixtime = 2;
+    string reason = 3;
+  }
 }
 
 message QueuedTrade {
@@ -248,6 +255,21 @@ message QueueStakeRequest {
 }
 message QueueStakeResponse {
   oneof queue_stake_result {
+    UserPredictionView ok = 1;
+    Error error = 2;
+  }
+  message Error {
+    string catchall = 1;
+  }
+}
+
+message DisavowTradeRequest {
+  string prediction_id = 1;
+  Trade trade = 2;
+  string reason = 3;
+}
+message DisavowTradeResponse {
+  oneof disavow_trade_result {
     UserPredictionView ok = 1;
     Error error = 2;
   }

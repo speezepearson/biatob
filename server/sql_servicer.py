@@ -153,6 +153,7 @@ class SqlConn:
       sqlalchemy.select([sqlalchemy.sql.func.coalesce(sqlalchemy.sql.func.sum(schema.trades.c.creator_stake_cents), 0)])
       .where(sqlalchemy.and_(
         schema.trades.c.prediction_id == prediction_id,
+        schema.trades.c.disavowed_by == None,
         sqlalchemy.not_(schema.trades.c.bettor_is_a_skeptic)
       ))
     ).scalar()
@@ -160,6 +161,7 @@ class SqlConn:
       sqlalchemy.select([sqlalchemy.sql.func.coalesce(sqlalchemy.sql.func.sum(schema.trades.c.creator_stake_cents), 0)])
       .where(sqlalchemy.and_(
         schema.trades.c.prediction_id == prediction_id,
+        schema.trades.c.disavowed_by == None,
         schema.trades.c.bettor_is_a_skeptic
       ))
     ).scalar()
@@ -191,6 +193,11 @@ class SqlConn:
           creator_stake_cents=t['creator_stake_cents'],
           bettor_stake_cents=t['bettor_stake_cents'],
           transacted_unixtime=t['transacted_at_unixtime'],
+          disavowal=None if (not t['disavowed_by']) else mvp_pb2.Trade.Disavowal(
+            disavower=t['disavowed_by'],
+            reason=t['disavowed_reason'],
+            disavowed_at_unixtime=t['disavowed_at_unixtime'],
+          )
         )
         for t in trade_rows
       ],
@@ -341,6 +348,7 @@ class SqlConn:
       .select_from(schema.predictions.join(schema.trades))
       .where(sqlalchemy.and_(
         schema.predictions.c.prediction_id == prediction_id,
+        schema.trades.c.disavowed_by == None,
         schema.trades.c.bettor_is_a_skeptic if against_skeptics else sqlalchemy.not_(schema.trades.c.bettor_is_a_skeptic),
       ))
     ).scalar() or 0
@@ -358,6 +366,7 @@ class SqlConn:
       .select_from(schema.predictions.join(schema.trades))
       .where(sqlalchemy.and_(
         schema.trades.c.bettor == bettor,
+        schema.trades.c.disavowed_by == None,
         schema.predictions.c.prediction_id == prediction_id,
         schema.trades.c.bettor_is_a_skeptic if bettor_is_a_skeptic else sqlalchemy.not_(schema.trades.c.bettor_is_a_skeptic),
       ))
@@ -398,6 +407,28 @@ class SqlConn:
       creator_stake_cents=creator_stake_cents,
       enqueued_at_unixtime=now.timestamp(),
     ))
+
+  def disavow_trade(
+    self,
+    disavower: Username,
+    request: mvp_pb2.DisavowTradeRequest,
+    now: datetime.datetime,
+  ) -> None:
+    self._conn.execute(
+      sqlalchemy.update(schema.trades)
+      .where(sqlalchemy.and_(
+        schema.trades.c.prediction_id == request.prediction_id,
+        schema.trades.c.bettor == request.trade.bettor,
+        schema.trades.c.bettor_stake_cents == request.trade.bettor_stake_cents,
+        schema.trades.c.creator_stake_cents == request.trade.creator_stake_cents,
+        schema.trades.c.transacted_at_unixtime == request.trade.transacted_unixtime,
+      ))
+      .values(
+        disavowed_by=disavower,
+        disavowed_reason=request.reason,
+        disavowed_at_unixtime=now.timestamp(),
+      )
+    )
 
   def resolve(
     self,
@@ -518,6 +549,7 @@ class SqlConn:
       .where(sqlalchemy.and_(
         schema.trades.c.prediction_id == prediction_id,
         schema.trades.c.bettor == schema.users.c.username,
+        schema.trades.c.disavowed_by == None,
         schema.users.c.email_resolution_notifications,
       ))
     ).fetchall()
@@ -1010,6 +1042,36 @@ class SqlServicer(Servicer):
       )
       logger.info('trade executed', prediction_id=request.prediction_id, request=request)
       return mvp_pb2.QueueStakeResponse(ok=self._conn.view_prediction(token_owner(token), PredictionId(request.prediction_id)))
+
+    @transactional
+    @checks_token
+    @log_action
+    def DisavowTrade(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.DisavowTradeRequest) -> mvp_pb2.DisavowTradeResponse:
+      logger.debug('API call', request=request)
+      if token is None:
+        logger.warn('not logged in')
+        return mvp_pb2.DisavowTradeResponse(error=mvp_pb2.DisavowTradeResponse.Error(catchall='must log in to bet'))
+
+      predinfo = self._conn.get_prediction_info(PredictionId(request.prediction_id))
+      if predinfo is None:
+        logger.warn('trying to disavow trade on nonexistent prediction', prediction_id=request.prediction_id)
+        return mvp_pb2.DisavowTradeResponse(error=mvp_pb2.DisavowTradeResponse.Error(catchall='no such prediction'))
+      trades = list(self._conn.get_trades(PredictionId(request.prediction_id)))
+      if request.trade not in trades:
+        logger.warn('trying to disavow nonexistent trade', requested=request.trade, actual_trades=trades)
+        return mvp_pb2.DisavowTradeResponse(error=mvp_pb2.DisavowTradeResponse.Error(catchall="no such trade to disavow"))
+      if token.owner not in {request.trade.bettor, predinfo['creator']}:
+        logger.warn('trying to disavow somebody else\'s trade', prediction_id=request.prediction_id)
+        return mvp_pb2.DisavowTradeResponse(error=mvp_pb2.DisavowTradeResponse.Error(catchall="can't disavow somebody else's trade"))
+
+      now = self._clock()
+      self._conn.disavow_trade(
+        disavower=token_owner(token),
+        request=request,
+        now=now,
+      )
+      logger.info('trade disavowed', prediction_id=request.prediction_id, request=request)
+      return mvp_pb2.DisavowTradeResponse(ok=self._conn.view_prediction(token_owner(token), PredictionId(request.prediction_id)))
 
     @transactional
     @checks_token

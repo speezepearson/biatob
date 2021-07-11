@@ -48,6 +48,7 @@ exampleTrade =
   , bettorStakeCents = 7
   , creatorStakeCents = 13
   , transactedUnixtime = 0
+  , disavowal = Nothing
   }
 embeddedLinkTextTest : Test
 embeddedLinkTextTest =
@@ -486,7 +487,7 @@ viewYourStakeTest =
   describe "viewYourStake"
   [ describe "as bettor"
     [ fuzz (intRange 0 3) "includes one row per trade" <|
-      \nTrades -> viewYourStake (Just "me") Time.utc {mockPrediction | yourTrades = List.repeat nTrades {bettor="me", bettorIsASkeptic=True, bettorStakeCents=1, creatorStakeCents=1, transactedUnixtime=mockPrediction.createdUnixtime}}
+      \nTrades -> viewYourStake (Just "me") Time.utc {mockPrediction | yourTrades = List.repeat nTrades exampleTrade}
         |> HQ.fromHtml
         |>  if nTrades == 0 then
               HQ.hasNot [HS.containing [HS.tag "table"]]
@@ -497,9 +498,61 @@ viewYourStakeTest =
     ]
   , fuzz2 Fuzz.bool (fuzzConstants ["me", "rando"]) "ignores queued trades" <|
     \hasTrade creator -> expectMapEqual
-      (\qts -> viewYourStake (Just "me") Time.utc {mockPrediction | creator = creator , yourQueuedTrades = qts , yourTrades = if hasTrade then [{bettor="me", bettorIsASkeptic=True, bettorStakeCents=1, creatorStakeCents=1, transactedUnixtime=mockPrediction.createdUnixtime}] else []})
+      (\qts -> viewYourStake (Just "me") Time.utc {mockPrediction | creator = creator , yourQueuedTrades = qts , yourTrades = if hasTrade then [exampleTrade] else []})
       [{bettor="me", bettorIsASkeptic=True, bettorStakeCents=1, creatorStakeCents=1, enqueuedAtUnixtime=mockPrediction.createdUnixtime}]
       []
+  , describe "disavowal"
+    [ fuzz (intRange 1 3) "has disavowal button for each completed trade" <|
+      \nTrades -> viewYourStake (Just "me") Time.utc {mockPrediction | yourTrades = List.repeat nTrades exampleTrade}
+        |> HQ.fromHtml
+        |> HQ.find [HS.tag "tbody"]
+        |> HQ.findAll [HS.tag "tr"]
+        |> HQ.each (Expect.all
+            [ HQ.has [buttonSelector "Disavow"]
+            , HQ.find [buttonSelector "Disavow"] >> HEM.simulate HEM.click >> HEM.expect (OpenDisavowalModal exampleTrade)
+            ]
+          )
+    ]
+  ]
+
+viewDisavowalModalTest : Test
+viewDisavowalModalTest =
+  let
+    creator = "creator"
+    predictionId = "my-predid"
+    prediction = { mockPrediction | creator = creator , yourTrades = [exampleTrade] }
+    exampleSettings = TU.exampleSettings
+    globals =
+      exampleGlobals
+      |> TU.logInAs "friend"
+          { exampleSettings
+          | relationships = exampleSettings.relationships |> Dict.insert creator (Just {trustsYou = True , trustedByYou = True})
+          }
+      |> TU.addPrediction predictionId prediction
+  in
+  describe "viewDisavowalModal"
+  [ test "hidden when field is Nothing" <|
+    \() -> initInternal globals predictionId
+      |> (\m -> { m | disavowModalFor = Nothing })
+      |> viewModelForTest
+      |> HQ.find [HS.id "modal"]
+      |> HQ.has [HS.class "d-none"]
+  , test "has button to disavow" <|
+    \() -> initInternal globals predictionId
+      |> (\m -> { m | disavowModalFor = Just exampleTrade })
+      |> viewModelForTest
+      |> HQ.find [HS.id "modal"]
+      |> HQ.find [buttonSelector "This bet was invalid"]
+      |> HEM.simulate HEM.click
+      |> HEM.expect (DisavowTrade exampleTrade)
+  , test "has button to close" <|
+    \() -> initInternal globals predictionId
+      |> (\m -> { m | disavowModalFor = Just exampleTrade })
+      |> viewModelForTest
+      |> HQ.find [HS.id "modal"]
+      |> HQ.find [buttonSelector "Close"]
+      |> HEM.simulate HEM.click
+      |> HEM.expect CloseDisavowalModal
   ]
 
 viewAsFriendTest : Test
@@ -511,7 +564,7 @@ viewAsFriendTest =
     exampleSettings = TU.exampleSettings
     globals =
       exampleGlobals
-      |> TU.logInAs "friend"
+      |> TU.logInAs exampleTrade.bettor
           { exampleSettings
           | relationships = exampleSettings.relationships |> Dict.insert creator (Just {trustsYou = True , trustedByYou = True})
           }
@@ -522,6 +575,11 @@ viewAsFriendTest =
     \() -> initInternal globals predictionId
       |> viewModelForTest
       |> HQ.contains [viewStakeWidget QueueingUnnecessary "10" Unstarted Utils.Skeptic prediction]
+  , fuzz (fuzzConstants [Nothing, Just exampleTrade]) "has disavowal modal" <|
+    \trade -> initInternal (globals |> TU.addPrediction predictionId {prediction | yourTrades = [exampleTrade]}) predictionId
+      |> (\m -> { m | disavowModalFor = trade })
+      |> viewModelForTest
+      |> HQ.contains [viewDisavowalModal globals.timeZone (Just exampleTrade.bettor) prediction trade "" Unstarted]
   ]
 
 creatorViewTest : Test

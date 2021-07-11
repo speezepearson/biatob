@@ -59,6 +59,11 @@ def QueueStakeOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], request
 def QueueStakeErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.QueueStakeRequest) -> mvp_pb2.QueueStakeResponse.Error:
   return assert_oneof(servicer.QueueStake(token, request), 'queue_stake_result', 'error', mvp_pb2.QueueStakeResponse.Error)
 
+def DisavowTradeOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.DisavowTradeRequest) -> mvp_pb2.UserPredictionView:
+  return assert_oneof(servicer.DisavowTrade(token, request), 'disavow_trade_result', 'ok', mvp_pb2.UserPredictionView)
+def DisavowTradeErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.DisavowTradeRequest) -> mvp_pb2.DisavowTradeResponse.Error:
+  return assert_oneof(servicer.DisavowTrade(token, request), 'disavow_trade_result', 'error', mvp_pb2.DisavowTradeResponse.Error)
+
 def ResolveOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], prediction_id: str, resolution: mvp_pb2.Resolution.V, notes: str = '') -> mvp_pb2.UserPredictionView:
   return assert_oneof(servicer.Resolve(token, mvp_pb2.ResolveRequest(prediction_id=prediction_id, resolution=resolution, notes=notes)), 'resolve_result', 'ok', mvp_pb2.UserPredictionView)
 def ResolveErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], prediction_id: str, resolution: mvp_pb2.Resolution.V, notes: str = '') -> mvp_pb2.ResolveResponse.Error:
@@ -467,6 +472,66 @@ class TestStake:
     SetTrustedOk(any_servicer, creator_token, bettor_token.owner, True)
     with assert_prediction_unchanged(any_servicer, prediction_id=prediction_id, creator_token=creator_token):
       assert "you don\\'t trust the creator" in str(StakeErr(any_servicer, bettor_token, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_stake_cents=10)))
+
+
+class TestDisavowTrade:
+
+  def test_sets_disavowal(self, any_servicer: Servicer, clock: MockClock):
+    alice_token, bob_token = alice_bob_tokens(any_servicer)
+    predid = CreatePredictionOk(any_servicer, alice_token, {})
+    StakeOk(any_servicer, bob_token, mvp_pb2.StakeRequest(prediction_id=predid, bettor_is_a_skeptic=True, bettor_stake_cents=10))
+
+    clock.tick()
+    disavowed_at = clock.now()
+    [trade] = GetPredictionOk(any_servicer, bob_token, predid).your_trades
+    DisavowTradeOk(any_servicer, bob_token, mvp_pb2.DisavowTradeRequest(prediction_id=predid, trade=trade, reason='test reason'))
+    clock.tick()
+
+    [trade] = GetPredictionOk(any_servicer, bob_token, predid).your_trades
+    assert trade.disavowal == mvp_pb2.Trade.Disavowal(
+      disavower=bob_token.owner,
+      disavowed_at_unixtime=disavowed_at.timestamp(),
+      reason='test reason'
+    )
+
+  def test_creator_can_disavow(self, any_servicer: Servicer):
+    alice_token, bob_token = alice_bob_tokens(any_servicer)
+    predid = CreatePredictionOk(any_servicer, alice_token, {})
+    StakeOk(any_servicer, bob_token, mvp_pb2.StakeRequest(prediction_id=predid, bettor_is_a_skeptic=True, bettor_stake_cents=10))
+
+    [trade] = GetPredictionOk(any_servicer, alice_token, predid).your_trades
+    DisavowTradeOk(any_servicer, alice_token, mvp_pb2.DisavowTradeRequest(prediction_id=predid, trade=trade, reason='test reason'))
+    [trade] = GetPredictionOk(any_servicer, alice_token, predid).your_trades
+
+    assert trade.disavowal.disavower == alice_token.owner
+
+  def test_updates_remaining_stake(self, any_servicer: Servicer):
+    alice_token, bob_token = alice_bob_tokens(any_servicer)
+    predid = CreatePredictionOk(any_servicer, alice_token, {})
+    StakeOk(any_servicer, bob_token, mvp_pb2.StakeRequest(prediction_id=predid, bettor_is_a_skeptic=True, bettor_stake_cents=10))
+
+    [trade] = GetPredictionOk(any_servicer, bob_token, predid).your_trades
+    DisavowTradeOk(any_servicer, bob_token, mvp_pb2.DisavowTradeRequest(prediction_id=predid, trade=trade, reason='test reason'))
+
+    pred = GetPredictionOk(any_servicer, bob_token, predid)
+    assert pred.remaining_stake_cents_vs_skeptics == pred.maximum_stake_cents
+
+  def test_requires_reason(self, any_servicer: Servicer):
+    alice_token, bob_token = alice_bob_tokens(any_servicer)
+    predid = CreatePredictionOk(any_servicer, alice_token, {})
+    StakeOk(any_servicer, bob_token, mvp_pb2.StakeRequest(prediction_id=predid, bettor_is_a_skeptic=True, bettor_stake_cents=10))
+
+    [trade] = GetPredictionOk(any_servicer, bob_token, predid).your_trades
+    assert 'disavowal requires reason' in str(mvp_pb2.DisavowTradeRequest(prediction_id=predid, trade=trade, reason=''))
+
+  def test_error_if_no_such_trade(self, any_servicer: Servicer):
+    alice_token, bob_token = alice_bob_tokens(any_servicer)
+    predid = CreatePredictionOk(any_servicer, alice_token, {})
+    StakeOk(any_servicer, bob_token, mvp_pb2.StakeRequest(prediction_id=predid, bettor_is_a_skeptic=True, bettor_stake_cents=10))
+
+    [trade] = GetPredictionOk(any_servicer, bob_token, predid).your_trades
+    trade.bettor_stake_cents += 1
+    assert 'no such trade' in str(mvp_pb2.DisavowTradeRequest(prediction_id=predid, trade=trade, reason='test reason'))
 
 
 class TestQueueStake:
