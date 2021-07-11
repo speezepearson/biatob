@@ -11,6 +11,7 @@ import Http
 import Widgets.CopyWidget as CopyWidget
 import Widgets.AuthWidget as AuthWidget
 import Widgets.Navbar as Navbar
+import Widgets.Modal as Modal
 import Widgets.EmailSettingsWidget as EmailSettingsWidget
 import Globals
 import API
@@ -25,7 +26,6 @@ epsilon = 0.0000001 -- 🎵 I hate floating-point arithmetic 🎶
 port copy : String -> Cmd msg
 port navigate : Maybe String -> Cmd msg
 port authWidgetExternallyChanged : (AuthWidget.DomModification -> msg) -> Sub msg
-port showModal : Bool -> Cmd msg
 
 type alias Model =
   { globals : Globals.Globals
@@ -176,8 +176,8 @@ type Msg
   | StakeFinished Pb.StakeRequest (Result Http.Error Pb.StakeResponse)
   | OpenDisavowalModal Pb.Trade
   | CloseDisavowalModal
-  | DisavowTrade Pb.Trade
-  | DisavowTradeFinished Pb.DisavowTradeRequest (Result Http.Error Pb.DisavowTradeResponse)
+  | SetTradeDisavowal Pb.Trade
+  | SetTradeDisavowalFinished Pb.SetTradeDisavowalRequest (Result Http.Error Pb.SetTradeDisavowalResponse)
   | UpdateSettings EmailSettingsWidget.State Pb.UpdateSettingsRequest
   | UpdateSettingsFinished Pb.UpdateSettingsRequest (Result Http.Error Pb.UpdateSettingsResponse)
   | SetBettorSide Utils.BetSide
@@ -393,7 +393,7 @@ getPrereqsForStaking model =
   else
     NeedsToTextUserPageLink
 
-viewYourStake : Maybe Username -> Time.Zone -> Pb.UserPredictionView -> Html Msg
+viewYourStake : Username -> Time.Zone -> Pb.UserPredictionView -> Html Msg
 viewYourStake self timeZone prediction =
   if List.isEmpty prediction.yourTrades then
     H.text ""
@@ -401,18 +401,18 @@ viewYourStake self timeZone prediction =
     H.div []
     [ H.h4 [HA.class "text-center"] [H.text "Your stake"]
     , H.div [HA.class "mx-lg-5"]
-      [ if self == Just prediction.creator then
+      [ if self == prediction.creator then
           viewTradesAsCreator timeZone prediction
         else
-          viewTradesAsBettor timeZone prediction prediction.yourTrades
+          viewTradesAsBettor self timeZone prediction prediction.yourTrades
       ]
     , H.hr [HA.class "my-4"] []
     ]
-viewYourQueuedStake : Maybe Username -> Time.Zone -> Pb.UserPredictionView -> Html Msg
+viewYourQueuedStake : Username -> Time.Zone -> Pb.UserPredictionView -> Html Msg
 viewYourQueuedStake self timeZone prediction =
   if List.isEmpty prediction.yourQueuedTrades then
     H.text ""
-  else if self == Just prediction.creator then
+  else if self == prediction.creator then
     H.text ""
   else
     H.div []
@@ -424,7 +424,7 @@ viewYourQueuedStake self timeZone prediction =
         , H.text " tells me they trust you)"
         ]
       , H.br [] []
-      , viewTradesAsBettor timeZone prediction
+      , viewTradesAsBettor self timeZone prediction
         <| List.map
             (\qt -> {bettor=qt.bettor, bettorIsASkeptic=qt.bettorIsASkeptic, bettorStakeCents=qt.bettorStakeCents, creatorStakeCents=qt.creatorStakeCents, transactedUnixtime=qt.enqueuedAtUnixtime, disavowal=Nothing})
             prediction.yourQueuedTrades
@@ -435,7 +435,6 @@ viewBody : Model -> List (Html Msg)
 viewBody model =
   let
     prediction = mustPrediction model
-    isOwnPrediction = Globals.isSelf model.globals prediction.creator
     maybeOrYouCouldSwapUserPages =
       case Globals.getOwnUsername model.globals of
         Nothing -> H.text ""
@@ -452,8 +451,12 @@ viewBody model =
   , H.div [HA.class "row row-cols-12"]
     [ H.div [HA.class "col-md-4"] [viewSummaryTable model.globals.now model.globals.timeZone prediction]
     , H.div [HA.class "col-md-8"]
-      [ viewYourStake (Globals.getOwnUsername model.globals) model.globals.timeZone prediction
-      , viewYourQueuedStake (Globals.getOwnUsername model.globals) model.globals.timeZone prediction
+      [ case Globals.getOwnUsername model.globals of
+          Just self -> viewYourStake self model.globals.timeZone prediction
+          Nothing -> H.text ""
+      , case Globals.getOwnUsername model.globals of
+          Just self -> viewYourQueuedStake self model.globals.timeZone prediction
+          Nothing -> H.text ""
       , case getPrereqsForStaking model of
           IsCreator ->
             H.div [HA.id "resolve-section"]
@@ -906,101 +909,160 @@ viewResolutionRow now timeZone prediction =
   ]
 
 viewDisavowalModal : Time.Zone -> Maybe Username -> Pb.UserPredictionView -> Maybe Pb.Trade -> String -> RequestStatus -> Html Msg
-viewDisavowalModal timeZone self prediction trade disavowalReason disavowalRequestStatus =
-  let
-    working = (disavowalRequestStatus == AwaitingResponse)
-    content =
-      case trade of
-        Nothing -> H.text ""
-        Just t ->
-          H.div [HA.class "modal-content"]
-          [ H.div [HA.class "modal-header"]
-            [ H.text "Disavow Trade"
+viewDisavowalModal timeZone self prediction maybeTrade disavowalReason disavowalRequestStatus =
+  case maybeTrade of
+    Nothing ->
+      Modal.view {show=False, header=[], body=[], footer=[]}
+    Just trade ->
+      let
+        working = (disavowalRequestStatus == AwaitingResponse)
+        isDisavowed = case trade.disavowal of
+          Nothing -> False
+          Just _ -> True
+        content : List (Html Msg)
+        content =
+          let
+            maybeThenItWasDisavowed =
+              case trade.disavowal of
+                Nothing -> H.text ""
+                Just disavowal ->
+                  H.p []
+                  [ H.text "Then, on "
+                  , H.text <| Utils.isoStr timeZone (Utils.unixtimeToTime disavowal.disavowedAtUnixtime)
+                  , H.text ", "
+                  , if self == Just disavowal.disavower then H.text "you" else Utils.renderUser disavowal.disavower
+                  , H.text " disavowed it, for the following reason: \""
+                  , H.span [HA.class "text-secondary"] [H.text disavowal.reason]
+                  , H.text "\"."
+                  ]
+          in
+          if self == Just trade.bettor then
+            [ H.p []
+              [ H.text "On "
+              , H.text <| Utils.isoStr timeZone (Utils.unixtimeToTime trade.transactedUnixtime)
+              , H.text ", you bet "
+              , H.text <| Utils.formatCents trade.bettorStakeCents
+              , H.text " that this "
+              , Utils.b <| if trade.bettorIsASkeptic then "wouldn't" else "would"
+              , H.text " happen, against "
+              , Utils.renderUser prediction.creator
+              , H.text "'s "
+              , H.text <| Utils.formatCents trade.creatorStakeCents
+              , H.text " that it "
+              , Utils.b <| if trade.bettorIsASkeptic then "would" else "wouldn't"
+              , H.text "."
+              ]
+            , maybeThenItWasDisavowed
+            , case trade.disavowal of
+                Nothing ->
+                  H.p []
+                  [ H.text "If this was because you misclicked, or misunderstood what the prediction meant, then feel free to disavow it. But first, explain why:"
+                  , H.textarea
+                    [ HA.class "form-control"
+                    , HA.placeholder "I meant to bet $20, not $200"
+                    , HE.onInput SetDisavowalReasonField
+                    , HA.value disavowalReason
+                    , HA.disabled working
+                    ]
+                    []
+                  ]
+                Just disavowal ->
+                  if self == Just disavowal.disavower then
+                    H.p []
+                    [ H.text "If "
+                    , Utils.i "disavowing"
+                    , H.text " this trade was a mistake, then you can re-avow it by clicking the button below."
+                    ]
+                  else
+                    H.text ""
             ]
-          , H.div [HA.class "modal-body"] <|
-            if self == Just t.bettor then
-              [ H.p []
-                [ H.text "On "
-                , H.text <| Utils.isoStr timeZone (Utils.unixtimeToTime t.transactedUnixtime)
-                , H.text ", you bet "
-                , H.text <| Utils.formatCents t.bettorStakeCents
-                , H.text " that this "
-                , Utils.b <| if t.bettorIsASkeptic then "wouldn't" else "would"
-                , H.text " happen, against "
-                , Utils.renderUser prediction.creator
-                , H.text "'s "
-                , H.text <| Utils.formatCents t.creatorStakeCents
-                , H.text " that it "
-                , Utils.b <| if t.bettorIsASkeptic then "would" else "wouldn't"
-                , H.text "."
-                ]
-              , H.p []
-                [ H.text "If this was because you misclicked, or misunderstood what the prediction meant, then feel free to disavow it. But first, explain why:"
-                , H.textarea
-                  [ HA.class "form-control"
-                  , HA.placeholder "I meant to bet $20, not $200"
-                  , HE.onInput SetDisavowalReasonField
-                  , HA.value disavowalReason
-                  , HA.disabled working
+          else if self == Just prediction.creator then
+            [ H.p []
+              [ H.text "On "
+              , H.text <| Utils.isoStr timeZone (Utils.unixtimeToTime trade.transactedUnixtime)
+              , H.text ", "
+              , Utils.renderUser trade.bettor
+              , H.text " bet "
+              , H.text <| Utils.formatCents trade.bettorStakeCents
+              , H.text " that this "
+              , Utils.b <| if trade.bettorIsASkeptic then "wouldn't" else "would"
+              , H.text " happen, against your "
+              , H.text <| Utils.formatCents trade.creatorStakeCents
+              , H.text " that it "
+              , Utils.b <| if trade.bettorIsASkeptic then "would" else "wouldn't"
+              , H.text "."
+              ]
+            , maybeThenItWasDisavowed
+            , case trade.disavowal of
+                Nothing ->
+                  H.p []
+                  [ H.text "If there's some strong reason that this trade by this bettor \"doesn't count,\" explain:"
+                  , H.textarea
+                    [ HA.class "form-control"
+                    , HA.placeholder "This bet was made after the result of this prediction was pretty firmly decided!"
+                    , HE.onInput SetDisavowalReasonField
+                    , HA.value disavowalReason
+                    , HA.disabled working
+                    ]
+                    []
                   ]
-                  []
-                ]
+                Just disavowal ->
+                  if self == Just disavowal.disavower then
+                    H.p []
+                    [ H.text "If "
+                    , Utils.i "disavowing"
+                    , H.text " this trade was a mistake, then you can re-avow it by clicking the button below."
+                    ]
+                  else
+                    H.text ""
+            ]
+          else
+            [ H.p [HA.class "text-danger"]
+              [ H.text "I don't know how you got here! This modal should only be available to the prediction's creator ("
+              , Utils.renderUser prediction.creator
+              , H.text ") and the bettor ("
+              , Utils.renderUser trade.bettor
+              , H.text "); you're "
+              , case self of
+                  Nothing -> H.text "not logged in"
+                  Just u -> H.span [] [H.text "logged in as ", Utils.renderUser u]
+              , H.text "."
               ]
-            else if self == Just prediction.creator then
-              [ H.p []
-                [ H.text "On "
-                , H.text <| Utils.isoStr timeZone (Utils.unixtimeToTime t.transactedUnixtime)
-                , H.text ", "
-                , Utils.renderUser t.bettor
-                , H.text " bet "
-                , H.text <| Utils.formatCents t.bettorStakeCents
-                , H.text " that this "
-                , Utils.b <| if t.bettorIsASkeptic then "wouldn't" else "would"
-                , H.text " happen, against your "
-                , H.text <| Utils.formatCents t.creatorStakeCents
-                , H.text " that it "
-                , Utils.b <| if t.bettorIsASkeptic then "would" else "wouldn't"
-                , H.text "."
-                ]
-              , H.p []
-                [ H.text "If there's some strong reason that this trade by this bettor \"doesn't count,\" explain:"
-                , H.textarea
-                  [ HA.class "form-control"
-                  , HA.placeholder "This bet was made after the result of this prediction was pretty firmly decided!"
-                  , HE.onInput SetDisavowalReasonField
-                  , HA.value disavowalReason
-                  , HA.disabled working
-                  ]
-                  []
-                ]
-              ]
-            else
-              [ H.p [HA.class "text-danger"]
-                [ H.text "I don't know how you got here! This modal should only be available to the prediction's creator ("
-                , Utils.renderUser prediction.creator
-                , H.text ") and the bettor ("
-                , Utils.renderUser t.bettor
-                , H.text "); you're "
-                , case self of
-                    Nothing -> H.text "not logged in"
-                    Just u -> H.span [] [H.text "logged in as ", Utils.renderUser u]
-                , H.text "."
-                ]
-              ]
-          , H.div [HA.class "modal-footer"]
-            [ H.button [HA.class "btn btn-sm btn-primary", HA.disabled (working || disavowalReason==""), HE.onClick (DisavowTrade t)] [H.text "This bet was invalid"]
-            , case disavowalRequestStatus of
+            ]
+      in
+      Modal.view
+        { show = True
+        , header = [H.text <| if not isDisavowed then "Disavow Trade" else "Re-avow trade"]
+        , body = content
+        , footer =
+          [ H.div []
+            [ case trade.disavowal of
+                Nothing ->
+                  H.button
+                  [ HA.class "btn btn-sm btn-primary mx-2"
+                  , HA.disabled (working || disavowalReason=="")
+                  , HE.onClick (SetTradeDisavowal trade)
+                  ] [H.text "This bet was invalid"]
+                Just disavowal ->
+                  if self == Just disavowal.disavower then
+                    H.button
+                    [ HA.class "btn btn-sm btn-primary mx-2"
+                    , HA.disabled working
+                    , HE.onClick (SetTradeDisavowal trade)
+                    ] [H.text "Oops, this bet was valid after all"]
+                  else
+                    H.text ""
+            , H.button [HA.class "btn btn-sm btn-secondary mx-2", HA.disabled working, HE.onClick CloseDisavowalModal] [H.text "Close"]
+            ]
+          , H.div []
+            [ case disavowalRequestStatus of
                 Unstarted -> H.text ""
                 AwaitingResponse -> H.text ""
                 Succeeded -> Utils.greenText " (success!) "
                 Failed e -> Utils.redText e
-            , H.button [HA.class "btn btn-sm btn-secondary", HA.disabled working, HE.onClick CloseDisavowalModal] [H.text "Close"]
             ]
           ]
-  in
-  H.div [HA.id "modal", HA.class "modal fade", HA.class (if trade == Nothing then "d-none" else "")]
-  [ H.div [HA.class "modal-dialog"] [content]
-  ]
+        }
 
 viewTradesAsCreator : Time.Zone -> Pb.UserPredictionView -> Html Msg
 viewTradesAsCreator timeZone prediction =
@@ -1026,7 +1088,12 @@ viewTradesAsCreator timeZone prediction =
           , \t ->
               case t.disavowal of
                 Just disavowal ->
-                  [ H.text <| "Disavowed! Reason: " ++ disavowal.reason ]
+                  [ H.text <| "Disavowed! Reason: " ++ disavowal.reason
+                  , if disavowal.disavower == prediction.creator then
+                      H.button [HA.class "btn btn-sm btn-outline-secondary", HE.onClick (OpenDisavowalModal t)] [H.text "Re-avow"]
+                    else
+                      H.text ""
+                  ]
                 Nothing ->
                   [ H.button [HA.class "btn btn-sm btn-outline-secondary", HE.onClick (OpenDisavowalModal t)] [H.text "Disavow"]
                   ]
@@ -1075,8 +1142,8 @@ viewTradesAsCreator timeZone prediction =
   in
     makeTable [HA.class "winnings-by-bettor-table"] (bettorColumn :: winningsColumns) (Dict.toList tradesByBettor)
 
-viewTradesAsBettor : Time.Zone -> Pb.UserPredictionView -> List Pb.Trade -> Html Msg
-viewTradesAsBettor timeZone prediction trades =
+viewTradesAsBettor : Username -> Time.Zone -> Pb.UserPredictionView -> List Pb.Trade -> Html Msg
+viewTradesAsBettor self timeZone prediction trades =
   let
     allTradesDetails : Html Msg
     allTradesDetails =
@@ -1099,7 +1166,12 @@ viewTradesAsBettor timeZone prediction trades =
           , \t ->
               case t.disavowal of
                 Just disavowal ->
-                  [ H.text <| "Disavowed! Reason: " ++ disavowal.reason ]
+                  [ H.text <| "Disavowed! Reason: " ++ disavowal.reason
+                  , if disavowal.disavower == self then
+                      H.button [HA.class "btn btn-sm btn-outline-secondary", HE.onClick (OpenDisavowalModal t)] [H.text "Re-avow"]
+                    else
+                      H.text ""
+                  ]
                 Nothing ->
                   [ H.button [HA.class "btn btn-sm btn-outline-secondary", HE.onClick (OpenDisavowalModal t)] [H.text "Disavow"]
                   ]
@@ -1378,28 +1450,28 @@ update msg model =
       )
     OpenDisavowalModal trade ->
       ( { model | disavowModalFor = Just trade }
-      , showModal True
+      , Modal.showModal True
       )
     CloseDisavowalModal ->
       ( { model | disavowModalFor = Nothing |> Debug.log "closed modal" }
-      , showModal False
+      , Modal.showModal False
       )
-    DisavowTrade trade ->
+    SetTradeDisavowal trade ->
       ( { model | disavowalRequestStatus = AwaitingResponse }
-      , let req = {predictionId=model.predictionId, trade=Just trade, reason=model.disavowalReasonField} in API.postDisavowTrade (DisavowTradeFinished req) req
+      , let req = {predictionId=model.predictionId, trade=Just trade, reason=if trade.disavowal == Nothing then model.disavowalReasonField else ""} in API.postSetTradeDisavowal (SetTradeDisavowalFinished req) req
       )
-    DisavowTradeFinished req res ->
-      ( case API.simplifyDisavowTradeResponse res of
+    SetTradeDisavowalFinished req res ->
+      ( case API.simplifySetTradeDisavowalResponse res of
           Ok prediction ->
-            { model | globals = model.globals |> Globals.handleDisavowTradeResponse req res
+            { model | globals = model.globals |> Globals.handleSetTradeDisavowalResponse req res
                     , disavowalRequestStatus = Succeeded
                     , disavowModalFor = Nothing
             } |> updateBettorInputFields prediction
           Err e ->
-            { model | globals = model.globals |> Globals.handleDisavowTradeResponse req res
+            { model | globals = model.globals |> Globals.handleSetTradeDisavowalResponse req res
                     , disavowalRequestStatus = Failed e
             }
-      , showModal False
+      , Modal.showModal False
       )
     QueueStake cents ->
       ( { model | stakeStatus = AwaitingResponse }

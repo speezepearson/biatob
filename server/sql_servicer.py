@@ -280,6 +280,11 @@ class SqlConn:
         bettor_stake_cents=row['bettor_stake_cents'],
         creator_stake_cents=row['creator_stake_cents'],
         transacted_unixtime=row['transacted_at_unixtime'],
+        disavowal=None if (not row['disavowed_by']) else mvp_pb2.Trade.Disavowal(
+          disavower=str(row['disavowed_by']),
+          reason=str(row['disavowed_reason']),
+          disavowed_at_unixtime=row['disavowed_at_unixtime'],
+        )
       )
       for row in rows
     ]
@@ -408,10 +413,10 @@ class SqlConn:
       enqueued_at_unixtime=now.timestamp(),
     ))
 
-  def disavow_trade(
+  def set_trade_disavowal(
     self,
     disavower: Username,
-    request: mvp_pb2.DisavowTradeRequest,
+    request: mvp_pb2.SetTradeDisavowalRequest,
     now: datetime.datetime,
   ) -> None:
     self._conn.execute(
@@ -424,9 +429,9 @@ class SqlConn:
         schema.trades.c.transacted_at_unixtime == request.trade.transacted_unixtime,
       ))
       .values(
-        disavowed_by=disavower,
-        disavowed_reason=request.reason,
-        disavowed_at_unixtime=now.timestamp(),
+        disavowed_by=disavower if request.reason else None,
+        disavowed_reason=request.reason if request.reason else None,
+        disavowed_at_unixtime=now.timestamp() if request.reason else None,
       )
     )
 
@@ -1046,32 +1051,33 @@ class SqlServicer(Servicer):
     @transactional
     @checks_token
     @log_action
-    def DisavowTrade(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.DisavowTradeRequest) -> mvp_pb2.DisavowTradeResponse:
+    def SetTradeDisavowal(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.SetTradeDisavowalRequest) -> mvp_pb2.SetTradeDisavowalResponse:
       logger.debug('API call', request=request)
       if token is None:
         logger.warn('not logged in')
-        return mvp_pb2.DisavowTradeResponse(error=mvp_pb2.DisavowTradeResponse.Error(catchall='must log in to bet'))
+        return mvp_pb2.SetTradeDisavowalResponse(error=mvp_pb2.SetTradeDisavowalResponse.Error(catchall='must log in to bet'))
 
-      predinfo = self._conn.get_prediction_info(PredictionId(request.prediction_id))
+      prediction_id = PredictionId(request.prediction_id)
+      predinfo = self._conn.get_prediction_info(prediction_id)
       if predinfo is None:
         logger.warn('trying to disavow trade on nonexistent prediction', prediction_id=request.prediction_id)
-        return mvp_pb2.DisavowTradeResponse(error=mvp_pb2.DisavowTradeResponse.Error(catchall='no such prediction'))
-      trades = list(self._conn.get_trades(PredictionId(request.prediction_id)))
+        return mvp_pb2.SetTradeDisavowalResponse(error=mvp_pb2.SetTradeDisavowalResponse.Error(catchall='no such prediction'))
+      trades = list(self._conn.get_trades(prediction_id))
       if request.trade not in trades:
         logger.warn('trying to disavow nonexistent trade', requested=request.trade, actual_trades=trades)
-        return mvp_pb2.DisavowTradeResponse(error=mvp_pb2.DisavowTradeResponse.Error(catchall="no such trade to disavow"))
+        return mvp_pb2.SetTradeDisavowalResponse(error=mvp_pb2.SetTradeDisavowalResponse.Error(catchall="no such trade to disavow"))
       if token.owner not in {request.trade.bettor, predinfo['creator']}:
-        logger.warn('trying to disavow somebody else\'s trade', prediction_id=request.prediction_id)
-        return mvp_pb2.DisavowTradeResponse(error=mvp_pb2.DisavowTradeResponse.Error(catchall="can't disavow somebody else's trade"))
+        logger.warn("trying to disavow somebody else's trade", prediction_id=request.prediction_id)
+        return mvp_pb2.SetTradeDisavowalResponse(error=mvp_pb2.SetTradeDisavowalResponse.Error(catchall="can't disavow somebody else's trade"))
 
       now = self._clock()
-      self._conn.disavow_trade(
+      self._conn.set_trade_disavowal(
         disavower=token_owner(token),
         request=request,
         now=now,
       )
-      logger.info('trade disavowed', prediction_id=request.prediction_id, request=request)
-      return mvp_pb2.DisavowTradeResponse(ok=self._conn.view_prediction(token_owner(token), PredictionId(request.prediction_id)))
+      logger.info('trade disavowal set', prediction_id=request.prediction_id, request=request)
+      return mvp_pb2.SetTradeDisavowalResponse(ok=self._conn.view_prediction(token_owner(token), prediction_id))
 
     @transactional
     @checks_token

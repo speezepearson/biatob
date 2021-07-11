@@ -21,7 +21,7 @@ module Globals exposing
   , handleListPredictionsResponse
   , handleStakeResponse
   , handleQueueStakeResponse
-  , handleDisavowTradeResponse
+  , handleSetTradeDisavowalResponse
   , handleResolveResponse
   , handleSetTrustedResponse
   , handleGetUserResponse
@@ -125,11 +125,11 @@ handleQueueStakeResponse req res globals =
       Just (Pb.QueueStakeResultOk newPrediction) -> { globals | serverState = globals.serverState |> addPrediction req.predictionId newPrediction }
       _ -> globals
     Err _ -> globals
-handleDisavowTradeResponse : Pb.DisavowTradeRequest -> Result Http.Error Pb.DisavowTradeResponse -> Globals -> Globals
-handleDisavowTradeResponse req res globals =
+handleSetTradeDisavowalResponse : Pb.SetTradeDisavowalRequest -> Result Http.Error Pb.SetTradeDisavowalResponse -> Globals -> Globals
+handleSetTradeDisavowalResponse req res globals =
   case res of
-    Ok {disavowTradeResult} -> case Debug.log "disavowTradeResult" disavowTradeResult of
-      Just (Pb.DisavowTradeResultOk newPrediction) -> { globals | serverState = globals.serverState |> addPrediction req.predictionId newPrediction }
+    Ok {setTradeDisavowalResult} -> case Debug.log "setTradeDisavowalResult" setTradeDisavowalResult of
+      Just (Pb.SetTradeDisavowalResultOk newPrediction) -> { globals | serverState = globals.serverState |> addPrediction req.predictionId newPrediction }
       _ -> globals
     Err _ -> globals
 handleResolveResponse : Pb.ResolveRequest -> Result Http.Error Pb.ResolveResponse -> Globals -> Globals

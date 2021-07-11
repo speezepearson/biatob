@@ -40,8 +40,8 @@ postStake : (Result Http.Error Pb.StakeResponse -> msg) -> Pb.StakeRequest -> Cm
 postStake = hit {url="/api/Stake", encoder=Pb.toStakeRequestEncoder, decoder=Pb.stakeResponseDecoder}
 postQueueStake : (Result Http.Error Pb.QueueStakeResponse -> msg) -> Pb.QueueStakeRequest -> Cmd msg
 postQueueStake = hit {url="/api/QueueStake", encoder=Pb.toQueueStakeRequestEncoder, decoder=Pb.queueStakeResponseDecoder}
-postDisavowTrade : (Result Http.Error Pb.DisavowTradeResponse -> msg) -> Pb.DisavowTradeRequest -> Cmd msg
-postDisavowTrade = hit {url="/api/DisavowTrade", encoder=Pb.toDisavowTradeRequestEncoder, decoder=Pb.disavowTradeResponseDecoder}
+postSetTradeDisavowal : (Result Http.Error Pb.SetTradeDisavowalResponse -> msg) -> Pb.SetTradeDisavowalRequest -> Cmd msg
+postSetTradeDisavowal = hit {url="/api/SetTradeDisavowal", encoder=Pb.toSetTradeDisavowalRequestEncoder, decoder=Pb.setTradeDisavowalResponseDecoder}
 postResolve : (Result Http.Error Pb.ResolveResponse -> msg) -> Pb.ResolveRequest -> Cmd msg
 postResolve = hit {url="/api/Resolve", encoder=Pb.toResolveRequestEncoder, decoder=Pb.resolveResponseDecoder}
 postSetTrusted : (Result Http.Error Pb.SetTrustedResponse -> msg) -> Pb.SetTrustedRequest -> Cmd msg
@@ -169,15 +169,15 @@ simplifyQueueStakeResponse res =
         Nothing ->
           Err "Invalid server response (neither Ok nor Error in protobuf)"
 
-simplifyDisavowTradeResponse : Result Http.Error Pb.DisavowTradeResponse -> Result String Pb.UserPredictionView
-simplifyDisavowTradeResponse res =
+simplifySetTradeDisavowalResponse : Result Http.Error Pb.SetTradeDisavowalResponse -> Result String Pb.UserPredictionView
+simplifySetTradeDisavowalResponse res =
   case res of
     Err e -> Err (httpErrorToString e)
     Ok resp ->
-      case resp.disavowTradeResult of
-        Just (Pb.DisavowTradeResultOk result) ->
+      case resp.setTradeDisavowalResult of
+        Just (Pb.SetTradeDisavowalResultOk result) ->
           Ok result
-        Just (Pb.DisavowTradeResultError e) ->
+        Just (Pb.SetTradeDisavowalResultError e) ->
           Err e.catchall
         Nothing ->
           Err "Invalid server response (neither Ok nor Error in protobuf)"

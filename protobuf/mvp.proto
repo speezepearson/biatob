@@ -263,13 +263,13 @@ message QueueStakeResponse {
   }
 }
 
-message DisavowTradeRequest {
+message SetTradeDisavowalRequest {
   string prediction_id = 1;
   Trade trade = 2;
   string reason = 3;
 }
-message DisavowTradeResponse {
-  oneof disavow_trade_result {
+message SetTradeDisavowalResponse {
+  oneof set_trade_disavowal_result {
     UserPredictionView ok = 1;
     Error error = 2;
   }
