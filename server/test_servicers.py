@@ -1,10 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Mapping, Optional
-from typing_extensions import Literal
 from unittest.mock import ANY
-
-from sqlalchemy.sql.sqltypes import NullType
 
 from .protobuf import mvp_pb2
 from .core import Servicer
@@ -13,128 +9,20 @@ from .test_utils import *
 
 PRED_ID_1 = PredictionId('my_pred_id_1')
 
-def Whoami(servicer: Servicer, token: Optional[mvp_pb2.AuthToken]) -> mvp_pb2.AuthToken:
-  return servicer.Whoami(token, mvp_pb2.WhoamiRequest()).auth
-
-def SignOut(servicer: Servicer, token: Optional[mvp_pb2.AuthToken]) -> None:
-  servicer.SignOut(token, mvp_pb2.SignOutRequest())
-
-def RegisterUsernameOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], username: str, password: str) -> mvp_pb2.AuthSuccess:
-  return assert_oneof(servicer.RegisterUsername(token, mvp_pb2.RegisterUsernameRequest(username=username, password=password)), 'register_username_result', 'ok', mvp_pb2.AuthSuccess)
-def RegisterUsernameErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], username: str, password: str) -> mvp_pb2.RegisterUsernameResponse.Error:
-  return assert_oneof(servicer.RegisterUsername(token, mvp_pb2.RegisterUsernameRequest(username=username, password=password)), 'register_username_result', 'error', mvp_pb2.RegisterUsernameResponse.Error)
-
-def LogInUsernameOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], username: str, password: str) -> mvp_pb2.AuthSuccess:
-  return assert_oneof(servicer.LogInUsername(token, mvp_pb2.LogInUsernameRequest(username=username, password=password)), 'log_in_username_result', 'ok', mvp_pb2.AuthSuccess)
-def LogInUsernameErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], username: str, password: str) -> mvp_pb2.LogInUsernameResponse.Error:
-  return assert_oneof(servicer.LogInUsername(token, mvp_pb2.LogInUsernameRequest(username=username, password=password)), 'log_in_username_result', 'error', mvp_pb2.LogInUsernameResponse.Error)
-
-def CreatePredictionOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], request_kwargs: Mapping[str, Any]) -> PredictionId:
-  return PredictionId(assert_oneof(servicer.CreatePrediction(token, some_create_prediction_request(**request_kwargs)), 'create_prediction_result', 'new_prediction_id', str))
-def CreatePredictionErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], request_kwargs: Mapping[str, Any]) -> mvp_pb2.CreatePredictionResponse.Error:
-  return assert_oneof(servicer.CreatePrediction(token, some_create_prediction_request(**request_kwargs)), 'create_prediction_result', 'error', mvp_pb2.CreatePredictionResponse.Error)
-
-def GetPredictionOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], prediction_id: str) -> mvp_pb2.UserPredictionView:
-  return assert_oneof(servicer.GetPrediction(token, mvp_pb2.GetPredictionRequest(prediction_id=prediction_id)), 'get_prediction_result', 'prediction', mvp_pb2.UserPredictionView)
-def GetPredictionErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], prediction_id: str) -> mvp_pb2.GetPredictionResponse.Error:
-  return assert_oneof(servicer.GetPrediction(token, mvp_pb2.GetPredictionRequest(prediction_id=prediction_id)), 'get_prediction_result', 'error', mvp_pb2.GetPredictionResponse.Error)
-
-def ListMyStakesOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken]) -> mvp_pb2.PredictionsById:
-  return assert_oneof(servicer.ListMyStakes(token, mvp_pb2.ListMyStakesRequest()), 'list_my_stakes_result', 'ok', mvp_pb2.PredictionsById)
-def ListMyStakesErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken]) -> mvp_pb2.ListMyStakesResponse.Error:
-  return assert_oneof(servicer.ListMyStakes(token, mvp_pb2.ListMyStakesRequest()), 'list_my_stakes_result', 'error', mvp_pb2.ListMyStakesResponse.Error)
-
-def ListPredictionsOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], creator: str) -> mvp_pb2.PredictionsById:
-  return assert_oneof(servicer.ListPredictions(token, mvp_pb2.ListPredictionsRequest(creator=creator)), 'list_predictions_result', 'ok', mvp_pb2.PredictionsById)
-def ListPredictionsErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], creator: str) -> mvp_pb2.ListPredictionsResponse.Error:
-  return assert_oneof(servicer.ListPredictions(token, mvp_pb2.ListPredictionsRequest(creator=creator)), 'list_predictions_result', 'error', mvp_pb2.ListPredictionsResponse.Error)
-
-def StakeOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.StakeRequest) -> mvp_pb2.UserPredictionView:
-  return assert_oneof(servicer.Stake(token, request), 'stake_result', 'ok', mvp_pb2.UserPredictionView)
-def StakeErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.StakeRequest) -> mvp_pb2.StakeResponse.Error:
-  return assert_oneof(servicer.Stake(token, request), 'stake_result', 'error', mvp_pb2.StakeResponse.Error)
-
-def QueueStakeOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.QueueStakeRequest) -> mvp_pb2.UserPredictionView:
-  return assert_oneof(servicer.QueueStake(token, request), 'queue_stake_result', 'ok', mvp_pb2.UserPredictionView)
-def QueueStakeErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.QueueStakeRequest) -> mvp_pb2.QueueStakeResponse.Error:
-  return assert_oneof(servicer.QueueStake(token, request), 'queue_stake_result', 'error', mvp_pb2.QueueStakeResponse.Error)
-
-def ResolveOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], prediction_id: str, resolution: mvp_pb2.Resolution.V, notes: str = '') -> mvp_pb2.UserPredictionView:
-  return assert_oneof(servicer.Resolve(token, mvp_pb2.ResolveRequest(prediction_id=prediction_id, resolution=resolution, notes=notes)), 'resolve_result', 'ok', mvp_pb2.UserPredictionView)
-def ResolveErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], prediction_id: str, resolution: mvp_pb2.Resolution.V, notes: str = '') -> mvp_pb2.ResolveResponse.Error:
-  return assert_oneof(servicer.Resolve(token, mvp_pb2.ResolveRequest(prediction_id=prediction_id, resolution=resolution, notes=notes)), 'resolve_result', 'error', mvp_pb2.ResolveResponse.Error)
-
-def SetTrustedOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], who: str, trusted: bool) -> mvp_pb2.GenericUserInfo:
-  return assert_oneof(servicer.SetTrusted(token, mvp_pb2.SetTrustedRequest(who=who, trusted=trusted)), 'set_trusted_result', 'ok', mvp_pb2.GenericUserInfo)
-def SetTrustedErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], who: str, trusted: bool) -> mvp_pb2.SetTrustedResponse.Error:
-  return assert_oneof(servicer.SetTrusted(token, mvp_pb2.SetTrustedRequest(who=who, trusted=trusted)), 'set_trusted_result', 'error', mvp_pb2.SetTrustedResponse.Error)
-
-def GetUserOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], who: str) -> mvp_pb2.Relationship:
-  return assert_oneof(servicer.GetUser(token, mvp_pb2.GetUserRequest(who=who)), 'get_user_result', 'ok', mvp_pb2.Relationship)
-def GetUserErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], who: str) -> mvp_pb2.GetUserResponse.Error:
-  return assert_oneof(servicer.GetUser(token, mvp_pb2.GetUserRequest(who=who)), 'get_user_result', 'error', mvp_pb2.GetUserResponse.Error)
-
-def ChangePasswordOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], old_password: str, new_password: str) -> object:
-  return assert_oneof(servicer.ChangePassword(token, mvp_pb2.ChangePasswordRequest(old_password=old_password, new_password=new_password)), 'change_password_result', 'ok', object)
-def ChangePasswordErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], old_password: str, new_password: str) -> mvp_pb2.ChangePasswordResponse.Error:
-  return assert_oneof(servicer.ChangePassword(token, mvp_pb2.ChangePasswordRequest(old_password=old_password, new_password=new_password)), 'change_password_result', 'error', mvp_pb2.ChangePasswordResponse.Error)
-
-def SetEmailOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], email: str) -> mvp_pb2.EmailFlowState:
-  return assert_oneof(servicer.SetEmail(token, mvp_pb2.SetEmailRequest(email=email)), 'set_email_result', 'ok', mvp_pb2.EmailFlowState)
-def SetEmailErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], email: str) -> mvp_pb2.SetEmailResponse.Error:
-  return assert_oneof(servicer.SetEmail(token, mvp_pb2.SetEmailRequest(email=email)), 'set_email_result', 'error', mvp_pb2.SetEmailResponse.Error)
-
-def VerifyEmailOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], code: str) -> mvp_pb2.EmailFlowState:
-  return assert_oneof(servicer.VerifyEmail(token, mvp_pb2.VerifyEmailRequest(code=code)), 'verify_email_result', 'ok', mvp_pb2.EmailFlowState)
-def VerifyEmailErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], code: str) -> mvp_pb2.VerifyEmailResponse.Error:
-  return assert_oneof(servicer.VerifyEmail(token, mvp_pb2.VerifyEmailRequest(code=code)), 'verify_email_result', 'error', mvp_pb2.VerifyEmailResponse.Error)
-
-def GetSettingsOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken]) -> mvp_pb2.GenericUserInfo:
-  return assert_oneof(servicer.GetSettings(token, mvp_pb2.GetSettingsRequest()), 'get_settings_result', 'ok', mvp_pb2.GenericUserInfo)
-def GetSettingsErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken]) -> mvp_pb2.GetSettingsResponse.Error:
-  return assert_oneof(servicer.GetSettings(token, mvp_pb2.GetSettingsRequest()), 'get_settings_result', 'error', mvp_pb2.GetSettingsResponse.Error)
-
-def UpdateSettingsOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], *, email_resolution_notifications: Optional[bool] = None, email_reminders_to_resolve: Optional[bool] = None, allow_email_invitations: Optional[bool] = None, email_invitation_acceptance_notifications: Optional[bool] = None) -> mvp_pb2.GenericUserInfo:
-  return assert_oneof(servicer.UpdateSettings(token, mvp_pb2.UpdateSettingsRequest(
-    email_resolution_notifications=None if email_resolution_notifications is None else mvp_pb2.MaybeBool(value=email_resolution_notifications),
-    email_reminders_to_resolve=None if email_reminders_to_resolve is None else mvp_pb2.MaybeBool(value=email_reminders_to_resolve),
-    allow_email_invitations=None if allow_email_invitations is None else mvp_pb2.MaybeBool(value=allow_email_invitations),
-    email_invitation_acceptance_notifications=None if email_invitation_acceptance_notifications is None else mvp_pb2.MaybeBool(value=email_invitation_acceptance_notifications))
-  ), 'update_settings_result', 'ok', mvp_pb2.GenericUserInfo)
-def UpdateSettingsErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], *, email_resolution_notifications: Optional[bool] = None, email_reminders_to_resolve: Optional[bool] = None, allow_email_invitations: Optional[bool] = None, email_invitation_acceptance_notifications: Optional[bool] = None) -> mvp_pb2.UpdateSettingsResponse.Error:
-  return assert_oneof(servicer.UpdateSettings(token, mvp_pb2.UpdateSettingsRequest(
-    email_resolution_notifications=None if email_resolution_notifications is None else mvp_pb2.MaybeBool(value=email_resolution_notifications),
-    email_reminders_to_resolve=None if email_reminders_to_resolve is None else mvp_pb2.MaybeBool(value=email_reminders_to_resolve),
-    allow_email_invitations=None if allow_email_invitations is None else mvp_pb2.MaybeBool(value=allow_email_invitations),
-    email_invitation_acceptance_notifications=None if email_invitation_acceptance_notifications is None else mvp_pb2.MaybeBool(value=email_invitation_acceptance_notifications))
-  ), 'update_settings_result', 'error', mvp_pb2.UpdateSettingsResponse.Error)
-
-def SendInvitationOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], recipient: str) -> mvp_pb2.GenericUserInfo:
-  return assert_oneof(servicer.SendInvitation(token, mvp_pb2.SendInvitationRequest(recipient=recipient)), 'send_invitation_result', 'ok', mvp_pb2.GenericUserInfo)
-def SendInvitationErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], recipient: str) -> mvp_pb2.SendInvitationResponse.Error:
-  return assert_oneof(servicer.SendInvitation(token, mvp_pb2.SendInvitationRequest(recipient=recipient)), 'send_invitation_result', 'error', mvp_pb2.SendInvitationResponse.Error)
-
-def CheckInvitationOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], nonce: str) -> mvp_pb2.CheckInvitationResponse.Result:
-  return assert_oneof(servicer.CheckInvitation(token, mvp_pb2.CheckInvitationRequest(nonce=nonce)), 'check_invitation_result', 'ok', mvp_pb2.CheckInvitationResponse.Result)
-def CheckInvitationErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], nonce: str) -> mvp_pb2.CheckInvitationResponse.Error:
-  return assert_oneof(servicer.CheckInvitation(token, mvp_pb2.CheckInvitationRequest(nonce=nonce)), 'check_invitation_result', 'error', mvp_pb2.CheckInvitationResponse.Error)
-
-def AcceptInvitationOk(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], nonce: str) -> mvp_pb2.GenericUserInfo:
-  return assert_oneof(servicer.AcceptInvitation(token, mvp_pb2.AcceptInvitationRequest(nonce=nonce)), 'accept_invitation_result', 'ok', mvp_pb2.GenericUserInfo)
-def AcceptInvitationErr(servicer: Servicer, token: Optional[mvp_pb2.AuthToken], nonce: str) -> mvp_pb2.AcceptInvitationResponse.Error:
-  return assert_oneof(servicer.AcceptInvitation(token, mvp_pb2.AcceptInvitationRequest(nonce=nonce)), 'accept_invitation_result', 'error', mvp_pb2.AcceptInvitationResponse.Error)
-
+ALICE = au('alice')
+BOB = au('bob')
+CHARLIE = au('charlie')
 
 class TestCUJs:
   async def test_cuj__register__create__invite__accept__stake__resolve(self, any_servicer: Servicer, emailer: Emailer, clock: MockClock):
-    creator_token = RegisterUsernameOk(any_servicer, None, 'creator', 'secret').token
-    set_and_verify_email(any_servicer, emailer, creator_token, 'creator@example.com')
-    UpdateSettingsOk(any_servicer, creator_token, allow_email_invitations=True)
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    set_and_verify_email(any_servicer, emailer, ALICE, 'creator@example.com')
+    UpdateSettingsOk(any_servicer, ALICE, allow_email_invitations=True)
 
-    friend_token = RegisterUsernameOk(any_servicer, None, 'friend', 'secret').token
-    set_and_verify_email(any_servicer, emailer, friend_token, 'friend@example.com')
+    RegisterUsernameOk(any_servicer, None, BOB)
+    set_and_verify_email(any_servicer, emailer, BOB, 'friend@example.com')
 
-    prediction_id = CreatePredictionOk(any_servicer, creator_token, dict(
+    prediction_id = CreatePredictionOk(any_servicer, ALICE, dict(
         prediction='a thing will happen',
         resolves_at_unixtime=clock.now().timestamp() + 86400,
         certainty=mvp_pb2.CertaintyRange(low=0.40, high=0.60),
@@ -142,108 +30,111 @@ class TestCUJs:
         open_seconds=3600,
       ))
 
-    SendInvitationOk(any_servicer, friend_token, 'creator')
+    SendInvitationOk(any_servicer, BOB, ALICE)
     AcceptInvitationOk(any_servicer, None, get_call_kwarg(emailer.send_invitation, 'nonce'))
 
-    assert GetSettingsOk(any_servicer, creator_token).relationships['friend'].trusts_you
-    assert GetSettingsOk(any_servicer, creator_token).relationships['friend'].trusted_by_you
-    assert GetSettingsOk(any_servicer, friend_token).relationships['creator'].trusts_you
-    assert GetSettingsOk(any_servicer, friend_token).relationships['creator'].trusted_by_you
+    assert GetSettingsOk(any_servicer, ALICE).relationships[BOB].trusts_you
+    assert GetSettingsOk(any_servicer, ALICE).relationships[BOB].trusted_by_you
+    assert GetSettingsOk(any_servicer, BOB).relationships[ALICE].trusts_you
+    assert GetSettingsOk(any_servicer, BOB).relationships[ALICE].trusted_by_you
 
-    prediction = StakeOk(any_servicer, friend_token, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_is_a_skeptic=True, bettor_stake_cents=6_00))
+    prediction = StakeOk(any_servicer, BOB, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_is_a_skeptic=True, bettor_stake_cents=6_00))
     assert list(prediction.your_trades) == [mvp_pb2.Trade(
-      bettor=friend_token.owner,
+      bettor=BOB,
       bettor_is_a_skeptic=True,
       bettor_stake_cents=6_00,
       creator_stake_cents=4_00,
       transacted_unixtime=clock.now().timestamp(),
     )]
 
-    prediction = ResolveOk(any_servicer, creator_token, prediction_id, mvp_pb2.RESOLUTION_YES)
+    prediction = ResolveOk(any_servicer, ALICE, prediction_id, mvp_pb2.RESOLUTION_YES)
     assert list(prediction.resolutions) ==[mvp_pb2.ResolutionEvent(unixtime=clock.now().timestamp(), resolution=mvp_pb2.RESOLUTION_YES)]
 
 
   async def test_cuj___set_email__verify_email__update_settings(self, any_servicer: Servicer, emailer: Emailer):
-    token = RegisterUsernameOk(any_servicer, None, 'creator', 'secret').token
+    RegisterUsernameOk(any_servicer, None, ALICE)
 
-    assert SetEmailOk(any_servicer, token, 'nobody@example.com').code_sent.email == 'nobody@example.com'
+    assert SetEmailOk(any_servicer, ALICE, 'nobody@example.com').code_sent.email == 'nobody@example.com'
 
     emailer.send_email_verification.assert_called_once()  # type: ignore
     code = emailer.send_email_verification.call_args[1]['code']  # type: ignore
 
-    assert VerifyEmailOk(any_servicer, token, code).verified == 'nobody@example.com'
+    assert VerifyEmailOk(any_servicer, ALICE, code).verified == 'nobody@example.com'
 
-    assert not UpdateSettingsOk(any_servicer, token, email_reminders_to_resolve=False).email_reminders_to_resolve
-    assert not GetSettingsOk(any_servicer, token).email_reminders_to_resolve
+    assert not UpdateSettingsOk(any_servicer, ALICE, email_reminders_to_resolve=False).email_reminders_to_resolve
+    assert not GetSettingsOk(any_servicer, ALICE).email_reminders_to_resolve
 
-    assert UpdateSettingsOk(any_servicer, token, email_reminders_to_resolve=True).email_reminders_to_resolve
-    assert GetSettingsOk(any_servicer, token).email_reminders_to_resolve
+    assert UpdateSettingsOk(any_servicer, ALICE, email_reminders_to_resolve=True).email_reminders_to_resolve
+    assert GetSettingsOk(any_servicer, ALICE).email_reminders_to_resolve
 
 
 
 class TestWhoami:
 
   async def test_returns_none_when_logged_out(self, any_servicer: Servicer):
-    assert not any_servicer.Whoami(token=None, request=mvp_pb2.WhoamiRequest()).HasField('auth')
+    assert not any_servicer.Whoami(actor=None, request=mvp_pb2.WhoamiRequest()).username
 
   async def test_returns_token_when_logged_in(self, any_servicer: Servicer):
-    token = new_user_token(any_servicer, 'rando')
-    assert any_servicer.Whoami(token=token, request=mvp_pb2.WhoamiRequest()).auth == token
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    assert any_servicer.Whoami(actor=ALICE, request=mvp_pb2.WhoamiRequest()).username == ALICE
 
 
 class TestSignOut:
 
   async def test_smoke_logged_out(self, any_servicer: Servicer):
-    any_servicer.SignOut(token=None, request=mvp_pb2.SignOutRequest())
+    any_servicer.SignOut(actor=None, request=mvp_pb2.SignOutRequest())
 
   async def test_smoke_logged_in(self, any_servicer: Servicer):
-    token = new_user_token(any_servicer, 'rando')
-    any_servicer.SignOut(token=token, request=mvp_pb2.SignOutRequest())
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    any_servicer.SignOut(actor=ALICE, request=mvp_pb2.SignOutRequest())
 
 
 class TestRegisterUsername:
 
   async def test_returns_auth_when_successful(self, any_servicer: Servicer):
-    token = RegisterUsernameOk(any_servicer, None, 'alice', 'secret').token
-    assert token.owner == 'alice'
+    token = RegisterUsernameOk(any_servicer, None, ALICE, 'secret').token
+    assert token.owner == ALICE
 
   async def test_can_log_in_after_registering(self, any_servicer: Servicer):
-    assert 'no such user' in str(LogInUsernameErr(any_servicer, None, 'alice', 'secret'))
-    RegisterUsernameOk(any_servicer, None, 'alice', 'secret')
-    assert LogInUsernameOk(any_servicer, None, 'alice', 'secret').token.owner == 'alice'
+    assert 'no such user' in str(LogInUsernameErr(any_servicer, None, ALICE, 'secret'))
+    RegisterUsernameOk(any_servicer, None, ALICE, 'secret')
+    assert LogInUsernameOk(any_servicer, None, ALICE, 'secret').token.owner == ALICE
 
   async def test_error_when_already_exists(self, any_servicer: Servicer):
-    orig_token = new_user_token(any_servicer, 'rando')
+    password = 'pw'
+    RegisterUsernameOk(any_servicer, None, ALICE, password=password)
 
-    for password in ['rando password', 'some other password']:
-      with assert_user_unchanged(any_servicer, orig_token, 'rando password'):
-        assert 'username taken' in str(RegisterUsernameErr(any_servicer, None, 'rando', password))
+    for try_password in [password, 'not '+password]:
+      with assert_user_unchanged(any_servicer, ALICE, password):
+        assert 'username taken' in str(RegisterUsernameErr(any_servicer, None, ALICE, try_password))
 
   async def test_error_if_already_logged_in(self, any_servicer: Servicer):
-    token = new_user_token(any_servicer, 'rando')
-    with assert_user_unchanged(any_servicer, token, 'rando password'):
-      assert 'first, log out' in str(RegisterUsernameErr(any_servicer, token, 'alice', 'secret'))
+    password = 'pw'
+    RegisterUsernameOk(any_servicer, None, ALICE, password=password)
+    with assert_user_unchanged(any_servicer, ALICE, password):
+      assert 'first, log out' in str(RegisterUsernameErr(any_servicer, ALICE, ALICE, 'secret'))
 
   async def test_error_if_invalid_username(self, any_servicer: Servicer):
-    assert 'username must be alphanumeric' in str(RegisterUsernameErr(any_servicer, None, 'foo bar!baz\xfequux', 'rando password'))
+    assert 'username must be alphanumeric' in str(RegisterUsernameErr(any_servicer, None, u('foo bar!baz\xfequux'), 'rando password'))
 
 
 class TestLogInUsername:
 
   async def test_error_if_no_such_user(self, any_servicer: Servicer):
-    assert 'no such user' in str(LogInUsernameErr(any_servicer, None, 'rando', 'rando password'))
+    assert 'no such user' in str(LogInUsernameErr(any_servicer, None, ALICE, 'some password'))
 
   async def test_success_when_user_exists_and_password_right(self, any_servicer: Servicer):
-    RegisterUsernameOk(any_servicer, None, 'rando', 'password')
-    assert LogInUsernameOk(any_servicer, None, 'rando', 'password').token.owner == 'rando'
+    RegisterUsernameOk(any_servicer, None, ALICE, 'password')
+    assert LogInUsernameOk(any_servicer, None, ALICE, 'password').token.owner == ALICE
 
   async def test_error_if_wrong_password(self, any_servicer: Servicer):
-    RegisterUsernameOk(any_servicer, None, 'rando', 'password')
-    assert 'bad password' in str(LogInUsernameErr(any_servicer, None, 'rando', 'WRONG'))
+    RegisterUsernameOk(any_servicer, None, ALICE, 'password')
+    assert 'bad password' in str(LogInUsernameErr(any_servicer, None, ALICE, 'WRONG'))
 
   async def test_error_if_already_logged_in(self, any_servicer: Servicer):
-    token = new_user_token(any_servicer, 'rando')
-    assert 'first, log out' in str(LogInUsernameErr(any_servicer, token, 'rando', 'rando password'))
+    orig_pw = 'pw'
+    RegisterUsernameOk(any_servicer, None, ALICE, orig_pw)
+    assert 'first, log out' in str(LogInUsernameErr(any_servicer, ALICE, ALICE, orig_pw))
 
 
 class TestCreatePrediction:
@@ -252,20 +143,20 @@ class TestCreatePrediction:
     assert 'must log in to create predictions' in str(CreatePredictionErr(any_servicer, None, {}))
 
   async def test_smoke_logged_in(self, any_servicer: Servicer):
-    token = new_user_token(any_servicer, 'rando')
-    prediction_id = CreatePredictionOk(any_servicer, token, dict(prediction='a thing will happen'))
-    assert GetPredictionOk(any_servicer, token, prediction_id).prediction == 'a thing will happen'
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    prediction_id = CreatePredictionOk(any_servicer, ALICE, dict(prediction='a thing will happen'))
+    assert GetPredictionOk(any_servicer, ALICE, prediction_id).prediction == 'a thing will happen'
 
   async def test_returns_distinct_ids(self, any_servicer: Servicer):
-    token = new_user_token(any_servicer, 'rando')
-    ids = {CreatePredictionOk(any_servicer, token, {}) for _ in range(30)}
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    ids = {CreatePredictionOk(any_servicer, ALICE, {}) for _ in range(30)}
     assert len(ids) == 30
     for prediction_id in ids:
-      GetPredictionOk(any_servicer, token, prediction_id)
+      GetPredictionOk(any_servicer, ALICE, prediction_id)
 
   async def test_returns_urlsafe_ids(self, any_servicer: Servicer):
-    token = new_user_token(any_servicer, 'rando')
-    ids = {CreatePredictionOk(any_servicer, token, {}) for _ in range(30)}
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    ids = {CreatePredictionOk(any_servicer, ALICE, {}) for _ in range(30)}
     assert all(id.isalnum() for id in ids)
 
 
@@ -279,20 +170,20 @@ class TestGetPrediction:
       certainty=mvp_pb2.CertaintyRange(low=0.50, high=1.00),
     )
     req = some_create_prediction_request(**req_kwargs)
-    alice_token, bob_token = alice_bob_tokens(any_servicer)
+    register_friend_pair(any_servicer, ALICE, BOB)
 
     create_time = clock.now().timestamp()
-    prediction_id = CreatePredictionOk(any_servicer, alice_token, req_kwargs)
+    prediction_id = CreatePredictionOk(any_servicer, ALICE, req_kwargs)
 
     clock.tick()
     stake_time = clock.now().timestamp()
-    StakeOk(any_servicer, bob_token, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_is_a_skeptic=True, bettor_stake_cents=1_00))
+    StakeOk(any_servicer, BOB, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_is_a_skeptic=True, bettor_stake_cents=1_00))
 
     clock.tick()
     resolve_time = clock.now().timestamp()
-    ResolveOk(any_servicer, alice_token, prediction_id, mvp_pb2.RESOLUTION_YES)
+    ResolveOk(any_servicer, ALICE, prediction_id, mvp_pb2.RESOLUTION_YES)
 
-    resp = GetPredictionOk(any_servicer, bob_token, prediction_id)
+    resp = GetPredictionOk(any_servicer, BOB, prediction_id)
     assert resp == mvp_pb2.UserPredictionView(
       prediction=req.prediction,
       certainty=req.certainty,
@@ -303,22 +194,26 @@ class TestGetPrediction:
       closes_unixtime=create_time + req.open_seconds,
       resolves_at_unixtime=req.resolves_at_unixtime,
       special_rules=req.special_rules,
-      creator='Alice',
+      creator=ALICE,
       resolutions=[mvp_pb2.ResolutionEvent(unixtime=resolve_time, resolution=mvp_pb2.RESOLUTION_YES)],
-      your_trades=[mvp_pb2.Trade(bettor=bob_token.owner, bettor_is_a_skeptic=True, bettor_stake_cents=1_00, creator_stake_cents=1_00, transacted_unixtime=stake_time)],
+      your_trades=[mvp_pb2.Trade(bettor=BOB, bettor_is_a_skeptic=True, bettor_stake_cents=1_00, creator_stake_cents=1_00, transacted_unixtime=stake_time)],
     )
 
 
   async def test_success_if_logged_out(self, any_servicer: Servicer):
-    prediction_id = CreatePredictionOk(any_servicer, new_user_token(any_servicer, 'rando'), {})
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
     GetPredictionOk(any_servicer, None, prediction_id)
 
   async def test_success_if_logged_in(self, any_servicer: Servicer):
-    prediction_id = CreatePredictionOk(any_servicer, new_user_token(any_servicer, 'rando'), {})
-    GetPredictionOk(any_servicer, new_user_token(any_servicer, 'otherrando'), prediction_id)
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    RegisterUsernameOk(any_servicer, None, BOB)
+    prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
+    GetPredictionOk(any_servicer, BOB, prediction_id)
 
   async def test_error_if_no_such_prediction(self, any_servicer: Servicer):
-    assert 'no such prediction' in str(GetPredictionErr(any_servicer, new_user_token(any_servicer, 'otherrando'), PredictionId('12345')))
+    RegisterUsernameOk(any_servicer, None, BOB)
+    assert 'no such prediction' in str(GetPredictionErr(any_servicer, BOB, PredictionId('12345')))
 
 class TestListMyStakes:
 
@@ -326,88 +221,92 @@ class TestListMyStakes:
       assert 'must log in to create predictions' in str(CreatePredictionErr(any_servicer, None, {}))
 
   async def test_includes_own_predictions(self, any_servicer: Servicer):
-    token = new_user_token(any_servicer, 'creator')
-    prediction_id = CreatePredictionOk(any_servicer, token, {})
-    irrelevant_prediction_id = CreatePredictionOk(any_servicer, new_user_token(any_servicer, 'otherrando'), {})
-    assert set(ListMyStakesOk(any_servicer, token).predictions.keys()) == {prediction_id}
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    RegisterUsernameOk(any_servicer, None, BOB)
+    prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
+    irrelevant_prediction_id = CreatePredictionOk(any_servicer, BOB, {})
+    assert set(ListMyStakesOk(any_servicer, ALICE).predictions.keys()) == {prediction_id}
 
   async def test_includes_others_predictions(self, any_servicer: Servicer):
-    alice_token, bob_token = alice_bob_tokens(any_servicer)
-    prediction_id = CreatePredictionOk(any_servicer, bob_token, {})
-    irrelevant_prediction_id = CreatePredictionOk(any_servicer, new_user_token(any_servicer, 'otherrando'), {})
-    StakeOk(any_servicer, alice_token, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_stake_cents=1_00))
-    assert set(ListMyStakesOk(any_servicer, alice_token).predictions.keys()) == {prediction_id}
+    register_friend_pair(any_servicer, ALICE, BOB)
+    RegisterUsernameOk(any_servicer, None, CHARLIE)
+    prediction_id = CreatePredictionOk(any_servicer, BOB, {})
+    irrelevant_prediction_id = CreatePredictionOk(any_servicer, CHARLIE, {})
+    StakeOk(any_servicer, ALICE, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_stake_cents=1_00))
+    assert set(ListMyStakesOk(any_servicer, ALICE).predictions.keys()) == {prediction_id}
 
 
 class TestListPredictions:
 
   async def test_success_listing_own(self, any_servicer: Servicer):
-    token = new_user_token(any_servicer, 'rando')
-    prediction_id = CreatePredictionOk(any_servicer, token, {})
-    irrelevant_prediction_id = CreatePredictionOk(any_servicer, new_user_token(any_servicer, 'otherrando'), {})
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
+    RegisterUsernameOk(any_servicer, None, BOB)
+    irrelevant_prediction_id = CreatePredictionOk(any_servicer, BOB, {})
 
-    assert set(ListPredictionsOk(any_servicer, token, token.owner).predictions.keys()) == {prediction_id}
+    assert set(ListPredictionsOk(any_servicer, ALICE, ALICE).predictions.keys()) == {prediction_id}
 
   async def test_success_listing_friend(self, any_servicer: Servicer):
-    alice_token, bob_token = alice_bob_tokens(any_servicer)
-    alice_prediction_id = CreatePredictionOk(any_servicer, alice_token, {})
-    irrelevant_prediction_id = CreatePredictionOk(any_servicer, bob_token, {})
-    assert set(ListPredictionsOk(any_servicer, bob_token, alice_token.owner).predictions.keys()) == {alice_prediction_id}
+    register_friend_pair(any_servicer, ALICE, BOB)
+    alice_prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
+    irrelevant_prediction_id = CreatePredictionOk(any_servicer, BOB, {})
+    assert set(ListPredictionsOk(any_servicer, BOB, ALICE).predictions.keys()) == {alice_prediction_id}
 
   async def test_error_listing_untruster(self, any_servicer: Servicer):
-    alice_token, bob_token = alice_bob_tokens(any_servicer)
-    SetTrustedOk(any_servicer, alice_token, bob_token.owner, False)
-    alice_prediction_id = CreatePredictionOk(any_servicer, alice_token, {})
-    for token in [bob_token, new_user_token(any_servicer, 'rando')]:
-      assert "creator doesn\\'t trust you" in str(ListPredictionsErr(any_servicer, token, alice_token.owner))
+    register_friend_pair(any_servicer, ALICE, BOB)
+    RegisterUsernameOk(any_servicer, None, CHARLIE)
+    SetTrustedOk(any_servicer, ALICE, BOB, False)
+    alice_prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
+    for username in [BOB, CHARLIE]:
+      assert "creator doesn\\'t trust you" in str(ListPredictionsErr(any_servicer, au(username), ALICE))
 
 
 
 class TestStake:
 
   async def test_error_if_resolved(self, any_servicer: Servicer):
-    alice_token, bob_token = alice_bob_tokens(any_servicer)
-    prediction_id = CreatePredictionOk(any_servicer, alice_token, {})
-    ResolveOk(any_servicer, alice_token, prediction_id, mvp_pb2.RESOLUTION_YES)
+    register_friend_pair(any_servicer, ALICE, BOB)
+    prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
+    ResolveOk(any_servicer, ALICE, prediction_id, mvp_pb2.RESOLUTION_YES)
 
-    with assert_prediction_unchanged(any_servicer, prediction_id=prediction_id, creator_token=alice_token):
-      assert 'prediction has already resolved' in str(StakeErr(any_servicer, bob_token, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_stake_cents=1_00)))
+    with assert_prediction_unchanged(any_servicer, prediction_id=prediction_id):
+      assert 'prediction has already resolved' in str(StakeErr(any_servicer, BOB, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_stake_cents=1_00)))
 
   async def test_error_if_closed(self, clock: MockClock, any_servicer: Servicer):
-    alice_token, bob_token = alice_bob_tokens(any_servicer)
-    prediction_id = CreatePredictionOk(any_servicer, alice_token, dict(open_seconds=86400, resolves_at_unixtime=int(clock.now().timestamp() + 2*86400)))
+    register_friend_pair(any_servicer, ALICE, BOB)
+    prediction_id = CreatePredictionOk(any_servicer, ALICE, dict(open_seconds=86400, resolves_at_unixtime=int(clock.now().timestamp() + 2*86400)))
 
     clock.tick(86401)
-    with assert_prediction_unchanged(any_servicer, prediction_id=prediction_id, creator_token=alice_token):
-      assert 'prediction is no longer open for betting' in str(StakeErr(any_servicer, bob_token, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_stake_cents=1_00)))
+    with assert_prediction_unchanged(any_servicer, prediction_id=prediction_id):
+      assert 'prediction is no longer open for betting' in str(StakeErr(any_servicer, BOB, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_stake_cents=1_00)))
 
   async def test_happy_path(self, any_servicer: Servicer, clock: MockClock):
-    alice_token, bob_token = alice_bob_tokens(any_servicer)
-    prediction_id = CreatePredictionOk(any_servicer, alice_token, dict(
+    register_friend_pair(any_servicer, ALICE, BOB)
+    prediction_id = CreatePredictionOk(any_servicer, ALICE, dict(
         certainty=mvp_pb2.CertaintyRange(low=0.80, high=0.90),
         maximum_stake_cents=100_00,
     ))
 
-    StakeOk(any_servicer, bob_token, mvp_pb2.StakeRequest(
+    StakeOk(any_servicer, BOB, mvp_pb2.StakeRequest(
       prediction_id=prediction_id,
       bettor_is_a_skeptic=True,
       bettor_stake_cents=20_00,
     ))
-    StakeOk(any_servicer, bob_token, mvp_pb2.StakeRequest(
+    StakeOk(any_servicer, BOB, mvp_pb2.StakeRequest(
       prediction_id=prediction_id,
       bettor_is_a_skeptic=False,
       bettor_stake_cents=90_00,
     ))
-    assert list(GetPredictionOk(any_servicer, alice_token, prediction_id).your_trades) == [
+    assert list(GetPredictionOk(any_servicer, ALICE, prediction_id).your_trades) == [
       mvp_pb2.Trade(
-        bettor=bob_token.owner,
+        bettor=BOB,
         bettor_is_a_skeptic=True,
         bettor_stake_cents=20_00,
         creator_stake_cents=80_00,
         transacted_unixtime=clock.now().timestamp(),
       ),
       mvp_pb2.Trade(
-        bettor=bob_token.owner,
+        bettor=BOB,
         bettor_is_a_skeptic=False,
         bettor_stake_cents=90_00,
         creator_stake_cents=10_00,
@@ -416,98 +315,98 @@ class TestStake:
     ]
 
   async def test_prevents_overpromising(self, any_servicer: Servicer):
-    alice_token, bob_token = alice_bob_tokens(any_servicer)
-    prediction_id = CreatePredictionOk(any_servicer, alice_token, dict(
+    register_friend_pair(any_servicer, ALICE, BOB)
+    prediction_id = CreatePredictionOk(any_servicer, ALICE, dict(
         certainty=mvp_pb2.CertaintyRange(low=0.80, high=0.90),
         maximum_stake_cents=100_00,
     ))
 
-    StakeOk(any_servicer, bob_token, mvp_pb2.StakeRequest(
+    StakeOk(any_servicer, BOB, mvp_pb2.StakeRequest(
       prediction_id=prediction_id,
       bettor_is_a_skeptic=True,
       bettor_stake_cents=25_00,
     ))
-    with assert_prediction_unchanged(any_servicer, prediction_id=prediction_id, creator_token=alice_token):
-      assert 'bet would exceed creator tolerance' in str(StakeErr(any_servicer, bob_token, mvp_pb2.StakeRequest(
+    with assert_prediction_unchanged(any_servicer, prediction_id=prediction_id):
+      assert 'bet would exceed creator tolerance' in str(StakeErr(any_servicer, BOB, mvp_pb2.StakeRequest(
         prediction_id=prediction_id,
         bettor_is_a_skeptic=True,
         bettor_stake_cents=1,
       )))
 
-    StakeOk(any_servicer, bob_token, mvp_pb2.StakeRequest(
+    StakeOk(any_servicer, BOB, mvp_pb2.StakeRequest(
       prediction_id=prediction_id,
       bettor_is_a_skeptic=False,
       bettor_stake_cents=900_00,
     ))
-    with assert_prediction_unchanged(any_servicer, prediction_id=prediction_id, creator_token=alice_token):
-      assert 'bet would exceed creator tolerance' in str(StakeErr(any_servicer, bob_token, mvp_pb2.StakeRequest(
+    with assert_prediction_unchanged(any_servicer, prediction_id=prediction_id):
+      assert 'bet would exceed creator tolerance' in str(StakeErr(any_servicer, BOB, mvp_pb2.StakeRequest(
         prediction_id=prediction_id,
         bettor_is_a_skeptic=False,
         bettor_stake_cents=9,
       )))
 
   async def test_error_if_logged_out(self, any_servicer: Servicer):
-    token = new_user_token(any_servicer, 'rando')
-    prediction_id = CreatePredictionOk(any_servicer, token, {})
-    with assert_prediction_unchanged(any_servicer, prediction_id=prediction_id, creator_token=token):
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
+    with assert_prediction_unchanged(any_servicer, prediction_id=prediction_id):
       assert 'must log in to bet' in str(StakeErr(any_servicer, None, mvp_pb2.StakeRequest(prediction_id=prediction_id)))
 
   async def test_error_if_creator_doesnt_trust_bettor(self, any_servicer: Servicer):
-    creator_token = new_user_token(any_servicer, 'creator')
-    prediction_id = CreatePredictionOk(any_servicer, creator_token, {})
-    bettor_token = new_user_token(any_servicer, 'bettor')
-    SetTrustedOk(any_servicer, bettor_token, creator_token.owner, True)
-    with assert_prediction_unchanged(any_servicer, prediction_id=prediction_id, creator_token=creator_token):
-      assert "creator doesn\\'t trust you" in str(StakeErr(any_servicer, bettor_token, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_stake_cents=10)))
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    RegisterUsernameOk(any_servicer, None, BOB)
+    prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
+    SetTrustedOk(any_servicer, BOB, ALICE, True)
+    with assert_prediction_unchanged(any_servicer, prediction_id=prediction_id):
+      assert "creator doesn\\'t trust you" in str(StakeErr(any_servicer, BOB, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_stake_cents=10)))
 
   async def test_error_if_bettor_doesnt_trust_creator(self, any_servicer: Servicer):
-    creator_token = new_user_token(any_servicer, 'creator')
-    prediction_id = CreatePredictionOk(any_servicer, creator_token, {})
-    bettor_token = new_user_token(any_servicer, 'bettor')
-    SetTrustedOk(any_servicer, creator_token, bettor_token.owner, True)
-    with assert_prediction_unchanged(any_servicer, prediction_id=prediction_id, creator_token=creator_token):
-      assert "you don\\'t trust the creator" in str(StakeErr(any_servicer, bettor_token, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_stake_cents=10)))
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
+    RegisterUsernameOk(any_servicer, None, BOB)
+    SetTrustedOk(any_servicer, ALICE, BOB, True)
+    with assert_prediction_unchanged(any_servicer, prediction_id=prediction_id):
+      assert "you don\\'t trust the creator" in str(StakeErr(any_servicer, BOB, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_stake_cents=10)))
 
 
 class TestQueueStake:
 
   async def test_error_if_resolved(self, any_servicer: Servicer):
-    creator_token = new_user_token(any_servicer, 'creator')
-    bettor_token = new_user_token(any_servicer, 'bettor')
-    SetTrustedOk(any_servicer, bettor_token, creator_token.owner, True)
-    prediction_id = CreatePredictionOk(any_servicer, creator_token, {})
-    ResolveOk(any_servicer, creator_token, prediction_id, mvp_pb2.RESOLUTION_YES)
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    RegisterUsernameOk(any_servicer, None, BOB)
+    SetTrustedOk(any_servicer, BOB, ALICE, True)
+    prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
+    ResolveOk(any_servicer, ALICE, prediction_id, mvp_pb2.RESOLUTION_YES)
 
-    with assert_prediction_unchanged(any_servicer, prediction_id=prediction_id, creator_token=creator_token):
-      assert 'prediction has already resolved' in str(QueueStakeErr(any_servicer, bettor_token, mvp_pb2.QueueStakeRequest(prediction_id=prediction_id, bettor_stake_cents=1_00)))
+    with assert_prediction_unchanged(any_servicer, prediction_id=prediction_id):
+      assert 'prediction has already resolved' in str(QueueStakeErr(any_servicer, BOB, mvp_pb2.QueueStakeRequest(prediction_id=prediction_id, bettor_stake_cents=1_00)))
 
   async def test_error_if_closed(self, clock: MockClock, any_servicer: Servicer):
-    creator_token = new_user_token(any_servicer, 'creator')
-    bettor_token = new_user_token(any_servicer, 'bettor')
-    SetTrustedOk(any_servicer, bettor_token, creator_token.owner, True)
-    prediction_id = CreatePredictionOk(any_servicer, creator_token, dict(open_seconds=86400, resolves_at_unixtime=int(clock.now().timestamp() + 2*86400)))
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    RegisterUsernameOk(any_servicer, None, BOB)
+    SetTrustedOk(any_servicer, BOB, ALICE, True)
+    prediction_id = CreatePredictionOk(any_servicer, ALICE, dict(open_seconds=86400, resolves_at_unixtime=int(clock.now().timestamp() + 2*86400)))
 
     clock.tick(86401)
-    with assert_prediction_unchanged(any_servicer, prediction_id=prediction_id, creator_token=creator_token):
-      assert 'prediction is no longer open for betting' in str(QueueStakeErr(any_servicer, bettor_token, mvp_pb2.QueueStakeRequest(prediction_id=prediction_id, bettor_stake_cents=1_00)))
+    with assert_prediction_unchanged(any_servicer, prediction_id=prediction_id):
+      assert 'prediction is no longer open for betting' in str(QueueStakeErr(any_servicer, BOB, mvp_pb2.QueueStakeRequest(prediction_id=prediction_id, bettor_stake_cents=1_00)))
 
   async def test_appears_in_your_queued_trades(self, any_servicer: Servicer, clock: MockClock):
-    creator_token = new_user_token(any_servicer, 'creator')
-    bettor_token = new_user_token(any_servicer, 'bettor')
-    SetTrustedOk(any_servicer, bettor_token, creator_token.owner, True)
-    prediction_id = CreatePredictionOk(any_servicer, creator_token, dict(
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    RegisterUsernameOk(any_servicer, None, BOB)
+    SetTrustedOk(any_servicer, BOB, ALICE, True)
+    prediction_id = CreatePredictionOk(any_servicer, ALICE, dict(
         certainty=mvp_pb2.CertaintyRange(low=0.80, high=0.90),
         maximum_stake_cents=100_00,
     ))
 
-    QueueStakeOk(any_servicer, bettor_token, mvp_pb2.QueueStakeRequest(
+    QueueStakeOk(any_servicer, BOB, mvp_pb2.QueueStakeRequest(
       prediction_id=prediction_id,
       bettor_is_a_skeptic=True,
       bettor_stake_cents=20_00,
     ))
-    assert list(GetPredictionOk(any_servicer, creator_token, prediction_id).your_queued_trades) == [
+    assert list(GetPredictionOk(any_servicer, ALICE, prediction_id).your_queued_trades) == [
       mvp_pb2.QueuedTrade(
-        bettor=bettor_token.owner,
+        bettor=BOB,
         bettor_is_a_skeptic=True,
         bettor_stake_cents=20_00,
         creator_stake_cents=80_00,
@@ -516,146 +415,149 @@ class TestQueueStake:
     ]
 
   async def test_error_if_already_trusted(self, any_servicer: Servicer, clock: MockClock):
-    alice_token, bob_token = alice_bob_tokens(any_servicer)
-    prediction_id = CreatePredictionOk(any_servicer, alice_token, dict(
+    register_friend_pair(any_servicer, ALICE, BOB)
+    prediction_id = CreatePredictionOk(any_servicer, ALICE, dict(
         certainty=mvp_pb2.CertaintyRange(low=0.80, high=0.90),
         maximum_stake_cents=100_00,
     ))
 
-    assert 'you already trust the creator, so you should be using the Stake endpoint, not QueueStake' in str(QueueStakeErr(any_servicer, bob_token, mvp_pb2.QueueStakeRequest(
+    assert 'you already trust the creator, so you should be using the Stake endpoint, not QueueStake' in str(QueueStakeErr(any_servicer, BOB, mvp_pb2.QueueStakeRequest(
       prediction_id=prediction_id,
       bettor_is_a_skeptic=True,
       bettor_stake_cents=20_00,
     )))
 
   async def test_queued_stakes_dont_count_against_exposure(self, any_servicer: Servicer):
-    creator_token, friend_token = alice_bob_tokens(any_servicer)
-    bettor_token = new_user_token(any_servicer, 'bettor')
-    SetTrustedOk(any_servicer, bettor_token, creator_token.owner, True)
-    prediction_id = CreatePredictionOk(any_servicer, creator_token, dict(
+    register_friend_pair(any_servicer, ALICE, BOB)
+    RegisterUsernameOk(any_servicer, None, CHARLIE)
+    prediction_id = CreatePredictionOk(any_servicer, ALICE, dict(
         certainty=mvp_pb2.CertaintyRange(low=0.50, high=1.00),
         maximum_stake_cents=100_00,
     ))
 
-    QueueStakeOk(any_servicer, bettor_token, mvp_pb2.QueueStakeRequest(
+    SetTrustedOk(any_servicer, CHARLIE, ALICE, True)
+    QueueStakeOk(any_servicer, CHARLIE, mvp_pb2.QueueStakeRequest(
       prediction_id=prediction_id,
       bettor_is_a_skeptic=True,
       bettor_stake_cents=100_00,
     ))
 
-    prediction = GetPredictionOk(any_servicer, creator_token, prediction_id)
+    prediction = GetPredictionOk(any_servicer, ALICE, prediction_id)
     assert prediction.remaining_stake_cents_vs_skeptics == prediction.maximum_stake_cents
 
     # ensure an actual friend can come along and bet for the full amount
-    StakeOk(any_servicer, friend_token, mvp_pb2.StakeRequest(
+    StakeOk(any_servicer, BOB, mvp_pb2.StakeRequest(
       prediction_id=prediction_id,
       bettor_is_a_skeptic=True,
       bettor_stake_cents=100_00,
     ))
 
   async def test_prevents_overpromising(self, any_servicer: Servicer):
-    creator_token, friend_token = alice_bob_tokens(any_servicer)
-    bettor_token = new_user_token(any_servicer, 'bettor')
-    SetTrustedOk(any_servicer, bettor_token, creator_token.owner, True)
-    prediction_id = CreatePredictionOk(any_servicer, creator_token, dict(
+    register_friend_pair(any_servicer, ALICE, BOB)
+    prediction_id = CreatePredictionOk(any_servicer, ALICE, dict(
         certainty=mvp_pb2.CertaintyRange(low=0.80, high=0.90),
         maximum_stake_cents=100_00,
     ))
-
-    StakeOk(any_servicer, friend_token, mvp_pb2.StakeRequest(  # This is an ACTUAL stake, not just a queued stake, since queued stakes don't count against exposure
+    StakeOk(any_servicer, BOB, mvp_pb2.StakeRequest(  # This is an ACTUAL stake, not just a queued stake, since queued stakes don't count against exposure
       prediction_id=prediction_id,
       bettor_is_a_skeptic=True,
       bettor_stake_cents=25_00,
     ))
-    with assert_prediction_unchanged(any_servicer, prediction_id=prediction_id, creator_token=creator_token):
-      assert 'bet would exceed creator tolerance' in str(QueueStakeErr(any_servicer, bettor_token, mvp_pb2.QueueStakeRequest(
+
+    newbie = au('newbie')
+    RegisterUsernameOk(any_servicer, None, newbie)
+    SetTrustedOk(any_servicer, newbie, ALICE, True)
+    with assert_prediction_unchanged(any_servicer, prediction_id=prediction_id):
+      assert 'bet would exceed creator tolerance' in str(QueueStakeErr(any_servicer, newbie, mvp_pb2.QueueStakeRequest(
         prediction_id=prediction_id,
         bettor_is_a_skeptic=True,
         bettor_stake_cents=1,
       )))
 
   async def test_partially_applies_queued_trade(self, any_servicer: Servicer):
-    creator_token, friend_token = alice_bob_tokens(any_servicer)
-    bettor_token = new_user_token(any_servicer, 'bettor')
-    SetTrustedOk(any_servicer, bettor_token, creator_token.owner, True)
-    prediction_id = CreatePredictionOk(any_servicer, creator_token, dict(
+    register_friend_pair(any_servicer, ALICE, BOB)
+    newbie = au('newbie')
+    RegisterUsernameOk(any_servicer, None, newbie)
+    SetTrustedOk(any_servicer, newbie, ALICE, True)
+    prediction_id = CreatePredictionOk(any_servicer, ALICE, dict(
         certainty=mvp_pb2.CertaintyRange(low=0.80, high=1.00),
         maximum_stake_cents=100_00,
     ))
 
-    QueueStakeOk(any_servicer, bettor_token, mvp_pb2.QueueStakeRequest(  # This is an ACTUAL stake, not just a queued stake, since queued stakes don't count against exposure
+    QueueStakeOk(any_servicer, newbie, mvp_pb2.QueueStakeRequest(
       prediction_id=prediction_id,
       bettor_is_a_skeptic=True,
       bettor_stake_cents=20_00,
     ))
-    StakeOk(any_servicer, friend_token, mvp_pb2.StakeRequest(  # This is an ACTUAL stake, not just a queued stake, since queued stakes don't count against exposure
+    StakeOk(any_servicer, BOB, mvp_pb2.StakeRequest(  # This is an ACTUAL stake, not just a queued stake, since queued stakes don't count against exposure
       prediction_id=prediction_id,
       bettor_is_a_skeptic=True,
       bettor_stake_cents=10_00,
     ))
 
-    SetTrustedOk(any_servicer, creator_token, bettor_token.owner, True)
-    pred = GetPredictionOk(any_servicer, creator_token, prediction_id)
-    [first_trade] = [t for t in pred.your_trades if t.bettor == friend_token.owner]
-    [dequeued_trade] = [t for t in pred.your_trades if t.bettor == bettor_token.owner]
+    SetTrustedOk(any_servicer, ALICE, newbie, True)
+    pred = GetPredictionOk(any_servicer, ALICE, prediction_id)
+    [first_trade] = [t for t in pred.your_trades if t.bettor == BOB]
+    [dequeued_trade] = [t for t in pred.your_trades if t.bettor == newbie]
     assert dequeued_trade.creator_stake_cents == pred.maximum_stake_cents - first_trade.creator_stake_cents
     assert dequeued_trade.bettor_stake_cents == dequeued_trade.creator_stake_cents / 4
-    assert not GetPredictionOk(any_servicer, bettor_token, prediction_id).your_queued_trades
+    assert not GetPredictionOk(any_servicer, BOB, prediction_id).your_queued_trades
 
   async def test_does_not_apply_trivial_partial_queued_trade(self, any_servicer: Servicer):
-    creator_token, friend_token = alice_bob_tokens(any_servicer)
-    bettor_token = new_user_token(any_servicer, 'bettor')
-    SetTrustedOk(any_servicer, bettor_token, creator_token.owner, True)
-    prediction_id = CreatePredictionOk(any_servicer, creator_token, dict(
+    register_friend_pair(any_servicer, ALICE, BOB)
+    newbie = au('newbie')
+    RegisterUsernameOk(any_servicer, None, newbie)
+    SetTrustedOk(any_servicer, newbie, ALICE, True)
+    prediction_id = CreatePredictionOk(any_servicer, ALICE, dict(
         certainty=mvp_pb2.CertaintyRange(low=0.50, high=1.00),
         maximum_stake_cents=100_00,
     ))
 
-    QueueStakeOk(any_servicer, bettor_token, mvp_pb2.QueueStakeRequest(  # This is an ACTUAL stake, not just a queued stake, since queued stakes don't count against exposure
+    QueueStakeOk(any_servicer, newbie, mvp_pb2.QueueStakeRequest(  # This is an ACTUAL stake, not just a queued stake, since queued stakes don't count against exposure
       prediction_id=prediction_id,
       bettor_is_a_skeptic=True,
       bettor_stake_cents=20_00,
     ))
-    StakeOk(any_servicer, friend_token, mvp_pb2.StakeRequest(  # This is an ACTUAL stake, not just a queued stake, since queued stakes don't count against exposure
+    StakeOk(any_servicer, BOB, mvp_pb2.StakeRequest(  # This is an ACTUAL stake, not just a queued stake, since queued stakes don't count against exposure
       prediction_id=prediction_id,
       bettor_is_a_skeptic=True,
       bettor_stake_cents=99_99,
     ))
 
-    SetTrustedOk(any_servicer, creator_token, bettor_token.owner, True)
-    pred = GetPredictionOk(any_servicer, creator_token, prediction_id)
-    assert [t.bettor for t in pred.your_trades] == [friend_token.owner]
+    SetTrustedOk(any_servicer, ALICE, newbie, True)
+    pred = GetPredictionOk(any_servicer, ALICE, prediction_id)
+    assert [t.bettor for t in pred.your_trades] == [BOB]
     assert pred.remaining_stake_cents_vs_skeptics == pred.maximum_stake_cents - 99_99
-    assert not GetPredictionOk(any_servicer, bettor_token, prediction_id).your_queued_trades
+    assert not GetPredictionOk(any_servicer, newbie, prediction_id).your_queued_trades
 
   async def test_error_if_logged_out(self, any_servicer: Servicer):
-    token = new_user_token(any_servicer, 'rando')
-    prediction_id = CreatePredictionOk(any_servicer, token, {})
-    with assert_prediction_unchanged(any_servicer, prediction_id=prediction_id, creator_token=token):
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
+    with assert_prediction_unchanged(any_servicer, prediction_id=prediction_id):
       assert 'must log in to bet' in str(QueueStakeErr(any_servicer, None, mvp_pb2.QueueStakeRequest(prediction_id=prediction_id)))
 
   async def test_ok_if_creator_doesnt_trust_bettor(self, any_servicer: Servicer):
-    creator_token = new_user_token(any_servicer, 'creator')
-    prediction_id = CreatePredictionOk(any_servicer, creator_token, {})
-    bettor_token = new_user_token(any_servicer, 'bettor')
-    SetTrustedOk(any_servicer, bettor_token, creator_token.owner, True)
-    QueueStakeOk(any_servicer, bettor_token, mvp_pb2.QueueStakeRequest(prediction_id=prediction_id, bettor_stake_cents=10))
-    assert GetPredictionOk(any_servicer, bettor_token, prediction_id).your_queued_trades
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
+    RegisterUsernameOk(any_servicer, None, BOB)
+    SetTrustedOk(any_servicer, BOB, ALICE, True)
+    QueueStakeOk(any_servicer, BOB, mvp_pb2.QueueStakeRequest(prediction_id=prediction_id, bettor_stake_cents=10))
+    assert GetPredictionOk(any_servicer, BOB, prediction_id).your_queued_trades
 
   async def test_error_if_bettor_doesnt_trust_creator(self, any_servicer: Servicer):
-    creator_token = new_user_token(any_servicer, 'creator')
-    prediction_id = CreatePredictionOk(any_servicer, creator_token, {})
-    bettor_token = new_user_token(any_servicer, 'bettor')
-    SetTrustedOk(any_servicer, creator_token, bettor_token.owner, True)
-    with assert_prediction_unchanged(any_servicer, prediction_id=prediction_id, creator_token=creator_token):
-      assert "you don\\'t trust the creator" in str(QueueStakeErr(any_servicer, bettor_token, mvp_pb2.QueueStakeRequest(prediction_id=prediction_id, bettor_stake_cents=10)))
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
+    RegisterUsernameOk(any_servicer, None, BOB)
+    SetTrustedOk(any_servicer, ALICE, BOB, True)
+    with assert_prediction_unchanged(any_servicer, prediction_id=prediction_id):
+      assert "you don\\'t trust the creator" in str(QueueStakeErr(any_servicer, BOB, mvp_pb2.QueueStakeRequest(prediction_id=prediction_id, bettor_stake_cents=10)))
 
 
 class TestResolve:
 
   async def test_happy_path(self, any_servicer: Servicer, clock: MockClock):
-    rando_token = new_user_token(any_servicer, 'rando')
-    prediction_id = CreatePredictionOk(any_servicer, rando_token, {})
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
 
     t0 = clock.now().timestamp()
     planned_events = [
@@ -664,52 +566,53 @@ class TestResolve:
       mvp_pb2.ResolutionEvent(unixtime=t0+2, resolution=mvp_pb2.RESOLUTION_NO),
     ]
 
-    assert list(ResolveOk(any_servicer, rando_token, prediction_id, planned_events[0].resolution).resolutions) == planned_events[:1]
-    assert list(GetPredictionOk(any_servicer, rando_token, prediction_id).resolutions) == planned_events[:1]
+    assert list(ResolveOk(any_servicer, ALICE, prediction_id, planned_events[0].resolution).resolutions) == planned_events[:1]
+    assert list(GetPredictionOk(any_servicer, ALICE, prediction_id).resolutions) == planned_events[:1]
 
     clock.tick()
     t1 = clock.now().timestamp()
-    assert list(ResolveOk(any_servicer, rando_token, prediction_id, planned_events[1].resolution).resolutions) == planned_events[:2]
-    assert list(GetPredictionOk(any_servicer, rando_token, prediction_id).resolutions) == planned_events[:2]
+    assert list(ResolveOk(any_servicer, ALICE, prediction_id, planned_events[1].resolution).resolutions) == planned_events[:2]
+    assert list(GetPredictionOk(any_servicer, ALICE, prediction_id).resolutions) == planned_events[:2]
 
     clock.tick()
     t2 = clock.now().timestamp()
-    assert list(ResolveOk(any_servicer, rando_token, prediction_id, planned_events[2].resolution).resolutions) == planned_events[:3]
-    assert list(GetPredictionOk(any_servicer, rando_token, prediction_id).resolutions) == planned_events
+    assert list(ResolveOk(any_servicer, ALICE, prediction_id, planned_events[2].resolution).resolutions) == planned_events[:3]
+    assert list(GetPredictionOk(any_servicer, ALICE, prediction_id).resolutions) == planned_events
 
   async def test_error_if_no_such_prediction(self, any_servicer: Servicer):
-    rando_token = new_user_token(any_servicer, 'rando')
-    prediction_id = CreatePredictionOk(any_servicer, rando_token, {})
-    assert 'no such prediction' in str(ResolveErr(any_servicer, rando_token, 'not_'+prediction_id, mvp_pb2.RESOLUTION_YES))
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
+    assert 'no such prediction' in str(ResolveErr(any_servicer, ALICE, pid('not_'+prediction_id), mvp_pb2.RESOLUTION_YES))
 
   async def test_error_if_notes_too_long(self, any_servicer: Servicer):
-    rando_token = new_user_token(any_servicer, 'rando')
-    prediction_id = CreatePredictionOk(any_servicer, rando_token, {})
-    assert 'unreasonably long notes' in str(ResolveErr(any_servicer, rando_token, prediction_id, mvp_pb2.RESOLUTION_YES, notes=99999*'foo'))
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
+    assert 'unreasonably long notes' in str(ResolveErr(any_servicer, ALICE, prediction_id, mvp_pb2.RESOLUTION_YES, notes=99999*'foo'))
 
   async def test_error_if_invalid_resolution(self, any_servicer: Servicer):
-    rando_token = new_user_token(any_servicer, 'rando')
-    prediction_id = CreatePredictionOk(any_servicer, rando_token, {})
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
     bad_resolution_value: mvp_pb2.Resolution.V = 99  # type: ignore
-    assert 'unrecognized resolution' in str(ResolveErr(any_servicer, rando_token, prediction_id, bad_resolution_value))
+    assert 'unrecognized resolution' in str(ResolveErr(any_servicer, ALICE, prediction_id, bad_resolution_value))
 
   async def test_error_if_not_creator(self, any_servicer: Servicer):
-    alice_token, bob_token = alice_bob_tokens(any_servicer)
-    prediction_id = CreatePredictionOk(any_servicer, alice_token, {})
+    register_friend_pair(any_servicer, ALICE, BOB)
+    prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
 
-    for token in [bob_token, new_user_token(any_servicer, 'rando')]:
-      with assert_prediction_unchanged(any_servicer, prediction_id=prediction_id, creator_token=alice_token):
-        assert 'not the creator' in str(ResolveErr(any_servicer, token, prediction_id, mvp_pb2.RESOLUTION_NO))
+    RegisterUsernameOk(any_servicer, None, CHARLIE)
+    for actor in [BOB, CHARLIE]:
+      with assert_prediction_unchanged(any_servicer, prediction_id=prediction_id):
+        assert 'not the creator' in str(ResolveErr(any_servicer, actor, prediction_id, mvp_pb2.RESOLUTION_NO))
 
   async def test_sends_notifications(self, emailer: Emailer, any_servicer: Servicer):
-    alice_token, bob_token = alice_bob_tokens(any_servicer)
-    set_and_verify_email(any_servicer, emailer, bob_token, 'bob@example.com')
-    UpdateSettingsOk(any_servicer, bob_token, email_resolution_notifications=True)
+    register_friend_pair(any_servicer, ALICE, BOB)
+    set_and_verify_email(any_servicer, emailer, BOB, 'bob@example.com')
+    UpdateSettingsOk(any_servicer, BOB, email_resolution_notifications=True)
 
-    prediction_id = CreatePredictionOk(any_servicer, alice_token, dict(prediction='a thing will happen'))
-    StakeOk(any_servicer, bob_token, request=mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_is_a_skeptic=True, bettor_stake_cents=10))
+    prediction_id = CreatePredictionOk(any_servicer, ALICE, dict(prediction='a thing will happen'))
+    StakeOk(any_servicer, BOB, request=mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_is_a_skeptic=True, bettor_stake_cents=10))
 
-    ResolveOk(any_servicer, alice_token, prediction_id, mvp_pb2.RESOLUTION_YES)
+    ResolveOk(any_servicer, ALICE, prediction_id, mvp_pb2.RESOLUTION_YES)
     emailer.send_resolution_notifications.assert_called_once_with(  # type: ignore
       bccs={'bob@example.com'},
       prediction_id=prediction_id,
@@ -721,65 +624,65 @@ class TestResolve:
 class TestSetTrusted:
 
   async def test_error_when_logged_out(self, any_servicer: Servicer):
-    new_user_token(any_servicer, 'rando')
-    assert 'must log in to trust folks' in str(SetTrustedErr(any_servicer, None, 'rando', True))
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    assert 'must log in to trust folks' in str(SetTrustedErr(any_servicer, None, ALICE, True))
 
   async def test_error_if_nonexistent(self, any_servicer: Servicer):
-    token = new_user_token(any_servicer, 'rando')
-    assert 'no such user' in str(SetTrustedErr(any_servicer, token, 'nonexistent', True))
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    assert 'no such user' in str(SetTrustedErr(any_servicer, ALICE, u('nonexistent'), True))
 
   async def test_error_if_self(self, any_servicer: Servicer):
-    token = new_user_token(any_servicer, 'rando')
-    assert 'cannot set trust for self' in str(SetTrustedErr(any_servicer, token, 'rando', True))
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    assert 'cannot set trust for self' in str(SetTrustedErr(any_servicer, ALICE, ALICE, True))
 
   async def test_happy_path(self, any_servicer: Servicer):
-    alice_token, bob_token = alice_bob_tokens(any_servicer)
-    new_user_token(any_servicer, 'other')
+    register_friend_pair(any_servicer, ALICE, BOB)
+    RegisterUsernameOk(any_servicer, None, CHARLIE)
 
-    alice_view_of_bob = GetUserOk(any_servicer, alice_token, 'Bob')
+    alice_view_of_bob = GetUserOk(any_servicer, ALICE, BOB)
     assert alice_view_of_bob.trusted_by_you
 
-    SetTrustedOk(any_servicer, alice_token, 'Bob', False)
+    SetTrustedOk(any_servicer, ALICE, BOB, False)
 
-    alice_view_of_bob = GetUserOk(any_servicer, alice_token, 'Bob')
+    alice_view_of_bob = GetUserOk(any_servicer, ALICE, BOB)
     assert not alice_view_of_bob.trusted_by_you
 
   @pytest.mark.parametrize('trust', [True, False])
   async def test_removing_trust_deletes_outgoing_invitation(self, any_servicer: Servicer, emailer: Emailer, trust: bool):
-    inviter_token = new_user_token(any_servicer, 'inviter')
-    set_and_verify_email(any_servicer, emailer, inviter_token, 'inviter@example.com')
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    set_and_verify_email(any_servicer, emailer, ALICE, 'alice@example.com')
 
-    recipient_token = new_user_token(any_servicer, 'recipient')
-    set_and_verify_email(any_servicer, emailer, recipient_token, 'recipient@example.com')
-    UpdateSettingsOk(any_servicer, recipient_token, allow_email_invitations=True)
+    RegisterUsernameOk(any_servicer, None, BOB)
+    set_and_verify_email(any_servicer, emailer, BOB, 'bob@example.com')
+    UpdateSettingsOk(any_servicer, BOB, allow_email_invitations=True)
 
-    SendInvitationOk(any_servicer, inviter_token, 'recipient')
-    SetTrustedOk(any_servicer, inviter_token, 'recipient', trust)
+    SendInvitationOk(any_servicer, ALICE, BOB)
+    SetTrustedOk(any_servicer, ALICE, BOB, trust)
 
-    expected_invitations = {'recipient': mvp_pb2.GenericUserInfo.Invitation()} if trust else {}
-    assert GetSettingsOk(any_servicer, inviter_token).invitations == expected_invitations
+    expected_invitations = {BOB: mvp_pb2.GenericUserInfo.Invitation()} if trust else {}
+    assert GetSettingsOk(any_servicer, ALICE).invitations == expected_invitations
 
   async def test_commits_queued_trades_when_mutual_trust_created(self, any_servicer: Servicer, clock: MockClock):
-    creator_token = new_user_token(any_servicer, 'creator')
-    bettor_token = new_user_token(any_servicer, 'bettor')
-    SetTrustedOk(any_servicer, bettor_token, creator_token.owner, True)
-    prediction_id = CreatePredictionOk(any_servicer, creator_token, dict(
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    RegisterUsernameOk(any_servicer, None, BOB)
+    SetTrustedOk(any_servicer, BOB, ALICE, True)
+    prediction_id = CreatePredictionOk(any_servicer, ALICE, dict(
       certainty=mvp_pb2.CertaintyRange(low=0.50, high=1.00),
       maximum_stake_cents=100_00,
     ))
-    QueueStakeOk(any_servicer, bettor_token, mvp_pb2.QueueStakeRequest(
+    QueueStakeOk(any_servicer, BOB, mvp_pb2.QueueStakeRequest(
       prediction_id=prediction_id,
       bettor_is_a_skeptic=True,
       bettor_stake_cents=20_00,
     ))
-    prediction = GetPredictionOk(any_servicer, creator_token, prediction_id)
+    prediction = GetPredictionOk(any_servicer, ALICE, prediction_id)
     assert prediction.remaining_stake_cents_vs_skeptics == 100_00
     assert not prediction.your_trades
     assert prediction.your_queued_trades
 
-    SetTrustedOk(any_servicer, creator_token, bettor_token.owner, True)
+    SetTrustedOk(any_servicer, ALICE, BOB, True)
 
-    prediction = GetPredictionOk(any_servicer, creator_token, prediction_id)
+    prediction = GetPredictionOk(any_servicer, ALICE, prediction_id)
     assert prediction.remaining_stake_cents_vs_skeptics == 80_00
     assert prediction.your_trades
     assert not prediction.your_queued_trades
@@ -788,134 +691,138 @@ class TestSetTrusted:
 class TestGetUser:
 
   async def test_error_when_nonexistent(self, any_servicer: Servicer):
-    new_user_token(any_servicer, 'rando')
-    assert 'no such user' in str(GetUserErr(any_servicer, None, 'nonexistentuser'))
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    assert 'no such user' in str(GetUserErr(any_servicer, None, u('nonexistentuser')))
 
   async def test_success_when_self(self, any_servicer: Servicer):
-    token = new_user_token(any_servicer, 'rando')
-    resp = GetUserOk(any_servicer, token, token.owner)
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    resp = GetUserOk(any_servicer, ALICE, ALICE)
     assert resp == mvp_pb2.Relationship(trusted_by_you=True, trusts_you=True)
 
   async def test_success_when_friend(self, any_servicer: Servicer):
-    alice_token, bob_token = alice_bob_tokens(any_servicer)
-    resp = GetUserOk(any_servicer, alice_token, bob_token.owner)
+    register_friend_pair(any_servicer, ALICE, BOB)
+    resp = GetUserOk(any_servicer, ALICE, BOB)
     assert resp == mvp_pb2.Relationship(trusted_by_you=True, trusts_you=True)
 
   async def test_shows_trust_correctly_when_logged_in(self, any_servicer: Servicer):
-    token = new_user_token(any_servicer, 'rando')
-    truster_token = new_user_token(any_servicer, 'truster')
-    SetTrustedOk(any_servicer, truster_token, token.owner, True)
-    trusted_token = new_user_token(any_servicer, 'trusted')
-    SetTrustedOk(any_servicer, token, trusted_token.owner, True)
-    resp = GetUserOk(any_servicer, token, truster_token.owner)
+    RegisterUsernameOk(any_servicer, None, ALICE)
+
+    RegisterUsernameOk(any_servicer, None, BOB)
+    SetTrustedOk(any_servicer, BOB, ALICE, True)
+    resp = GetUserOk(any_servicer, ALICE, BOB)
     assert resp == mvp_pb2.Relationship(trusted_by_you=False, trusts_you=True)
-    resp = GetUserOk(any_servicer, token, trusted_token.owner)
+
+    RegisterUsernameOk(any_servicer, None, CHARLIE)
+    SetTrustedOk(any_servicer, ALICE, CHARLIE, True)
+    resp = GetUserOk(any_servicer, ALICE, CHARLIE)
     assert resp == mvp_pb2.Relationship(trusted_by_you=True, trusts_you=False)
 
   async def test_no_trust_when_logged_out(self, any_servicer: Servicer):
-    new_user_token(any_servicer, 'rando')
-    resp = GetUserOk(any_servicer, None, 'rando')
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    resp = GetUserOk(any_servicer, None, ALICE)
     assert resp == mvp_pb2.Relationship(trusted_by_you=False, trusts_you=False)
 
 
 class TestChangePassword:
 
   async def test_error_if_logged_out(self, any_servicer: Servicer):
-    real_token = new_user_token(any_servicer, 'rando')
-    with assert_user_unchanged(any_servicer, real_token, 'rando password'):
-      assert 'must log in' in str(ChangePasswordErr(any_servicer, None, 'rando password', 'new rando password'))
+    RegisterUsernameOk(any_servicer, None, ALICE, 'original pw')
+    with assert_user_unchanged(any_servicer, ALICE, 'original pw'):
+      assert 'must log in' in str(ChangePasswordErr(any_servicer, None, 'original pw', 'new password'))
 
   async def test_can_log_in_with_new_password(self, any_servicer: Servicer):
-    token = new_user_token(any_servicer, 'rando')
-    ChangePasswordOk(any_servicer, token, 'rando password', 'new rando password')
-    assert LogInUsernameOk(any_servicer, None, 'rando', 'new rando password').token.owner == 'rando'
+    orig_pw = 'pw'
+    RegisterUsernameOk(any_servicer, None, ALICE, password=orig_pw)
+    ChangePasswordOk(any_servicer, ALICE, orig_pw, 'new password')
+    assert LogInUsernameOk(any_servicer, None, ALICE, 'new password').token.owner == ALICE
 
   async def test_error_when_wrong_old_password(self, any_servicer: Servicer):
-    token = new_user_token(any_servicer, 'rando')
-    with assert_user_unchanged(any_servicer, token, 'rando password'):
-      assert 'wrong old password' in str(ChangePasswordErr(any_servicer, token, 'WRONG', 'new rando password'))
+    orig_pw = 'pw'
+    RegisterUsernameOk(any_servicer, None, ALICE, password=orig_pw)
+    with assert_user_unchanged(any_servicer, ALICE, orig_pw):
+      assert 'wrong old password' in str(ChangePasswordErr(any_servicer, ALICE, 'WRONG', 'new password'))
 
 
 class TestSetEmail:
 
   async def test_changes_settings(self, any_servicer: Servicer):
-    token = new_user_token(any_servicer, 'rando')
-    SetEmailOk(any_servicer, token, 'nobody@example.com')
-    assert GetSettingsOk(any_servicer, token).email.code_sent.email == 'nobody@example.com'
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    SetEmailOk(any_servicer, ALICE, 'nobody@example.com')
+    assert GetSettingsOk(any_servicer, ALICE).email.code_sent.email == 'nobody@example.com'
 
   async def test_returns_new_flow_state(self, any_servicer: Servicer):
-    token = new_user_token(any_servicer, 'rando')
-    assert SetEmailOk(any_servicer, token, 'nobody@example.com').code_sent.email == 'nobody@example.com'
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    assert SetEmailOk(any_servicer, ALICE, 'nobody@example.com').code_sent.email == 'nobody@example.com'
 
   async def test_sends_code_in_email(self, emailer: Emailer, any_servicer: Servicer):
-    token = new_user_token(any_servicer, 'rando')
-    SetEmailOk(any_servicer, token, 'nobody@example.com')
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    SetEmailOk(any_servicer, ALICE, 'nobody@example.com')
     emailer.send_email_verification.assert_called_once_with(to='nobody@example.com', code=ANY)  # type: ignore
 
   async def test_works_in_code_sent_state(self, emailer: Emailer, any_servicer: Servicer):
-    token = new_user_token(any_servicer, 'rando')
-    SetEmailOk(any_servicer, token, 'old@old.old')
-    SetEmailOk(any_servicer, token, 'new@new.new')
-    assert GetSettingsOk(any_servicer, token).email.code_sent.email == 'new@new.new'
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    SetEmailOk(any_servicer, ALICE, 'old@old.old')
+    SetEmailOk(any_servicer, ALICE, 'new@new.new')
+    assert GetSettingsOk(any_servicer, ALICE).email.code_sent.email == 'new@new.new'
     emailer.send_email_verification.assert_called_with(to='new@new.new', code=ANY)  # type: ignore
 
   async def test_works_in_verified_state(self, emailer: Emailer, any_servicer: Servicer):
-    token = new_user_token(any_servicer, 'rando')
-    set_and_verify_email(any_servicer, emailer, token, 'old@old.old')
-    SetEmailOk(any_servicer, token, 'new@new.new')
-    assert GetSettingsOk(any_servicer, token).email.code_sent.email == 'new@new.new'
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    set_and_verify_email(any_servicer, emailer, ALICE, 'old@old.old')
+    SetEmailOk(any_servicer, ALICE, 'new@new.new')
+    assert GetSettingsOk(any_servicer, ALICE).email.code_sent.email == 'new@new.new'
     emailer.send_email_verification.assert_called_with(to='new@new.new', code=ANY)  # type: ignore
 
   async def test_clears_email_when_address_is_empty(self, emailer: Emailer, any_servicer: Servicer):
-    token = new_user_token(any_servicer, 'rando')
-    SetEmailOk(any_servicer, token, 'nobody@example.com')
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    SetEmailOk(any_servicer, ALICE, 'nobody@example.com')
     emailer.send_email_verification.reset_mock()  # type: ignore
-    assert SetEmailOk(any_servicer, token, '').WhichOneof('email_flow_state_kind') == 'unstarted'
+    assert SetEmailOk(any_servicer, ALICE, '').WhichOneof('email_flow_state_kind') == 'unstarted'
     emailer.send_email_verification.assert_not_called()  # type: ignore
 
   async def test_error_if_logged_out(self, any_servicer: Servicer):
     assert 'must log in' in str(SetEmailErr(any_servicer, None, 'nobody@example.com'))
 
   async def test_validates_email(self, any_servicer: Servicer):
-    token = new_user_token(any_servicer, 'rando')
+    RegisterUsernameOk(any_servicer, None, ALICE, 'pw')
     for good_email_address in ['a@b', 'b@c.com', 'a.b-c_d+tag@example.com']:
-      assert SetEmailOk(any_servicer, token, good_email_address).code_sent.email == good_email_address
+      assert SetEmailOk(any_servicer, ALICE, good_email_address).code_sent.email == good_email_address
     for bad_email_address in ['bad email', 'bad@example.com  ', 'good@example.com, evil@example.com']:
-      with assert_user_unchanged(any_servicer, token, 'rando password'):
-        assert 'invalid-looking email' in str(SetEmailErr(any_servicer, token, bad_email_address))
+      with assert_user_unchanged(any_servicer, ALICE, 'pw'):
+        assert 'invalid-looking email' in str(SetEmailErr(any_servicer, ALICE, bad_email_address))
 
 
 class TestVerifyEmail:
 
   async def test_happy_path(self, emailer: Emailer, any_servicer: Servicer):
-    token = new_user_token(any_servicer, 'rando')
-    SetEmailOk(any_servicer, token, 'nobody@example.com')
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    SetEmailOk(any_servicer, ALICE, 'nobody@example.com')
     code = emailer.send_email_verification.call_args[1]['code']  # type: ignore
-    assert VerifyEmailOk(any_servicer, token, code=code).verified == 'nobody@example.com'
+    assert VerifyEmailOk(any_servicer, ALICE, code=code).verified == 'nobody@example.com'
 
   async def test_error_if_wrong_code(self, emailer: Emailer, any_servicer: Servicer):
-    token = new_user_token(any_servicer, 'rando')
-    SetEmailOk(any_servicer, token, 'nobody@example.com')
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    SetEmailOk(any_servicer, ALICE, 'nobody@example.com')
     code = emailer.send_email_verification.call_args[1]['code']  # type: ignore
-    assert 'bad code' in str(VerifyEmailErr(any_servicer, token, code='not ' + code))
+    assert 'bad code' in str(VerifyEmailErr(any_servicer, ALICE, code='not ' + code))
 
   async def test_error_if_unstarted(self, emailer: Emailer, any_servicer: Servicer):
-    token = new_user_token(any_servicer, 'rando')
-    assert 'no pending email-verification' in str(VerifyEmailErr(any_servicer, token, code='some code'))
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    assert 'no pending email-verification' in str(VerifyEmailErr(any_servicer, ALICE, code='some code'))
 
   async def test_error_if_restarted(self, emailer: Emailer, any_servicer: Servicer):
-    token = new_user_token(any_servicer, 'rando')
-    SetEmailOk(any_servicer, token, 'old@old.old')
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    SetEmailOk(any_servicer, ALICE, 'old@old.old')
     code = emailer.send_email_verification.call_args[1]['code']  # type: ignore
-    SetEmailOk(any_servicer, token, 'new@new.new')
-    assert 'bad code' in str(VerifyEmailErr(any_servicer, token, code=code))
+    SetEmailOk(any_servicer, ALICE, 'new@new.new')
+    assert 'bad code' in str(VerifyEmailErr(any_servicer, ALICE, code=code))
 
   async def test_error_if_already_verified(self, emailer: Emailer, any_servicer: Servicer):
-    token = new_user_token(any_servicer, 'rando')
-    SetEmailOk(any_servicer, token, 'nobody@example.com')
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    SetEmailOk(any_servicer, ALICE, 'nobody@example.com')
     code = emailer.send_email_verification.call_args[1]['code']  # type: ignore
-    VerifyEmailOk(any_servicer, token, code=code)
-    assert 'no pending email-verification' in str(VerifyEmailErr(any_servicer, token, code=code))
+    VerifyEmailOk(any_servicer, ALICE, code=code)
+    assert 'no pending email-verification' in str(VerifyEmailErr(any_servicer, ALICE, code=code))
 
   async def test_error_if_logged_out(self, any_servicer: Servicer):
     assert 'must log in' in str(VerifyEmailErr(any_servicer, None, code='foo'))
@@ -927,9 +834,9 @@ class TestGetSettings:
     assert 'must log in' in str(GetSettingsErr(any_servicer, None))
 
   async def test_happy_path(self, emailer: Emailer, any_servicer: Servicer):
-    alice_token, bob_token = alice_bob_tokens(any_servicer)
-    geninfo = GetSettingsOk(any_servicer, alice_token)
-    assert dict(geninfo.relationships) == {'Bob': mvp_pb2.Relationship(trusted_by_you=True, trusts_you=True)}
+    register_friend_pair(any_servicer, ALICE, BOB)
+    geninfo = GetSettingsOk(any_servicer, ALICE)
+    assert dict(geninfo.relationships) == {BOB: mvp_pb2.Relationship(trusted_by_you=True, trusts_you=True)}
 
 
 class TestUpdateSettings:
@@ -938,42 +845,42 @@ class TestUpdateSettings:
     assert 'must log in' in str(UpdateSettingsErr(any_servicer, None))
 
   async def test_noop_if_no_args_given(self, any_servicer: Servicer):
-    token = new_user_token(any_servicer, 'rando')
-    with assert_user_unchanged(any_servicer, token, 'rando password'):
-      UpdateSettingsOk(any_servicer, token)
+    RegisterUsernameOk(any_servicer, None, ALICE, 'pw')
+    with assert_user_unchanged(any_servicer, ALICE, 'pw'):
+      UpdateSettingsOk(any_servicer, ALICE)
 
   async def test_resolution_notification_settings_are_persisted(self, any_servicer: Servicer):
-    token = new_user_token(any_servicer, 'rando')
-    UpdateSettingsOk(any_servicer, token, email_resolution_notifications=False)
-    assert not GetSettingsOk(any_servicer, token).email_resolution_notifications
-    UpdateSettingsOk(any_servicer, token, email_resolution_notifications=True)
-    assert GetSettingsOk(any_servicer, token).email_resolution_notifications
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    UpdateSettingsOk(any_servicer, ALICE, email_resolution_notifications=False)
+    assert not GetSettingsOk(any_servicer, ALICE).email_resolution_notifications
+    UpdateSettingsOk(any_servicer, ALICE, email_resolution_notifications=True)
+    assert GetSettingsOk(any_servicer, ALICE).email_resolution_notifications
 
   async def test_reminder_settings_are_persisted(self, any_servicer: Servicer):
-    token = new_user_token(any_servicer, 'rando')
-    UpdateSettingsOk(any_servicer, token, email_reminders_to_resolve=False)
-    assert not GetSettingsOk(any_servicer, token).email_reminders_to_resolve
-    UpdateSettingsOk(any_servicer, token, email_reminders_to_resolve=True)
-    assert GetSettingsOk(any_servicer, token).email_reminders_to_resolve
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    UpdateSettingsOk(any_servicer, ALICE, email_reminders_to_resolve=False)
+    assert not GetSettingsOk(any_servicer, ALICE).email_reminders_to_resolve
+    UpdateSettingsOk(any_servicer, ALICE, email_reminders_to_resolve=True)
+    assert GetSettingsOk(any_servicer, ALICE).email_reminders_to_resolve
 
   async def test_email_invitation_settings_are_persisted(self, any_servicer: Servicer):
-    token = new_user_token(any_servicer, 'rando')
-    UpdateSettingsOk(any_servicer, token, allow_email_invitations=False)
-    assert not GetSettingsOk(any_servicer, token).allow_email_invitations
-    UpdateSettingsOk(any_servicer, token, allow_email_invitations=True)
-    assert GetSettingsOk(any_servicer, token).allow_email_invitations
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    UpdateSettingsOk(any_servicer, ALICE, allow_email_invitations=False)
+    assert not GetSettingsOk(any_servicer, ALICE).allow_email_invitations
+    UpdateSettingsOk(any_servicer, ALICE, allow_email_invitations=True)
+    assert GetSettingsOk(any_servicer, ALICE).allow_email_invitations
 
   async def test_invitation_acceptance_notification_settings_are_persisted(self, any_servicer: Servicer):
-    token = new_user_token(any_servicer, 'rando')
-    UpdateSettingsOk(any_servicer, token, email_invitation_acceptance_notifications=False)
-    assert not GetSettingsOk(any_servicer, token).email_invitation_acceptance_notifications
-    UpdateSettingsOk(any_servicer, token, email_invitation_acceptance_notifications=True)
-    assert GetSettingsOk(any_servicer, token).email_invitation_acceptance_notifications
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    UpdateSettingsOk(any_servicer, ALICE, email_invitation_acceptance_notifications=False)
+    assert not GetSettingsOk(any_servicer, ALICE).email_invitation_acceptance_notifications
+    UpdateSettingsOk(any_servicer, ALICE, email_invitation_acceptance_notifications=True)
+    assert GetSettingsOk(any_servicer, ALICE).email_invitation_acceptance_notifications
 
   async def test_response_has_new_settings(self, any_servicer: Servicer):
-    token = new_user_token(any_servicer, 'rando')
-    resp = UpdateSettingsOk(any_servicer, token, email_reminders_to_resolve=True)
-    assert resp == GetSettingsOk(any_servicer, token)
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    resp = UpdateSettingsOk(any_servicer, ALICE, email_reminders_to_resolve=True)
+    assert resp == GetSettingsOk(any_servicer, ALICE)
 
 
 class TestSendInvitation:
@@ -982,52 +889,52 @@ class TestSendInvitation:
     assert 'must log in' in str(SendInvitationErr(any_servicer, None, 'anybody'))
 
   async def test_error_if_inviter_has_no_email(self, any_servicer: Servicer, emailer: Emailer):
-    recipient_token = new_user_token(any_servicer, 'recipient')
-    set_and_verify_email(any_servicer, emailer, recipient_token, 'recipient@example.com')
-    inviter_token = new_user_token(any_servicer, 'inviter')
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    set_and_verify_email(any_servicer, emailer, ALICE, 'alice@example.com')
+    RegisterUsernameOk(any_servicer, None, BOB)
 
-    assert 'you need to add an email address before you can send invitations' in str(SendInvitationErr(any_servicer, inviter_token, 'recipient'))
+    assert 'you need to add an email address before you can send invitations' in str(SendInvitationErr(any_servicer, BOB, ALICE))
 
   async def test_error_if_recipient_has_no_email(self, any_servicer: Servicer, emailer: Emailer):
-    recipient_token = new_user_token(any_servicer, 'recipient')
-    inviter_token = new_user_token(any_servicer, 'inviter')
-    set_and_verify_email(any_servicer, emailer, inviter_token, 'inviter@example.com')
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    RegisterUsernameOk(any_servicer, None, BOB)
+    set_and_verify_email(any_servicer, emailer, BOB, 'bob@example.com')
 
-    assert 'does not accept email invitations' in str(SendInvitationErr(any_servicer, inviter_token, 'recipient'))
+    assert 'does not accept email invitations' in str(SendInvitationErr(any_servicer, BOB, ALICE))
 
   async def test_error_if_recipient_disabled_email_invitations(self, any_servicer: Servicer, emailer: Emailer):
-    recipient_token = new_user_token(any_servicer, 'recipient')
-    set_and_verify_email(any_servicer, emailer, recipient_token, 'recipient@example.com')
-    UpdateSettingsOk(any_servicer, recipient_token, allow_email_invitations=False)
-    inviter_token = new_user_token(any_servicer, 'inviter')
-    set_and_verify_email(any_servicer, emailer, inviter_token, 'inviter@example.com')
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    set_and_verify_email(any_servicer, emailer, ALICE, 'alice@example.com')
+    UpdateSettingsOk(any_servicer, ALICE, allow_email_invitations=False)
+    RegisterUsernameOk(any_servicer, None, BOB)
+    set_and_verify_email(any_servicer, emailer, BOB, 'bob@example.com')
 
-    assert 'does not accept email invitations' in str(SendInvitationErr(any_servicer, inviter_token, 'recipient'))
+    assert 'does not accept email invitations' in str(SendInvitationErr(any_servicer, BOB, ALICE))
 
   async def test_error_if_already_sent(self, any_servicer: Servicer, emailer: Emailer):
-    recipient_token = new_user_token(any_servicer, 'recipient')
-    set_and_verify_email(any_servicer, emailer, recipient_token, 'recipient@example.com')
-    UpdateSettingsOk(any_servicer, recipient_token, allow_email_invitations=True)
-    inviter_token = new_user_token(any_servicer, 'inviter')
-    set_and_verify_email(any_servicer, emailer, inviter_token, 'inviter@example.com')
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    set_and_verify_email(any_servicer, emailer, ALICE, 'alice@example.com')
+    UpdateSettingsOk(any_servicer, ALICE, allow_email_invitations=True)
+    RegisterUsernameOk(any_servicer, None, BOB)
+    set_and_verify_email(any_servicer, emailer, BOB, 'bob@example.com')
 
-    SendInvitationOk(any_servicer, inviter_token, 'recipient')
-    assert 'already asked this user if they trust you' in str(SendInvitationErr(any_servicer, inviter_token, 'recipient'))
+    SendInvitationOk(any_servicer, BOB, ALICE)
+    assert 'already asked this user if they trust you' in str(SendInvitationErr(any_servicer, BOB, ALICE))
 
   async def test_sends_email(self, any_servicer: Servicer, emailer: Emailer):
-    recipient_token = new_user_token(any_servicer, 'recipient')
-    set_and_verify_email(any_servicer, emailer, recipient_token, 'recipient@example.com')
-    UpdateSettingsOk(any_servicer, recipient_token, allow_email_invitations=True)
-    inviter_token = new_user_token(any_servicer, 'inviter')
-    set_and_verify_email(any_servicer, emailer, inviter_token, 'inviter@example.com')
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    set_and_verify_email(any_servicer, emailer, ALICE, 'alice@example.com')
+    UpdateSettingsOk(any_servicer, ALICE, allow_email_invitations=True)
+    RegisterUsernameOk(any_servicer, None, BOB)
+    set_and_verify_email(any_servicer, emailer, BOB, 'bob@example.com')
 
-    SendInvitationOk(any_servicer, inviter_token, 'recipient')
+    SendInvitationOk(any_servicer, BOB, ALICE)
 
     emailer.send_invitation.assert_called_once_with(  # type: ignore
-      inviter_username='inviter',
-      inviter_email='inviter@example.com',
-      recipient_username='recipient',
-      recipient_email='recipient@example.com',
+      inviter_username=BOB,
+      inviter_email='bob@example.com',
+      recipient_username=ALICE,
+      recipient_email='alice@example.com',
       nonce=ANY,
     )
 
@@ -1038,150 +945,150 @@ class TestCheckInvitation:
     assert 'no such invitation' in str(CheckInvitationErr(any_servicer, None, 'asdf'))
 
   async def test_returns_info_from_send(self, any_servicer: Servicer, emailer: Emailer):
-    recipient_token = new_user_token(any_servicer, 'recipient')
-    set_and_verify_email(any_servicer, emailer, recipient_token, 'recipient@example.com')
-    UpdateSettingsOk(any_servicer, recipient_token, allow_email_invitations=True)
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    set_and_verify_email(any_servicer, emailer, ALICE, 'alice@example.com')
+    UpdateSettingsOk(any_servicer, ALICE, allow_email_invitations=True)
 
-    inviter_token = new_user_token(any_servicer, 'inviter')
-    set_and_verify_email(any_servicer, emailer, inviter_token, 'inviter@example.com')
+    RegisterUsernameOk(any_servicer, None, BOB)
+    set_and_verify_email(any_servicer, emailer, BOB, 'bob@example.com')
 
-    SendInvitationOk(any_servicer, inviter_token, 'recipient')
+    SendInvitationOk(any_servicer, BOB, 'alice')
     resp = CheckInvitationOk(any_servicer, None, get_call_kwarg(emailer.send_invitation, 'nonce'))
-    assert resp.inviter == 'inviter'
-    assert resp.recipient == 'recipient'
+    assert resp.inviter == BOB
+    assert resp.recipient == ALICE
 
 
 class TestAcceptInvitation:
 
   async def test_sets_intended_trust_if_logged_in_as_recipient(self, any_servicer: Servicer, emailer: Emailer, clock: MockClock):
-    recipient_token = new_user_token(any_servicer, 'recipient')
-    set_and_verify_email(any_servicer, emailer, recipient_token, 'recipient@example.com')
-    UpdateSettingsOk(any_servicer, recipient_token, allow_email_invitations=True)
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    set_and_verify_email(any_servicer, emailer, ALICE, 'alice@example.com')
+    UpdateSettingsOk(any_servicer, ALICE, allow_email_invitations=True)
 
-    inviter_token = new_user_token(any_servicer, 'inviter')
-    set_and_verify_email(any_servicer, emailer, inviter_token, 'inviter@example.com')
+    RegisterUsernameOk(any_servicer, None, BOB)
+    set_and_verify_email(any_servicer, emailer, BOB, 'bob@example.com')
 
-    SendInvitationOk(any_servicer, inviter_token, 'recipient')
-    AcceptInvitationOk(any_servicer, recipient_token, get_call_kwarg(emailer.send_invitation, 'nonce'))
+    SendInvitationOk(any_servicer, BOB, ALICE)
+    AcceptInvitationOk(any_servicer, ALICE, get_call_kwarg(emailer.send_invitation, 'nonce'))
 
-    rel = GetSettingsOk(any_servicer, recipient_token).relationships['inviter']
+    rel = GetSettingsOk(any_servicer, ALICE).relationships[BOB]
     assert rel.trusts_you and rel.trusted_by_you
 
   async def test_commits_queued_trades(self, any_servicer: Servicer, emailer: Emailer, clock: MockClock):
-    creator_token = new_user_token(any_servicer, 'creator')
-    set_and_verify_email(any_servicer, emailer, creator_token, 'recipient@example.com')
-    bettor_token = new_user_token(any_servicer, 'bettor')
-    set_and_verify_email(any_servicer, emailer, bettor_token, 'inviter@example.com')
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    set_and_verify_email(any_servicer, emailer, ALICE, 'alice@example.com')
+    RegisterUsernameOk(any_servicer, None, BOB)
+    set_and_verify_email(any_servicer, emailer, BOB, 'bob@example.com')
 
-    prediction_id = CreatePredictionOk(any_servicer, creator_token, dict(
+    prediction_id = CreatePredictionOk(any_servicer, ALICE, dict(
       certainty=mvp_pb2.CertaintyRange(low=0.50, high=1.00),
       maximum_stake_cents=100_00,
     ))
-    SendInvitationOk(any_servicer, bettor_token, 'creator')
-    QueueStakeOk(any_servicer, bettor_token, mvp_pb2.QueueStakeRequest(
+    SendInvitationOk(any_servicer, BOB, ALICE)
+    QueueStakeOk(any_servicer, BOB, mvp_pb2.QueueStakeRequest(
       prediction_id=prediction_id,
       bettor_is_a_skeptic=True,
       bettor_stake_cents=20_00,
     ))
-    AcceptInvitationOk(any_servicer, creator_token, get_call_kwarg(emailer.send_invitation, 'nonce'))
+    AcceptInvitationOk(any_servicer, ALICE, get_call_kwarg(emailer.send_invitation, 'nonce'))
 
-    prediction = GetPredictionOk(any_servicer, creator_token, prediction_id)
+    prediction = GetPredictionOk(any_servicer, ALICE, prediction_id)
     assert prediction.remaining_stake_cents_vs_skeptics == 80_00
     assert prediction.your_trades
     assert not prediction.your_queued_trades
 
   async def test_successfully_creates_trust_even_if_logged_out(self, any_servicer: Servicer, emailer: Emailer):
-    recipient_token = new_user_token(any_servicer, 'recipient')
-    set_and_verify_email(any_servicer, emailer, recipient_token, 'recipient@example.com')
-    UpdateSettingsOk(any_servicer, recipient_token, allow_email_invitations=True)
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    set_and_verify_email(any_servicer, emailer, ALICE, 'alice@example.com')
+    UpdateSettingsOk(any_servicer, ALICE, allow_email_invitations=True)
 
-    inviter_token = new_user_token(any_servicer, 'inviter')
-    set_and_verify_email(any_servicer, emailer, inviter_token, 'inviter@example.com')
+    RegisterUsernameOk(any_servicer, None, BOB)
+    set_and_verify_email(any_servicer, emailer, BOB, 'bob@example.com')
 
-    SendInvitationOk(any_servicer, inviter_token, 'recipient')
+    SendInvitationOk(any_servicer, BOB, ALICE)
     AcceptInvitationOk(any_servicer, None, get_call_kwarg(emailer.send_invitation, 'nonce'))
 
-    rel = GetSettingsOk(any_servicer, recipient_token).relationships['inviter']
+    rel = GetSettingsOk(any_servicer, ALICE).relationships[BOB]
     assert rel.trusts_you and rel.trusted_by_you
 
   async def test_sets_intended_trust_if_logged_in_as_other_user(self, any_servicer: Servicer, emailer: Emailer, clock: MockClock):
-    recipient_token = new_user_token(any_servicer, 'recipient')
-    set_and_verify_email(any_servicer, emailer, recipient_token, 'recipient@example.com')
-    UpdateSettingsOk(any_servicer, recipient_token, allow_email_invitations=True)
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    set_and_verify_email(any_servicer, emailer, ALICE, 'alice@example.com')
+    UpdateSettingsOk(any_servicer, ALICE, allow_email_invitations=True)
 
-    inviter_token = new_user_token(any_servicer, 'inviter')
-    set_and_verify_email(any_servicer, emailer, inviter_token, 'inviter@example.com')
+    RegisterUsernameOk(any_servicer, None, BOB)
+    set_and_verify_email(any_servicer, emailer, BOB, 'bob@example.com')
 
-    rando_token = new_user_token(any_servicer, 'rando')
+    RegisterUsernameOk(any_servicer, None, CHARLIE, password='pw')
 
-    SendInvitationOk(any_servicer, inviter_token, 'recipient')
-    with assert_user_unchanged(any_servicer, rando_token, 'rando password'):
-      AcceptInvitationOk(any_servicer, rando_token, get_call_kwarg(emailer.send_invitation, 'nonce'))
+    SendInvitationOk(any_servicer, BOB, ALICE)
+    with assert_user_unchanged(any_servicer, CHARLIE, 'pw'):
+      AcceptInvitationOk(any_servicer, CHARLIE, get_call_kwarg(emailer.send_invitation, 'nonce'))
 
-    rel = GetSettingsOk(any_servicer, recipient_token).relationships['inviter']
+    rel = GetSettingsOk(any_servicer, ALICE).relationships[BOB]
     assert rel.trusts_you and rel.trusted_by_you
 
-    rel = GetSettingsOk(any_servicer, rando_token).relationships['inviter']
+    rel = GetSettingsOk(any_servicer, CHARLIE).relationships[BOB]
     assert not rel.trusts_you and not rel.trusted_by_you
 
-    rel = GetSettingsOk(any_servicer, rando_token).relationships['recipient']
+    rel = GetSettingsOk(any_servicer, CHARLIE).relationships[ALICE]
     assert not rel.trusts_you and not rel.trusted_by_you
 
   async def test_sends_email_to_inviter_if_settings_appropriate(self, any_servicer: Servicer, emailer: Emailer):
-    recipient_token = new_user_token(any_servicer, 'recipient')
-    set_and_verify_email(any_servicer, emailer, recipient_token, 'recipient@example.com')
-    UpdateSettingsOk(any_servicer, recipient_token, allow_email_invitations=True)
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    set_and_verify_email(any_servicer, emailer, ALICE, 'alice@example.com')
+    UpdateSettingsOk(any_servicer, ALICE, allow_email_invitations=True)
 
-    inviter_token = new_user_token(any_servicer, 'inviter')
-    set_and_verify_email(any_servicer, emailer, inviter_token, 'inviter@example.com')
-    UpdateSettingsOk(any_servicer, inviter_token, email_invitation_acceptance_notifications=True)
+    RegisterUsernameOk(any_servicer, None, BOB)
+    set_and_verify_email(any_servicer, emailer, BOB, 'bob@example.com')
+    UpdateSettingsOk(any_servicer, BOB, email_invitation_acceptance_notifications=True)
 
-    SendInvitationOk(any_servicer, inviter_token, 'recipient')
+    SendInvitationOk(any_servicer, BOB, ALICE)
     AcceptInvitationOk(any_servicer, None, get_call_kwarg(emailer.send_invitation, 'nonce'))
-    emailer.send_invitation_acceptance_notification.assert_called_once_with(inviter_email='inviter@example.com', recipient_username='recipient')  # type: ignore
+    emailer.send_invitation_acceptance_notification.assert_called_once_with(inviter_email='bob@example.com', recipient_username=ALICE)  # type: ignore
 
   async def test_does_not_send_email_to_inviter_if_no_email(self, any_servicer: Servicer, emailer: Emailer):
-    recipient_token = new_user_token(any_servicer, 'recipient')
-    set_and_verify_email(any_servicer, emailer, recipient_token, 'recipient@example.com')
-    UpdateSettingsOk(any_servicer, recipient_token, allow_email_invitations=True)
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    set_and_verify_email(any_servicer, emailer, ALICE, 'alice@example.com')
+    UpdateSettingsOk(any_servicer, ALICE, allow_email_invitations=True)
 
-    inviter_token = new_user_token(any_servicer, 'inviter')
-    set_and_verify_email(any_servicer, emailer, inviter_token, 'inviter@example.com')
+    RegisterUsernameOk(any_servicer, None, BOB)
+    set_and_verify_email(any_servicer, emailer, BOB, 'bob@example.com')
 
-    SendInvitationOk(any_servicer, inviter_token, 'recipient')
-    SetEmailOk(any_servicer, inviter_token, '')
+    SendInvitationOk(any_servicer, BOB, ALICE)
+    SetEmailOk(any_servicer, BOB, '')
     AcceptInvitationOk(any_servicer, None, get_call_kwarg(emailer.send_invitation, 'nonce'))
     emailer.send_invitation_acceptance_notification.assert_not_called()  # type: ignore
 
   async def test_does_not_send_email_to_inviter_if_notifications_disabled(self, any_servicer: Servicer, emailer: Emailer):
-    recipient_token = new_user_token(any_servicer, 'recipient')
-    set_and_verify_email(any_servicer, emailer, recipient_token, 'recipient@example.com')
-    UpdateSettingsOk(any_servicer, recipient_token, allow_email_invitations=True)
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    set_and_verify_email(any_servicer, emailer, ALICE, 'alice@example.com')
+    UpdateSettingsOk(any_servicer, ALICE, allow_email_invitations=True)
 
-    inviter_token = new_user_token(any_servicer, 'inviter')
-    set_and_verify_email(any_servicer, emailer, inviter_token, 'inviter@example.com')
-    UpdateSettingsOk(any_servicer, inviter_token, email_invitation_acceptance_notifications=False)
+    RegisterUsernameOk(any_servicer, None, BOB)
+    set_and_verify_email(any_servicer, emailer, BOB, 'bob@example.com')
+    UpdateSettingsOk(any_servicer, BOB, email_invitation_acceptance_notifications=False)
 
-    SendInvitationOk(any_servicer, inviter_token, 'recipient')
+    SendInvitationOk(any_servicer, BOB, ALICE)
     AcceptInvitationOk(any_servicer, None, get_call_kwarg(emailer.send_invitation, 'nonce'))
     emailer.send_invitation_acceptance_notification.assert_not_called()  # type: ignore
 
   async def test_error_when_no_such_invitation(self, any_servicer: Servicer):
-    rando_token = new_user_token(any_servicer, 'rando')
-    with assert_user_unchanged(any_servicer, rando_token, 'rando password'):
-      assert 'no such invitation' in str(AcceptInvitationErr(any_servicer, rando_token, nonce='asdf'))
+    RegisterUsernameOk(any_servicer, None, ALICE, password='pw')
+    with assert_user_unchanged(any_servicer, ALICE, 'pw'):
+      assert 'no such invitation' in str(AcceptInvitationErr(any_servicer, ALICE, nonce='asdf'))
 
   async def test_error_when_invitation_is_already_used(self, any_servicer: Servicer, emailer: Emailer):
-    recipient_token = new_user_token(any_servicer, 'recipient')
-    set_and_verify_email(any_servicer, emailer, recipient_token, 'recipient@example.com')
-    UpdateSettingsOk(any_servicer, recipient_token, allow_email_invitations=True)
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    set_and_verify_email(any_servicer, emailer, ALICE, 'alice@example.com')
+    UpdateSettingsOk(any_servicer, ALICE, allow_email_invitations=True)
 
-    inviter_token = new_user_token(any_servicer, 'inviter')
-    set_and_verify_email(any_servicer, emailer, inviter_token, 'inviter@example.com')
+    RegisterUsernameOk(any_servicer, None, BOB, password='pw')
+    set_and_verify_email(any_servicer, emailer, BOB, 'bob@example.com')
 
-    SendInvitationOk(any_servicer, inviter_token, 'recipient')
+    SendInvitationOk(any_servicer, BOB, ALICE)
     nonce = get_call_kwarg(emailer.send_invitation, 'nonce')
-    AcceptInvitationOk(any_servicer, recipient_token, nonce)
+    AcceptInvitationOk(any_servicer, ALICE, nonce)
 
-    with assert_user_unchanged(any_servicer, inviter_token, 'inviter password'):
-      assert 'no such invitation' in str(AcceptInvitationErr(any_servicer, recipient_token, nonce=nonce))
+    with assert_user_unchanged(any_servicer, BOB, 'pw'):
+      assert 'no such invitation' in str(AcceptInvitationErr(any_servicer, ALICE, nonce=nonce))

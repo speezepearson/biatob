@@ -12,6 +12,7 @@ from .protobuf import mvp_pb2
 
 PredictionId = NewType('PredictionId', str)
 Username = NewType('Username', str)
+AuthorizingUsername = NewType('AuthorizingUsername', Username)
 
 MAX_LEGAL_STAKE_CENTS = 5_000_00
 
@@ -20,6 +21,14 @@ class UsernameAlreadyRegisteredError(Exception): pass
 class NoSuchUserError(Exception): pass
 class BadPasswordError(Exception): pass
 class ForgottenTokenError(RuntimeError): pass
+
+
+@overload
+def token_owner(token: None) -> None: pass
+@overload
+def token_owner(token: mvp_pb2.AuthToken) -> AuthorizingUsername: pass
+def token_owner(token: Optional[mvp_pb2.AuthToken]) -> Optional[AuthorizingUsername]:
+    return None if (token is None) else AuthorizingUsername(Username(token.owner))
 
 
 def secret_eq(a: bytes, b: bytes) -> bool:
@@ -88,36 +97,28 @@ def describe_AcceptInvitationRequest_problems(request: mvp_pb2.AcceptInvitationR
     return '; '.join(problems) if problems else None
 
 
-@overload
-def token_owner(token: mvp_pb2.AuthToken) -> Username: pass
-@overload
-def token_owner(token: None) -> None: pass
-def token_owner(token: Optional[mvp_pb2.AuthToken]) -> Optional[Username]:
-    return Username(token.owner) if (token is not None) else None
-
-
 class Servicer(abc.ABC):
-    def Whoami(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.WhoamiRequest) -> mvp_pb2.WhoamiResponse: pass
-    def SignOut(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.SignOutRequest) -> mvp_pb2.SignOutResponse: pass
-    def RegisterUsername(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.RegisterUsernameRequest) -> mvp_pb2.RegisterUsernameResponse: pass
-    def LogInUsername(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.LogInUsernameRequest) -> mvp_pb2.LogInUsernameResponse: pass
-    def CreatePrediction(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.CreatePredictionRequest) -> mvp_pb2.CreatePredictionResponse: pass
-    def GetPrediction(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.GetPredictionRequest) -> mvp_pb2.GetPredictionResponse: pass
-    def ListMyStakes(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.ListMyStakesRequest) -> mvp_pb2.ListMyStakesResponse: pass
-    def ListPredictions(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.ListPredictionsRequest) -> mvp_pb2.ListPredictionsResponse: pass
-    def Stake(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.StakeRequest) -> mvp_pb2.StakeResponse: pass
-    def QueueStake(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.QueueStakeRequest) -> mvp_pb2.QueueStakeResponse: pass
-    def Resolve(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.ResolveRequest) -> mvp_pb2.ResolveResponse: pass
-    def SetTrusted(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.SetTrustedRequest) -> mvp_pb2.SetTrustedResponse: pass
-    def GetUser(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.GetUserRequest) -> mvp_pb2.GetUserResponse: pass
-    def ChangePassword(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.ChangePasswordRequest) -> mvp_pb2.ChangePasswordResponse: pass
-    def SetEmail(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.SetEmailRequest) -> mvp_pb2.SetEmailResponse: pass
-    def VerifyEmail(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.VerifyEmailRequest) -> mvp_pb2.VerifyEmailResponse: pass
-    def GetSettings(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.GetSettingsRequest) -> mvp_pb2.GetSettingsResponse: pass
-    def UpdateSettings(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.UpdateSettingsRequest) -> mvp_pb2.UpdateSettingsResponse: pass
-    def SendInvitation(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.SendInvitationRequest) -> mvp_pb2.SendInvitationResponse: pass
-    def CheckInvitation(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.CheckInvitationRequest) -> mvp_pb2.CheckInvitationResponse: pass
-    def AcceptInvitation(self, token: Optional[mvp_pb2.AuthToken], request: mvp_pb2.AcceptInvitationRequest) -> mvp_pb2.AcceptInvitationResponse: pass
+    def Whoami(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.WhoamiRequest) -> mvp_pb2.WhoamiResponse: pass
+    def SignOut(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.SignOutRequest) -> mvp_pb2.SignOutResponse: pass
+    def RegisterUsername(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.RegisterUsernameRequest) -> mvp_pb2.RegisterUsernameResponse: pass
+    def LogInUsername(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.LogInUsernameRequest) -> mvp_pb2.LogInUsernameResponse: pass
+    def CreatePrediction(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.CreatePredictionRequest) -> mvp_pb2.CreatePredictionResponse: pass
+    def GetPrediction(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.GetPredictionRequest) -> mvp_pb2.GetPredictionResponse: pass
+    def ListMyStakes(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.ListMyStakesRequest) -> mvp_pb2.ListMyStakesResponse: pass
+    def ListPredictions(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.ListPredictionsRequest) -> mvp_pb2.ListPredictionsResponse: pass
+    def Stake(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.StakeRequest) -> mvp_pb2.StakeResponse: pass
+    def QueueStake(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.QueueStakeRequest) -> mvp_pb2.QueueStakeResponse: pass
+    def Resolve(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.ResolveRequest) -> mvp_pb2.ResolveResponse: pass
+    def SetTrusted(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.SetTrustedRequest) -> mvp_pb2.SetTrustedResponse: pass
+    def GetUser(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.GetUserRequest) -> mvp_pb2.GetUserResponse: pass
+    def ChangePassword(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.ChangePasswordRequest) -> mvp_pb2.ChangePasswordResponse: pass
+    def SetEmail(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.SetEmailRequest) -> mvp_pb2.SetEmailResponse: pass
+    def VerifyEmail(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.VerifyEmailRequest) -> mvp_pb2.VerifyEmailResponse: pass
+    def GetSettings(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.GetSettingsRequest) -> mvp_pb2.GetSettingsResponse: pass
+    def UpdateSettings(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.UpdateSettingsRequest) -> mvp_pb2.UpdateSettingsResponse: pass
+    def SendInvitation(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.SendInvitationRequest) -> mvp_pb2.SendInvitationResponse: pass
+    def CheckInvitation(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.CheckInvitationRequest) -> mvp_pb2.CheckInvitationResponse: pass
+    def AcceptInvitation(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.AcceptInvitationRequest) -> mvp_pb2.AcceptInvitationResponse: pass
 
 
 class TokenMint:
@@ -144,7 +145,7 @@ class TokenMint:
         self._sign_token(token=token)
         return token
 
-    def check_token(self, token: Optional[mvp_pb2.AuthToken]) -> Optional[mvp_pb2.AuthToken]:
+    def check_token(self, token: Optional[mvp_pb2.AuthToken]) -> Optional[AuthorizingUsername]:
         if token is None:
             return None
         now = int(self._clock().timestamp())
@@ -156,7 +157,7 @@ class TokenMint:
         if not hmac.compare_digest(alleged_hmac, true_hmac):
             return None
 
-        return token
+        return AuthorizingUsername(Username(token.owner))
 
     def revoke_token(self, token: mvp_pb2.AuthToken) -> None:
         pass  # TODO

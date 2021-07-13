@@ -4,10 +4,17 @@ from typing import Optional
 from aiohttp import web
 import structlog
 
-from .core import TokenMint, ForgottenTokenError
+from .core import AuthorizingUsername, TokenMint, ForgottenTokenError, Username
 from .protobuf import mvp_pb2
 
 logger = structlog.get_logger()
+
+def _encode_token_for_cookie(token: mvp_pb2.AuthToken) -> str:
+    return base64.b64encode(token.SerializeToString()).decode('ascii')
+def _decode_token_from_cookie(cookie: str) -> mvp_pb2.AuthToken:
+    res = mvp_pb2.AuthToken()
+    res.ParseFromString(base64.b64decode(cookie))
+    return res
 
 class HttpTokenGlue:
 
@@ -31,7 +38,7 @@ class HttpTokenGlue:
             return response
 
     def set_cookie(self, token: mvp_pb2.AuthToken, response: web.Response) -> mvp_pb2.AuthToken:
-        response.set_cookie(self._AUTH_COOKIE_NAME, base64.b64encode(token.SerializeToString()).decode('ascii'))
+        response.set_cookie(self._AUTH_COOKIE_NAME, _encode_token_for_cookie(token))
         return token
 
     def del_cookie(self, req: web.Request, resp: web.Response) -> None:
@@ -45,11 +52,12 @@ class HttpTokenGlue:
         if cookie is None:
             return None
         try:
-            token_bytes = base64.b64decode(cookie)
+            token = _decode_token_from_cookie(cookie)
         except ValueError:
             return None
 
-        token = mvp_pb2.AuthToken()
-        token.ParseFromString(token_bytes)
-        return self._mint.check_token(token)
+        return None if (self._mint.check_token(token) is None) else token
 
+    def get_authorizing_user(self, req: web.Request) -> Optional[AuthorizingUsername]:
+        token = self.parse_cookie(req)
+        return None if (token is None) else AuthorizingUsername(Username(token.owner))

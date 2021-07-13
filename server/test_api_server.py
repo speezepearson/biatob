@@ -1,4 +1,6 @@
 from pathlib import Path
+
+import aiohttp
 from server.core import ForgottenTokenError
 from typing import AnyStr, TypeVar, Type, Tuple
 from unittest.mock import Mock, patch
@@ -42,13 +44,13 @@ async def post_proto(client, url: str, request_pb: _Req, response_pb_cls: Type[_
 async def test_Whoami_and_RegisterUsername(aiohttp_client, app):
   cli = await aiohttp_client(app)
   (http_resp, pb_resp) = await post_proto(cli, '/api/Whoami', mvp_pb2.WhoamiRequest(), mvp_pb2.WhoamiResponse)
-  assert not pb_resp.auth.owner, pb_resp
+  assert not pb_resp.username, pb_resp
 
   (http_resp, pb_resp) = await post_proto(cli, '/api/RegisterUsername', mvp_pb2.RegisterUsernameRequest(username='potato', password='secret'), mvp_pb2.RegisterUsernameResponse)
   assert pb_resp.ok.token.owner == 'potato', pb_resp
 
   (http_resp, pb_resp) = await post_proto(cli, '/api/Whoami', mvp_pb2.WhoamiRequest(), mvp_pb2.WhoamiResponse)
-  assert pb_resp.auth.owner == 'potato', pb_resp
+  assert pb_resp.username == 'potato', pb_resp
 
 async def test_CreatePrediction_and_GetPrediction(aiohttp_client, app, clock):
   create_pb_req = mvp_pb2.CreatePredictionRequest(
@@ -114,25 +116,34 @@ async def test_forgotten_token_recovery(aiohttp_client, app, any_servicer: Servi
   assert b'obliterated your entire account' in await http_resp.content.read()
 
   (http_resp, pb_resp) = await post_proto(cli, '/api/Whoami', mvp_pb2.WhoamiRequest(), mvp_pb2.WhoamiResponse)
-  assert not pb_resp.auth.owner, pb_resp
+  assert not pb_resp.username, pb_resp
 
 
-async def test_smoke(aiohttp_client, app):
+@pytest.mark.parametrize('logged_in', [True, False])
+@pytest.mark.parametrize('endpoint,request_pb,response_pb_cls', [
+  ('/api/Whoami', mvp_pb2.WhoamiRequest(), mvp_pb2.WhoamiResponse),
+  ('/api/SignOut', mvp_pb2.SignOutRequest(), mvp_pb2.SignOutResponse),
+  ('/api/RegisterUsername', mvp_pb2.RegisterUsernameRequest(), mvp_pb2.RegisterUsernameResponse),
+  ('/api/LogInUsername', mvp_pb2.LogInUsernameRequest(), mvp_pb2.LogInUsernameResponse),
+  ('/api/CreatePrediction', mvp_pb2.CreatePredictionRequest(), mvp_pb2.CreatePredictionResponse),
+  ('/api/GetPrediction', mvp_pb2.GetPredictionRequest(), mvp_pb2.GetPredictionResponse),
+  ('/api/Stake', mvp_pb2.StakeRequest(), mvp_pb2.StakeResponse),
+  ('/api/Resolve', mvp_pb2.ResolveRequest(), mvp_pb2.ResolveResponse),
+  ('/api/SetTrusted', mvp_pb2.SetTrustedRequest(), mvp_pb2.SetTrustedResponse),
+  ('/api/GetUser', mvp_pb2.GetUserRequest(), mvp_pb2.GetUserResponse),
+  ('/api/ChangePassword', mvp_pb2.ChangePasswordRequest(), mvp_pb2.ChangePasswordResponse),
+  ('/api/SetEmail', mvp_pb2.SetEmailRequest(), mvp_pb2.SetEmailResponse),
+  ('/api/VerifyEmail', mvp_pb2.VerifyEmailRequest(), mvp_pb2.VerifyEmailResponse),
+  ('/api/GetSettings', mvp_pb2.GetSettingsRequest(), mvp_pb2.GetSettingsResponse),
+  ('/api/UpdateSettings', mvp_pb2.UpdateSettingsRequest(), mvp_pb2.UpdateSettingsResponse),
+  ('/api/SendInvitation', mvp_pb2.SendInvitationRequest(), mvp_pb2.SendInvitationResponse),
+  ('/api/AcceptInvitation', mvp_pb2.AcceptInvitationRequest(), mvp_pb2.AcceptInvitationResponse),
+])
+async def test_smoke(aiohttp_client, app, any_servicer: Servicer, logged_in: bool, endpoint: str, request_pb: Message, response_pb_cls: Type[Message]):
   cli = await aiohttp_client(app)
-  await post_proto(cli, '/api/Whoami', mvp_pb2.WhoamiRequest(), mvp_pb2.WhoamiResponse)
-  await post_proto(cli, '/api/SignOut', mvp_pb2.SignOutRequest(), mvp_pb2.SignOutResponse)
-  await post_proto(cli, '/api/RegisterUsername', mvp_pb2.RegisterUsernameRequest(), mvp_pb2.RegisterUsernameResponse)
-  await post_proto(cli, '/api/LogInUsername', mvp_pb2.LogInUsernameRequest(), mvp_pb2.LogInUsernameResponse)
-  await post_proto(cli, '/api/CreatePrediction', mvp_pb2.CreatePredictionRequest(), mvp_pb2.CreatePredictionResponse)
-  await post_proto(cli, '/api/GetPrediction', mvp_pb2.GetPredictionRequest(), mvp_pb2.GetPredictionResponse)
-  await post_proto(cli, '/api/Stake', mvp_pb2.StakeRequest(), mvp_pb2.StakeResponse)
-  await post_proto(cli, '/api/Resolve', mvp_pb2.ResolveRequest(), mvp_pb2.ResolveResponse)
-  await post_proto(cli, '/api/SetTrusted', mvp_pb2.SetTrustedRequest(), mvp_pb2.SetTrustedResponse)
-  await post_proto(cli, '/api/GetUser', mvp_pb2.GetUserRequest(), mvp_pb2.GetUserResponse)
-  await post_proto(cli, '/api/ChangePassword', mvp_pb2.ChangePasswordRequest(), mvp_pb2.ChangePasswordResponse)
-  await post_proto(cli, '/api/SetEmail', mvp_pb2.SetEmailRequest(), mvp_pb2.SetEmailResponse)
-  await post_proto(cli, '/api/VerifyEmail', mvp_pb2.VerifyEmailRequest(), mvp_pb2.VerifyEmailResponse)
-  await post_proto(cli, '/api/GetSettings', mvp_pb2.GetSettingsRequest(), mvp_pb2.GetSettingsResponse)
-  await post_proto(cli, '/api/UpdateSettings', mvp_pb2.UpdateSettingsRequest(), mvp_pb2.UpdateSettingsResponse)
-  await post_proto(cli, '/api/SendInvitation', mvp_pb2.SendInvitationRequest(), mvp_pb2.SendInvitationResponse)
-  await post_proto(cli, '/api/AcceptInvitation', mvp_pb2.AcceptInvitationRequest(), mvp_pb2.AcceptInvitationResponse)
+
+  if logged_in:
+    RegisterUsernameOk(any_servicer, None, u('rando'), password='pw')
+    await post_proto(cli, '/api/LogInUsername', mvp_pb2.LogInUsernameRequest(username='rando', password='pw'), mvp_pb2.LogInUsernameResponse)
+
+  await post_proto(cli, endpoint, request_pb, response_pb_cls)

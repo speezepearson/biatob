@@ -8,7 +8,7 @@ from .core import UsernameAlreadyRegisteredError, Username, PredictionId
 from .sql_servicer import SqlConn
 from .sql_schema import create_sqlite_engine
 from .protobuf import mvp_pb2
-from .test_utils import some_create_prediction_request
+from .test_utils import au, some_create_prediction_request
 
 @pytest.fixture
 def conn():
@@ -102,20 +102,20 @@ class TestSettings:
     conn.register_username(ALICE, 'password', password_id='alicepwid')
     conn.register_username(BOB, 'password', password_id='bobpwid')
     conn.set_trusted(ALICE, BOB, True)
-    assert must(conn.get_settings(ALICE)).relationships == {BOB: mvp_pb2.Relationship(trusted_by_you=True)}
+    assert must(conn.get_settings(au(ALICE))).relationships == {BOB: mvp_pb2.Relationship(trusted_by_you=True)}
 
   def test_get_settings_includes_mutually_trusting_users(self, conn: SqlConn):
     conn.register_username(ALICE, 'password', password_id='alicepwid')
     conn.register_username(BOB, 'password', password_id='bobpwid')
     conn.set_trusted(ALICE, BOB, True)
     conn.set_trusted(BOB, ALICE, True)
-    assert must(conn.get_settings(ALICE)).relationships == {BOB: mvp_pb2.Relationship(trusted_by_you=True, trusts_you=True)}
+    assert must(conn.get_settings(au(ALICE))).relationships == {BOB: mvp_pb2.Relationship(trusted_by_you=True, trusts_you=True)}
 
   def test_get_settings_includes_explicitly_untrusted_users(self, conn: SqlConn):
     conn.register_username(ALICE, 'password', password_id='alicepwid')
     conn.register_username(BOB, 'password', password_id='bobpwid')
     conn.set_trusted(ALICE, BOB, False)
-    assert must(conn.get_settings(ALICE)).relationships == {BOB: mvp_pb2.Relationship(trusted_by_you=False)}
+    assert must(conn.get_settings(au(ALICE))).relationships == {BOB: mvp_pb2.Relationship(trusted_by_you=False)}
 
   @pytest.mark.parametrize('a_trusts_b', [True, False])
   @pytest.mark.parametrize('b_trusts_a', [True, False, None])
@@ -125,7 +125,7 @@ class TestSettings:
     conn.set_trusted(ALICE, BOB, a_trusts_b)
     if b_trusts_a is not None:
       conn.set_trusted(BOB, ALICE, b_trusts_a)
-    assert must(conn.get_settings(ALICE)).relationships == {BOB: mvp_pb2.Relationship(trusted_by_you=a_trusts_b or False, trusts_you=b_trusts_a or False)}
+    assert must(conn.get_settings(au(ALICE))).relationships == {BOB: mvp_pb2.Relationship(trusted_by_you=a_trusts_b or False, trusts_you=b_trusts_a or False)}
 
   @pytest.mark.parametrize('b_trusts_a', [True, False, None])
   def test_get_settings_ignores_unacknowledged_users(self, conn: SqlConn, b_trusts_a: Optional[bool]):
@@ -133,7 +133,7 @@ class TestSettings:
     conn.register_username(BOB, 'password', password_id='bobpwid')
     if b_trusts_a is not None:
       conn.set_trusted(BOB, ALICE, b_trusts_a)
-    assert must(conn.get_settings(ALICE)).relationships == {}
+    assert must(conn.get_settings(au(ALICE))).relationships == {}
 
   @pytest.mark.parametrize('b_trusts_a', [True, False, None])
   def test_get_settings_includes_unacknowledged_users_if_explicitly_requested(self, conn: SqlConn, b_trusts_a: Optional[bool]):
@@ -141,18 +141,18 @@ class TestSettings:
     conn.register_username(BOB, 'password', password_id='bobpwid')
     if b_trusts_a is not None:
       conn.set_trusted(BOB, ALICE, b_trusts_a)
-    assert must(conn.get_settings(ALICE, include_relationships_with_users=[BOB])).relationships == {BOB: mvp_pb2.Relationship(trusts_you=b_trusts_a or False)}
+    assert must(conn.get_settings(au(ALICE), include_relationships_with_users=[BOB])).relationships == {BOB: mvp_pb2.Relationship(trusts_you=b_trusts_a or False)}
 
   def test_persists_updated_settings(self, conn: SqlConn):
     conn.register_username(ALICE, 'password', password_id='alicepwid')
     conn.update_settings(ALICE, mvp_pb2.UpdateSettingsRequest(email_resolution_notifications=mvp_pb2.MaybeBool(value=True)))
-    assert must(conn.get_settings(ALICE)).email_resolution_notifications
+    assert must(conn.get_settings(au(ALICE))).email_resolution_notifications
 
   def test_persists_set_email(self, conn: SqlConn):
     conn.register_username(ALICE, 'password', password_id='alicepwid')
     efs = mvp_pb2.EmailFlowState(verified='a@a')
     conn.set_email(ALICE, efs)
-    assert must(conn.get_settings(ALICE)).email == efs
+    assert must(conn.get_settings(au(ALICE))).email == efs
 
 
 
