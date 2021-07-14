@@ -221,7 +221,7 @@ type alias WhoamiRequest =
 {-| `WhoamiResponse` message
 -}
 type alias WhoamiResponse =
-    { auth : Maybe AuthToken
+    { username : String
     }
 
 
@@ -1110,8 +1110,8 @@ whoamiRequestDecoder =
 -}
 whoamiResponseDecoder : Decode.Decoder WhoamiResponse
 whoamiResponseDecoder =
-    Decode.message (WhoamiResponse Nothing)
-        [ Decode.optional 1 (Decode.map Just authTokenDecoder) setAuth
+    Decode.message (WhoamiResponse "")
+        [ Decode.optional 1 Decode.string setUsername
         ]
 
 
@@ -2043,7 +2043,7 @@ toWhoamiRequestEncoder model =
 toWhoamiResponseEncoder : WhoamiResponse -> Encode.Encoder
 toWhoamiResponseEncoder model =
     Encode.message
-        [ ( 1, (Maybe.withDefault Encode.none << Maybe.map toAuthTokenEncoder) model.auth )
+        [ ( 1, Encode.string model.username )
         ]
 
 
@@ -3070,11 +3070,6 @@ setReason value model =
 setEnqueuedAtUnixtime : a -> { b | enqueuedAtUnixtime : a } -> { b | enqueuedAtUnixtime : a }
 setEnqueuedAtUnixtime value model =
     { model | enqueuedAtUnixtime = value }
-
-
-setAuth : a -> { b | auth : a } -> { b | auth : a }
-setAuth value model =
-    { model | auth = value }
 
 
 setToken : a -> { b | token : a } -> { b | token : a }

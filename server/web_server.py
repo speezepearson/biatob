@@ -13,7 +13,7 @@ import jinja2
 from PIL import Image, ImageDraw, ImageFont  # type: ignore
 import structlog
 
-from .core import Servicer, Username
+from .core import AuthorizingUsername, Servicer, Username, token_owner
 from .http_glue import HttpTokenGlue
 from .protobuf import mvp_pb2
 
@@ -103,7 +103,7 @@ class WebServer:
     def _get_auth_success(self, auth: Optional[mvp_pb2.AuthToken], req: mvp_pb2.GetSettingsRequest = mvp_pb2.GetSettingsRequest()) -> Optional[mvp_pb2.AuthSuccess]:
         if auth is None:
             return None
-        get_settings_response = self._servicer.GetSettings(auth, req)
+        get_settings_response = self._servicer.GetSettings(token_owner(auth), req)
         if get_settings_response.WhichOneof('get_settings_result') != 'ok':
             logger.error('failed to get settings for valid-looking user', data_loss=True, auth=auth, get_settings_response=get_settings_response)
             return None
@@ -161,7 +161,7 @@ class WebServer:
     async def get_view_prediction_page(self, req: web.Request) -> web.Response:
         auth = self._token_glue.parse_cookie(req)
         prediction_id = str(req.match_info['prediction_id'])
-        get_prediction_resp = self._servicer.GetPrediction(auth, mvp_pb2.GetPredictionRequest(prediction_id=prediction_id))
+        get_prediction_resp = self._servicer.GetPrediction(token_owner(auth), mvp_pb2.GetPredictionRequest(prediction_id=prediction_id))
         if get_prediction_resp.WhichOneof('get_prediction_result') == 'error':
             return web.Response(status=404, body=str(get_prediction_resp.error))
 
@@ -180,7 +180,7 @@ class WebServer:
     async def get_prediction_img_embed(self, req: web.Request) -> web.Response:
         auth = self._token_glue.parse_cookie(req)
         prediction_id = str(req.match_info['prediction_id'])
-        get_prediction_resp = self._servicer.GetPrediction(auth, mvp_pb2.GetPredictionRequest(prediction_id=prediction_id))
+        get_prediction_resp = self._servicer.GetPrediction(token_owner(auth), mvp_pb2.GetPredictionRequest(prediction_id=prediction_id))
         if get_prediction_resp.WhichOneof('get_prediction_result') == 'error':
             return web.Response(status=404, body=str(get_prediction_resp.error))
 
@@ -221,7 +221,7 @@ class WebServer:
         auth_success = self._get_auth_success(auth)
         if auth is None:
             return web.HTTPTemporaryRedirect('/login?dest=/my_stakes')
-        list_my_stakes_resp = self._servicer.ListMyStakes(auth, mvp_pb2.ListMyStakesRequest())
+        list_my_stakes_resp = self._servicer.ListMyStakes(token_owner(auth), mvp_pb2.ListMyStakesRequest())
         if list_my_stakes_resp.WhichOneof('list_my_stakes_result') == 'error':
             return web.Response(status=400, body=str(list_my_stakes_resp.error))
         assert list_my_stakes_resp.WhichOneof('list_my_stakes_result') == 'ok'
@@ -238,7 +238,7 @@ class WebServer:
         auth_success = self._get_auth_success(auth, req=mvp_pb2.GetSettingsRequest(include_relationships_with_users=[username]))
         relationship = None if (auth_success is None) else auth_success.user_info.relationships.get(username)
         if (relationship is not None) and relationship.trusts_you:
-            list_predictions_resp = self._servicer.ListPredictions(auth, mvp_pb2.ListPredictionsRequest(creator=username))
+            list_predictions_resp = self._servicer.ListPredictions(token_owner(auth), mvp_pb2.ListPredictionsRequest(creator=username))
             predictions: Optional[mvp_pb2.PredictionsById] = list_predictions_resp.ok  # TODO: error handling
         else:
             predictions = None
@@ -274,7 +274,7 @@ class WebServer:
         auth = self._token_glue.parse_cookie(req)
         auth_success = self._get_auth_success(auth)
         nonce = str(req.match_info['nonce'])
-        check_invitation_resp = self._servicer.CheckInvitation(auth, mvp_pb2.CheckInvitationRequest(nonce=nonce))
+        check_invitation_resp = self._servicer.CheckInvitation(token_owner(auth), mvp_pb2.CheckInvitationRequest(nonce=nonce))
         if check_invitation_resp.WhichOneof('check_invitation_result') == 'error':
             return web.HTTPBadRequest(reason=str(check_invitation_resp.error))
         assert check_invitation_resp.WhichOneof('check_invitation_result') == 'ok'

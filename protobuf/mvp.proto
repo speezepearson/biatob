@@ -112,7 +112,7 @@ enum Resolution {
 
 message WhoamiRequest {}
 message WhoamiResponse {
-  AuthToken auth = 1;
+  string username = 1;
 }
 
 message SignOutRequest {}
