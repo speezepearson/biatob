@@ -50,8 +50,6 @@ class ApiServer:
         return proto_response(self._servicer.GetPrediction(actor=self._token_glue.get_authorizing_user(http_req), request=await parse_proto(http_req, mvp_pb2.GetPredictionRequest)))
     async def Stake(self, http_req: web.Request) -> web.Response:
         return proto_response(self._servicer.Stake(actor=self._token_glue.get_authorizing_user(http_req), request=await parse_proto(http_req, mvp_pb2.StakeRequest)))
-    async def QueueStake(self, http_req: web.Request) -> web.Response:
-        return proto_response(self._servicer.QueueStake(actor=self._token_glue.get_authorizing_user(http_req), request=await parse_proto(http_req, mvp_pb2.QueueStakeRequest)))
     async def Resolve(self, http_req: web.Request) -> web.Response:
         return proto_response(self._servicer.Resolve(actor=self._token_glue.get_authorizing_user(http_req), request=await parse_proto(http_req, mvp_pb2.ResolveRequest)))
     async def SetTrusted(self, http_req: web.Request) -> web.Response:
@@ -81,7 +79,6 @@ class ApiServer:
         app.router.add_post('/api/CreatePrediction', self.CreatePrediction)
         app.router.add_post('/api/GetPrediction', self.GetPrediction)
         app.router.add_post('/api/Stake', self.Stake)
-        app.router.add_post('/api/QueueStake', self.QueueStake)
         app.router.add_post('/api/Resolve', self.Resolve)
         app.router.add_post('/api/SetTrusted', self.SetTrusted)
         app.router.add_post('/api/GetUser', self.GetUser)

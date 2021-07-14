@@ -36,7 +36,6 @@ mockPrediction =
   , creator = "creator"
   , resolutions = []
   , yourTrades = []
-  , yourQueuedTrades = []
   , resolvesAtUnixtime = 200
   , allowEmailInvitations = False
   }
@@ -48,6 +47,9 @@ exampleTrade =
   , bettorStakeCents = 7
   , creatorStakeCents = 13
   , transactedUnixtime = 0
+  , state = Pb.TradeStateActive
+  , updatedUnixtime = 0
+  , notes = ""
   }
 embeddedLinkTextTest : Test
 embeddedLinkTextTest =
@@ -156,6 +158,28 @@ getBetParametersTest =
         in
         Expect.true "" (creatorStake > 0 || bettorStake == 0)
     ]
+  ]
+
+getTotalCreatorWinningsTest : Test
+getTotalCreatorWinningsTest =
+  describe "getTotalCreatorWinnings"
+  [ fuzz Fuzz.bool "is 0 when no trades" <|
+    \resolvedYes -> getTotalCreatorWinnings resolvedYes []
+      |> Expect.equal 0
+  , fuzz2 Fuzz.bool (Fuzz.intRange 1 3) "uses bettor-stake when bettor was wrong" <|
+    \resolvedYes bettorStake ->
+      getTotalCreatorWinnings resolvedYes [{ exampleTrade | bettorIsASkeptic = resolvedYes , bettorStakeCents = bettorStake }]
+      |> Expect.equal bettorStake
+  , fuzz2 Fuzz.bool (Fuzz.intRange 1 3) "uses creator-stake when creator was wrong" <|
+    \resolvedYes creatorStake ->
+      getTotalCreatorWinnings resolvedYes [{ exampleTrade | bettorIsASkeptic = not resolvedYes , creatorStakeCents = creatorStake }]
+      |> Expect.equal (-creatorStake)
+  , test "ignores queued trades" <|
+    \() -> getTotalCreatorWinnings True [{ exampleTrade | state = Pb.TradeStateQueued }]
+      |> Expect.equal 0
+  , test "ignores aborted trades" <|
+    \() -> getTotalCreatorWinnings True [{ exampleTrade | state = Pb.TradeStateDequeueFailed }]
+      |> Expect.equal 0
   ]
 
 makeModel : Globals.Globals -> Pb.UserPredictionView -> Model
@@ -360,7 +384,7 @@ viewStakeWidgetTest =
     [ ( QueueingNecessary (H.text "florbagorp")
       , Expect.all
         [ HQ.find [HS.tag "button"] >> HQ.has [HS.containing [HS.text "Queue, pending @creator's approval"]]
-        , HQ.find [HS.tag "button"] >> HEM.simulate HEM.click >> HEM.expect (QueueStake 100)
+        , HQ.find [HS.tag "button"] >> HEM.simulate HEM.click >> HEM.expect (Stake 100)
         , HQ.contains [H.text "florbagorp"]
         ]
       )
@@ -486,7 +510,7 @@ viewYourStakeTest =
   describe "viewYourStake"
   [ describe "as bettor"
     [ fuzz (intRange 0 3) "includes one row per trade" <|
-      \nTrades -> viewYourStake (Just "me") Time.utc {mockPrediction | yourTrades = List.repeat nTrades {bettor="me", bettorIsASkeptic=True, bettorStakeCents=1, creatorStakeCents=1, transactedUnixtime=mockPrediction.createdUnixtime}}
+      \nTrades -> viewYourStake (Just "me") Time.utc {mockPrediction | yourTrades = List.repeat nTrades exampleTrade}
         |> HQ.fromHtml
         |>  if nTrades == 0 then
               HQ.hasNot [HS.containing [HS.tag "table"]]
@@ -495,11 +519,6 @@ viewYourStakeTest =
               >> HQ.findAll [HS.tag "tr"]
               >> HQ.count (Expect.equal nTrades)
     ]
-  , fuzz2 Fuzz.bool (fuzzConstants ["me", "rando"]) "ignores queued trades" <|
-    \hasTrade creator -> expectMapEqual
-      (\qts -> viewYourStake (Just "me") Time.utc {mockPrediction | creator = creator , yourQueuedTrades = qts , yourTrades = if hasTrade then [{bettor="me", bettorIsASkeptic=True, bettorStakeCents=1, creatorStakeCents=1, transactedUnixtime=mockPrediction.createdUnixtime}] else []})
-      [{bettor="me", bettorIsASkeptic=True, bettorStakeCents=1, creatorStakeCents=1, enqueuedAtUnixtime=mockPrediction.createdUnixtime}]
-      []
   ]
 
 viewAsFriendTest : Test

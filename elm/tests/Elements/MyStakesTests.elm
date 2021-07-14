@@ -22,7 +22,6 @@ mockPrediction =
   , creator = "creator"
   , resolutions = []
   , yourTrades = []
-  , yourQueuedTrades = []
   , resolvesAtUnixtime = 200
   , allowEmailInvitations = False
   }

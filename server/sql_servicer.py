@@ -140,19 +140,11 @@ class SqlConn:
       .order_by(schema.trades.c.transacted_at_unixtime)
     ).fetchall()
 
-    queued_trade_rows = self._conn.execute(
-      sqlalchemy.select(schema.queued_trades.c)
-      .where(sqlalchemy.and_(
-        schema.queued_trades.c.prediction_id == prediction_id,
-        True if creator_is_viewer else (schema.queued_trades.c.bettor == viewer)
-      ))
-      .order_by(schema.queued_trades.c.enqueued_at_unixtime)
-    ).fetchall()
-
     remaining_stake_cents_vs_believers = row['maximum_stake_cents'] - self._conn.execute(
       sqlalchemy.select([sqlalchemy.sql.func.coalesce(sqlalchemy.sql.func.sum(schema.trades.c.creator_stake_cents), 0)])
       .where(sqlalchemy.and_(
         schema.trades.c.prediction_id == prediction_id,
+        schema.trades.c.state == mvp_pb2.TradeState.Name(mvp_pb2.TRADE_STATE_ACTIVE),
         sqlalchemy.not_(schema.trades.c.bettor_is_a_skeptic)
       ))
     ).scalar()
@@ -160,6 +152,7 @@ class SqlConn:
       sqlalchemy.select([sqlalchemy.sql.func.coalesce(sqlalchemy.sql.func.sum(schema.trades.c.creator_stake_cents), 0)])
       .where(sqlalchemy.and_(
         schema.trades.c.prediction_id == prediction_id,
+        schema.trades.c.state == mvp_pb2.TradeState.Name(mvp_pb2.TRADE_STATE_ACTIVE),
         schema.trades.c.bettor_is_a_skeptic
       ))
     ).scalar()
@@ -191,18 +184,11 @@ class SqlConn:
           creator_stake_cents=t['creator_stake_cents'],
           bettor_stake_cents=t['bettor_stake_cents'],
           transacted_unixtime=t['transacted_at_unixtime'],
+          updated_unixtime=t['updated_at_unixtime'],
+          state=mvp_pb2.TradeState.Value(t['state']),
+          notes=t['notes'],
         )
         for t in trade_rows
-      ],
-      your_queued_trades=[
-        mvp_pb2.QueuedTrade(
-          bettor=t['bettor'],
-          bettor_is_a_skeptic=t['bettor_is_a_skeptic'],
-          creator_stake_cents=t['creator_stake_cents'],
-          bettor_stake_cents=t['bettor_stake_cents'],
-          enqueued_at_unixtime=t['enqueued_at_unixtime'],
-        )
-        for t in queued_trade_rows
       ],
     )
 
@@ -216,7 +202,10 @@ class SqlConn:
       *[PredictionId(row['prediction_id'])
         for row in self._conn.execute(
           sqlalchemy.select([schema.trades.c.prediction_id.distinct()])
-          .where(schema.trades.c.bettor == user)
+          .where(sqlalchemy.and_(
+            schema.trades.c.bettor == user,
+            # schema.trades.c.state == mvp_pb2.TradeState.Name(mvp_pb2.TRADE_STATE_ACTIVE),
+          ))
         ).fetchall()],
     }
 
@@ -258,6 +247,19 @@ class SqlConn:
       'maximum_stake_cents': int(row['maximum_stake_cents']),
     }
 
+  @staticmethod
+  def _trade_row_to_pb(row) -> mvp_pb2.Trade:
+    return mvp_pb2.Trade(
+      bettor=str(row['bettor']),
+      bettor_is_a_skeptic=bool(row['bettor_is_a_skeptic']),
+      bettor_stake_cents=int(row['bettor_stake_cents']),
+      creator_stake_cents=int(row['creator_stake_cents']),
+      transacted_unixtime=float(row['transacted_at_unixtime']),
+      updated_unixtime=float(row['updated_at_unixtime']),
+      state=mvp_pb2.TradeState.Value(row['state']),
+      notes=str(row['notes']),
+    )
+
   def get_trades(
     self,
     prediction_id: PredictionId,
@@ -266,51 +268,7 @@ class SqlConn:
       sqlalchemy.select(schema.trades.c)
       .where(schema.trades.c.prediction_id == prediction_id)
     ).fetchall()
-    return [
-      mvp_pb2.Trade(
-        bettor=row['bettor'],
-        bettor_is_a_skeptic=row['bettor_is_a_skeptic'],
-        bettor_stake_cents=row['bettor_stake_cents'],
-        creator_stake_cents=row['creator_stake_cents'],
-        transacted_unixtime=row['transacted_at_unixtime'],
-      )
-      for row in rows
-    ]
-
-  QueuedTradeInfo = TypedDict('QueuedTradeInfo', {'prediction_id': PredictionId,
-                                                  'bettor': Username,
-                                                  'bettor_is_a_skeptic': bool,
-                                                  'bettor_stake_cents': int,
-                                                  'creator_stake_cents': int,
-                                                  'enqueued_at_unixtime': float})
-  def get_queued_trades(self, bettor: Username, creator: Username) -> Iterable[QueuedTradeInfo]:
-    return [
-      {'prediction_id': PredictionId(str(row['prediction_id'])),
-       'bettor': Username(str(row['bettor'])),
-       'bettor_is_a_skeptic': bool(row['bettor_is_a_skeptic']),
-       'bettor_stake_cents': int(row['bettor_stake_cents']),
-       'creator_stake_cents': int(row['creator_stake_cents']),
-       'enqueued_at_unixtime': float(row['enqueued_at_unixtime']),
-       }
-      for row in self._conn.execute(
-        sqlalchemy.select(schema.queued_trades.c)
-          .where(sqlalchemy.and_(
-            schema.queued_trades.c.bettor == bettor,
-            schema.queued_trades.c.prediction_id == schema.predictions.c.prediction_id,
-            schema.predictions.c.creator == creator,
-          ))
-      )
-    ]
-
-  def delete_queued_trade(self, prediction_id: PredictionId, bettor: Username, enqueued_at_unixtime: float) -> None:
-    self._conn.execute(
-      sqlalchemy.delete(schema.queued_trades)
-      .where(sqlalchemy.and_(
-        schema.queued_trades.c.prediction_id == prediction_id,
-        schema.queued_trades.c.bettor == bettor,
-        schema.queued_trades.c.enqueued_at_unixtime == enqueued_at_unixtime,
-      ))
-    )
+    return [SqlConn._trade_row_to_pb(row) for row in rows]
 
   def get_resolutions(
     self,
@@ -342,6 +300,7 @@ class SqlConn:
       .where(sqlalchemy.and_(
         schema.predictions.c.prediction_id == prediction_id,
         schema.trades.c.bettor_is_a_skeptic if against_skeptics else sqlalchemy.not_(schema.trades.c.bettor_is_a_skeptic),
+        schema.trades.c.state == mvp_pb2.TradeState.Name(mvp_pb2.TRADE_STATE_ACTIVE),
       ))
     ).scalar() or 0
 
@@ -360,6 +319,7 @@ class SqlConn:
         schema.trades.c.bettor == bettor,
         schema.predictions.c.prediction_id == prediction_id,
         schema.trades.c.bettor_is_a_skeptic if bettor_is_a_skeptic else sqlalchemy.not_(schema.trades.c.bettor_is_a_skeptic),
+        schema.trades.c.state == mvp_pb2.TradeState.Name(mvp_pb2.TRADE_STATE_ACTIVE),
       ))
     ).scalar() or 0
 
@@ -370,6 +330,7 @@ class SqlConn:
     bettor_is_a_skeptic: bool,
     bettor_stake_cents: int,
     creator_stake_cents: int,
+    state: mvp_pb2.TradeState.V,
     now: datetime.datetime,
   ) -> None:
     self._conn.execute(sqlalchemy.insert(schema.trades).values(
@@ -378,25 +339,9 @@ class SqlConn:
       bettor_is_a_skeptic=bettor_is_a_skeptic,
       bettor_stake_cents=bettor_stake_cents,
       creator_stake_cents=creator_stake_cents,
+      state=mvp_pb2.TradeState.Name(state),
       transacted_at_unixtime=now.timestamp(),
-    ))
-
-  def queue_stake(
-    self,
-    prediction_id: PredictionId,
-    bettor: Username,
-    bettor_is_a_skeptic: bool,
-    bettor_stake_cents: int,
-    creator_stake_cents: int,
-    now: datetime.datetime,
-  ) -> None:
-    self._conn.execute(sqlalchemy.insert(schema.queued_trades).values(
-      prediction_id=prediction_id,
-      bettor=bettor,
-      bettor_is_a_skeptic=bettor_is_a_skeptic,
-      bettor_stake_cents=bettor_stake_cents,
-      creator_stake_cents=creator_stake_cents,
-      enqueued_at_unixtime=now.timestamp(),
+      updated_at_unixtime=now.timestamp(),
     ))
 
   def resolve(
@@ -411,7 +356,7 @@ class SqlConn:
       notes=request.notes,
     ))
 
-  def set_trusted(self, subject_username: Username, object_username: Username, trusted: bool) -> None:
+  def set_trusted(self, subject_username: Username, object_username: Username, trusted: bool, now: datetime.datetime) -> None:
     if self._conn.execute(
           sqlalchemy.select(schema.relationships.c)
           .where(sqlalchemy.and_(
@@ -438,13 +383,20 @@ class SqlConn:
       )
 
     if self.trusts(subject_username, object_username) and self.trusts(object_username, subject_username):
-      self._dequeue_trades_between(subject_username, object_username)
+      self._dequeue_trades(bettor=subject_username, creator=object_username, now=now)
+      self._dequeue_trades(bettor=object_username, creator=subject_username, now=now)
 
-  def _dequeue_trades_between(self, user_1: Username, user_2: Username) -> None:
-    queued_trades = [
-      *self.get_queued_trades(bettor=user_1, creator=user_2),
-      *self.get_queued_trades(bettor=user_2, creator=user_1),
-    ]
+  def _dequeue_trades(self, bettor: Username, creator: Username, now: datetime.datetime) -> None:
+    queued_trades = self._conn.execute(
+      sqlalchemy.select(schema.trades.c)
+      .where(sqlalchemy.and_(
+        schema.trades.c.bettor == bettor,
+        schema.trades.c.state == mvp_pb2.TradeState.Name(mvp_pb2.TRADE_STATE_QUEUED),
+        schema.trades.c.prediction_id == schema.predictions.c.prediction_id,
+        schema.predictions.c.creator == creator,
+      ))
+      .order_by(schema.trades.c.transacted_at_unixtime.asc())
+    ).fetchall()
     predinfos_ = {predid: self.get_prediction_info(predid) for predid in {qt['prediction_id'] for qt in queued_trades}}
     predinfos = {predid: predinfo for predid, predinfo in predinfos_.items() if predinfo}
     if predinfos != predinfos_:
@@ -457,28 +409,33 @@ class SqlConn:
 
       creator_stake_cents = min(qt['creator_stake_cents'], predinfo['maximum_stake_cents']-existing_creator_exposure)
       bettor_stake_cents = round(qt['bettor_stake_cents'] * creator_stake_cents/qt['creator_stake_cents'])
-      if creator_stake_cents == 0:
-        logger.warn('dropping a queued bet instead of committing it, because that would exceed creator tolerance', queued_trade=qt, predinfo=predinfo, new_creator_stake=creator_stake_cents, new_bettor_stake=bettor_stake_cents)
-      elif creator_stake_cents < 10 and bettor_stake_cents < 10:
+      if creator_stake_cents < 10 and bettor_stake_cents < 10:
         logger.warn('dropping a queued bet instead of partially committing a trivial trade', queued_trade=qt, predinfo=predinfo, new_creator_stake=creator_stake_cents, new_bettor_stake=bettor_stake_cents)
+        values = dict(
+          state=mvp_pb2.TradeState.Name(mvp_pb2.TRADE_STATE_DEQUEUE_FAILED),
+          notes=f'[trade ignored during dequeue due to trivial stakes]' + (('\n'+qt['notes']) if qt['notes'] else ''),
+        )
       else:
         if creator_stake_cents < qt['creator_stake_cents']:
           logger.warn('queued trade will be only partially applied', queued_trade=qt, predinfo=predinfo, new_creator_stake=creator_stake_cents, new_bettor_stake=bettor_stake_cents)
-        self._conn.execute(
-          sqlalchemy.insert(schema.trades)
-          .values(
-            prediction_id=qt['prediction_id'],
-            bettor=qt['bettor'],
-            bettor_is_a_skeptic=qt['bettor_is_a_skeptic'],
-            bettor_stake_cents=bettor_stake_cents,
-            creator_stake_cents=creator_stake_cents,
-            transacted_at_unixtime=qt['enqueued_at_unixtime'],
-          )
+        values = dict(
+          bettor_stake_cents=bettor_stake_cents,
+          creator_stake_cents=creator_stake_cents,
+          state=mvp_pb2.TradeState.Name(mvp_pb2.TRADE_STATE_ACTIVE),
+          notes=qt['notes'] or f'Initially queued; committed at {now:%Y-%m-%d %H:%M}',
         )
-      self.delete_queued_trade(
-        prediction_id=PredictionId(qt['prediction_id']),
-        bettor=qt['bettor'],
-        enqueued_at_unixtime=qt['enqueued_at_unixtime'],
+      self._conn.execute(
+        sqlalchemy.update(schema.trades)
+        .where(sqlalchemy.and_(
+          schema.trades.c.prediction_id == qt['prediction_id'],
+          schema.trades.c.bettor == qt['bettor'],
+          schema.trades.c.bettor_is_a_skeptic == qt['bettor_is_a_skeptic'],
+          schema.trades.c.transacted_at_unixtime == qt['transacted_at_unixtime'],
+        ))
+        .values(
+          updated_at_unixtime=now.timestamp(),
+          **values
+        )
       )
 
   def change_password(self, user: Username, new_password: str) -> None:
@@ -518,6 +475,7 @@ class SqlConn:
       .where(sqlalchemy.and_(
         schema.trades.c.prediction_id == prediction_id,
         schema.trades.c.bettor == schema.users.c.username,
+        # schema.trades.c.state != mvp_pb2.TradeState.Name(mvp_pb2.TRADE_STATE_DISAVOWED),
         schema.users.c.email_resolution_notifications,
       ))
     ).fetchall()
@@ -611,11 +569,11 @@ class SqlConn:
       recipient=row['recipient'],
     )
 
-  def accept_invitation(self, nonce: str) -> Optional[mvp_pb2.CheckInvitationResponse.Result]:
+  def accept_invitation(self, nonce: str, now: datetime.datetime) -> Optional[mvp_pb2.CheckInvitationResponse.Result]:
     check_resp = self.check_invitation(nonce)
     if check_resp is None:
       return None
-    self.set_trusted(Username(check_resp.recipient), Username(check_resp.inviter), True)
+    self.set_trusted(Username(check_resp.recipient), Username(check_resp.inviter), True, now=now)
     self._conn.execute(
       sqlalchemy.delete(schema.email_invitations)
       .where(schema.email_invitations.c.nonce == nonce)
@@ -910,9 +868,6 @@ class SqlServicer(Servicer):
       if predinfo['creator'] == actor:
         logger.warn('trying to bet against self', prediction_id=request.prediction_id)
         return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall="can't bet against yourself"))
-      if not self._conn.trusts(Username(predinfo['creator']), actor):
-        logger.warn('trying to bet against untrusting creator', prediction_id=request.prediction_id, possible_malice=True)
-        return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall="creator doesn't trust you"))
       if not self._conn.trusts(actor, Username(predinfo['creator'])):
         logger.warn('trying to bet against untrusted creator', prediction_id=request.prediction_id)
         return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall="you don't trust the creator"))
@@ -952,79 +907,14 @@ class SqlServicer(Servicer):
         bettor_is_a_skeptic=request.bettor_is_a_skeptic,
         bettor_stake_cents=request.bettor_stake_cents,
         creator_stake_cents=creator_stake_cents,
+        state = (
+          mvp_pb2.TRADE_STATE_ACTIVE if self._conn.trusts(Username(predinfo['creator']), actor) else
+          mvp_pb2.TRADE_STATE_QUEUED
+        ),
         now=now,
       )
       logger.info('trade executed', prediction_id=request.prediction_id, request=request)
       return mvp_pb2.StakeResponse(ok=self._conn.view_prediction(actor, PredictionId(request.prediction_id)))
-
-    @transactional
-    @ensure_actor_exists
-    @log_actor
-    @log_action
-    def QueueStake(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.QueueStakeRequest) -> mvp_pb2.QueueStakeResponse:
-      logger.debug('API call', request=request)
-      if actor is None:
-        logger.warn('not logged in')
-        return mvp_pb2.QueueStakeResponse(error=mvp_pb2.QueueStakeResponse.Error(catchall='must log in to bet'))
-      assert request.bettor_stake_cents >= 0, 'protobuf should enforce this being a uint, but just in case...'
-
-      if request.bettor_stake_cents == 0:
-        logger.warn('trying to stake 0 cents', prediction_id=request.prediction_id)
-        return mvp_pb2.QueueStakeResponse(error=mvp_pb2.QueueStakeResponse.Error(catchall='betting 0 cents doesn\'t make sense'))
-
-      predinfo = self._conn.get_prediction_info(PredictionId(request.prediction_id))
-      if predinfo is None:
-        logger.warn('trying to bet on nonexistent prediction', prediction_id=request.prediction_id)
-        return mvp_pb2.QueueStakeResponse(error=mvp_pb2.QueueStakeResponse.Error(catchall='no such prediction'))
-      if predinfo['creator'] == actor:
-        logger.warn('trying to bet against self', prediction_id=request.prediction_id)
-        return mvp_pb2.QueueStakeResponse(error=mvp_pb2.QueueStakeResponse.Error(catchall="can't bet against yourself"))
-      if not self._conn.trusts(actor, Username(predinfo['creator'])):
-        logger.warn('trying to bet against untrusted creator', prediction_id=request.prediction_id)
-        return mvp_pb2.QueueStakeResponse(error=mvp_pb2.QueueStakeResponse.Error(catchall="you don't trust the creator"))
-      now = self._clock()
-      if not (predinfo['created_at_unixtime'] <= now.timestamp() <= predinfo['closes_at_unixtime']):
-        return mvp_pb2.QueueStakeResponse(error=mvp_pb2.QueueStakeResponse.Error(catchall="prediction is no longer open for betting"))
-
-      if self._conn.trusts(actor, Username(predinfo['creator'])) and self._conn.trusts(Username(predinfo['creator']), actor):
-        return mvp_pb2.QueueStakeResponse(error=mvp_pb2.QueueStakeResponse.Error(catchall="you already trust the creator, so you should be using the Stake endpoint, not QueueStake"))
-
-      resolutions = self._conn.get_resolutions(PredictionId(request.prediction_id))
-      if resolutions and max(resolutions, key=lambda r: r.unixtime).resolution != mvp_pb2.RESOLUTION_NONE_YET:
-        logger.warn('trying to bet on a resolved prediction', prediction_id=request.prediction_id)
-        return mvp_pb2.QueueStakeResponse(error=mvp_pb2.QueueStakeResponse.Error(catchall="prediction has already resolved"))
-
-      if request.bettor_is_a_skeptic:
-        lowP = predinfo['certainty_low_p']
-        creator_stake_cents = int(request.bettor_stake_cents * lowP/(1-lowP))
-      else:
-        highP = predinfo['certainty_high_p']
-        creator_stake_cents = int(request.bettor_stake_cents * (1-highP)/highP)
-
-      if creator_stake_cents == 0:
-        logger.warn('trying to make a bet that results in the creator staking 0 cents', prediction_id=request.prediction_id, request=request)
-        return mvp_pb2.QueueStakeResponse(error=mvp_pb2.QueueStakeResponse.Error(catchall='creator would bet 0 cents against you'))
-
-      existing_creator_exposure = self._conn.get_creator_exposure_cents(PredictionId(request.prediction_id), against_skeptics=request.bettor_is_a_skeptic)
-      if existing_creator_exposure + creator_stake_cents > predinfo['maximum_stake_cents']:
-          logger.warn('trying to make a bet that would exceed creator tolerance', request=request)
-          return mvp_pb2.QueueStakeResponse(error=mvp_pb2.QueueStakeResponse.Error(catchall=f'bet would exceed creator tolerance ({existing_creator_exposure} existing + {creator_stake_cents} new stake > {predinfo["maximum_stake_cents"]} max)'))
-
-      existing_bettor_exposure = self._conn.get_bettor_exposure_cents(PredictionId(request.prediction_id), actor, bettor_is_a_skeptic=request.bettor_is_a_skeptic)
-      if existing_bettor_exposure + request.bettor_stake_cents > MAX_LEGAL_STAKE_CENTS:
-        logger.warn('trying to make a bet that would exceed per-market stake limit', request=request)
-        return mvp_pb2.QueueStakeResponse(error=mvp_pb2.QueueStakeResponse.Error(catchall=f'your existing stake of ~${existing_bettor_exposure//100} plus your new stake of ~${request.bettor_stake_cents//100} would put you over the limit of ${MAX_LEGAL_STAKE_CENTS//100} staked in a single prediction; sorry, I hate to be paternalistic, but this site is not yet ready for Big Bets.'))
-
-      self._conn.queue_stake(
-        prediction_id=PredictionId(request.prediction_id),
-        bettor=actor,
-        bettor_is_a_skeptic=request.bettor_is_a_skeptic,
-        bettor_stake_cents=request.bettor_stake_cents,
-        creator_stake_cents=creator_stake_cents,
-        now=now,
-      )
-      logger.info('trade executed', prediction_id=request.prediction_id, request=request)
-      return mvp_pb2.QueueStakeResponse(ok=self._conn.view_prediction(actor, PredictionId(request.prediction_id)))
 
     @transactional
     @ensure_actor_exists
@@ -1081,7 +971,7 @@ class SqlServicer(Servicer):
         logger.warn('attempting to set trust for nonexistent user')
         return mvp_pb2.SetTrustedResponse(error=mvp_pb2.SetTrustedResponse.Error(catchall='no such user'))
 
-      self._conn.set_trusted(actor, Username(request.who), request.trusted)
+      self._conn.set_trusted(actor, Username(request.who), request.trusted, now=self._clock())
       if not request.trusted:
         self._conn.delete_invitation(inviter=actor, recipient=Username(request.who))
 
@@ -1245,7 +1135,7 @@ class SqlServicer(Servicer):
         logger.warn('trying to send duplicate email invitation', request=request)
         return mvp_pb2.SendInvitationResponse(error=mvp_pb2.SendInvitationResponse.Error(catchall="I've already asked this user if they trust you"))
 
-      self._conn.set_trusted(actor, recipient, True)
+      self._conn.set_trusted(actor, recipient, True, now=self._clock())
 
       nonce = secrets.token_urlsafe(16)
 
@@ -1284,6 +1174,7 @@ class SqlServicer(Servicer):
       logger.debug('API call', request=request)  # okay to log the nonce because it's one-time-use
       result = self._conn.accept_invitation(
         nonce=request.nonce,
+        now=self._clock(),
       )
       if result is None:
         logger.warn('trying to accept nonexistent (or completed) invitation')
@@ -1307,10 +1198,15 @@ def find_invariant_violations(conn: sqlalchemy.engine.base.Connection) -> Sequen
       schema.predictions.c.maximum_stake_cents,
       sqlalchemy.sql.func.sum(schema.trades.c.creator_stake_cents).label('exposure'),
     ])
-    .select_from(schema.trades.join(
-      schema.predictions,
-      onclause=(schema.trades.c.prediction_id == schema.predictions.c.prediction_id),
-    ))
+    .select_from(
+      schema.trades.join(
+        schema.predictions,
+        onclause=(schema.trades.c.prediction_id == schema.predictions.c.prediction_id),
+      )
+    )
+    .where(
+      schema.trades.c.state == mvp_pb2.TradeState.Name(mvp_pb2.TRADE_STATE_ACTIVE),
+    )
     .group_by(
       schema.trades.c.prediction_id,
       schema.trades.c.bettor_is_a_skeptic,

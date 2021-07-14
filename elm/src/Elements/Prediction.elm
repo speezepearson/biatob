@@ -166,8 +166,6 @@ type Msg
   | SetEmailFinished Pb.SetEmailRequest (Result Http.Error Pb.SetEmailResponse)
   | SignOut AuthWidgetLoc AuthWidget.State Pb.SignOutRequest
   | SignOutFinished AuthWidgetLoc Pb.SignOutRequest (Result Http.Error Pb.SignOutResponse)
-  | QueueStake Cents
-  | QueueStakeFinished Pb.QueueStakeRequest (Result Http.Error Pb.QueueStakeResponse)
   | Stake Cents
   | StakeFinished Pb.StakeRequest (Result Http.Error Pb.StakeResponse)
   | UpdateSettings EmailSettingsWidget.State Pb.UpdateSettingsRequest
@@ -327,7 +325,8 @@ getBetParameters side prediction =
       Utils.Skeptic -> certainty.low / (1 - certainty.low)
       Utils.Believer -> (1 - certainty.high) / certainty.high
     queuedCreatorStake =
-      prediction.yourQueuedTrades
+      prediction.yourTrades
+      |> List.filter (.state >> (==) Pb.TradeStateQueued)
       |> List.filter (.bettorIsASkeptic >> Utils.betSideFromIsSkeptical >> (==) side)
       |> List.map .creatorStakeCents
       |> List.sum
@@ -395,29 +394,6 @@ viewYourStake self timeZone prediction =
       ]
     , H.hr [HA.class "my-4"] []
     ]
-viewYourQueuedStake : Maybe Username -> Time.Zone -> Pb.UserPredictionView -> Html Msg
-viewYourQueuedStake self timeZone prediction =
-  if List.isEmpty prediction.yourQueuedTrades then
-    H.text ""
-  else if self == Just prediction.creator then
-    H.text ""
-  else
-    H.div []
-    [ H.h4 [HA.class "text-center"] [H.text "Your queued stake"]
-    , H.div [HA.class "mx-lg-5"]
-      [ H.div [HA.class "text-center text-secondary"]
-        [ H.text " (from bets that I'll apply once "
-        , Utils.renderUser prediction.creator
-        , H.text " tells me they trust you)"
-        ]
-      , H.br [] []
-      , viewTradesAsBettor timeZone prediction
-        <| List.map
-            (\qt -> {bettor=qt.bettor, bettorIsASkeptic=qt.bettorIsASkeptic, bettorStakeCents=qt.bettorStakeCents, creatorStakeCents=qt.creatorStakeCents, transactedUnixtime=qt.enqueuedAtUnixtime})
-            prediction.yourQueuedTrades
-      ]
-    , H.hr [HA.class "my-4"] []
-    ]
 viewBody : Model -> List (Html Msg)
 viewBody model =
   let
@@ -440,7 +416,6 @@ viewBody model =
     [ H.div [HA.class "col-md-4"] [viewSummaryTable model.globals.now model.globals.timeZone prediction]
     , H.div [HA.class "col-md-8"]
       [ viewYourStake (Globals.getOwnUsername model.globals) model.globals.timeZone prediction
-      , viewYourQueuedStake (Globals.getOwnUsername model.globals) model.globals.timeZone prediction
       , case getPrereqsForStaking model of
           IsCreator ->
             H.div [HA.id "resolve-section"]
@@ -722,9 +697,7 @@ viewStakeWidget bettability stakeField requestStatus side prediction =
           Ok 0 ->
             [ HA.disabled True ]
           Ok cents ->
-            [ HE.onClick <| case bettability of
-                QueueingNecessary _ -> QueueStake cents
-                QueueingUnnecessary -> Stake cents
+            [ HE.onClick (Stake cents)
             , HA.disabled (requestStatus == AwaitingResponse)
             ]
           Err _ ->
@@ -912,6 +885,9 @@ viewTradesAsCreator timeZone prediction =
         , ( [Utils.renderUser bettor, H.text "'s stake"]
           , \t -> [H.text <| Utils.formatCents t.bettorStakeCents]
           )
+        , ( []
+          , \t -> [H.text <| t.notes]
+          )
         ]
         trades
       ]
@@ -1013,6 +989,7 @@ viewTradesAsBettor timeZone prediction trades =
 getTotalCreatorWinnings : Bool -> List Pb.Trade -> Cents
 getTotalCreatorWinnings resolvedYes trades =
   trades
+  |> List.filter (\t -> t.state == Pb.TradeStateActive)
   |> List.map (\t -> if (resolvedYes == t.bettorIsASkeptic) then t.bettorStakeCents else -t.creatorStakeCents)
   |> List.sum
 
@@ -1244,22 +1221,6 @@ update msg model =
             } |> updateBettorInputFields prediction
           Err e ->
             { model | globals = model.globals |> Globals.handleStakeResponse req res
-                    , stakeStatus = Failed e
-            }
-      , Cmd.none
-      )
-    QueueStake cents ->
-      ( { model | stakeStatus = AwaitingResponse }
-      , let req = {predictionId=model.predictionId, bettorIsASkeptic=Utils.betSideToIsSkeptical model.bettorSide, bettorStakeCents=cents} in API.postQueueStake (QueueStakeFinished req) req
-      )
-    QueueStakeFinished req res ->
-      ( case API.simplifyQueueStakeResponse res of
-          Ok prediction ->
-            { model | globals = model.globals |> Globals.handleQueueStakeResponse req res
-                    , stakeStatus = Succeeded
-            } |> updateBettorInputFields prediction
-          Err e ->
-            { model | globals = model.globals |> Globals.handleQueueStakeResponse req res
                     , stakeStatus = Failed e
             }
       , Cmd.none

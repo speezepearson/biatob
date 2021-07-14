@@ -1,3 +1,4 @@
+from server.protobuf import mvp_pb2
 from sqlalchemy import event
 from sqlalchemy import MetaData, Table, Column, Integer, String, BOOLEAN, ForeignKey, BINARY, Index, REAL, CheckConstraint
 import sqlalchemy
@@ -72,23 +73,13 @@ trades = Table(
   Column('bettor_is_a_skeptic', BOOLEAN(), nullable=False),
   Column('bettor_stake_cents', Integer(), CheckConstraint('bettor_stake_cents > 0'), nullable=False),
   Column('creator_stake_cents', Integer(), CheckConstraint('creator_stake_cents > 0'), nullable=False),
-  Column('transacted_at_unixtime', REAL(), nullable=False)
+  Column('state', String(64), CheckConstraint('state in ({})'.format(', '.join(f"'{name}'" for name in mvp_pb2.TradeState.keys()))), nullable=False),
+  Column('transacted_at_unixtime', REAL(), nullable=False),
+  Column('updated_at_unixtime', REAL(), nullable=False),
+  Column('notes', String(2048), nullable=False, default=''),
 )
 Index('trades_by_prediction_id', trades.c.prediction_id)
 Index('trades_by_bettor', trades.c.bettor)
-
-queued_trades = Table(
-  'queued_trades',
-  metadata,
-  Column('prediction_id', ForeignKey('predictions.prediction_id'), nullable=False),
-  Column('bettor', ForeignKey('users.username'), nullable=False),
-  Column('bettor_is_a_skeptic', BOOLEAN(), nullable=False),
-  Column('bettor_stake_cents', Integer(), CheckConstraint('bettor_stake_cents > 0'), nullable=False),
-  Column('creator_stake_cents', Integer(), CheckConstraint('creator_stake_cents > 0'), nullable=False),
-  Column('enqueued_at_unixtime', REAL(), nullable=False),
-)
-Index('queued_trades_by_prediction_id', queued_trades.c.prediction_id)
-Index('queued_trades_by_bettor', queued_trades.c.bettor)
 
 resolutions = Table(
   'resolutions',
@@ -132,6 +123,7 @@ _MIGRATION_STMTS = [
   'DROP TABLE invitation_acceptances',
   'DROP TABLE invitations',
   'ALTER TABLE users ADD COLUMN email_invitation_acceptance_notifications BOOLEAN NOT NULL DEFAULT 1',
+  "ALTER TABLE trades ADD COLUMN state VARCHAR(64) CHECK(state IN ('TRADE_STATE_ACTIVE', 'TRADE_STATE_QUEUED', 'TRADE_STATE_DISAVOWED')) NOT NULL DEFAULT 'TRADE_STATE_ACTIVE'",
 ]
 _N_MIGRATIONS = len(_MIGRATION_STMTS)
 

@@ -63,21 +63,21 @@ class TestTrust:
   def test_trust_follows_last_set_trust(self, conn: SqlConn):
     conn.register_username(ALICE, 'password', password_id='alicepwid')
     conn.register_username(BOB, 'password', password_id='bobpwid')
-    conn.set_trusted(ALICE, BOB, True)
+    conn.set_trusted(ALICE, BOB, True, now=T0)
     assert conn.trusts(ALICE, BOB)
-    conn.set_trusted(ALICE, BOB, True)
+    conn.set_trusted(ALICE, BOB, True, now=T0)
     assert conn.trusts(ALICE, BOB)
-    conn.set_trusted(ALICE, BOB, False)
+    conn.set_trusted(ALICE, BOB, False, now=T0)
     assert not conn.trusts(ALICE, BOB)
-    conn.set_trusted(ALICE, BOB, False)
+    conn.set_trusted(ALICE, BOB, False, now=T0)
     assert not conn.trusts(ALICE, BOB)
-    conn.set_trusted(ALICE, BOB, True)
+    conn.set_trusted(ALICE, BOB, True, now=T0)
     assert conn.trusts(ALICE, BOB)
 
   def test_trust_is_only_one_way(self, conn: SqlConn):
     conn.register_username(ALICE, 'password', password_id='alicepwid')
     conn.register_username(BOB, 'password', password_id='bobpwid')
-    conn.set_trusted(ALICE, BOB, True)
+    conn.set_trusted(ALICE, BOB, True, now=T0)
     assert conn.trusts(ALICE, BOB)
     assert not conn.trusts(BOB, ALICE)
 
@@ -101,20 +101,20 @@ class TestSettings:
   def test_get_settings_includes_trusted_users(self, conn: SqlConn):
     conn.register_username(ALICE, 'password', password_id='alicepwid')
     conn.register_username(BOB, 'password', password_id='bobpwid')
-    conn.set_trusted(ALICE, BOB, True)
+    conn.set_trusted(ALICE, BOB, True, now=T0)
     assert must(conn.get_settings(au(ALICE))).relationships == {BOB: mvp_pb2.Relationship(trusted_by_you=True)}
 
   def test_get_settings_includes_mutually_trusting_users(self, conn: SqlConn):
     conn.register_username(ALICE, 'password', password_id='alicepwid')
     conn.register_username(BOB, 'password', password_id='bobpwid')
-    conn.set_trusted(ALICE, BOB, True)
-    conn.set_trusted(BOB, ALICE, True)
+    conn.set_trusted(ALICE, BOB, True, now=T0)
+    conn.set_trusted(BOB, ALICE, True, now=T0)
     assert must(conn.get_settings(au(ALICE))).relationships == {BOB: mvp_pb2.Relationship(trusted_by_you=True, trusts_you=True)}
 
   def test_get_settings_includes_explicitly_untrusted_users(self, conn: SqlConn):
     conn.register_username(ALICE, 'password', password_id='alicepwid')
     conn.register_username(BOB, 'password', password_id='bobpwid')
-    conn.set_trusted(ALICE, BOB, False)
+    conn.set_trusted(ALICE, BOB, False, now=T0)
     assert must(conn.get_settings(au(ALICE))).relationships == {BOB: mvp_pb2.Relationship(trusted_by_you=False)}
 
   @pytest.mark.parametrize('a_trusts_b', [True, False])
@@ -122,9 +122,9 @@ class TestSettings:
   def test_get_settings_reports_trust_correctly(self, conn: SqlConn, a_trusts_b: bool, b_trusts_a: Optional[bool]):
     conn.register_username(ALICE, 'password', password_id='alicepwid')
     conn.register_username(BOB, 'password', password_id='bobpwid')
-    conn.set_trusted(ALICE, BOB, a_trusts_b)
+    conn.set_trusted(ALICE, BOB, a_trusts_b, now=T0)
     if b_trusts_a is not None:
-      conn.set_trusted(BOB, ALICE, b_trusts_a)
+      conn.set_trusted(BOB, ALICE, b_trusts_a, now=T0)
     assert must(conn.get_settings(au(ALICE))).relationships == {BOB: mvp_pb2.Relationship(trusted_by_you=a_trusts_b or False, trusts_you=b_trusts_a or False)}
 
   @pytest.mark.parametrize('b_trusts_a', [True, False, None])
@@ -132,7 +132,7 @@ class TestSettings:
     conn.register_username(ALICE, 'password', password_id='alicepwid')
     conn.register_username(BOB, 'password', password_id='bobpwid')
     if b_trusts_a is not None:
-      conn.set_trusted(BOB, ALICE, b_trusts_a)
+      conn.set_trusted(BOB, ALICE, b_trusts_a, now=T0)
     assert must(conn.get_settings(au(ALICE))).relationships == {}
 
   @pytest.mark.parametrize('b_trusts_a', [True, False, None])
@@ -140,7 +140,7 @@ class TestSettings:
     conn.register_username(ALICE, 'password', password_id='alicepwid')
     conn.register_username(BOB, 'password', password_id='bobpwid')
     if b_trusts_a is not None:
-      conn.set_trusted(BOB, ALICE, b_trusts_a)
+      conn.set_trusted(BOB, ALICE, b_trusts_a, now=T0)
     assert must(conn.get_settings(au(ALICE), include_relationships_with_users=[BOB])).relationships == {BOB: mvp_pb2.Relationship(trusts_you=b_trusts_a or False)}
 
   def test_persists_updated_settings(self, conn: SqlConn):
@@ -161,13 +161,13 @@ class TestInvitations:
     conn.register_username(ALICE, 'password', password_id='alicepwid')
     conn.register_username(BOB, 'password', password_id='bobpwid')
     conn.create_invitation('mynonce', inviter=ALICE, recipient=BOB)
-    assert conn.accept_invitation('mynonce') == mvp_pb2.CheckInvitationResponse.Result(inviter=ALICE, recipient=BOB)
+    assert conn.accept_invitation('mynonce', now=T0) == mvp_pb2.CheckInvitationResponse.Result(inviter=ALICE, recipient=BOB)
 
   def test_returns_none_if_no_such_invitation(self, conn: SqlConn):
     conn.register_username(ALICE, 'password', password_id='alicepwid')
     conn.register_username(BOB, 'password', password_id='bobpwid')
     conn.create_invitation('one nonce', inviter=ALICE, recipient=BOB)
-    assert conn.accept_invitation('some other nonce') is None
+    assert conn.accept_invitation('some other nonce', now=T0) is None
 
 
 class TestPredictions:
@@ -205,6 +205,7 @@ class TestPredictions:
         bettor_is_a_skeptic=True,
         bettor_stake_cents=1,
         creator_stake_cents=1,
+        state=mvp_pb2.TRADE_STATE_ACTIVE,
         now=T0,
       )
 
@@ -223,7 +224,7 @@ class TestResolutionNotifications:
     conn.update_settings(BOB, mvp_pb2.UpdateSettingsRequest(email_resolution_notifications=mvp_pb2.MaybeBool(value=wants_notifs)))
 
     conn.create_prediction(now=T0, prediction_id=PRED_ID, creator=ALICE, request=some_create_prediction_request())
-    conn.stake(prediction_id=PRED_ID, bettor=BOB, bettor_is_a_skeptic=True, bettor_stake_cents=1, creator_stake_cents=1, now=T0)
+    conn.stake(prediction_id=PRED_ID, bettor=BOB, bettor_is_a_skeptic=True, bettor_stake_cents=1, creator_stake_cents=1, state=mvp_pb2.TRADE_STATE_ACTIVE, now=T0)
 
     expected_emails = {efs.verified} if expect_email else set()
     assert set(conn.get_resolution_notification_addrs(PRED_ID)) == expected_emails
@@ -235,7 +236,7 @@ class TestResolutionNotifications:
     conn.register_username(BOB, 'password', password_id='bobpwid')
 
     conn.create_prediction(now=T0, prediction_id=PRED_ID, creator=ALICE, request=some_create_prediction_request())
-    conn.stake(prediction_id=PRED_ID, bettor=BOB, bettor_is_a_skeptic=True, bettor_stake_cents=1, creator_stake_cents=1, now=T0)
+    conn.stake(prediction_id=PRED_ID, bettor=BOB, bettor_is_a_skeptic=True, bettor_stake_cents=1, creator_stake_cents=1, state=mvp_pb2.TRADE_STATE_ACTIVE, now=T0)
 
     assert not conn.get_resolution_notification_addrs(PRED_ID)
 
@@ -245,7 +246,7 @@ class TestResolutionNotifications:
 
     for creator, bettor, predid in [(ALICE, BOB, '123'), (BOB, CHARLIE, '234'), (ALICE, DOLORES, '345'), (CHARLIE, DOLORES, '456')]:
       conn.create_prediction(now=T0, prediction_id=PredictionId(predid), creator=creator, request=some_create_prediction_request())
-      conn.stake(prediction_id=PredictionId(predid), bettor=bettor, bettor_is_a_skeptic=True, bettor_stake_cents=1, creator_stake_cents=1, now=T0)
+      conn.stake(prediction_id=PredictionId(predid), bettor=bettor, bettor_is_a_skeptic=True, bettor_stake_cents=1, creator_stake_cents=1, state=mvp_pb2.TRADE_STATE_ACTIVE, now=T0)
 
     assert set(conn.get_resolution_notification_addrs(PredictionId('456'))) == {'dolores@example.com'}
 

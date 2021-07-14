@@ -170,11 +170,6 @@ def StakeOk(servicer: Servicer, actor: Optional[AuthorizingUsername], request: m
 def StakeErr(servicer: Servicer, actor: Optional[AuthorizingUsername], request: mvp_pb2.StakeRequest) -> mvp_pb2.StakeResponse.Error:
   return assert_oneof(servicer.Stake(actor, request), 'stake_result', 'error', mvp_pb2.StakeResponse.Error)
 
-def QueueStakeOk(servicer: Servicer, actor: Optional[AuthorizingUsername], request: mvp_pb2.QueueStakeRequest) -> mvp_pb2.UserPredictionView:
-  return assert_oneof(servicer.QueueStake(actor, request), 'queue_stake_result', 'ok', mvp_pb2.UserPredictionView)
-def QueueStakeErr(servicer: Servicer, actor: Optional[AuthorizingUsername], request: mvp_pb2.QueueStakeRequest) -> mvp_pb2.QueueStakeResponse.Error:
-  return assert_oneof(servicer.QueueStake(actor, request), 'queue_stake_result', 'error', mvp_pb2.QueueStakeResponse.Error)
-
 def ResolveOk(servicer: Servicer, actor: Optional[AuthorizingUsername], prediction_id: PredictionId, resolution: mvp_pb2.Resolution.V, notes: str = '') -> mvp_pb2.UserPredictionView:
   return assert_oneof(servicer.Resolve(actor, mvp_pb2.ResolveRequest(prediction_id=prediction_id, resolution=resolution, notes=notes)), 'resolve_result', 'ok', mvp_pb2.UserPredictionView)
 def ResolveErr(servicer: Servicer, actor: Optional[AuthorizingUsername], prediction_id: PredictionId, resolution: mvp_pb2.Resolution.V, notes: str = '') -> mvp_pb2.ResolveResponse.Error:
