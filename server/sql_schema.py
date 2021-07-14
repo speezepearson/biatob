@@ -35,20 +35,6 @@ relationships = Table(
 Index('relationships_by_subject_username', relationships.c.subject_username)
 Index('relationships_by_object_username', relationships.c.object_username)
 
-side_payments = Table(
-  'side_payments',
-  metadata,
-  Column('from_username', ForeignKey('users.username'), nullable=False),
-  Column('to_username', ForeignKey('users.username'), nullable=False),
-  Column('sent_at_unixtime', REAL(), nullable=False),
-  Column('cents', Integer(), nullable=False),
-  Column('certified_by_sender', BOOLEAN(), default=0),
-  Column('certified_by_recipient', BOOLEAN(), default=0),
-)
-Index('side_payments_by_from_username', side_payments.c.from_username)
-Index('side_payments_by_to_username', side_payments.c.to_username)
-Index('side_payments_by_pair', side_payments.c.from_username, side_payments.c.to_username)
-
 predictions = Table(
   'predictions',
   metadata,
@@ -73,7 +59,7 @@ trades = Table(
   Column('bettor_is_a_skeptic', BOOLEAN(), nullable=False),
   Column('bettor_stake_cents', Integer(), CheckConstraint('bettor_stake_cents > 0'), nullable=False),
   Column('creator_stake_cents', Integer(), CheckConstraint('creator_stake_cents > 0'), nullable=False),
-  Column('state', String(64), CheckConstraint('state in ({})'.format(', '.join(f"'{name}'" for name in mvp_pb2.TradeState.keys()))), nullable=False),
+  Column('state', String(64), CheckConstraint('state in ({})'.format(', '.join(f"'{name}'" for name in sorted(mvp_pb2.TradeState.keys())))), nullable=False),
   Column('transacted_at_unixtime', REAL(), nullable=False),
   Column('updated_at_unixtime', REAL(), nullable=False),
   Column('notes', String(2048), nullable=False, default=''),
@@ -86,19 +72,10 @@ resolutions = Table(
   metadata,
   Column('prediction_id', ForeignKey('predictions.prediction_id'), primary_key=True, nullable=False),
   Column('resolved_at_unixtime', REAL(), primary_key=True, nullable=False),
-  Column('resolution', String(64), CheckConstraint("resolution IN ('RESOLUTION_NONE_YET', 'RESOLUTION_YES', 'RESOLUTION_NO', 'RESOLUTION_INVALID')"), nullable=False),
+  Column('resolution', String(64), CheckConstraint('resolution in ({})'.format(', '.join(f"'{name}'" for name in sorted(mvp_pb2.Resolution.keys())))), nullable=False),
   Column('notes', String(65535), nullable=False, default=''),
 )
 Index('resolutions_by_prediction_id', resolutions.c.prediction_id)
-
-email_attempts = Table(
-  'email_attempts',
-  metadata,
-  Column('email_id', String(64), nullable=False),
-  Column('sent_at_unixtime', REAL(), nullable=False),
-  Column('succeeded', BOOLEAN()),
-)
-Index('email_attempts_by_email_id', email_attempts.c.email_id)
 
 email_invitations = Table(
   'email_invitations',
