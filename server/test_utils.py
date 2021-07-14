@@ -5,7 +5,7 @@ import contextlib
 import datetime
 import pytest
 import unittest.mock
-from typing import Any, Callable, Mapping, Optional, Tuple, Type, TypeVar, Iterator, overload
+from typing import Any, Callable, Mapping, Optional, Sequence, Tuple, Type, TypeVar, Iterator, overload
 
 from google.protobuf.message import Message
 
@@ -235,3 +235,20 @@ def AcceptInvitationOk(servicer: Servicer, actor: Optional[AuthorizingUsername],
 def AcceptInvitationErr(servicer: Servicer, actor: Optional[AuthorizingUsername], nonce: str) -> mvp_pb2.AcceptInvitationResponse.Error:
   return assert_oneof(servicer.AcceptInvitation(actor, mvp_pb2.AcceptInvitationRequest(nonce=nonce)), 'accept_invitation_result', 'error', mvp_pb2.AcceptInvitationResponse.Error)
 
+
+
+def init_user(
+  any_servicer: Servicer,
+  username: AuthorizingUsername,
+  email: Optional[Tuple[Emailer, str]] = None,
+  trust_users: Sequence[Username] = (),
+  password: str = 'pw',
+  **settings: Any,
+):
+  RegisterUsernameOk(any_servicer, None, username, password=password)
+  if email is not None:
+    emailer, address = email
+    set_and_verify_email(any_servicer, emailer, username, address)
+  UpdateSettingsOk(any_servicer, username, **settings)
+  for trustee in trust_users:
+    SetTrustedOk(any_servicer, username, trustee, True)
