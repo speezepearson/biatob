@@ -7,6 +7,8 @@ filelock
 aiosmtplib
 structlog
 sqlalchemy
+pymysql
+alembic
 
 # testing
 pytest-aiohttp
