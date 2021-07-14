@@ -81,6 +81,18 @@ phaseMatchTest =
       \() -> Expect.true "" <| phaseMatches preCloseTime Open prediction
     , test "does not match after closesUnixtime" <|
       \() -> Expect.false "" <| phaseMatches preResolveTime Open prediction
+    , test "does not match resolved prediction" <|
+      \() -> Expect.false "" <| phaseMatches preCloseTime Open {prediction | resolutions = [exampleResolutionEvent]}
+    ]
+  , describe "Closed"
+    [ test "does not match before closesUnixtime" <|
+      \() -> Expect.false "" <| phaseMatches preCloseTime Closed prediction
+    , test "matches after closesUnixtime" <|
+      \() -> Expect.true "" <| phaseMatches preResolveTime Closed prediction
+    , test "does not match after resolvesAtUnixtime" <|
+      \() -> Expect.false "" <| phaseMatches postResolveTime Closed prediction
+    , test "does not match resolved prediction" <|
+      \() -> Expect.false "" <| phaseMatches preResolveTime Closed {prediction | resolutions = [exampleResolutionEvent]}
     ]
   , describe "NeedsResolution"
     [ describe "before scheduled resolution time"

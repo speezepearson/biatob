@@ -34,6 +34,7 @@ type alias Filter =
   }
 type LifecyclePhase
   = Open
+  | Closed
   | NeedsResolution
   | Resolved
 
@@ -129,30 +130,31 @@ phaseDropdown : Utils.DropdownBuilder (Maybe LifecyclePhase) Msg
 phaseDropdown =
   Utils.dropdown SetFilterPhase Ignore
     [ (Nothing, "all phases")
-    , (Just Open, "open")
+    , (Just Open, "open for betting")
+    , (Just Closed, "betting closed, pre-resolution")
     , (Just NeedsResolution, "needs resolution")
     , (Just Resolved, "resolved")
     ]
 orderDropdown : Utils.DropdownBuilder SortOrder Msg
 orderDropdown =
   Utils.dropdown SetSortOrder Ignore
-    [ (CreatedDate Desc, "created, desc")
-    , (CreatedDate Asc, "created, asc")
-    , (ResolutionDate Asc, "resolves, desc")
-    , (ResolutionDate Asc, "resolves, asc")
+    [ (CreatedDate Desc, "date created, most recent first")
+    , (CreatedDate Asc, "date created, oldest first")
+    , (ResolutionDate Asc, "resolution deadline, most recent first")
+    , (ResolutionDate Asc, "resolution deadline, oldest first")
     ]
 viewControls : Filter -> SortOrder -> Html Msg
 viewControls filter order =
-  H.div [HA.class "row"]
-  [ H.div [HA.class "col-md-3"]
+  H.div []
+  [ H.div [HA.class "d-inline-block mx-2 text-nowrap"]
     [ H.text "Creator: "
     , ownnessDropdown filter.own [HA.class "form-select d-inline-block w-auto"]
     ]
-  , H.div [HA.class "col-md-3"]
+  , H.div [HA.class "d-inline-block mx-2 text-nowrap"]
     [ H.text " Phase: "
     , phaseDropdown filter.phase [HA.class "form-select d-inline-block w-auto"]
     ]
-  , H.div [HA.class "col-md-3"]
+  , H.div [HA.class "d-inline-block mx-2 text-nowrap"]
     [ H.text " Order: "
     , orderDropdown order [HA.class "form-select d-inline-block w-auto"]
     ]
@@ -160,16 +162,14 @@ viewControls filter order =
 
 phaseMatches : Time.Posix -> LifecyclePhase -> Pb.UserPredictionView -> Bool
 phaseMatches now phase prediction =
-  case phase of
-    Open ->
-      Utils.currentResolution prediction == Pb.ResolutionNoneYet
-      && prediction.closesUnixtime > Utils.timeToUnixtime now
-      && prediction.resolvesAtUnixtime > Utils.timeToUnixtime now
-    NeedsResolution ->
-      Utils.currentResolution prediction == Pb.ResolutionNoneYet
-      && prediction.resolvesAtUnixtime < Utils.timeToUnixtime now
-    Resolved ->
-      Utils.currentResolution prediction /= Pb.ResolutionNoneYet
+  if Utils.currentResolution prediction /= Pb.ResolutionNoneYet then
+    phase == Resolved
+  else if Utils.timeToUnixtime now < prediction.closesUnixtime then
+    phase == Open
+  else if Utils.timeToUnixtime now < prediction.resolvesAtUnixtime then
+    phase == Closed
+  else
+    phase == NeedsResolution
 
 setOwn : Maybe Bool -> Filter -> Filter
 setOwn own filter = { filter | own = own }
