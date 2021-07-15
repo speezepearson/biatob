@@ -105,7 +105,6 @@ def create_engine(dbinfo: mvp_pb2.DatabaseInfo) -> sqlalchemy.engine.Engine:
   engine = sqlalchemy.create_engine(get_db_url(dbinfo))
   if dbinfo.WhichOneof('database_kind') == 'sqlite':
     event.listen(engine, "connect", set_sqlite_pragma)
-  metadata.create_all(engine)
   return engine
 
 

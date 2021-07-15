@@ -8,12 +8,13 @@ import unittest.mock
 from typing import Any, Callable, Mapping, Optional, Sequence, Tuple, Type, TypeVar, Iterator, overload
 
 from google.protobuf.message import Message
+import sqlalchemy
 
 from .core import AuthorizingUsername, PredictionId, Servicer, TokenMint, Username
 from .emailer import Emailer
 from .protobuf import mvp_pb2
 from .sql_servicer import SqlServicer, SqlConn
-from .sql_schema import create_engine
+from . import sql_schema
 
 class MockClock:
   def __init__(self):
@@ -43,9 +44,15 @@ def emailer():
   )
 
 @pytest.fixture
-def any_servicer(clock, token_mint, emailer):
-  engine = create_engine(mvp_pb2.DatabaseInfo(sqlite=':memory:'))
-  with engine.connect() as conn:
+def sqlite_engine() -> sqlalchemy.engine.Engine:
+  engine = sqlalchemy.create_engine(f'sqlite+pysqlite:///:memory:')
+  sqlalchemy.event.listen(engine, "connect", sql_schema.set_sqlite_pragma)
+  sql_schema.metadata.create_all(engine)
+  return engine
+
+@pytest.fixture
+def any_servicer(clock, token_mint, emailer, sqlite_engine):
+  with sqlite_engine.connect() as conn:
     yield SqlServicer(
       conn=SqlConn(conn),
       emailer=emailer,

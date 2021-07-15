@@ -6,13 +6,12 @@ import sqlalchemy
 
 from .core import UsernameAlreadyRegisteredError, Username, PredictionId
 from .sql_servicer import SqlConn
-from .sql_schema import create_engine
 from .protobuf import mvp_pb2
-from .test_utils import au, some_create_prediction_request
+from .test_utils import au, some_create_prediction_request, sqlite_engine
 
 @pytest.fixture
-def conn():
-  return SqlConn(conn=create_engine(mvp_pb2.DatabaseInfo(sqlite=':memory:')))
+def conn(sqlite_engine: sqlalchemy.engine.Engine):
+  return SqlConn(conn=sqlite_engine.connect())
 
 def create_user(
   conn: SqlConn,
