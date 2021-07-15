@@ -13,7 +13,7 @@ from .core import AuthorizingUsername, PredictionId, Servicer, TokenMint, Userna
 from .emailer import Emailer
 from .protobuf import mvp_pb2
 from .sql_servicer import SqlServicer, SqlConn
-from .sql_schema import create_sqlite_engine
+from .sql_schema import create_engine
 
 class MockClock:
   def __init__(self):
@@ -44,7 +44,7 @@ def emailer():
 
 @pytest.fixture
 def any_servicer(clock, token_mint, emailer):
-  engine = create_sqlite_engine(':memory:')
+  engine = create_engine(mvp_pb2.DatabaseInfo(sqlite=':memory:'))
   with engine.connect() as conn:
     yield SqlServicer(
       conn=SqlConn(conn),

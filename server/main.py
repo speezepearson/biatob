@@ -18,7 +18,7 @@ from .http_glue import *
 from .web_server import *
 from .protobuf import mvp_pb2
 from .sql_servicer import *
-from .sql_schema import create_sqlite_engine
+from .sql_schema import create_engine
 
 # adapted from https://www.structlog.org/en/stable/examples.html?highlight=json#processors
 # and https://www.structlog.org/en/stable/contextvars.html
@@ -40,7 +40,6 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-H", "--host", default="localhost")
 parser.add_argument("-p", "--port", type=int, default=8080)
 parser.add_argument("--elm-dist", type=Path, default="elm/dist")
-parser.add_argument("--state-path", type=Path, required=True)
 parser.add_argument("--credentials-path", type=Path, required=True)
 parser.add_argument("--email-daily-backups-to", help='send daily backups to this email address')
 parser.add_argument("--email-invariant-violations-to", help='send notifications of invariant violations to this email address')
@@ -75,7 +74,7 @@ async def main(args: argparse.Namespace):
     )
     token_mint = TokenMint(secret_key=credentials.token_signing_secret)
     token_glue = HttpTokenGlue(token_mint=token_mint)
-    raw_conn = create_sqlite_engine(args.state_path).connect()
+    raw_conn = create_engine(credentials.database_info).connect()
     conn = SqlConn(raw_conn)
     servicer = SqlServicer(conn=conn, token_mint=token_mint, emailer=emailer)
 

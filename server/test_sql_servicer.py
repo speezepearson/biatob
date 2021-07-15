@@ -17,12 +17,12 @@ from .test_utils import emailer, some_create_prediction_request
 
 class TestFindInvariantViolations:
   def test_initially_empty(self):
-    engine = schema.create_sqlite_engine(':memory:')
+    engine = schema.create_engine(mvp_pb2.DatabaseInfo(sqlite=':memory:'))
     with engine.connect() as raw_conn:
       assert find_invariant_violations(raw_conn) == []
 
   def test_detects_overpromising(self):
-    engine = schema.create_sqlite_engine(':memory:')
+    engine = schema.create_engine(mvp_pb2.DatabaseInfo(sqlite=':memory:'))
     with engine.connect() as raw_conn:
       now = datetime.datetime(2020, 1, 1, 0, 0, 0)
       conn = SqlConn(raw_conn)
@@ -44,7 +44,7 @@ class TestFindInvariantViolations:
       }]
 
 def test_backup_text():
-  engine = schema.create_sqlite_engine(':memory:')
+  engine = schema.create_engine(mvp_pb2.DatabaseInfo(sqlite=':memory:'))
   with engine.connect() as conn:
     j = json.loads(_backup_text(conn))
     assert 'users' in j

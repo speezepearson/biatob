@@ -96,8 +96,16 @@ def set_sqlite_pragma(dbapi_connection, connection_record):
   cursor.close()
 
 
-def create_sqlite_engine(database: str) -> sqlalchemy.engine.Engine:
-  engine = sqlalchemy.create_engine(f'sqlite+pysqlite:///{database}')
-  event.listen(engine, "connect", set_sqlite_pragma)
+def create_engine(dbinfo: mvp_pb2.DatabaseInfo) -> sqlalchemy.engine.Engine:
+  engine = sqlalchemy.create_engine(get_db_url(dbinfo))
+  if dbinfo.WhichOneof('database_kind') == 'sqlite':
+    event.listen(engine, "connect", set_sqlite_pragma)
   metadata.create_all(engine)
   return engine
+
+
+def get_db_url(dbinfo: mvp_pb2.DatabaseInfo) -> str:
+  if dbinfo.WhichOneof('database_kind') == 'sqlite':
+    return f'sqlite+pysqlite:///{dbinfo.sqlite}'
+  assert dbinfo.WhichOneof('database_kind') == 'mysql'
+  return f'mysql+pymysql://{dbinfo.mysql.username}:{dbinfo.mysql.password}@{dbinfo.mysql.hostname}/{dbinfo.mysql.dbname}'

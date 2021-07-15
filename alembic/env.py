@@ -5,11 +5,17 @@ from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 
 from alembic import context
+import google.protobuf.text_format  # type: ignore
+
+from server import sql_schema
+from server.protobuf import mvp_pb2
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
-config.set_main_option('sqlalchemy.url', os.environ['ALEMBIC_URL'])
+
+credentials = google.protobuf.text_format.Parse(open(os.environ['CREDENTIALS_CONFIG_FILE']).read(), mvp_pb2.CredentialsConfig())
+config.set_main_option('sqlalchemy.url', sql_schema.get_db_url(credentials.database_info))
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
