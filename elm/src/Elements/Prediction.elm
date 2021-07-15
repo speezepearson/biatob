@@ -885,8 +885,17 @@ viewTradesAsCreator timeZone prediction =
         , ( [Utils.renderUser bettor, H.text "'s stake"]
           , \t -> [H.text <| Utils.formatCents t.bettorStakeCents]
           )
-        , ( []
-          , \t -> [H.text <| t.notes]
+        , ( [H.text "Notes"]
+          , \t ->
+              [ H.text <|
+                case t.state of
+                  Pb.TradeStateActive -> ""
+                  Pb.TradeStateQueued -> "[queued, pending @" ++ prediction.creator ++ "'s trust]"
+                  Pb.TradeStateDisavowed -> "[disavowed]"
+                  Pb.TradeStateDequeueFailed -> "[dequeue failed]"
+                  Pb.TradeStateUnrecognized_ _ -> "???"
+              , H.text <| " " ++ t.notes
+              ]
           )
         ]
         trades
@@ -951,6 +960,18 @@ viewTradesAsBettor timeZone prediction trades =
           )
         , ( [Utils.renderUser prediction.creator, H.text "'s stake"]
           , \t -> [H.text <| Utils.formatCents t.creatorStakeCents]
+          )
+        , ( [H.text "Notes"]
+          , \t ->
+              [ H.text <|
+                case t.state of
+                  Pb.TradeStateActive -> ""
+                  Pb.TradeStateQueued -> "[queued, pending @" ++ prediction.creator ++ "'s trust]"
+                  Pb.TradeStateDisavowed -> "[disavowed]"
+                  Pb.TradeStateDequeueFailed -> "[dequeue failed]"
+                  Pb.TradeStateUnrecognized_ _ -> "???"
+              , H.text <| " " ++ t.notes
+              ]
           )
         ]
         trades
