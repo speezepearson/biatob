@@ -34,7 +34,7 @@ class TestFindInvariantViolations:
         certainty=mvp_pb2.CertaintyRange(low=0.5, high=1.0),
       ))
       conn.stake(predid, BOB, True, 80, creator_stake_cents=80, state=mvp_pb2.TRADE_STATE_ACTIVE, now=now)
-      conn.stake(predid, BOB, True, 70, creator_stake_cents=70, state=mvp_pb2.TRADE_STATE_ACTIVE, now=now)
+      conn.stake(predid, BOB, True, 70, creator_stake_cents=70, state=mvp_pb2.TRADE_STATE_ACTIVE, now=now+datetime.timedelta(seconds=1))
 
       assert find_invariant_violations(raw_conn) == [{
         'type': 'exposure exceeded',

@@ -329,10 +329,11 @@ class TestStake:
         assert trade.updated_unixtime == clock.now().timestamp()
         assert trade.notes == ''
 
-      async def test_computes_creator_stake_correctly(self, any_servicer: Servicer):
+      async def test_computes_creator_stake_correctly(self, any_servicer: Servicer, clock: MockClock):
         register_friend_pair(any_servicer, ALICE, BOB)
         prediction_id = CreatePredictionOk(any_servicer, ALICE, {'certainty': mvp_pb2.CertaintyRange(low=0.40, high=0.70)})
         StakeOk(any_servicer, BOB, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_is_a_skeptic=True, bettor_stake_cents=13))
+        clock.tick()
         StakeOk(any_servicer, BOB, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_is_a_skeptic=False, bettor_stake_cents=8))
         pred = GetPredictionOk(any_servicer, ALICE, prediction_id)
         [t1, t2] = pred.your_trades
@@ -372,7 +373,7 @@ class TestStake:
             bettor_stake_cents=10_00,
           )))
 
-      async def test_bets_on_opposite_sides_dont_stack(self, any_servicer: Servicer):
+      async def test_bets_on_opposite_sides_dont_stack(self, any_servicer: Servicer, clock: MockClock):
         register_friend_pair(any_servicer, ALICE, BOB)
         prediction_id = CreatePredictionOk(any_servicer, ALICE, dict(
             certainty=mvp_pb2.CertaintyRange(low=0.50, high=0.80),
@@ -384,6 +385,7 @@ class TestStake:
           bettor_is_a_skeptic=True,
           bettor_stake_cents=100_00,
         ))
+        clock.tick()
         StakeOk(any_servicer, BOB, mvp_pb2.StakeRequest(
           prediction_id=prediction_id,
           bettor_is_a_skeptic=False,
