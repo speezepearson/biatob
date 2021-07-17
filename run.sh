@@ -16,10 +16,11 @@ fi
 source /home/protected/venv/bin/activate
 
 pip install -r server/requirements.txt
+CREDENTIALS_CONFIG_FILE=/home/protected/server.CredentialsConfig.textproto
+(export CREDENTIALS_CONFIG_FILE; alembic upgrade head)
 python -m server.main \
   --host=0.0.0.0 \
   --port=8080 \
-  --state-path=/home/protected/biatob.sqlite3.db \
-  --credentials-path=/home/protected/server.CredentialsConfig.textproto \
+  --credentials-path="$CREDENTIALS_CONFIG_FILE" \
   "$@"
 # e.g. --email-daily-backups-to=somebody@example.com

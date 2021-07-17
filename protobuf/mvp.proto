@@ -10,9 +10,23 @@ message AuthToken {
 
 }
 
+message DatabaseInfo {
+  oneof database_kind {
+    string sqlite = 1;
+    MysqlDbCredentials mysql = 2;
+  }
+  message MysqlDbCredentials {
+    string hostname = 1;
+    string username = 2;
+    string password = 3;
+    string dbname = 4;
+  }
+}
+
 message CredentialsConfig {
   SmtpCredentials smtp = 1;
   bytes token_signing_secret = 2;
+  DatabaseInfo database_info = 3;
   message SmtpCredentials {
     string hostname = 1;
     uint32 port = 2;

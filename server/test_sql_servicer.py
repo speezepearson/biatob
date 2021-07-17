@@ -13,17 +13,15 @@ import sqlalchemy
 from .emailer import Emailer
 from .sql_servicer import SqlConn, find_invariant_violations, _backup_text, SqlServicer, TokenMint, email_resolution_reminders
 from . import sql_schema as schema
-from .test_utils import emailer, some_create_prediction_request
+from .test_utils import emailer, some_create_prediction_request, sqlite_engine
 
 class TestFindInvariantViolations:
-  def test_initially_empty(self):
-    engine = schema.create_sqlite_engine(':memory:')
-    with engine.connect() as raw_conn:
+  def test_initially_empty(self, sqlite_engine: sqlalchemy.engine.Engine):
+    with sqlite_engine.connect() as raw_conn:
       assert find_invariant_violations(raw_conn) == []
 
-  def test_detects_overpromising(self):
-    engine = schema.create_sqlite_engine(':memory:')
-    with engine.connect() as raw_conn:
+  def test_detects_overpromising(self, sqlite_engine: sqlalchemy.engine.Engine):
+    with sqlite_engine.connect() as raw_conn:
       now = datetime.datetime(2020, 1, 1, 0, 0, 0)
       conn = SqlConn(raw_conn)
       conn.register_username(ALICE, 'secret', 'alice_pwid')
@@ -34,7 +32,7 @@ class TestFindInvariantViolations:
         certainty=mvp_pb2.CertaintyRange(low=0.5, high=1.0),
       ))
       conn.stake(predid, BOB, True, 80, creator_stake_cents=80, state=mvp_pb2.TRADE_STATE_ACTIVE, now=now)
-      conn.stake(predid, BOB, True, 70, creator_stake_cents=70, state=mvp_pb2.TRADE_STATE_ACTIVE, now=now)
+      conn.stake(predid, BOB, True, 70, creator_stake_cents=70, state=mvp_pb2.TRADE_STATE_ACTIVE, now=now+datetime.timedelta(seconds=1))
 
       assert find_invariant_violations(raw_conn) == [{
         'type': 'exposure exceeded',
@@ -43,9 +41,8 @@ class TestFindInvariantViolations:
         'actual_exposure': 150,
       }]
 
-def test_backup_text():
-  engine = schema.create_sqlite_engine(':memory:')
-  with engine.connect() as conn:
+def test_backup_text(sqlite_engine: sqlalchemy.engine.Engine):
+  with sqlite_engine.connect() as conn:
     j = json.loads(_backup_text(conn))
     assert 'users' in j
     assert 'predictions' in j

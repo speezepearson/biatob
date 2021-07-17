@@ -140,22 +140,22 @@ class SqlConn:
       .order_by(schema.trades.c.transacted_at_unixtime)
     ).fetchall()
 
-    remaining_stake_cents_vs_believers = row['maximum_stake_cents'] - self._conn.execute(
+    remaining_stake_cents_vs_believers = int(row['maximum_stake_cents'] - self._conn.execute(
       sqlalchemy.select([sqlalchemy.sql.func.coalesce(sqlalchemy.sql.func.sum(schema.trades.c.creator_stake_cents), 0)])
       .where(sqlalchemy.and_(
         schema.trades.c.prediction_id == prediction_id,
         schema.trades.c.state == mvp_pb2.TradeState.Name(mvp_pb2.TRADE_STATE_ACTIVE),
         sqlalchemy.not_(schema.trades.c.bettor_is_a_skeptic)
       ))
-    ).scalar()
-    remaining_stake_cents_vs_skeptics = row['maximum_stake_cents'] - self._conn.execute(
+    ).scalar())
+    remaining_stake_cents_vs_skeptics = int(row['maximum_stake_cents'] - self._conn.execute(
       sqlalchemy.select([sqlalchemy.sql.func.coalesce(sqlalchemy.sql.func.sum(schema.trades.c.creator_stake_cents), 0)])
       .where(sqlalchemy.and_(
         schema.trades.c.prediction_id == prediction_id,
         schema.trades.c.state == mvp_pb2.TradeState.Name(mvp_pb2.TRADE_STATE_ACTIVE),
         schema.trades.c.bettor_is_a_skeptic
       ))
-    ).scalar()
+    ).scalar())
 
     return mvp_pb2.UserPredictionView(
       prediction=row['prediction'],
@@ -292,7 +292,7 @@ class SqlConn:
     prediction_id: PredictionId,
     against_skeptics: bool,
   ) -> int:
-    return self._conn.execute(
+    return int(self._conn.execute(
       sqlalchemy.select([
         sqlalchemy.sql.func.sum(schema.trades.c.creator_stake_cents).label('exposure'),
       ])
@@ -302,7 +302,7 @@ class SqlConn:
         schema.trades.c.bettor_is_a_skeptic if against_skeptics else sqlalchemy.not_(schema.trades.c.bettor_is_a_skeptic),
         schema.trades.c.state == mvp_pb2.TradeState.Name(mvp_pb2.TRADE_STATE_ACTIVE),
       ))
-    ).scalar() or 0
+    ).scalar() or 0)
 
   def get_bettor_exposure_cents(
     self,
@@ -310,7 +310,7 @@ class SqlConn:
     bettor: Username,
     bettor_is_a_skeptic: bool
   ) -> int:
-    return self._conn.execute(
+    return int(self._conn.execute(
       sqlalchemy.select([
         sqlalchemy.sql.func.sum(schema.trades.c.bettor_stake_cents).label('exposure'),
       ])
@@ -321,7 +321,7 @@ class SqlConn:
         schema.trades.c.bettor_is_a_skeptic if bettor_is_a_skeptic else sqlalchemy.not_(schema.trades.c.bettor_is_a_skeptic),
         schema.trades.c.state == mvp_pb2.TradeState.Name(mvp_pb2.TRADE_STATE_ACTIVE),
       ))
-    ).scalar() or 0
+    ).scalar() or 0)
 
   def stake(
     self,

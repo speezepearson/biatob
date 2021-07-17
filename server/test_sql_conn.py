@@ -6,13 +6,12 @@ import sqlalchemy
 
 from .core import UsernameAlreadyRegisteredError, Username, PredictionId
 from .sql_servicer import SqlConn
-from .sql_schema import create_sqlite_engine
 from .protobuf import mvp_pb2
-from .test_utils import au, some_create_prediction_request
+from .test_utils import au, some_create_prediction_request, sqlite_engine
 
 @pytest.fixture
-def conn():
-  return SqlConn(conn=create_sqlite_engine(':memory:'))
+def conn(sqlite_engine: sqlalchemy.engine.Engine):
+  return SqlConn(conn=sqlite_engine.connect())
 
 def create_user(
   conn: SqlConn,
@@ -41,6 +40,10 @@ T1 = T0 + datetime.timedelta(hours=1)
 T2 = T1 + datetime.timedelta(hours=1)
 T3 = T2 + datetime.timedelta(hours=1)
 T4 = T3 + datetime.timedelta(hours=1)
+
+def test_enforces_foreign_keys(conn: SqlConn):
+  with pytest.raises(sqlalchemy.exc.IntegrityError):
+    conn.create_prediction(now=T0, prediction_id=PRED_ID, creator=ALICE, request=some_create_prediction_request())
 
 class TestRegisterUsername:
   def test_user_exists_after(self, conn: SqlConn):
