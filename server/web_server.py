@@ -313,6 +313,7 @@ class WebServer:
         app.router.add_get('/p/{prediction_id:[0-9]+}/embed{style}.png', self.get_prediction_img_embed)
         app.router.add_get('/my_stakes', self.get_my_stakes)
         app.router.add_get('/username/{username:[a-zA-Z0-9_-]+}', self.get_username)
+        app.router.add_get('/u/{username:[a-zA-Z0-9_-]+}', self.get_username)
         app.router.add_get('/settings', self.get_settings)
         app.router.add_get('/login', self.get_login)
         app.router.add_get('/invitation/{nonce}/accept', self.accept_invitation)
