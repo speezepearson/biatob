@@ -86,6 +86,7 @@ class SqlConn:
       created_at_unixtime=now_unixtime,
       closes_at_unixtime=now_unixtime + request.open_seconds,
       resolves_at_unixtime=request.resolves_at_unixtime,
+      view_privacy=mvp_pb2.PredictionViewPrivacy.Name(request.view_privacy),
       special_rules=request.special_rules,
       creator=creator,
     ))
@@ -209,12 +210,16 @@ class SqlConn:
         ).fetchall()],
     }
 
-  def list_predictions_created(self, creator: Username) -> Iterable[PredictionId]:
+  def list_predictions_created(self, creator: Username, privacies: Iterable[mvp_pb2.PredictionViewPrivacy.V]) -> Iterable[PredictionId]:
+    privacy_names = {mvp_pb2.PredictionViewPrivacy.Name(p) for p in privacies}
     return {
       PredictionId(row['prediction_id'])
       for row in self._conn.execute(
-        sqlalchemy.select([schema.predictions.c.prediction_id])
-        .where(schema.predictions.c.creator == creator)
+        sqlalchemy.select([schema.predictions.c.prediction_id, schema.predictions.c.view_privacy])
+        .where(sqlalchemy.and_(
+          schema.predictions.c.creator == creator,
+          schema.predictions.c.view_privacy.in_(privacy_names),
+        ))
       ).fetchall()
     }
 
@@ -829,15 +834,12 @@ class SqlServicer(Servicer):
     @log_actor
     @log_action
     def ListPredictions(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.ListPredictionsRequest) -> mvp_pb2.ListPredictionsResponse:
-      if actor is None:
-        logger.info('logged-out user trying to list predictions')
-        return mvp_pb2.ListPredictionsResponse(ok=mvp_pb2.PredictionsById(predictions={}))
-      creator = Username(request.creator) if request.creator else actor
-      if not self._conn.trusts(creator, actor):
-        logger.info('trying to get list untrusting creator\'s predictions', creator=creator)
-        return mvp_pb2.ListPredictionsResponse(error=mvp_pb2.ListPredictionsResponse.Error(catchall="creator doesn't trust you"))
+      creator = Username(request.creator)
 
-      prediction_ids = self._conn.list_predictions_created(creator)
+      prediction_ids = self._conn.list_predictions_created(
+        creator=creator,
+        privacies=mvp_pb2.PredictionViewPrivacy.values() if actor == request.creator else {mvp_pb2.PREDICTION_VIEW_PRIVACY_ANYBODY},
+      )
 
       predictions_by_id: MutableMapping[str, mvp_pb2.UserPredictionView] = {}
       for prediction_id in prediction_ids:
