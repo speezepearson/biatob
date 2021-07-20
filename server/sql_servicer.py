@@ -136,22 +136,12 @@ class SqlConn:
       .order_by(schema.trades.c.transacted_at_unixtime)
     ).fetchall()
 
-    remaining_stake_cents_vs_believers = int(row['maximum_stake_cents'] - self._conn.execute(
-      sqlalchemy.select([sqlalchemy.sql.func.coalesce(sqlalchemy.sql.func.sum(schema.trades.c.creator_stake_cents), 0)])
-      .where(sqlalchemy.and_(
-        schema.trades.c.prediction_id == prediction_id,
-        schema.trades.c.state == mvp_pb2.TradeState.Name(mvp_pb2.TRADE_STATE_ACTIVE),
-        sqlalchemy.not_(schema.trades.c.bettor_is_a_skeptic)
-      ))
-    ).scalar())
-    remaining_stake_cents_vs_skeptics = int(row['maximum_stake_cents'] - self._conn.execute(
-      sqlalchemy.select([sqlalchemy.sql.func.coalesce(sqlalchemy.sql.func.sum(schema.trades.c.creator_stake_cents), 0)])
-      .where(sqlalchemy.and_(
-        schema.trades.c.prediction_id == prediction_id,
-        schema.trades.c.state == mvp_pb2.TradeState.Name(mvp_pb2.TRADE_STATE_ACTIVE),
-        schema.trades.c.bettor_is_a_skeptic
-      ))
-    ).scalar())
+    remaining_stake_cents_vs_believers = int(
+      row['maximum_stake_cents'] - self.get_creator_exposure_cents(prediction_id, against_skeptics=False)
+    )
+    remaining_stake_cents_vs_skeptics = int(
+      row['maximum_stake_cents'] - self.get_creator_exposure_cents(prediction_id, against_skeptics=True)
+    )
 
     return mvp_pb2.UserPredictionView(
       prediction=row['prediction'],
