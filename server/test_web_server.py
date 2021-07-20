@@ -27,7 +27,6 @@ def app(loop, web_server):
   '/welcome',
   '/new',
   '/my_stakes',
-  '/username/alice',
   '/settings',
   '/fast',
 ])

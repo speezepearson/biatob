@@ -270,7 +270,7 @@ pathToPrediction predictionId =
 
 pathToUserPage : Username -> String
 pathToUserPage user =
-  "/username/" ++ user
+  "/u/" ++ user
 
 greenText : String -> Html msg
 greenText s = H.span [HA.style "color" "green"] [H.text s]
