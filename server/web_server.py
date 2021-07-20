@@ -195,8 +195,8 @@ class WebServer:
         else:
             confidence_text = f'{round(prediction.certainty.low*100)}-{round(prediction.certainty.high*100)}%'
 
-        if prediction.resolutions and prediction.resolutions[-1].resolution != mvp_pb2.RESOLUTION_NONE_YET:
-            res = prediction.resolutions[-1].resolution
+        if prediction.resolution and prediction.resolution.resolution != mvp_pb2.RESOLUTION_NONE_YET:
+            res = prediction.resolution.resolution
             res_text = "correct" if res == mvp_pb2.RESOLUTION_YES else "incorrect" if res == mvp_pb2.RESOLUTION_NO  else "n/a" if res == mvp_pb2.RESOLUTION_INVALID else "???"
             remaining_text = f" (resolved: {res_text})"
         elif prediction.closes_unixtime < self._clock().timestamp():

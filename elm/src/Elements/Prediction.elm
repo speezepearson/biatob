@@ -809,12 +809,20 @@ viewSummaryTable now timeZone prediction =
     ]
   ]
 
+unfoldResolutionEvent : Maybe Pb.ResolutionEvent -> List Pb.ResolutionEvent
+unfoldResolutionEvent event =
+  case event of
+    Nothing -> []
+    Just e ->
+      let (Pb.ResolutionEventPriorRevision prior) = e.priorRevision in
+      e :: unfoldResolutionEvent prior
 viewResolutionRow : Time.Posix -> Time.Zone -> Pb.UserPredictionView -> Html msg
 viewResolutionRow now timeZone prediction =
   let
     auditLog : Html msg
     auditLog =
-      if List.isEmpty prediction.resolutions then H.text "" else
+      let revisions = unfoldResolutionEvent prediction.resolution in
+      if List.isEmpty revisions then H.text "" else
       H.details [HA.style "display" "inline-block", HA.style "opacity" "50%"]
         [ H.summary [] [H.text "History"]
         , makeTable [HA.class "resolution-history-table"]
@@ -834,7 +842,7 @@ viewResolutionRow now timeZone prediction =
             , \event -> [ H.text event.notes ]
             )
           ]
-          prediction.resolutions
+          revisions
         ]
   in
   H.tr []

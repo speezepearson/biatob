@@ -87,6 +87,7 @@ message ResolutionEvent {
   double unixtime = 4;
   Resolution resolution = 2;
   string notes = 3;
+  ResolutionEvent prior_revision = 5;
 }
 
 enum TradeState {
@@ -205,7 +206,7 @@ message UserPredictionView {
   double closes_unixtime = 14;
   string special_rules = 8;
   string creator = 9;
-  repeated ResolutionEvent resolutions = 10;
+  ResolutionEvent resolution = 17;
   repeated Trade your_trades = 11;
   double resolves_at_unixtime = 15;
   bool allow_email_invitations = 16;

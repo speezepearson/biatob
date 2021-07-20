@@ -165,9 +165,9 @@ mustAuthSuccessUserInfo {userInfo} = must "all AuthSuccesses must have user_info
 
 currentResolution : Pb.UserPredictionView -> Pb.Resolution
 currentResolution prediction =
-  List.head (List.reverse prediction.resolutions)
-  |> Maybe.map .resolution
-  |> Maybe.withDefault Pb.ResolutionNoneYet
+  case prediction.resolution of
+    Nothing -> Pb.ResolutionNoneYet
+    Just event -> event.resolution
 
 resolutionIsTerminal : Pb.Resolution -> Bool
 resolutionIsTerminal res =

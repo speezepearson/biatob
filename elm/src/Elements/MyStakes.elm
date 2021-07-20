@@ -104,13 +104,12 @@ view model =
                       , creator = Utils.renderUser prediction.creator
                       , predictedOn = H.text <| Utils.dateStr model.globals.timeZone (Utils.unixtimeToTime prediction.createdUnixtime)
                       , prediction = H.a [HA.href <| Utils.pathToPrediction id] [H.text <| "By " ++ Utils.dateStr model.globals.timeZone (Utils.unixtimeToTime prediction.resolvesAtUnixtime) ++ ", " ++ prediction.prediction]
-                      , resolution = case List.head (List.reverse prediction.resolutions) |> Maybe.map .resolution of
-                            Nothing -> H.text ""
-                            Just Pb.ResolutionNoneYet -> H.text ""
-                            Just Pb.ResolutionYes -> H.text "Yes"
-                            Just Pb.ResolutionNo -> H.text "No"
-                            Just Pb.ResolutionInvalid -> H.text "Invalid!"
-                            Just (Pb.ResolutionUnrecognized_ _) -> Debug.todo "unrecognized resolution"
+                      , resolution = case prediction.resolution |> Maybe.map .resolution |> Maybe.withDefault Pb.ResolutionNoneYet of
+                            Pb.ResolutionNoneYet -> H.text ""
+                            Pb.ResolutionYes -> H.text "Yes"
+                            Pb.ResolutionNo -> H.text "No"
+                            Pb.ResolutionInvalid -> H.text "Invalid!"
+                            (Pb.ResolutionUnrecognized_ _) -> Debug.todo "unrecognized resolution"
                       })
                   |> H.tbody []
                 ]
