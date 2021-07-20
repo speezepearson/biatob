@@ -426,7 +426,7 @@ viewForm model =
         , H.text "% chance of happening."
         , H.div [HA.class "invalid-feedback"] [viewError (parseLowProbability model)]
         , case parseLowProbability model of
-            Err e -> H.text ""
+            Err _ -> H.text ""
             Ok lowP ->
               case rationalApprox {x=lowP, tolerance=0.13 * min lowP (1-lowP)} of
                 Just (n, d) -> H.div [] [H.small [HA.class "text-secondary"] [H.text <| "(i.e. about " ++ String.fromInt n ++ " out of " ++ String.fromInt d ++ ")"]]
