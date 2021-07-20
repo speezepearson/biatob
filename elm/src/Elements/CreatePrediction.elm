@@ -36,6 +36,7 @@ type alias Model =
   , highPField : String
   , openForUnitField : String
   , openForSecondsField : String
+  , viewPrivacyField : String
   , specialRulesField : String
   , disableEmailAddressWarning : Bool
   , createRequestStatus : RequestStatus
@@ -49,6 +50,7 @@ type Msg
   | SetHighPField String
   | SetOpenForUnitField String
   | SetOpenForSecondsField String
+  | SetViewPrivacyField String
   | SetSpecialRulesField String
   | SetAuthWidget AuthWidget.State
   | SetEmailWidget EmailSettingsWidget.State
@@ -87,6 +89,7 @@ extractSavedFormState model =
   , highPField = model.highPField
   , openForUnitField = model.openForUnitField
   , openForSecondsField = model.openForSecondsField
+  , viewPrivacyField = model.viewPrivacyField
   , specialRulesField = model.specialRulesField
   }
 
@@ -100,6 +103,7 @@ loadFormState state model =
   , highPField = state.highPField
   , openForUnitField = state.openForUnitField
   , openForSecondsField = state.openForSecondsField
+  , viewPrivacyField = state.viewPrivacyField
   , specialRulesField = state.specialRulesField
   }
 
@@ -111,6 +115,7 @@ buildCreateRequest model =
   parseLowProbability model |> Result.toMaybe |> Maybe.andThen (\lowP ->
   parseHighProbability model |> Result.toMaybe |> Maybe.andThen (\highP -> if highP < lowP then Nothing else
   parseOpenForSeconds model |> Result.toMaybe |> Maybe.andThen (\openForSeconds ->
+  parseViewPrivacy model |> Result.toMaybe |> Maybe.andThen (\viewPrivacy ->
     Just
       { prediction = prediction
       , certainty = Just { low=lowP, high=highP }
@@ -118,8 +123,9 @@ buildCreateRequest model =
       , openSeconds = openForSeconds
       , specialRules = model.specialRulesField
       , resolvesAtUnixtime = Utils.timeToUnixtime resolvesAt
+      , viewPrivacy = viewPrivacy
       }
-  ))))))
+  )))))))
 
 parsePrediction : Model -> Result String String
 parsePrediction model =
@@ -201,6 +207,17 @@ parseOpenForSeconds model =
               else
                 Ok nSec
 
+anybody = "anybody"
+anybodyWithTheLink = "anybody with the link"
+parseViewPrivacy : Model -> Result String Pb.PredictionViewPrivacy
+parseViewPrivacy model =
+  if model.viewPrivacyField == anybody then
+    Ok Pb.PredictionViewPrivacyAnybody
+  else if model.viewPrivacyField == anybodyWithTheLink then
+    Ok Pb.PredictionViewPrivacyAnybodyWithTheLink
+  else
+    Err <| "unrecognized view-privacy: " ++ model.viewPrivacyField
+
 init : JD.Value -> ( Model , Cmd Msg )
 init flags =
   ( { globals = JD.decodeValue Globals.globalsDecoder flags |> Utils.mustResult "flags"
@@ -213,6 +230,7 @@ init flags =
     , highPField = "100"
     , openForUnitField = "weeks"
     , openForSecondsField = "2"
+    , viewPrivacyField = anybody
     , specialRulesField = ""
     , disableEmailAddressWarning = False
     , createRequestStatus = Unstarted
@@ -232,6 +250,7 @@ update msg model =
     SetHighPField s -> ( { model | highPField = s } , Cmd.none )
     SetOpenForUnitField s -> ( { model | openForUnitField = s } , Cmd.none )
     SetOpenForSecondsField s -> ( { model | openForSecondsField = s } , Cmd.none )
+    SetViewPrivacyField s -> ( { model | viewPrivacyField = s } , Cmd.none )
     SetSpecialRulesField s -> ( { model | specialRulesField = s } , Cmd.none )
     SetAuthWidget widgetState ->
       ( { model | navbarAuth = widgetState } , Cmd.none )
@@ -332,6 +351,20 @@ update msg model =
     Ignore ->
       (model, Cmd.none)
 
+openForUnitDropdown : Utils.DropdownBuilder String Msg
+openForUnitDropdown =
+  Utils.dropdown SetOpenForUnitField Ignore
+  [ ( "days" , "days" )
+  , ( "weeks" , "weeks" )
+  ]
+
+viewPrivacyDropdown : Utils.DropdownBuilder String Msg
+viewPrivacyDropdown =
+  Utils.dropdown SetViewPrivacyField Ignore
+  [ ( anybody , anybody )
+  , ( anybodyWithTheLink , anybodyWithTheLink )
+  ]
+
 rationalApprox : {x: Float, tolerance: Float} -> Maybe (Int, Int)
 rationalApprox {x, tolerance} =
   let
@@ -426,7 +459,7 @@ viewForm model =
         , H.text "% chance of happening."
         , H.div [HA.class "invalid-feedback"] [viewError (parseLowProbability model)]
         , case parseLowProbability model of
-            Err e -> H.text ""
+            Err _ -> H.text ""
             Ok lowP ->
               case rationalApprox {x=lowP, tolerance=0.13 * min lowP (1-lowP)} of
                 Just (n, d) -> H.div [] [H.small [HA.class "text-secondary"] [H.text <| "(i.e. about " ++ String.fromInt n ++ " out of " ++ String.fromInt d ++ ")"]]
@@ -568,14 +601,11 @@ viewForm model =
           , HA.class (if isValid then "" else "is-invalid")
           , HA.class "form-control form-control-sm"
           ] []
-      , H.select
+      , openForUnitDropdown model.openForUnitField
           [ HA.disabled disabled
           , HE.onInput SetOpenForUnitField
           , HA.value model.openForUnitField
           , HA.class "form-select form-select-sm d-inline-block w-auto"
-          ]
-          [ H.option [] [H.text "weeks"]
-          , H.option [] [H.text "days"]
           ]
       , H.text "."
       , H.div [HA.class "invalid-feedback"] [viewError (parseOpenForSeconds model)]
@@ -591,13 +621,11 @@ viewForm model =
   , H.hr [] []
   , H.div []
       [ H.text "This prediction should be viewable by "
-      , H.select
-          [ HA.disabled True
-          , HA.value "anyone with the link"
+      , viewPrivacyDropdown model.viewPrivacyField
+          [ HA.value "anyone with the link"
           , HA.class "form-select form-select-sm d-inline-block w-auto"
           ]
-          [ H.option [] [H.text "anyone with the link"]
-          ]
+      , H.div [HA.class "invalid-feedback"] [viewError (parseViewPrivacy model)]
       , H.text ", and I'm willing to take bets from "
       , H.select
           [ HA.disabled True
