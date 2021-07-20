@@ -54,6 +54,7 @@ predictions = Table(
   Column('special_rules', TEXT(), nullable=False),
   Column('creator', username_t, ForeignKey('users.username'), nullable=False),
   Column('resolution_reminder_sent', BOOLEAN(), nullable=False, server_default=sqlalchemy.text('FALSE')),
+  Column('view_privacy', String(96), CheckConstraint("view_privacy in ('PREDICTION_VIEW_PRIVACY_ANYBODY', 'PREDICTION_VIEW_PRIVACY_ANYBODY_WITH_THE_LINK')"), nullable=False, server_default='PREDICTION_VIEW_PRIVACY_ANYBODY'),
 )
 
 trades = Table(

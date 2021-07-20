@@ -163,9 +163,13 @@ message CertaintyRange {
   float low = 1;
   float high = 2;
 }
+enum PredictionViewPrivacy {
+  PREDICTION_VIEW_PRIVACY_ANYBODY = 0;
+  PREDICTION_VIEW_PRIVACY_ANYBODY_WITH_THE_LINK = 1;
+}
 message CreatePredictionRequest {
   string prediction = 2;
-  // PredictionPrivacy privacy = 3;
+  PredictionViewPrivacy view_privacy = 3;
   CertaintyRange certainty = 4;
   uint32 maximum_stake_cents = 5;
   uint32 open_seconds = 6;
@@ -418,5 +422,6 @@ message SavedCreatedPredictionFormState {
   string high_p_field = 5;
   string open_for_unit_field = 6;
   string open_for_seconds_field = 7;
+  string view_privacy_field = 9;
   string special_rules_field = 8;
 }
