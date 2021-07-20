@@ -622,8 +622,7 @@ viewForm model =
   , H.div []
       [ H.text "This prediction should be viewable by "
       , viewPrivacyDropdown model.viewPrivacyField
-          [ HA.value "anyone with the link"
-          , HA.class "form-select form-select-sm d-inline-block w-auto"
+          [ HA.class "form-select form-select-sm d-inline-block w-auto"
           ]
       , H.div [HA.class "invalid-feedback"] [viewError (parseViewPrivacy model)]
       , H.text ", and I'm willing to take bets from "
