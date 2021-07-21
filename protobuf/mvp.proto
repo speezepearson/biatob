@@ -105,6 +105,7 @@ message Trade {
   double updated_unixtime = 8;
   string notes = 9;
   TradeState state = 10;
+  Trade prior_revision = 11;
 }
 
 enum Void {
@@ -207,7 +208,7 @@ message UserPredictionView {
   string special_rules = 8;
   string creator = 9;
   ResolutionEvent resolution = 17;
-  repeated Trade your_trades = 11;
+  map<string, Trade> trades_by_bettor = 18;
   double resolves_at_unixtime = 15;
   bool allow_email_invitations = 16;
 }
@@ -244,6 +245,7 @@ message StakeRequest {
   string prediction_id = 2;
   bool bettor_is_a_skeptic = 3;
   uint32 bettor_stake_cents = 4;
+  string notes = 5;
 }
 message StakeResponse {
   oneof stake_result {

@@ -325,7 +325,9 @@ getBetParameters side prediction =
       Utils.Skeptic -> certainty.low / (1 - certainty.low)
       Utils.Believer -> (1 - certainty.high) / certainty.high
     queuedCreatorStake =
-      prediction.yourTrades
+      prediction.tradesByBettor
+      |> Utils.mustMapValues
+      |> Dict.values
       |> List.filter (.state >> (==) Pb.TradeStateQueued)
       |> List.filter (.bettorIsASkeptic >> Utils.betSideFromIsSkeptical >> (==) side)
       |> List.map .creatorStakeCents
@@ -381,24 +383,25 @@ getPrereqsForStaking model =
 
 viewYourStake : Maybe Username -> Time.Zone -> Pb.UserPredictionView -> Html Msg
 viewYourStake self timeZone prediction =
-  if List.isEmpty prediction.yourTrades then
-    H.text ""
-  else
-    H.div []
-    [ H.h4 [HA.class "text-center"] [H.text "Your stake"]
-    , H.div [HA.class "mx-lg-5"]
-      [ if self == Just prediction.creator then
-          viewTradesAsCreator timeZone prediction
-        else
-          viewTradesAsBettor timeZone prediction prediction.yourTrades
-      ]
-    , H.hr [HA.class "my-4"] []
-    ]
+  case self of
+    Nothing -> H.text ""
+    Just u -> case Dict.get u <| Utils.mustMapValues prediction.tradesByBettor of
+      Nothing -> H.text ""
+      Just trade ->
+        H.div []
+        [ H.h4 [HA.class "text-center"] [H.text "Your stake"]
+        , H.div [HA.class "mx-lg-5"]
+          [ if self == Just prediction.creator then
+              viewTradesAsCreator timeZone prediction
+            else
+              viewTradeAsBettor timeZone prediction trade
+          ]
+        , H.hr [HA.class "my-4"] []
+        ]
 viewBody : Model -> List (Html Msg)
 viewBody model =
   let
     prediction = mustPrediction model
-    isOwnPrediction = Globals.isSelf model.globals prediction.creator
     maybeOrYouCouldSwapUserPages =
       case Globals.getOwnUsername model.globals of
         Nothing -> H.text ""
@@ -873,13 +876,20 @@ viewResolutionRow now timeZone prediction =
     ]
   ]
 
+unfoldTrade : Pb.Trade -> List Pb.Trade
+unfoldTrade event =
+  event ::
+  case event.priorRevision of
+    Pb.TradePriorRevision Nothing -> []
+    Pb.TradePriorRevision (Just prior) -> unfoldTrade prior
+
 viewTradesAsCreator : Time.Zone -> Pb.UserPredictionView -> Html msg
 viewTradesAsCreator timeZone prediction =
   let
-    allTradesDetails : Username -> List Pb.Trade -> Html msg
-    allTradesDetails bettor trades =
+    tradeDetails : Username -> Pb.Trade -> Html msg
+    tradeDetails bettor trade =
       H.details [HA.style "opacity" "50%"]
-      [ H.summary [] [H.text "All trades"]
+      [ H.summary [] [H.text "History"]
       , makeTable [HA.class "all-trades-details-table"]
         [ ( [H.text "When"]
           , \t -> [H.text (Utils.isoStr timeZone (Utils.unixtimeToTime t.transactedUnixtime))]
@@ -906,56 +916,57 @@ viewTradesAsCreator timeZone prediction =
               ]
           )
         ]
-        trades
+        (unfoldTrade trade)
       ]
-    tradesByBettor = groupTradesByBettor prediction.yourTrades
     bettorColumn =
       ( [H.text "Bettor"]
-      , \(bettor, trades) ->
+      , \(bettor, trade) ->
         [ Utils.renderUser bettor
-        , allTradesDetails bettor trades
+        , tradeDetails bettor trade
         ]
       )
     winningsColumns =
       case Utils.currentResolution prediction of
         Pb.ResolutionYes ->
           [ ( [H.text "Winnings"]
-            , \(_, trades) -> [H.text <| formatYouWin <| getTotalCreatorWinnings True trades]
+            , \(_, trade) -> [H.text <| formatYouWin <| getTotalCreatorWinnings True trade]
             )
           ]
         Pb.ResolutionNo ->
           [ ( [H.text "Winnings"]
-            , \(_, trades) -> [H.text <| formatYouWin <| getTotalCreatorWinnings False trades]
+            , \(_, trade) -> [H.text <| formatYouWin <| getTotalCreatorWinnings False trade]
             )
           ]
         Pb.ResolutionInvalid ->
           [ ( [H.text "if it happens"]
-            , \(_, trades) -> [H.text <| formatYouWin <| getTotalCreatorWinnings True trades]
+            , \(_, trade) -> [H.text <| formatYouWin <| getTotalCreatorWinnings True trade]
             )
           , ( [H.text "if not"]
-            , \(_, trades) -> [H.text <| formatYouWin <| getTotalCreatorWinnings False trades]
+            , \(_, trade) -> [H.text <| formatYouWin <| getTotalCreatorWinnings False trade]
             )
           ]
         Pb.ResolutionNoneYet ->
           [ ( [H.text "if it happens"]
-            , \(_, trades) -> [H.text <| formatYouWin <| getTotalCreatorWinnings True trades]
+            , \(_, trade) -> [H.text <| formatYouWin <| getTotalCreatorWinnings True trade]
             )
           , ( [H.text "if not"]
-            , \(_, trades) -> [H.text <| formatYouWin <| getTotalCreatorWinnings False trades]
+            , \(_, trade) -> [H.text <| formatYouWin <| getTotalCreatorWinnings False trade]
             )
           ]
         Pb.ResolutionUnrecognized_ _ ->
           []
   in
-    makeTable [HA.class "winnings-by-bettor-table"] (bettorColumn :: winningsColumns) (Dict.toList tradesByBettor)
+    makeTable [HA.class "winnings-by-bettor-table"] (bettorColumn :: winningsColumns) (Dict.toList <| Utils.mustMapValues prediction.tradesByBettor)
 
-viewTradesAsBettor : Time.Zone -> Pb.UserPredictionView -> List Pb.Trade -> Html msg
-viewTradesAsBettor timeZone prediction trades =
+viewTradeAsBettor : Time.Zone -> Pb.UserPredictionView -> Pb.Trade -> Html msg
+viewTradeAsBettor timeZone prediction trade =
   let
-    allTradesDetails : Html msg
-    allTradesDetails =
+    winningsIfYes = getTotalCreatorWinnings True trade
+    winningsIfNo = getTotalCreatorWinnings False trade
+    tradeDetails : Html msg
+    tradeDetails =
       H.details [HA.style "opacity" "50%"]
-      [ H.summary [] [H.text "All trades"]
+      [ H.summary [] [H.text "History"]
       , makeTable [HA.class "all-trades-details-table"]
         [ ( [H.text "When"]
           , \t -> [H.text (Utils.isoStr timeZone (Utils.unixtimeToTime t.transactedUnixtime))]
@@ -982,45 +993,51 @@ viewTradesAsBettor timeZone prediction trades =
               ]
           )
         ]
-        trades
+        (unfoldTrade trade)
       ]
   in
     case Utils.currentResolution prediction of
       Pb.ResolutionYes ->
         H.span []
         [ H.text "The predicted event happened: "
-        , Utils.b <| formatYouWin -(getTotalCreatorWinnings True trades) ++ "!"
-        , allTradesDetails
+        , Utils.b <| formatYouWin winningsIfYes ++ "!"
+        , tradeDetails
         ]
       Pb.ResolutionNo ->
         H.span []
         [ H.text "The predicted event didn't happen: "
-        , Utils.b <| formatYouWin -(getTotalCreatorWinnings False trades) ++ "!"
-        , allTradesDetails
+        , Utils.b <| formatYouWin winningsIfNo ++ "!"
+        , tradeDetails
         ]
       Pb.ResolutionInvalid ->
         H.span []
-        [ H.text <| "If it happens, " ++ formatYouWin -(getTotalCreatorWinnings True trades)
-        , H.text <| "; if not, " ++ formatYouWin -(getTotalCreatorWinnings False trades)
+        [ H.text <| "If it happens, " ++ formatYouWin winningsIfYes
+        , H.text <| "; if not, " ++ formatYouWin winningsIfNo
         , H.text "."
-        , allTradesDetails
+        , tradeDetails
         ]
       Pb.ResolutionNoneYet ->
         H.span []
-        [ H.text <| "If it happens, " ++ formatYouWin -(getTotalCreatorWinnings True trades)
-        , H.text <| "; if not, " ++ formatYouWin -(getTotalCreatorWinnings False trades)
+        [ H.text <| "If it happens, " ++ formatYouWin winningsIfYes
+        , H.text <| "; if not, " ++ formatYouWin winningsIfNo
         , H.text "."
-        , allTradesDetails
+        , tradeDetails
         ]
       Pb.ResolutionUnrecognized_ _ ->
         H.text "??????"
 
-getTotalCreatorWinnings : Bool -> List Pb.Trade -> Cents
-getTotalCreatorWinnings resolvedYes trades =
-  trades
-  |> List.filter (\t -> t.state == Pb.TradeStateActive)
-  |> List.map (\t -> if (resolvedYes == t.bettorIsASkeptic) then t.bettorStakeCents else -t.creatorStakeCents)
-  |> List.sum
+getTotalCreatorWinnings : Bool -> Pb.Trade -> Cents
+getTotalCreatorWinnings resolvedYes trade =
+  case trade.state of
+    Pb.TradeStateActive ->
+      if trade.bettorIsASkeptic == resolvedYes then
+        trade.bettorStakeCents
+      else
+        -trade.creatorStakeCents
+    Pb.TradeStateQueued -> 0
+    Pb.TradeStateDequeueFailed -> 0
+    Pb.TradeStateDisavowed -> 0
+    Pb.TradeStateUnrecognized_ n -> Debug.todo <| "unrecognized TradeState value: " ++ String.fromInt n
 
 groupTradesByBettor : List Pb.Trade -> Dict Username (List Pb.Trade)
 groupTradesByBettor trades =
@@ -1240,7 +1257,7 @@ update msg model =
       )
     Stake cents ->
       ( { model | stakeStatus = AwaitingResponse }
-      , let req = {predictionId=model.predictionId, bettorIsASkeptic=Utils.betSideToIsSkeptical model.bettorSide, bettorStakeCents=cents} in API.postStake (StakeFinished req) req
+      , let req = {predictionId=model.predictionId, bettorIsASkeptic=Utils.betSideToIsSkeptical model.bettorSide, bettorStakeCents=cents, notes=""} in API.postStake (StakeFinished req) req
       )
     StakeFinished req res ->
       ( case API.simplifyStakeResponse res of

@@ -17,6 +17,7 @@ import Widgets.EmailSettingsWidget as EmailSettingsWidget
 import Widgets.Navbar as Navbar
 import Globals
 import API
+import Dict
 
 port navigate : Maybe String -> Cmd msg
 port authWidgetExternallyChanged : (AuthWidget.DomModification -> msg) -> Sub msg
@@ -731,7 +732,7 @@ previewPrediction {request, creatorName, createdAt} =
   , specialRules = request.specialRules
   , creator = creatorName
   , resolution = Nothing
-  , yourTrades = []
+  , tradesByBettor = Dict.empty
   , resolvesAtUnixtime = request.resolvesAtUnixtime
   , allowEmailInvitations = False
   }

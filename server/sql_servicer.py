@@ -127,14 +127,9 @@ class SqlConn:
 
     resolution = self.get_resolution(prediction_id)
 
-    trade_rows = self._conn.execute(
-      sqlalchemy.select(schema.trades.c)
-      .where(sqlalchemy.and_(
-        schema.trades.c.prediction_id == prediction_id,
-        True if creator_is_viewer else (schema.trades.c.bettor == viewer)
-      ))
-      .order_by(schema.trades.c.transacted_at_unixtime)
-    ).fetchall()
+    trades_by_bettor: Mapping[str, mvp_pb2.Trade] = self.get_trades(prediction_id)  # type: ignore
+    if not creator_is_viewer:
+      trades_by_bettor = {k: v for k, v in trades_by_bettor.items() if k == viewer}
 
     remaining_stake_cents_vs_believers = int(
       row['maximum_stake_cents'] - self.get_creator_exposure_cents(prediction_id, against_skeptics=False)
@@ -156,19 +151,7 @@ class SqlConn:
       creator=row['creator'],
       allow_email_invitations=allow_email_invitations,
       resolution=resolution,
-      your_trades=[
-        mvp_pb2.Trade(
-          bettor=t['bettor'],
-          bettor_is_a_skeptic=t['bettor_is_a_skeptic'],
-          creator_stake_cents=t['creator_stake_cents'],
-          bettor_stake_cents=t['bettor_stake_cents'],
-          transacted_unixtime=t['transacted_at_unixtime'],
-          updated_unixtime=t['updated_at_unixtime'],
-          state=mvp_pb2.TradeState.Value(t['state']),
-          notes=t['notes'],
-        )
-        for t in trade_rows
-      ],
+      trades_by_bettor=trades_by_bettor,
     )
 
   def list_stakes(self, user: Username) -> Iterable[PredictionId]:
@@ -227,7 +210,7 @@ class SqlConn:
     }
 
   @staticmethod
-  def _trade_row_to_pb(row) -> mvp_pb2.Trade:
+  def _trade_row_to_pb(row, prior_revision: Optional[mvp_pb2.Trade]) -> mvp_pb2.Trade:
     return mvp_pb2.Trade(
       bettor=str(row['bettor']),
       bettor_is_a_skeptic=bool(row['bettor_is_a_skeptic']),
@@ -237,17 +220,22 @@ class SqlConn:
       updated_unixtime=float(row['updated_at_unixtime']),
       state=mvp_pb2.TradeState.Value(row['state']),
       notes=str(row['notes']),
+      prior_revision=prior_revision,
     )
 
   def get_trades(
     self,
     prediction_id: PredictionId,
-  ) -> Iterable[mvp_pb2.Trade]:
+  ) -> Mapping[Username, mvp_pb2.Trade]:
     rows = self._conn.execute(
       sqlalchemy.select(schema.trades.c)
       .where(schema.trades.c.prediction_id == prediction_id)
     ).fetchall()
-    return [SqlConn._trade_row_to_pb(row) for row in rows]
+    last_trades: MutableMapping[Username, mvp_pb2.Trade] = {}
+    for row in rows:
+      bettor = Username(str(row['bettor']))
+      last_trades[bettor] = SqlConn._trade_row_to_pb(row, prior_revision=last_trades.get(bettor))
+    return last_trades
 
   def get_resolution(
     self,

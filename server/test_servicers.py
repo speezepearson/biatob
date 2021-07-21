@@ -40,7 +40,7 @@ class TestCUJs:
     assert GetSettingsOk(any_servicer, BOB).relationships[ALICE].trusted_by_you
 
     prediction = StakeOk(any_servicer, BOB, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_is_a_skeptic=True, bettor_stake_cents=6_00))
-    assert list(prediction.your_trades) == [mvp_pb2.Trade(
+    assert prediction.trades_by_bettor == {BOB: mvp_pb2.Trade(
       bettor=BOB,
       bettor_is_a_skeptic=True,
       bettor_stake_cents=6_00,
@@ -48,7 +48,7 @@ class TestCUJs:
       transacted_unixtime=clock.now().timestamp(),
       updated_unixtime=clock.now().timestamp(),
       state=mvp_pb2.TRADE_STATE_ACTIVE,
-    )]
+    )}
 
     prediction = ResolveOk(any_servicer, ALICE, prediction_id, mvp_pb2.RESOLUTION_YES)
     assert prediction.resolution == mvp_pb2.ResolutionEvent(unixtime=clock.now().timestamp(), resolution=mvp_pb2.RESOLUTION_YES)
@@ -192,14 +192,14 @@ class TestGetPrediction:
       certainty=req.certainty,
       maximum_stake_cents=req.maximum_stake_cents,
       remaining_stake_cents_vs_believers=req.maximum_stake_cents,
-      remaining_stake_cents_vs_skeptics=req.maximum_stake_cents - resp.your_trades[0].creator_stake_cents,
+      remaining_stake_cents_vs_skeptics=req.maximum_stake_cents - resp.trades_by_bettor[BOB].creator_stake_cents,
       created_unixtime=create_time,
       closes_unixtime=create_time + req.open_seconds,
       resolves_at_unixtime=req.resolves_at_unixtime,
       special_rules=req.special_rules,
       creator=ALICE,
       resolution=mvp_pb2.ResolutionEvent(unixtime=resolve_time, resolution=mvp_pb2.RESOLUTION_YES),
-      your_trades=[mvp_pb2.Trade(bettor=BOB, bettor_is_a_skeptic=True, bettor_stake_cents=1_00, creator_stake_cents=1_00, transacted_unixtime=stake_time, updated_unixtime=stake_time, state=mvp_pb2.TRADE_STATE_ACTIVE)],
+      trades_by_bettor={BOB: mvp_pb2.Trade(bettor=BOB, bettor_is_a_skeptic=True, bettor_stake_cents=1_00, creator_stake_cents=1_00, transacted_unixtime=stake_time, updated_unixtime=stake_time, state=mvp_pb2.TRADE_STATE_ACTIVE)},
     )
 
 
@@ -295,7 +295,7 @@ class TestStake:
         register_friend_pair(any_servicer, ALICE, BOB)
         prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
         StakeOk(any_servicer, BOB, some_stake_request(prediction_id))
-        assert GetPredictionOk(any_servicer, ALICE, prediction_id).your_trades
+        assert BOB in GetPredictionOk(any_servicer, ALICE, prediction_id).trades_by_bettor
 
       async def test_returns_new_prediction(self, any_servicer: Servicer):
         register_friend_pair(any_servicer, ALICE, BOB)
@@ -313,7 +313,7 @@ class TestStake:
           bettor_is_a_skeptic=True,
           bettor_stake_cents=20,
         ))
-        [trade] = GetPredictionOk(any_servicer, ALICE, prediction_id).your_trades
+        trade = GetPredictionOk(any_servicer, ALICE, prediction_id).trades_by_bettor[BOB]
         assert trade.bettor == BOB
         assert trade.bettor_is_a_skeptic
         assert trade.bettor_stake_cents == 20
@@ -323,22 +323,19 @@ class TestStake:
         prediction_id = CreatePredictionOk(any_servicer, ALICE, {'open_seconds': 86400})
         clock.tick(12353)  # some random length less than open_seconds
         StakeOk(any_servicer, BOB, some_stake_request(prediction_id))
-        [trade] = GetPredictionOk(any_servicer, ALICE, prediction_id).your_trades
+        trade = GetPredictionOk(any_servicer, ALICE, prediction_id).trades_by_bettor[BOB]
         assert trade.state == mvp_pb2.TRADE_STATE_ACTIVE
         assert trade.transacted_unixtime == clock.now().timestamp()
         assert trade.updated_unixtime == clock.now().timestamp()
         assert trade.notes == ''
 
-      async def test_computes_creator_stake_correctly(self, any_servicer: Servicer, clock: MockClock):
+      @pytest.mark.parametrize('skeptic', [True, False])
+      async def test_computes_creator_stake_correctly(self, any_servicer: Servicer, skeptic: bool):
         register_friend_pair(any_servicer, ALICE, BOB)
         prediction_id = CreatePredictionOk(any_servicer, ALICE, {'certainty': mvp_pb2.CertaintyRange(low=0.40, high=0.70)})
-        StakeOk(any_servicer, BOB, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_is_a_skeptic=True, bettor_stake_cents=13))
-        clock.tick()
-        StakeOk(any_servicer, BOB, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_is_a_skeptic=False, bettor_stake_cents=8))
-        pred = GetPredictionOk(any_servicer, ALICE, prediction_id)
-        [t1, t2] = pred.your_trades
-        assert t1.creator_stake_cents == int(13 * 0.40/(1-0.40))
-        assert t2.creator_stake_cents == int( 8 * (1-0.70)/0.70)
+        StakeOk(any_servicer, BOB, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_is_a_skeptic=skeptic, bettor_stake_cents=13))
+        expected_factor = (0.40/(1-0.40)) if skeptic else (1-0.70)/0.70
+        assert GetPredictionOk(any_servicer, ALICE, prediction_id).trades_by_bettor[BOB].creator_stake_cents == int(13 * expected_factor)
 
       @pytest.mark.parametrize('bettor_is_a_skeptic', [True, False])
       async def test_reduces_remaining_stake(self, any_servicer: Servicer, bettor_is_a_skeptic: bool):
@@ -347,7 +344,7 @@ class TestStake:
         StakeOk(any_servicer, BOB, some_stake_request(prediction_id, bettor_is_a_skeptic=bettor_is_a_skeptic))
         pred = GetPredictionOk(any_servicer, ALICE, prediction_id)
         remaining = pred.remaining_stake_cents_vs_skeptics if bettor_is_a_skeptic else pred.remaining_stake_cents_vs_believers
-        assert remaining + sum(t.creator_stake_cents for t in pred.your_trades) == pred.maximum_stake_cents
+        assert remaining + pred.trades_by_bettor[BOB].creator_stake_cents == pred.maximum_stake_cents
 
     class TestExposureLimitEnforcement:
       @pytest.mark.parametrize('bettor_is_a_skeptic,certainty', [
@@ -429,7 +426,7 @@ class TestStake:
       self._make_bob_trust_alice(any_servicer)
       prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
       StakeOk(any_servicer, BOB, some_stake_request(prediction_id))
-      [trade] = GetPredictionOk(any_servicer, ALICE, prediction_id).your_trades
+      trade = GetPredictionOk(any_servicer, ALICE, prediction_id).trades_by_bettor[BOB]
       assert trade.state == mvp_pb2.TRADE_STATE_QUEUED
 
     async def test_queued_trades_dont_affect_remaining_stake(self, any_servicer: Servicer):
@@ -447,12 +444,10 @@ class TestStake:
       request = some_stake_request(prediction_id)
       StakeOk(any_servicer, BOB, request)
       StakeOk(any_servicer, CHARLIE, request)
-      [committed, queued] = GetPredictionOk(any_servicer, ALICE, prediction_id).your_trades
-      assert committed.state == mvp_pb2.TRADE_STATE_ACTIVE
-      assert queued.state == mvp_pb2.TRADE_STATE_QUEUED
-      assert committed.bettor_stake_cents == queued.bettor_stake_cents
-      assert committed.creator_stake_cents == queued.creator_stake_cents
-      assert committed.bettor_is_a_skeptic == queued.bettor_is_a_skeptic
+      trades = GetPredictionOk(any_servicer, ALICE, prediction_id).trades_by_bettor
+      assert trades[BOB].bettor_stake_cents == trades[CHARLIE].bettor_stake_cents
+      assert trades[BOB].creator_stake_cents == trades[CHARLIE].creator_stake_cents
+      assert trades[BOB].bettor_is_a_skeptic == trades[CHARLIE].bettor_is_a_skeptic
 
     async def test_cant_overpromise_even_if_queueing(self, any_servicer: Servicer):
       self._make_bob_trust_alice(any_servicer)
@@ -471,10 +466,10 @@ class TestStake:
       self._make_bob_trust_alice(any_servicer)
       prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
       StakeOk(any_servicer, BOB, some_stake_request(prediction_id))
-      [trade] = GetPredictionOk(any_servicer, ALICE, prediction_id).your_trades
+      trade = GetPredictionOk(any_servicer, ALICE, prediction_id).trades_by_bettor[BOB]
       assert trade.state == mvp_pb2.TRADE_STATE_QUEUED
       SetTrustedOk(any_servicer, ALICE, BOB, True)
-      [trade] = GetPredictionOk(any_servicer, ALICE, prediction_id).your_trades
+      trade = GetPredictionOk(any_servicer, ALICE, prediction_id).trades_by_bettor[BOB]
       assert trade.state == mvp_pb2.TRADE_STATE_ACTIVE
 
     async def test_queued_trade_partially_applied_when_mutual_trust_created_if_would_overfill(self, any_servicer: Servicer):
@@ -498,47 +493,46 @@ class TestStake:
       ))
 
       SetTrustedOk(any_servicer, ALICE, CHARLIE, True)
-      pred = GetPredictionOk(any_servicer, ALICE, prediction_id)
-      [dequeued_trade, _] = pred.your_trades
-      assert dequeued_trade.bettor == CHARLIE
+      dequeued_trade = GetPredictionOk(any_servicer, ALICE, prediction_id).trades_by_bettor[CHARLIE]
       assert dequeued_trade.creator_stake_cents == dequeued_trade.bettor_stake_cents == (100_00 - 60_00)
 
     class TestDequeueFailure:
-      def _arrange_dequeue_failure(self, any_servicer: Servicer) -> mvp_pb2.UserPredictionView:
-        register_friend_pair(any_servicer, ALICE, BOB)
-        RegisterUsernameOk(any_servicer, None, CHARLIE)
-        SetTrustedOk(any_servicer, CHARLIE, ALICE, True)
+      def _arrange_dequeue_failure(self, any_servicer: Servicer, bettor: AuthorizingUsername) -> mvp_pb2.UserPredictionView:
+        friend = CHARLIE if bettor == BOB else BOB
+        register_friend_pair(any_servicer, ALICE, friend)
+        RegisterUsernameOk(any_servicer, None, bettor)
+        SetTrustedOk(any_servicer, bettor, ALICE, True)
         prediction_id = CreatePredictionOk(any_servicer, ALICE, dict(
             certainty=mvp_pb2.CertaintyRange(low=0.50, high=1.00),
             maximum_stake_cents=100_00,
         ))
 
-        StakeOk(any_servicer, CHARLIE, mvp_pb2.StakeRequest(
+        StakeOk(any_servicer, bettor, mvp_pb2.StakeRequest(
           prediction_id=prediction_id,
           bettor_is_a_skeptic=True,
           bettor_stake_cents=20_00,
         ))
-        StakeOk(any_servicer, BOB, mvp_pb2.StakeRequest(
+        StakeOk(any_servicer, friend, mvp_pb2.StakeRequest(
           prediction_id=prediction_id,
           bettor_is_a_skeptic=True,
           bettor_stake_cents=99_99,
         ))
 
-        SetTrustedOk(any_servicer, ALICE, CHARLIE, True)
+        SetTrustedOk(any_servicer, ALICE, bettor, True)
         return GetPredictionOk(any_servicer, ALICE, prediction_id)
 
       def test_sets_state(self, any_servicer: Servicer):
-        [failed_trade, _] = self._arrange_dequeue_failure(any_servicer).your_trades
+        failed_trade = self._arrange_dequeue_failure(any_servicer, bettor=CHARLIE).trades_by_bettor[CHARLIE]
         assert failed_trade.state == mvp_pb2.TRADE_STATE_DEQUEUE_FAILED
 
       def test_notes_reflect_failure(self, any_servicer: Servicer):
-        [failed_trade, _] = self._arrange_dequeue_failure(any_servicer).your_trades
+        failed_trade = self._arrange_dequeue_failure(any_servicer, bettor=CHARLIE).trades_by_bettor[CHARLIE]
         assert failed_trade.notes == '[trade ignored during dequeue due to trivial stakes]'
 
       def test_failed_trade_doesnt_affect_exposure(self, any_servicer: Servicer):
-        pred = self._arrange_dequeue_failure(any_servicer)
-        assert pred.remaining_stake_cents_vs_skeptics + sum(t.creator_stake_cents for t in pred.your_trades) > pred.maximum_stake_cents
-        assert pred.remaining_stake_cents_vs_skeptics + sum(t.creator_stake_cents for t in pred.your_trades if t.state == mvp_pb2.TRADE_STATE_ACTIVE) == pred.maximum_stake_cents
+        pred = self._arrange_dequeue_failure(any_servicer, bettor=CHARLIE)
+        assert pred.remaining_stake_cents_vs_skeptics + sum(t.creator_stake_cents for t in pred.trades_by_bettor.values()) > pred.maximum_stake_cents
+        assert pred.remaining_stake_cents_vs_skeptics + sum(t.creator_stake_cents for t in pred.trades_by_bettor.values() if t.state == mvp_pb2.TRADE_STATE_ACTIVE) == pred.maximum_stake_cents
 
 
 class TestResolve:
@@ -923,7 +917,7 @@ class TestAcceptInvitation:
     SendInvitationOk(any_servicer, BOB, ALICE)
     StakeOk(any_servicer, BOB, some_stake_request(prediction_id))
     AcceptInvitationOk(any_servicer, ALICE, get_call_kwarg(emailer.send_invitation, 'nonce'))
-    [trade] = GetPredictionOk(any_servicer, ALICE, prediction_id).your_trades
+    trade = GetPredictionOk(any_servicer, ALICE, prediction_id).trades_by_bettor[BOB]
     assert trade.state == mvp_pb2.TRADE_STATE_ACTIVE
 
   async def test_successfully_creates_trust_even_if_logged_out(self, any_servicer: Servicer, emailer: Emailer):

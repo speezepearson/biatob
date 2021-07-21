@@ -8,6 +8,7 @@ import Time
 import Biatob.Proto.Mvp as Pb
 import Elements.MyStakes exposing (..)
 import Utils exposing (unixtimeToTime)
+import Dict
 
 mockPrediction : Pb.UserPredictionView
 mockPrediction =
@@ -21,7 +22,7 @@ mockPrediction =
   , specialRules = ""
   , creator = "creator"
   , resolution = Nothing
-  , yourTrades = []
+  , tradesByBettor = Dict.empty
   , resolvesAtUnixtime = 200
   , allowEmailInvitations = False
   }

@@ -35,7 +35,7 @@ mockPrediction =
   , specialRules = ""
   , creator = "creator"
   , resolution = Nothing
-  , yourTrades = []
+  , tradesByBettor = Dict.empty
   , resolvesAtUnixtime = 200
   , allowEmailInvitations = False
   }
@@ -50,6 +50,7 @@ exampleTrade =
   , state = Pb.TradeStateActive
   , updatedUnixtime = 0
   , notes = ""
+  , priorRevision = Pb.TradePriorRevision Nothing
   }
 embeddedLinkTextTest : Test
 embeddedLinkTextTest =
@@ -163,22 +164,19 @@ getBetParametersTest =
 getTotalCreatorWinningsTest : Test
 getTotalCreatorWinningsTest =
   describe "getTotalCreatorWinnings"
-  [ fuzz Fuzz.bool "is 0 when no trades" <|
-    \resolvedYes -> getTotalCreatorWinnings resolvedYes []
-      |> Expect.equal 0
-  , fuzz2 Fuzz.bool (Fuzz.intRange 1 3) "uses bettor-stake when bettor was wrong" <|
+  [ fuzz2 Fuzz.bool (Fuzz.intRange 1 3) "uses bettor-stake when bettor was wrong" <|
     \resolvedYes bettorStake ->
-      getTotalCreatorWinnings resolvedYes [{ exampleTrade | bettorIsASkeptic = resolvedYes , bettorStakeCents = bettorStake }]
+      getTotalCreatorWinnings resolvedYes { exampleTrade | bettorIsASkeptic = resolvedYes , bettorStakeCents = bettorStake }
       |> Expect.equal bettorStake
   , fuzz2 Fuzz.bool (Fuzz.intRange 1 3) "uses creator-stake when creator was wrong" <|
     \resolvedYes creatorStake ->
-      getTotalCreatorWinnings resolvedYes [{ exampleTrade | bettorIsASkeptic = not resolvedYes , creatorStakeCents = creatorStake }]
+      getTotalCreatorWinnings resolvedYes { exampleTrade | bettorIsASkeptic = not resolvedYes , creatorStakeCents = creatorStake }
       |> Expect.equal (-creatorStake)
   , test "ignores queued trades" <|
-    \() -> getTotalCreatorWinnings True [{ exampleTrade | state = Pb.TradeStateQueued }]
+    \() -> getTotalCreatorWinnings True { exampleTrade | state = Pb.TradeStateQueued }
       |> Expect.equal 0
   , test "ignores aborted trades" <|
-    \() -> getTotalCreatorWinnings True [{ exampleTrade | state = Pb.TradeStateDequeueFailed }]
+    \() -> getTotalCreatorWinnings True { exampleTrade | state = Pb.TradeStateDequeueFailed }
       |> Expect.equal 0
   ]
 
@@ -320,7 +318,7 @@ viewStakeWidgetTest =
       |> Expect.all
           [ HQ.find [HS.tag "button"] >> HQ.has selectors
           ]
-    expectValid : H.Html Msg -> Expect.Expectation 
+    expectValid : H.Html Msg -> Expect.Expectation
     expectValid html =
       html |> HQ.fromHtml
       |> Expect.all
@@ -509,15 +507,18 @@ viewYourStakeTest : Test
 viewYourStakeTest =
   describe "viewYourStake"
   [ describe "as bettor"
-    [ fuzz (intRange 0 3) "includes one row per trade" <|
-      \nTrades -> viewYourStake (Just "me") Time.utc {mockPrediction | yourTrades = List.repeat nTrades exampleTrade}
+    [ let
+        nestTradeNTimes : Int -> Pb.Trade -> Pb.Trade
+        nestTradeNTimes n trade =
+          if n <= 0 then trade else { trade | priorRevision = Pb.TradePriorRevision <| Just <| nestTradeNTimes (n-1) trade }
+      in
+      fuzz (intRange 0 3) "includes one row per revision" <|
+      \nRevisions -> viewYourStake (Just "me") Time.utc {mockPrediction | tradesByBettor = Dict.singleton "me" <| Just <| nestTradeNTimes nRevisions exampleTrade}
         |> HQ.fromHtml
-        |>  if nTrades == 0 then
-              HQ.hasNot [HS.containing [HS.tag "table"]]
-            else
-              HQ.find [HS.tag "tbody"]
-              >> HQ.findAll [HS.tag "tr"]
-              >> HQ.count (Expect.equal nTrades)
+        |> HQ.find [HS.tag "details"]
+        |> HQ.find [HS.tag "tbody"]
+           >> HQ.findAll [HS.tag "tr"]
+           >> HQ.count (Expect.equal <| nRevisions+1)
     ]
   ]
 
