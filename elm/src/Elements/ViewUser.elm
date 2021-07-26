@@ -427,9 +427,9 @@ view model =
           |> List.map (\(id, prediction) ->
               viewRow
               { isHeader = False
-              , predictedOn = H.text <| Utils.dateStr model.globals.timeZone (Utils.unixtimeToTime prediction.createdUnixtime)
-              , prediction = H.a [HA.href <| Utils.pathToPrediction id] [H.text <| "By " ++ Utils.dateStr model.globals.timeZone (Utils.unixtimeToTime prediction.resolvesAtUnixtime) ++ ", " ++ prediction.prediction]
-              , resolution = case List.head (List.reverse prediction.resolutions) |> Maybe.map .resolution of
+              , predictedOn = H.text <| Utils.yearMonthDayStr model.globals.timeZone (Utils.unixtimeToTime prediction.createdUnixtime)
+              , prediction = H.a [HA.href <| Utils.pathToPrediction id] [H.text <| "By " ++ Utils.yearMonthDayStr model.globals.timeZone (Utils.unixtimeToTime prediction.resolvesAtUnixtime) ++ ", " ++ prediction.prediction]
+              , resolution = case prediction.resolution |> Maybe.map .resolution of
                     Nothing -> H.text ""
                     Just Pb.ResolutionNoneYet -> H.text ""
                     Just Pb.ResolutionYes -> H.text "Yes"
