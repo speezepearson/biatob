@@ -1,10 +1,10 @@
 import time
-from typing import Callable, TypeVar, Type
+from typing import AbstractSet, Callable, TypeVar, Type
 
 from aiohttp import web
 from google.protobuf.message import Message
 
-from .core import Servicer
+from .core import Servicer, TokenMint
 from .http_glue import HttpTokenGlue
 from .protobuf import mvp_pb2
 
@@ -91,3 +91,14 @@ class ApiServer:
         app.router.add_post('/api/AcceptInvitation', self.AcceptInvitation)
         self._token_glue.add_to_app(app)
 
+
+def _reserved_toplevel_path_segments() -> AbstractSet[str]:
+    server = ApiServer(token_glue=HttpTokenGlue(token_mint=TokenMint(secret_key=b'')), servicer=None)  # type: ignore
+    app = web.Application()
+    server.add_to_app(app)
+    return {
+        path.lstrip('/').split('/')[0]
+        for path in (r.get_info().get('path') for r in app.router.routes())
+        if path
+    }
+RESERVED_TOPLEVEL_PATH_SEGMENTS = _reserved_toplevel_path_segments()

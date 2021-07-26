@@ -65,6 +65,7 @@ async def test_smoke_for_prediction_paths(aiohttp_client, app, api_server, any_s
 @pytest.mark.parametrize('path', [
   '/username/{username}',
   '/u/{username}',
+  '/{username}',
 ])
 async def test_smoke_for_username_paths(aiohttp_client, app, api_server, any_servicer: Servicer, path: str, logged_in: bool):
   viewee = token_owner(RegisterUsernameOk(any_servicer, None, u('viewee')).token)

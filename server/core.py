@@ -8,6 +8,8 @@ import re
 import secrets
 from typing import overload, Optional, Container, NewType, Callable
 
+from aiohttp import web
+
 from .protobuf import mvp_pb2
 
 PredictionId = NewType('PredictionId', str)
@@ -50,14 +52,58 @@ def weak_rand_not_in(rng: random.Random, limit: int, xs: Container[int]) -> int:
 def indent(s: str) -> str:
     return '\n'.join('  '+line for line in s.splitlines())
 
+_MISC_RESERVED_TOPLEVEL_PATH_SEGMENTS = {
+    'legal',
+    'privacy',
+    'abuse',
+    'admin',
+    'admins',
+    'user',
+    'feedback',
+    'help',
+    'info',
+    'status',
+    'static',
+    'nonce',
+    'send',
+    'mail',
+    'license',
+    'index',
+    'js',
+    'css',
+    'json',
+    'invite',
+    'paypal',
+    'pay',
+    'btc',
+    'bitcoin',
+    'mastercard',
+    'visa',
+    'god',
+    'server',
+    'facebook',
+    'fb',
+    'google',
+    'goog',
+    'oauth',
+    'lesswrong',
+    'ios',
+    'mac',
+    'android',
+}
 def describe_username_problems(username: str) -> Optional[str]:
+    from . import web_server, api_server
     problems = []
     if not username:
         problems.append('username must be non-empty')
     if len(username) > 64:
         problems.append('username must be no more than 64 characters')
+    if len(username) < 3:
+        problems.append('username must be at least 3 characters')
     if not username.isalnum():
         problems.append('username must be alphanumeric')
+    if username in (_MISC_RESERVED_TOPLEVEL_PATH_SEGMENTS | web_server.RESERVED_TOPLEVEL_PATH_SEGMENTS | api_server.RESERVED_TOPLEVEL_PATH_SEGMENTS):
+        problems.append('username is a reserved word')
     return '; '.join(problems) if problems else None
 
 def describe_password_problems(password: str) -> Optional[str]:

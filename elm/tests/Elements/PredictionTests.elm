@@ -34,7 +34,7 @@ mockPrediction =
   , closesUnixtime = 100
   , specialRules = ""
   , creator = "creator"
-  , resolutions = []
+  , resolution = Nothing
   , yourTrades = []
   , resolvesAtUnixtime = 200
   , allowEmailInvitations = False
@@ -534,6 +534,7 @@ viewAsFriendTest =
           { exampleSettings
           | relationships = exampleSettings.relationships |> Dict.insert creator (Just {trustsYou = True , trustedByYou = True})
           }
+      |> (\g -> { g | now = Utils.unixtimeToTime prediction.createdUnixtime })
       |> TU.addPrediction predictionId prediction
   in
   describe "view as friend"

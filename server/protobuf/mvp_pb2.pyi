@@ -368,17 +368,23 @@ class ResolutionEvent(google.protobuf.message.Message):
     UNIXTIME_FIELD_NUMBER: builtins.int
     RESOLUTION_FIELD_NUMBER: builtins.int
     NOTES_FIELD_NUMBER: builtins.int
+    PRIOR_REVISION_FIELD_NUMBER: builtins.int
     unixtime: builtins.float = ...
     resolution: global___Resolution.V = ...
     notes: typing.Text = ...
+
+    @property
+    def prior_revision(self) -> global___ResolutionEvent: ...
 
     def __init__(self,
         *,
         unixtime : builtins.float = ...,
         resolution : global___Resolution.V = ...,
         notes : typing.Text = ...,
+        prior_revision : typing.Optional[global___ResolutionEvent] = ...,
         ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal[u"notes",b"notes",u"resolution",b"resolution",u"unixtime",b"unixtime"]) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal[u"prior_revision",b"prior_revision"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal[u"notes",b"notes",u"prior_revision",b"prior_revision",u"resolution",b"resolution",u"unixtime",b"unixtime"]) -> None: ...
 global___ResolutionEvent = ResolutionEvent
 
 class Trade(google.protobuf.message.Message):
@@ -700,7 +706,7 @@ class UserPredictionView(google.protobuf.message.Message):
     CLOSES_UNIXTIME_FIELD_NUMBER: builtins.int
     SPECIAL_RULES_FIELD_NUMBER: builtins.int
     CREATOR_FIELD_NUMBER: builtins.int
-    RESOLUTIONS_FIELD_NUMBER: builtins.int
+    RESOLUTION_FIELD_NUMBER: builtins.int
     YOUR_TRADES_FIELD_NUMBER: builtins.int
     RESOLVES_AT_UNIXTIME_FIELD_NUMBER: builtins.int
     ALLOW_EMAIL_INVITATIONS_FIELD_NUMBER: builtins.int
@@ -719,7 +725,7 @@ class UserPredictionView(google.protobuf.message.Message):
     def certainty(self) -> global___CertaintyRange: ...
 
     @property
-    def resolutions(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___ResolutionEvent]: ...
+    def resolution(self) -> global___ResolutionEvent: ...
 
     @property
     def your_trades(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___Trade]: ...
@@ -735,13 +741,13 @@ class UserPredictionView(google.protobuf.message.Message):
         closes_unixtime : builtins.float = ...,
         special_rules : typing.Text = ...,
         creator : typing.Text = ...,
-        resolutions : typing.Optional[typing.Iterable[global___ResolutionEvent]] = ...,
+        resolution : typing.Optional[global___ResolutionEvent] = ...,
         your_trades : typing.Optional[typing.Iterable[global___Trade]] = ...,
         resolves_at_unixtime : builtins.float = ...,
         allow_email_invitations : builtins.bool = ...,
         ) -> None: ...
-    def HasField(self, field_name: typing_extensions.Literal[u"certainty",b"certainty"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal[u"allow_email_invitations",b"allow_email_invitations",u"certainty",b"certainty",u"closes_unixtime",b"closes_unixtime",u"created_unixtime",b"created_unixtime",u"creator",b"creator",u"maximum_stake_cents",b"maximum_stake_cents",u"prediction",b"prediction",u"remaining_stake_cents_vs_believers",b"remaining_stake_cents_vs_believers",u"remaining_stake_cents_vs_skeptics",b"remaining_stake_cents_vs_skeptics",u"resolutions",b"resolutions",u"resolves_at_unixtime",b"resolves_at_unixtime",u"special_rules",b"special_rules",u"your_trades",b"your_trades"]) -> None: ...
+    def HasField(self, field_name: typing_extensions.Literal[u"certainty",b"certainty",u"resolution",b"resolution"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing_extensions.Literal[u"allow_email_invitations",b"allow_email_invitations",u"certainty",b"certainty",u"closes_unixtime",b"closes_unixtime",u"created_unixtime",b"created_unixtime",u"creator",b"creator",u"maximum_stake_cents",b"maximum_stake_cents",u"prediction",b"prediction",u"remaining_stake_cents_vs_believers",b"remaining_stake_cents_vs_believers",u"remaining_stake_cents_vs_skeptics",b"remaining_stake_cents_vs_skeptics",u"resolution",b"resolution",u"resolves_at_unixtime",b"resolves_at_unixtime",u"special_rules",b"special_rules",u"your_trades",b"your_trades"]) -> None: ...
 global___UserPredictionView = UserPredictionView
 
 class ListMyStakesRequest(google.protobuf.message.Message):

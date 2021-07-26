@@ -165,9 +165,9 @@ mustAuthSuccessUserInfo {userInfo} = must "all AuthSuccesses must have user_info
 
 currentResolution : Pb.UserPredictionView -> Pb.Resolution
 currentResolution prediction =
-  List.head (List.reverse prediction.resolutions)
-  |> Maybe.map .resolution
-  |> Maybe.withDefault Pb.ResolutionNoneYet
+  case prediction.resolution of
+    Nothing -> Pb.ResolutionNoneYet
+    Just event -> event.resolution
 
 resolutionIsTerminal : Pb.Resolution -> Bool
 resolutionIsTerminal res =
@@ -217,22 +217,20 @@ monthName m = case m of
   Time.Oct -> "Oct"
   Time.Nov -> "Nov"
   Time.Dec -> "Dec"
-isoStr : Time.Zone -> Time.Posix -> String
-isoStr zone t =
+yearMonthDayHourMinuteStr : Time.Zone -> Time.Posix -> String
+yearMonthDayHourMinuteStr zone t =
   String.fromInt (Time.toYear zone t)
-  ++ "-"
-  ++ String.padLeft 2 '0' (String.fromInt (monthNum <| Time.toMonth zone t))
-  ++ "-"
+  ++ " "
+  ++ monthName (Time.toMonth zone t)
+  ++ " "
   ++ String.padLeft 2 '0' (String.fromInt (Time.toDay zone t))
-  ++ "T"
+  ++ " "
   ++ String.padLeft 2 '0' (String.fromInt (Time.toHour zone t))
   ++ ":"
   ++ String.padLeft 2 '0' (String.fromInt (Time.toMinute zone t))
-  ++ ":"
-  ++ String.padLeft 2 '0' (String.fromInt (Time.toSecond zone t))
 
-dateStr : Time.Zone -> Time.Posix -> String
-dateStr zone t =
+yearMonthDayStr : Time.Zone -> Time.Posix -> String
+yearMonthDayStr zone t =
   String.fromInt (Time.toYear zone t)
   ++ " " ++ monthName (Time.toMonth zone t)
   ++ " " ++ String.fromInt (Time.toDay zone t)
@@ -270,7 +268,7 @@ pathToPrediction predictionId =
 
 pathToUserPage : Username -> String
 pathToUserPage user =
-  "/u/" ++ user
+  "/" ++ user
 
 greenText : String -> Html msg
 greenText s = H.span [HA.style "color" "green"] [H.text s]

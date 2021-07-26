@@ -4,7 +4,7 @@ import functools
 import io
 from pathlib import Path
 import re
-from typing import Callable, Optional, Tuple
+from typing import AbstractSet, Callable, Optional, Tuple
 
 from aiohttp import web
 from attr import dataclass
@@ -13,7 +13,7 @@ import jinja2
 from PIL import Image, ImageDraw, ImageFont  # type: ignore
 import structlog
 
-from .core import AuthorizingUsername, Servicer, Username, token_owner
+from .core import AuthorizingUsername, Servicer, TokenMint, Username, token_owner
 from .http_glue import HttpTokenGlue
 from .protobuf import mvp_pb2
 
@@ -195,8 +195,8 @@ class WebServer:
         else:
             confidence_text = f'{round(prediction.certainty.low*100)}-{round(prediction.certainty.high*100)}%'
 
-        if prediction.resolutions and prediction.resolutions[-1].resolution != mvp_pb2.RESOLUTION_NONE_YET:
-            res = prediction.resolutions[-1].resolution
+        if prediction.resolution and prediction.resolution.resolution != mvp_pb2.RESOLUTION_NONE_YET:
+            res = prediction.resolution.resolution
             res_text = "correct" if res == mvp_pb2.RESOLUTION_YES else "incorrect" if res == mvp_pb2.RESOLUTION_NO  else "n/a" if res == mvp_pb2.RESOLUTION_INVALID else "???"
             remaining_text = f" (resolved: {res_text})"
         elif prediction.closes_unixtime < self._clock().timestamp():
@@ -308,12 +308,24 @@ class WebServer:
         app.router.add_get('/p/{prediction_id:[0-9]+}', self.get_view_prediction_page)
         app.router.add_get('/p/{prediction_id:[0-9]+}/embed{style}.png', self.get_prediction_img_embed)
         app.router.add_get('/my_stakes', self.get_my_stakes)
-        app.router.add_get('/username/{username:[a-zA-Z0-9_-]+}', self.get_username)
-        app.router.add_get('/u/{username:[a-zA-Z0-9_-]+}', self.get_username)
         app.router.add_get('/settings', self.get_settings)
         app.router.add_get('/login', self.get_login)
         app.router.add_get('/invitation/{nonce}/accept', self.accept_invitation)
         app.router.add_get('/verify_email/{code}', self.verify_email)
+        app.router.add_get('/username/{username:[a-zA-Z0-9_-]+}', self.get_username)
+        app.router.add_get('/u/{username:[a-zA-Z0-9_-]+}', self.get_username)
+        app.router.add_get('/{username:[a-zA-Z0-9_-]+}', self.get_username)
+
+def _reserved_toplevel_path_segments() -> AbstractSet[str]:
+    server = WebServer(servicer=None, elm_dist=None, token_glue=HttpTokenGlue(token_mint=TokenMint(secret_key=b'')))  # type: ignore
+    app = web.Application()
+    server.add_to_app(app)
+    return {
+        path.lstrip('/').split('/')[0]
+        for path in (r.get_info().get('path') for r in app.router.routes())
+        if path
+    }
+RESERVED_TOPLEVEL_PATH_SEGMENTS = _reserved_toplevel_path_segments()
 
 
 def pb_b64(message: Optional[Message]) -> Optional[str]:

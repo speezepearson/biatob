@@ -51,7 +51,7 @@ class TestCUJs:
     )]
 
     prediction = ResolveOk(any_servicer, ALICE, prediction_id, mvp_pb2.RESOLUTION_YES)
-    assert list(prediction.resolutions) ==[mvp_pb2.ResolutionEvent(unixtime=clock.now().timestamp(), resolution=mvp_pb2.RESOLUTION_YES)]
+    assert prediction.resolution == mvp_pb2.ResolutionEvent(unixtime=clock.now().timestamp(), resolution=mvp_pb2.RESOLUTION_YES)
 
 
   async def test_cuj___set_email__verify_email__update_settings(self, any_servicer: Servicer, emailer: Emailer):
@@ -117,8 +117,13 @@ class TestRegisterUsername:
     with assert_user_unchanged(any_servicer, ALICE, password):
       assert 'first, log out' in str(RegisterUsernameErr(any_servicer, ALICE, ALICE, 'secret'))
 
-  async def test_error_if_invalid_username(self, any_servicer: Servicer):
-    assert 'username must be alphanumeric' in str(RegisterUsernameErr(any_servicer, None, u('foo bar!baz\xfequux'), 'rando password'))
+  @pytest.mark.parametrize('username,error', [
+    (u('foo bar!baz\xfequux'), 'must be alphanumeric'),
+    (u('login'), 'is a reserved word'),
+    (u('api'), 'is a reserved word'),
+  ])
+  async def test_error_if_invalid_username(self, any_servicer: Servicer, username: Username, error: str):
+    assert error in str(RegisterUsernameErr(any_servicer, None, username, 'secret'))
 
 
 class TestLogInUsername:
@@ -198,7 +203,7 @@ class TestGetPrediction:
       resolves_at_unixtime=req.resolves_at_unixtime,
       special_rules=req.special_rules,
       creator=ALICE,
-      resolutions=[mvp_pb2.ResolutionEvent(unixtime=resolve_time, resolution=mvp_pb2.RESOLUTION_YES)],
+      resolution=mvp_pb2.ResolutionEvent(unixtime=resolve_time, resolution=mvp_pb2.RESOLUTION_YES),
       your_trades=[mvp_pb2.Trade(bettor=BOB, bettor_is_a_skeptic=True, bettor_stake_cents=1_00, creator_stake_cents=1_00, transacted_unixtime=stake_time, updated_unixtime=stake_time, state=mvp_pb2.TRADE_STATE_ACTIVE)],
     )
 
@@ -560,9 +565,20 @@ class TestResolve:
     prediction_id = CreatePredictionOk(any_servicer, ALICE, {'open_seconds': 86400})
     clock.tick(18472)  # some random length less than open_seconds
 
-    assert list(ResolveOk(any_servicer, ALICE, prediction_id, mvp_pb2.RESOLUTION_YES, notes='my test notes').resolutions) == [
-      mvp_pb2.ResolutionEvent(unixtime=clock.now().timestamp(), resolution=mvp_pb2.RESOLUTION_YES, notes='my test notes')
-    ]
+    assert ResolveOk(any_servicer, ALICE, prediction_id, mvp_pb2.RESOLUTION_YES, notes='my test notes').resolution == mvp_pb2.ResolutionEvent(
+      unixtime=clock.now().timestamp(),
+      resolution=mvp_pb2.RESOLUTION_YES,
+      notes='my test notes',
+    )
+
+  async def test_remembers_prior_revision_when_reresolved(self, any_servicer: Servicer, clock: MockClock):
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    prediction_id = CreatePredictionOk(any_servicer, ALICE, {'open_seconds': 86400})
+    first_res = ResolveOk(any_servicer, ALICE, prediction_id, mvp_pb2.RESOLUTION_YES, notes='first').resolution
+    clock.tick()
+    second_res = ResolveOk(any_servicer, ALICE, prediction_id, mvp_pb2.RESOLUTION_NO, notes='second').resolution
+    assert not first_res.HasField('prior_revision')
+    assert second_res.prior_revision == first_res
 
   async def test_error_if_no_such_prediction(self, any_servicer: Servicer):
     RegisterUsernameOk(any_servicer, None, ALICE)

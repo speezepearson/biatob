@@ -126,11 +126,7 @@ class SqlConn:
       mvp_pb2.EmailFlowState.FromString(creator_settings_row['email_flow_state']).WhichOneof('email_flow_state_kind') == 'verified'
     )
 
-    resolution_rows = self._conn.execute(
-      sqlalchemy.select(schema.resolutions.c)
-      .where(schema.resolutions.c.prediction_id == prediction_id)
-      .order_by(schema.resolutions.c.resolved_at_unixtime)
-    ).fetchall()
+    resolution = self.get_resolution(prediction_id)
 
     trade_rows = self._conn.execute(
       sqlalchemy.select(schema.trades.c)
@@ -141,22 +137,12 @@ class SqlConn:
       .order_by(schema.trades.c.transacted_at_unixtime)
     ).fetchall()
 
-    remaining_stake_cents_vs_believers = int(row['maximum_stake_cents'] - self._conn.execute(
-      sqlalchemy.select([sqlalchemy.sql.func.coalesce(sqlalchemy.sql.func.sum(schema.trades.c.creator_stake_cents), 0)])
-      .where(sqlalchemy.and_(
-        schema.trades.c.prediction_id == prediction_id,
-        schema.trades.c.state == mvp_pb2.TradeState.Name(mvp_pb2.TRADE_STATE_ACTIVE),
-        sqlalchemy.not_(schema.trades.c.bettor_is_a_skeptic)
-      ))
-    ).scalar())
-    remaining_stake_cents_vs_skeptics = int(row['maximum_stake_cents'] - self._conn.execute(
-      sqlalchemy.select([sqlalchemy.sql.func.coalesce(sqlalchemy.sql.func.sum(schema.trades.c.creator_stake_cents), 0)])
-      .where(sqlalchemy.and_(
-        schema.trades.c.prediction_id == prediction_id,
-        schema.trades.c.state == mvp_pb2.TradeState.Name(mvp_pb2.TRADE_STATE_ACTIVE),
-        schema.trades.c.bettor_is_a_skeptic
-      ))
-    ).scalar())
+    remaining_stake_cents_vs_believers = int(
+      row['maximum_stake_cents'] - self.get_creator_exposure_cents(prediction_id, against_skeptics=False)
+    )
+    remaining_stake_cents_vs_skeptics = int(
+      row['maximum_stake_cents'] - self.get_creator_exposure_cents(prediction_id, against_skeptics=True)
+    )
 
     return mvp_pb2.UserPredictionView(
       prediction=row['prediction'],
@@ -170,14 +156,7 @@ class SqlConn:
       special_rules=row['special_rules'],
       creator=row['creator'],
       allow_email_invitations=allow_email_invitations,
-      resolutions=[
-        mvp_pb2.ResolutionEvent(
-          unixtime=r['resolved_at_unixtime'],
-          resolution=mvp_pb2.Resolution.Value(r['resolution']),
-          notes=r['notes'],
-        )
-        for r in resolution_rows
-      ],
+      resolution=resolution,
       your_trades=[
         mvp_pb2.Trade(
           bettor=t['bettor'],
@@ -275,22 +254,24 @@ class SqlConn:
     ).fetchall()
     return [SqlConn._trade_row_to_pb(row) for row in rows]
 
-  def get_resolutions(
+  def get_resolution(
     self,
     prediction_id: PredictionId,
-  ) -> Iterable[mvp_pb2.ResolutionEvent]:
+  ) -> Optional[mvp_pb2.ResolutionEvent]:
     rows = self._conn.execute(
       sqlalchemy.select(schema.resolutions.c)
       .where(schema.resolutions.c.prediction_id == prediction_id)
+      .order_by(schema.resolutions.c.resolved_at_unixtime)
     ).fetchall()
-    return [
-      mvp_pb2.ResolutionEvent(
-        unixtime=row['resolved_at_unixtime'],
+    last_event = None
+    for row in rows:
+      last_event = mvp_pb2.ResolutionEvent(
+        unixtime=float(row['resolved_at_unixtime']),
         resolution=mvp_pb2.Resolution.Value(row['resolution']),
-        notes=row['notes'],
+        notes=str(row['notes']),
+        prior_revision=last_event,
       )
-      for row in rows
-    ]
+    return last_event
 
   def get_creator_exposure_cents(
     self,
@@ -877,8 +858,8 @@ class SqlServicer(Servicer):
       if not (predinfo['created_at_unixtime'] <= now.timestamp() <= predinfo['closes_at_unixtime']):
         return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall="prediction is no longer open for betting"))
 
-      resolutions = self._conn.get_resolutions(PredictionId(request.prediction_id))
-      if resolutions and max(resolutions, key=lambda r: r.unixtime).resolution != mvp_pb2.RESOLUTION_NONE_YET:
+      resolution = self._conn.get_resolution(PredictionId(request.prediction_id))
+      if resolution and resolution.resolution != mvp_pb2.RESOLUTION_NONE_YET:
         logger.warn('trying to bet on a resolved prediction', prediction_id=request.prediction_id)
         return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall="prediction has already resolved"))
 
