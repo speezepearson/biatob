@@ -117,8 +117,13 @@ class TestRegisterUsername:
     with assert_user_unchanged(any_servicer, ALICE, password):
       assert 'first, log out' in str(RegisterUsernameErr(any_servicer, ALICE, ALICE, 'secret'))
 
-  async def test_error_if_invalid_username(self, any_servicer: Servicer):
-    assert 'username must be alphanumeric' in str(RegisterUsernameErr(any_servicer, None, u('foo bar!baz\xfequux'), 'rando password'))
+  @pytest.mark.parametrize('username,error', [
+    (u('foo bar!baz\xfequux'), 'must be alphanumeric'),
+    (u('login'), 'is a reserved word'),
+    (u('api'), 'is a reserved word'),
+  ])
+  async def test_error_if_invalid_username(self, any_servicer: Servicer, username: Username, error: str):
+    assert error in str(RegisterUsernameErr(any_servicer, None, username, 'secret'))
 
 
 class TestLogInUsername:

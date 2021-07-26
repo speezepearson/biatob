@@ -88,6 +88,7 @@ async def main(args: argparse.Namespace):
         token_glue=token_glue,
         servicer=servicer,
     ).add_to_app(app)
+    # print('\n'.join(sorted(set(p for p in (r.get_info().get('path') for r in app.router.routes()) if p and '/' not in p[1:])))); exit(1)
 
     asyncio.get_running_loop().create_task(forever(
         datetime.timedelta(hours=1),
