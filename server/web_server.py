@@ -236,12 +236,8 @@ class WebServer:
         auth = self._token_glue.parse_cookie(req)
         username = Username(str(req.match_info['username']))
         auth_success = self._get_auth_success(auth, req=mvp_pb2.GetSettingsRequest(include_relationships_with_users=[username]))
-        relationship = None if (auth_success is None) else auth_success.user_info.relationships.get(username)
-        if (relationship is not None) and relationship.trusts_you:
-            list_predictions_resp = self._servicer.ListPredictions(token_owner(auth), mvp_pb2.ListPredictionsRequest(creator=username))
-            predictions: Optional[mvp_pb2.PredictionsById] = list_predictions_resp.ok  # TODO: error handling
-        else:
-            predictions = None
+        list_predictions_resp = self._servicer.ListPredictions(token_owner(auth), mvp_pb2.ListPredictionsRequest(creator=username))
+        predictions = list_predictions_resp.ok
         return web.Response(
             content_type='text/html',
             body=self._jinja.get_template('ViewUserPage.html').render(

@@ -103,6 +103,7 @@ def some_create_prediction_request(**kwargs) -> mvp_pb2.CreatePredictionRequest:
     maximum_stake_cents=100_00,
     open_seconds=123,
     resolves_at_unixtime=int(2e9),
+    view_privacy=mvp_pb2.PREDICTION_VIEW_PRIVACY_ANYBODY,
     special_rules='rules!',
   )
   init_kwargs.update(kwargs)

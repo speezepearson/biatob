@@ -246,27 +246,31 @@ class TestListMyStakes:
 
 class TestListPredictions:
 
-  async def test_success_listing_own(self, any_servicer: Servicer):
+  async def test_returns_all_own_predictions(self, any_servicer: Servicer):
     RegisterUsernameOk(any_servicer, None, ALICE)
-    prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
+    all_prediction_ids = {
+      CreatePredictionOk(any_servicer, ALICE, {'view_privacy': privacy})
+      for privacy in mvp_pb2.PredictionViewPrivacy.values()
+    }
+    assert set(ListPredictionsOk(any_servicer, ALICE, ALICE).predictions.keys()) == all_prediction_ids
+
+  async def test_returns_globally_accessible_predictions_for_other_person(self, any_servicer: Servicer):
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    prediction_id = CreatePredictionOk(any_servicer, ALICE, {'view_privacy': mvp_pb2.PREDICTION_VIEW_PRIVACY_ANYBODY})
+    assert prediction_id in ListPredictionsOk(any_servicer, None, ALICE).predictions.keys()
+
+  async def test_does_not_return_linkonly_predictions_for_other_person(self, any_servicer: Servicer):
+    RegisterUsernameOk(any_servicer, None, ALICE)
+    prediction_id = CreatePredictionOk(any_servicer, ALICE, {'view_privacy': mvp_pb2.PREDICTION_VIEW_PRIVACY_ANYBODY_WITH_THE_LINK})
+    print('SRP', ListPredictionsOk(any_servicer, None, ALICE).predictions)
+    assert prediction_id not in ListPredictionsOk(any_servicer, None, ALICE).predictions.keys()
+
+  async def test_ignores_unrelated_predictions(self, any_servicer: Servicer):
+    RegisterUsernameOk(any_servicer, None, ALICE)
     RegisterUsernameOk(any_servicer, None, BOB)
-    irrelevant_prediction_id = CreatePredictionOk(any_servicer, BOB, {})
+    prediction_id = CreatePredictionOk(any_servicer, BOB, {'view_privacy': mvp_pb2.PREDICTION_VIEW_PRIVACY_ANYBODY})
 
-    assert set(ListPredictionsOk(any_servicer, ALICE, ALICE).predictions.keys()) == {prediction_id}
-
-  async def test_success_listing_friend(self, any_servicer: Servicer):
-    register_friend_pair(any_servicer, ALICE, BOB)
-    alice_prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
-    irrelevant_prediction_id = CreatePredictionOk(any_servicer, BOB, {})
-    assert set(ListPredictionsOk(any_servicer, BOB, ALICE).predictions.keys()) == {alice_prediction_id}
-
-  async def test_error_listing_untruster(self, any_servicer: Servicer):
-    register_friend_pair(any_servicer, ALICE, BOB)
-    RegisterUsernameOk(any_servicer, None, CHARLIE)
-    SetTrustedOk(any_servicer, ALICE, BOB, False)
-    alice_prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
-    for username in [BOB, CHARLIE]:
-      assert "creator doesn\\'t trust you" in str(ListPredictionsErr(any_servicer, au(username), ALICE))
+    assert prediction_id not in ListPredictionsOk(any_servicer, ALICE, ALICE).predictions.keys()
 
 
 def some_stake_request(prediction_id: PredictionId, **kwargs) -> mvp_pb2.StakeRequest:

@@ -28,7 +28,19 @@ type alias Model =
   , who : Username
   , sendInvitationRequestStatus : RequestStatus
   , setTrustedRequestStatus : RequestStatus
+  , predictionFilter : Filter
+  , predictionSortOrder : SortOrder
   }
+
+
+type alias Filter =
+  { phase : Maybe LifecyclePhase
+  }
+type LifecyclePhase
+  = Open
+  | Closed
+  | NeedsResolution
+  | Resolved
 
 type Msg
   = SetAuthWidget AuthWidget.State
@@ -42,6 +54,8 @@ type Msg
   | SetTrustedFinished Pb.SetTrustedRequest (Result Http.Error Pb.SetTrustedResponse)
   | SignOut AuthWidget.State Pb.SignOutRequest
   | SignOutFinished Pb.SignOutRequest (Result Http.Error Pb.SignOutResponse)
+  | SetPredictionFilterPhase (Maybe LifecyclePhase)
+  | SetPredictionSortOrder SortOrder
   | Copy String
   | Tick Time.Posix
   | AuthWidgetExternallyModified AuthWidget.DomModification
@@ -54,6 +68,8 @@ init flags =
     , who = Utils.mustDecodeFromFlags JD.string "who" flags
     , sendInvitationRequestStatus = Unstarted
     , setTrustedRequestStatus = Unstarted
+    , predictionFilter = { phase = Nothing }
+    , predictionSortOrder = CreatedDate Desc
     }
   , Cmd.none
   )
@@ -124,6 +140,14 @@ update msg model =
           Ok _ -> navigate <| Nothing
           Err _ -> Cmd.none
       )
+    SetPredictionFilterPhase phase ->
+      ( { model | predictionFilter = model.predictionFilter |> setPhase phase }
+      , Cmd.none
+      )
+    SetPredictionSortOrder order ->
+      ( { model | predictionSortOrder = order }
+      , Cmd.none
+      )
     Copy s ->
       ( model
       , copy s
@@ -139,20 +163,92 @@ update msg model =
     Ignore ->
       ( model , Cmd.none )
 
-type Relationship
-  = LoggedOut
-  | Self
-  | NoRelation
-  | Related Pb.Relationship
-getRelationship : Username -> Globals.Globals -> Relationship
-getRelationship who globals =
-  case Globals.getUserInfo globals of
-    Nothing -> LoggedOut
-    Just {relationships} ->
-      if Globals.getOwnUsername globals == Just who then Self else
-      case Dict.get who relationships |> Maybe.andThen identity of
-        Nothing -> NoRelation
-        Just rel -> Related rel
+phaseDropdown : Utils.DropdownBuilder (Maybe LifecyclePhase) Msg
+phaseDropdown =
+  Utils.dropdown SetPredictionFilterPhase Ignore
+    [ (Nothing, "all phases")
+    , (Just Open, "open for betting")
+    , (Just Closed, "betting closed, pre-resolution")
+    , (Just NeedsResolution, "needs resolution")
+    , (Just Resolved, "resolved")
+    ]
+orderDropdown : Utils.DropdownBuilder SortOrder Msg
+orderDropdown =
+  Utils.dropdown SetPredictionSortOrder Ignore
+    [ (CreatedDate Desc, "date created, most recent first")
+    , (CreatedDate Asc, "date created, oldest first")
+    , (ResolutionDate Asc, "resolution deadline, most recent first")
+    , (ResolutionDate Asc, "resolution deadline, oldest first")
+    ]
+viewControls : Filter -> SortOrder -> Html Msg
+viewControls filter order =
+  H.div []
+  [ H.div [HA.class "d-inline-block mx-2 text-nowrap"]
+    [ H.text " Phase: "
+    , phaseDropdown filter.phase [HA.class "form-select d-inline-block w-auto"]
+    ]
+  , H.div [HA.class "d-inline-block mx-2 text-nowrap"]
+    [ H.text " Order: "
+    , orderDropdown order [HA.class "form-select d-inline-block w-auto"]
+    ]
+  ]
+
+phaseMatches : Time.Posix -> LifecyclePhase -> Pb.UserPredictionView -> Bool
+phaseMatches now phase prediction =
+  if Utils.currentResolution prediction /= Pb.ResolutionNoneYet then
+    phase == Resolved
+  else if Utils.timeToUnixtime now < prediction.closesUnixtime then
+    phase == Open
+  else if Utils.timeToUnixtime now < prediction.resolvesAtUnixtime then
+    phase == Closed
+  else
+    phase == NeedsResolution
+
+setPhase : Maybe LifecyclePhase -> Filter -> Filter
+setPhase phase filter = { filter | phase = phase }
+filterMatches : Time.Posix -> Filter -> Pb.UserPredictionView -> Bool
+filterMatches now filter prediction =
+  case filter.phase of
+    Nothing -> True
+    Just phase -> phaseMatches now phase prediction
+
+type Ordering = Asc | Desc
+sortKeySign : Ordering -> number
+sortKeySign dir =
+  case dir of
+    Asc -> 1
+    Desc -> -1
+type SortOrder
+  = ResolutionDate Ordering
+  | CreatedDate Ordering
+
+sortPredictions : (a -> Pb.UserPredictionView) -> SortOrder -> List a -> List a
+sortPredictions toPrediction order predictions =
+  case order of
+    ResolutionDate dir ->
+      List.sortBy (toPrediction >> \p -> p.resolvesAtUnixtime * sortKeySign dir) predictions
+    CreatedDate dir ->
+      List.sortBy (toPrediction >> \p -> p.createdUnixtime * sortKeySign dir) predictions
+
+viewRow :
+  { isHeader : Bool
+  , predictedOn : Html msg
+  , prediction : Html msg
+  , resolution : Html msg
+  } -> Html msg
+viewRow info =
+  let
+    cell attrs content =
+      if info.isHeader then
+        H.th (HA.scope "col" :: attrs) content
+      else
+        H.td attrs content
+  in
+  H.tr []
+  [ cell [HA.class "col-2"] [info.predictedOn]
+  , cell [HA.class "col-6"] [info.prediction]
+  , cell [HA.class "col-2"] [info.resolution]
+  ]
 
 view : Model -> Browser.Document Msg
 view model =
@@ -310,6 +406,40 @@ view model =
                   Failed e -> Utils.redText e
               ]
             ]
+  , H.hr [] []
+  , H.h3 [HA.class "text-center"] [H.text "Predictions made"]
+  , H.div []
+    [ viewControls model.predictionFilter model.predictionSortOrder
+    , H.table [HA.class "table mt-1"]
+        [ H.thead []
+          [ viewRow
+            { isHeader = True
+            , predictedOn = H.text "Predicted on"
+            , prediction = H.text "Prediction"
+            , resolution = H.text "Resolution"
+            }
+          ]
+        , model.globals.serverState.predictions
+          |> Dict.toList
+          |> List.filter (\(_, prediction) -> prediction.creator == model.who)
+          |> sortPredictions (\(_, prediction) -> prediction) model.predictionSortOrder
+          |> List.filter (\(_, prediction) -> filterMatches model.globals.now model.predictionFilter prediction)
+          |> List.map (\(id, prediction) ->
+              viewRow
+              { isHeader = False
+              , predictedOn = H.text <| Utils.dateStr model.globals.timeZone (Utils.unixtimeToTime prediction.createdUnixtime)
+              , prediction = H.a [HA.href <| Utils.pathToPrediction id] [H.text <| "By " ++ Utils.dateStr model.globals.timeZone (Utils.unixtimeToTime prediction.resolvesAtUnixtime) ++ ", " ++ prediction.prediction]
+              , resolution = case List.head (List.reverse prediction.resolutions) |> Maybe.map .resolution of
+                    Nothing -> H.text ""
+                    Just Pb.ResolutionNoneYet -> H.text ""
+                    Just Pb.ResolutionYes -> H.text "Yes"
+                    Just Pb.ResolutionNo -> H.text "No"
+                    Just Pb.ResolutionInvalid -> H.text "Invalid!"
+                    Just (Pb.ResolutionUnrecognized_ _) -> Debug.todo "unrecognized resolution"
+              })
+          |> H.tbody []
+        ]
+      ]
     ]
   ]}
 

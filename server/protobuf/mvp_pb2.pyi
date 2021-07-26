@@ -57,6 +57,19 @@ class _Resolution(google.protobuf.internal.enum_type_wrapper._EnumTypeWrapper[Re
     RESOLUTION_NO = Resolution.V(2)
     RESOLUTION_INVALID = Resolution.V(3)
 
+class PredictionViewPrivacy(metaclass=_PredictionViewPrivacy):
+    V = typing.NewType('V', builtins.int)
+
+global___PredictionViewPrivacy = PredictionViewPrivacy
+
+PREDICTION_VIEW_PRIVACY_ANYBODY = PredictionViewPrivacy.V(0)
+PREDICTION_VIEW_PRIVACY_ANYBODY_WITH_THE_LINK = PredictionViewPrivacy.V(1)
+
+class _PredictionViewPrivacy(google.protobuf.internal.enum_type_wrapper._EnumTypeWrapper[PredictionViewPrivacy.V], builtins.type):  # type: ignore
+    DESCRIPTOR: google.protobuf.descriptor.EnumDescriptor = ...
+    PREDICTION_VIEW_PRIVACY_ANYBODY = PredictionViewPrivacy.V(0)
+    PREDICTION_VIEW_PRIVACY_ANYBODY_WITH_THE_LINK = PredictionViewPrivacy.V(1)
+
 class AuthToken(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor = ...
     HMAC_OF_REST_FIELD_NUMBER: builtins.int
@@ -575,12 +588,14 @@ global___CertaintyRange = CertaintyRange
 class CreatePredictionRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor = ...
     PREDICTION_FIELD_NUMBER: builtins.int
+    VIEW_PRIVACY_FIELD_NUMBER: builtins.int
     CERTAINTY_FIELD_NUMBER: builtins.int
     MAXIMUM_STAKE_CENTS_FIELD_NUMBER: builtins.int
     OPEN_SECONDS_FIELD_NUMBER: builtins.int
     SPECIAL_RULES_FIELD_NUMBER: builtins.int
     RESOLVES_AT_UNIXTIME_FIELD_NUMBER: builtins.int
     prediction: typing.Text = ...
+    view_privacy: global___PredictionViewPrivacy.V = ...
     maximum_stake_cents: builtins.int = ...
     open_seconds: builtins.int = ...
     special_rules: typing.Text = ...
@@ -592,6 +607,7 @@ class CreatePredictionRequest(google.protobuf.message.Message):
     def __init__(self,
         *,
         prediction : typing.Text = ...,
+        view_privacy : global___PredictionViewPrivacy.V = ...,
         certainty : typing.Optional[global___CertaintyRange] = ...,
         maximum_stake_cents : builtins.int = ...,
         open_seconds : builtins.int = ...,
@@ -599,7 +615,7 @@ class CreatePredictionRequest(google.protobuf.message.Message):
         resolves_at_unixtime : builtins.float = ...,
         ) -> None: ...
     def HasField(self, field_name: typing_extensions.Literal[u"certainty",b"certainty"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing_extensions.Literal[u"certainty",b"certainty",u"maximum_stake_cents",b"maximum_stake_cents",u"open_seconds",b"open_seconds",u"prediction",b"prediction",u"resolves_at_unixtime",b"resolves_at_unixtime",u"special_rules",b"special_rules"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal[u"certainty",b"certainty",u"maximum_stake_cents",b"maximum_stake_cents",u"open_seconds",b"open_seconds",u"prediction",b"prediction",u"resolves_at_unixtime",b"resolves_at_unixtime",u"special_rules",b"special_rules",u"view_privacy",b"view_privacy"]) -> None: ...
 global___CreatePredictionRequest = CreatePredictionRequest
 
 class CreatePredictionResponse(google.protobuf.message.Message):
@@ -1447,6 +1463,7 @@ class SavedCreatedPredictionFormState(google.protobuf.message.Message):
     HIGH_P_FIELD_FIELD_NUMBER: builtins.int
     OPEN_FOR_UNIT_FIELD_FIELD_NUMBER: builtins.int
     OPEN_FOR_SECONDS_FIELD_FIELD_NUMBER: builtins.int
+    VIEW_PRIVACY_FIELD_FIELD_NUMBER: builtins.int
     SPECIAL_RULES_FIELD_FIELD_NUMBER: builtins.int
     prediction_field: typing.Text = ...
     resolves_at_field: typing.Text = ...
@@ -1455,6 +1472,7 @@ class SavedCreatedPredictionFormState(google.protobuf.message.Message):
     high_p_field: typing.Text = ...
     open_for_unit_field: typing.Text = ...
     open_for_seconds_field: typing.Text = ...
+    view_privacy_field: typing.Text = ...
     special_rules_field: typing.Text = ...
 
     def __init__(self,
@@ -1466,7 +1484,8 @@ class SavedCreatedPredictionFormState(google.protobuf.message.Message):
         high_p_field : typing.Text = ...,
         open_for_unit_field : typing.Text = ...,
         open_for_seconds_field : typing.Text = ...,
+        view_privacy_field : typing.Text = ...,
         special_rules_field : typing.Text = ...,
         ) -> None: ...
-    def ClearField(self, field_name: typing_extensions.Literal[u"high_p_field",b"high_p_field",u"low_p_field",b"low_p_field",u"open_for_seconds_field",b"open_for_seconds_field",u"open_for_unit_field",b"open_for_unit_field",u"prediction_field",b"prediction_field",u"resolves_at_field",b"resolves_at_field",u"special_rules_field",b"special_rules_field",u"stake_field",b"stake_field"]) -> None: ...
+    def ClearField(self, field_name: typing_extensions.Literal[u"high_p_field",b"high_p_field",u"low_p_field",b"low_p_field",u"open_for_seconds_field",b"open_for_seconds_field",u"open_for_unit_field",b"open_for_unit_field",u"prediction_field",b"prediction_field",u"resolves_at_field",b"resolves_at_field",u"special_rules_field",b"special_rules_field",u"stake_field",b"stake_field",u"view_privacy_field",b"view_privacy_field"]) -> None: ...
 global___SavedCreatedPredictionFormState = SavedCreatedPredictionFormState
