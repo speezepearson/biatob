@@ -310,6 +310,7 @@ type PrereqsForStaking
   = CanAlreadyStake
   | IsCreator
   | CreatorStakeExhausted
+  | BettingClosed
   | NeedsAccount
   | NeedsToSetTrusted
   | NeedsEmailAddress
@@ -359,6 +360,8 @@ getPrereqsForStaking model =
   in
   if Globals.isSelf model.globals creator then
     IsCreator
+  else if Utils.timeToUnixtime model.globals.now > prediction.closesUnixtime then
+    BettingClosed
   else if not (isSideAvailable Utils.Skeptic prediction) && not (isSideAvailable Utils.Believer prediction) then
     CreatorStakeExhausted
   else if not (Globals.isLoggedIn model.globals) then
@@ -424,6 +427,11 @@ viewBody model =
             , H.hr [HA.style "margin" "2em 0"] []
             , H.text "If you want to link to your prediction, here's some code you could copy-paste:"
             , viewEmbedInfo model.globals.httpOrigin model.shareEmbedding model.predictionId prediction
+            ]
+          BettingClosed ->
+            H.div [HA.id "make-a-bet-section", HA.class "text-secondary"]
+            [ H.h4 [HA.class "text-center"] [H.text "Make a bet"]
+            , H.text "Betting has closed on this prediction, sorry!"
             ]
           CreatorStakeExhausted ->
             H.div [HA.id "make-a-bet-section", HA.class "text-secondary"]
@@ -698,7 +706,7 @@ viewStakeWidget bettability stakeField requestStatus side prediction =
             [ HA.disabled True ]
           Ok cents ->
             [ HE.onClick (Stake cents)
-            , HA.disabled (requestStatus == AwaitingResponse)
+            , HA.disabled <| (requestStatus == AwaitingResponse) || not (isSideAvailable side prediction)
             ]
           Err _ ->
             [ HA.disabled True ]
@@ -756,7 +764,7 @@ viewReducedStakeLimitExplanation {creator, maxExposure, remaining} =
 getTitleTextChunks : Time.Zone -> Pb.UserPredictionView -> List String
 getTitleTextChunks timeZone prediction =
   [ "Prediction: by "
-  , (Utils.dateStr timeZone <| Utils.unixtimeToTime prediction.resolvesAtUnixtime)
+  , (Utils.yearMonthDayStr timeZone <| Utils.unixtimeToTime prediction.resolvesAtUnixtime)
   , ", "
   , prediction.prediction
   ]
@@ -783,14 +791,14 @@ viewSummaryTable now timeZone prediction =
       , H.td [] [H.text <| "up to " ++ Utils.formatCents prediction.maximumStakeCents]
       ]
     , H.tr []
-      [ H.th [HA.scope "row"] [H.text "Created on:"]
-      , H.td [] [H.text <| Utils.dateStr timeZone (Utils.unixtimeToTime prediction.createdUnixtime)]
+      [ H.th [HA.scope "row"] [H.text "Created at:"]
+      , H.td [] [H.text <| Utils.yearMonthDayHourMinuteStr timeZone (Utils.unixtimeToTime prediction.createdUnixtime)]
       ]
     , let secondsRemaining = prediction.closesUnixtime - Utils.timeToUnixtime now in
       H.tr []
       [ H.th [HA.scope "row"] [H.text <| "Betting " ++ (if secondsRemaining < 0 then "closed" else "closes") ++ ":"]
       , H.td []
-        [ H.text <| Utils.dateStr timeZone (Utils.unixtimeToTime prediction.closesUnixtime)
+        [ H.text <| Utils.yearMonthDayHourMinuteStr timeZone (Utils.unixtimeToTime prediction.closesUnixtime)
         , if 0 < secondsRemaining && secondsRemaining < 86400 * 3 then
             H.text <| " (in " ++ Utils.renderIntervalSeconds secondsRemaining ++ ")"
           else
@@ -827,7 +835,7 @@ viewResolutionRow now timeZone prediction =
         [ H.summary [] [H.text "History"]
         , makeTable [HA.class "resolution-history-table"]
           [ ( [H.text "When"]
-            , \event -> [H.text <| Utils.isoStr timeZone (Utils.unixtimeToTime event.unixtime)]
+            , \event -> [H.text <| Utils.yearMonthDayHourMinuteStr timeZone (Utils.unixtimeToTime event.unixtime)]
             )
           , ( [H.text "Resolution"]
             , \event -> [ H.text <| case event.resolution of
@@ -882,7 +890,7 @@ viewTradesAsCreator timeZone prediction =
       [ H.summary [] [H.text "All trades"]
       , makeTable [HA.class "all-trades-details-table"]
         [ ( [H.text "When"]
-          , \t -> [H.text (Utils.isoStr timeZone (Utils.unixtimeToTime t.transactedUnixtime))]
+          , \t -> [H.text (Utils.yearMonthDayHourMinuteStr timeZone (Utils.unixtimeToTime t.transactedUnixtime))]
           )
         , ( [H.text "Your side"]
           , \t -> [H.text <| if t.bettorIsASkeptic then "will happen" else "will not happen"]
@@ -958,7 +966,7 @@ viewTradesAsBettor timeZone prediction trades =
       [ H.summary [] [H.text "All trades"]
       , makeTable [HA.class "all-trades-details-table"]
         [ ( [H.text "When"]
-          , \t -> [H.text (Utils.isoStr timeZone (Utils.unixtimeToTime t.transactedUnixtime))]
+          , \t -> [H.text (Utils.yearMonthDayHourMinuteStr timeZone (Utils.unixtimeToTime t.transactedUnixtime))]
           )
         , ( [H.text "Your side"]
           , \t -> [H.text <| if t.bettorIsASkeptic then "it won't happen" else "it will happen"]

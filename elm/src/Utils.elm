@@ -217,22 +217,20 @@ monthName m = case m of
   Time.Oct -> "Oct"
   Time.Nov -> "Nov"
   Time.Dec -> "Dec"
-isoStr : Time.Zone -> Time.Posix -> String
-isoStr zone t =
+yearMonthDayHourMinuteStr : Time.Zone -> Time.Posix -> String
+yearMonthDayHourMinuteStr zone t =
   String.fromInt (Time.toYear zone t)
-  ++ "-"
-  ++ String.padLeft 2 '0' (String.fromInt (monthNum <| Time.toMonth zone t))
-  ++ "-"
+  ++ " "
+  ++ monthName (Time.toMonth zone t)
+  ++ " "
   ++ String.padLeft 2 '0' (String.fromInt (Time.toDay zone t))
-  ++ "T"
+  ++ " "
   ++ String.padLeft 2 '0' (String.fromInt (Time.toHour zone t))
   ++ ":"
   ++ String.padLeft 2 '0' (String.fromInt (Time.toMinute zone t))
-  ++ ":"
-  ++ String.padLeft 2 '0' (String.fromInt (Time.toSecond zone t))
 
-dateStr : Time.Zone -> Time.Posix -> String
-dateStr zone t =
+yearMonthDayStr : Time.Zone -> Time.Posix -> String
+yearMonthDayStr zone t =
   String.fromInt (Time.toYear zone t)
   ++ " " ++ monthName (Time.toMonth zone t)
   ++ " " ++ String.fromInt (Time.toDay zone t)
