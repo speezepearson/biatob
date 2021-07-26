@@ -534,6 +534,7 @@ viewAsFriendTest =
           { exampleSettings
           | relationships = exampleSettings.relationships |> Dict.insert creator (Just {trustsYou = True , trustedByYou = True})
           }
+      |> (\g -> { g | now = Utils.unixtimeToTime prediction.createdUnixtime })
       |> TU.addPrediction predictionId prediction
   in
   describe "view as friend"
