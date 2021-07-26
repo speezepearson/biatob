@@ -102,8 +102,8 @@ view model =
                       viewRow
                       { isHeader = False
                       , creator = Utils.renderUser prediction.creator
-                      , predictedOn = H.text <| Utils.dateStr model.globals.timeZone (Utils.unixtimeToTime prediction.createdUnixtime)
-                      , prediction = H.a [HA.href <| Utils.pathToPrediction id] [H.text <| "By " ++ Utils.dateStr model.globals.timeZone (Utils.unixtimeToTime prediction.resolvesAtUnixtime) ++ ", " ++ prediction.prediction]
+                      , predictedOn = H.text <| Utils.yearMonthDayStr model.globals.timeZone (Utils.unixtimeToTime prediction.createdUnixtime)
+                      , prediction = H.a [HA.href <| Utils.pathToPrediction id] [H.text <| "By " ++ Utils.yearMonthDayStr model.globals.timeZone (Utils.unixtimeToTime prediction.resolvesAtUnixtime) ++ ", " ++ prediction.prediction]
                       , resolution = case prediction.resolution |> Maybe.map .resolution |> Maybe.withDefault Pb.ResolutionNoneYet of
                             Pb.ResolutionNoneYet -> H.text ""
                             Pb.ResolutionYes -> H.text "Yes"
