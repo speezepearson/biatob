@@ -444,6 +444,7 @@ viewBody model =
           NeedsAccount ->
             H.div [HA.id "make-a-bet-section"]
             [ H.h4 [HA.class "text-center"] [H.text "Make a bet"]
+            , viewRemainingStakeBar model.bettorSide prediction
             , H.text " Only people with accounts can bet!"
             , H.br [] []
             , H.small [HA.class "mx-3 text-secondary"]
@@ -467,11 +468,13 @@ viewBody model =
           CanAlreadyStake ->
             H.div [HA.id "make-a-bet-section"]
             [ H.h4 [HA.class "text-center"] [H.text "Make a bet"]
+            , viewRemainingStakeBar model.bettorSide prediction
             , viewStakeWidget QueueingUnnecessary model.stakeField model.stakeStatus model.bettorSide prediction
             ]
           NeedsToSetTrusted ->
             H.div [HA.id "make-a-bet-section", HA.class "text-center"]
-            [ H.h4 [] [H.text "Make a bet"]
+            [ H.h4 [HA.class "text-center"] [H.text "Make a bet"]
+            , viewRemainingStakeBar model.bettorSide prediction
             , H.button
               [ HA.disabled (model.setTrustedStatus == AwaitingResponse)
               , HE.onClick SetCreatorTrusted
@@ -487,6 +490,7 @@ viewBody model =
           NeedsToWaitForInvitation ->
             H.div [HA.id "make-a-bet-section"]
             [ H.h4 [HA.class "text-center"] [H.text "Make a bet"]
+            , viewRemainingStakeBar model.bettorSide prediction
             , viewStakeWidget
               ( QueueingNecessary <| H.span [] [H.text "I've emailed them to ask, but they haven't responded yet."])
               model.stakeField model.stakeStatus model.bettorSide prediction
@@ -494,6 +498,7 @@ viewBody model =
           NeedsToSendEmailInvitation ->
             H.div [HA.id "make-a-bet-section"]
             [ H.h4 [HA.class "text-center"] [H.text "Make a bet"]
+            , viewRemainingStakeBar model.bettorSide prediction
             , H.div [HA.class "text-center"]
               [ H.button
                 [ HA.disabled (model.sendInvitationStatus == AwaitingResponse)
@@ -520,6 +525,7 @@ viewBody model =
             H.div [HA.id "make-a-bet-section"]
             [ H.p []
               [ H.h4 [HA.class "text-center"] [H.text "Make a bet"]
+              , viewRemainingStakeBar model.bettorSide prediction
               , H.text "You need an email address in order to bet!"
               , H.br [] []
               , H.small [HA.class "mx-3 text-secondary"]
@@ -545,6 +551,7 @@ viewBody model =
             H.div [HA.id "make-a-bet-section"]
             [ H.p []
               [ H.h4 [HA.class "text-center"] [H.text "Make a bet"]
+              , viewRemainingStakeBar model.bettorSide prediction
               , viewStakeWidget
                 ( QueueingNecessary <|
                   H.span []
@@ -729,37 +736,8 @@ viewStakeWidget bettability stakeField requestStatus side prediction =
           , instructions
           ]
         QueueingUnnecessary -> H.text ""
-    , case side of
-        Utils.Skeptic ->
-          if prediction.remainingStakeCentsVsSkeptics /= prediction.maximumStakeCents then
-            viewReducedStakeLimitExplanation {creator=prediction.creator, maxExposure=prediction.maximumStakeCents, remaining=prediction.remainingStakeCentsVsSkeptics}
-          else
-            H.text ""
-        Utils.Believer ->
-          if prediction.remainingStakeCentsVsBelievers /= prediction.maximumStakeCents then
-            viewReducedStakeLimitExplanation {creator=prediction.creator, maxExposure=prediction.maximumStakeCents, remaining=prediction.remainingStakeCentsVsBelievers}
-          else
-            H.text ""
     , H.div [HA.class "invalid-feedback"] [viewError stakeCents]
     ]
-
-viewReducedStakeLimitExplanation : {creator:Username, maxExposure:Cents, remaining:Cents} -> Html Msg
-viewReducedStakeLimitExplanation {creator, maxExposure, remaining} =
-  H.div [HA.class "text-secondary reduced-stake-limit-explanation"]
-  <|  if remaining == 0 then
-        [ Utils.renderUser creator
-        , H.text " has reached their limit of "
-        , H.text <| Utils.formatCents maxExposure
-        , H.text " on this bet, and isn't willing to risk losing any more!"
-        ]
-      else
-        [ H.text <| "Only "
-        , H.text <| Utils.formatCents remaining
-        , H.text <| " of "
-        , Utils.renderUser creator
-        , H.text <| "'s initial stake remains, since they've already accepted some bets."
-        ]
-
 
 getTitleTextChunks : Time.Zone -> Pb.UserPredictionView -> List String
 getTitleTextChunks timeZone prediction =
@@ -1047,6 +1025,23 @@ formatYouWin wonCents =
     "you win " ++ Utils.formatCents wonCents
   else
     "you owe " ++ Utils.formatCents (-wonCents)
+
+viewRemainingStakeBar : Utils.BetSide -> Pb.UserPredictionView -> Html msg
+viewRemainingStakeBar side prediction =
+  let
+    centsLeft = case side of
+      Utils.Skeptic -> prediction.remainingStakeCentsVsSkeptics
+      Utils.Believer -> prediction.remainingStakeCentsVsBelievers
+    fracLeft = toFloat centsLeft / toFloat prediction.maximumStakeCents
+    widthFrac frac = HA.style "width" (String.fromInt (round (100*frac)) ++ "%")
+  in
+  H.div [HA.class "progress"]
+  [ H.div [HA.class "progress-bar bg-success", widthFrac fracLeft]
+    [ H.text <| "@" ++ prediction.creator ++ " has " ++ Utils.formatCents centsLeft ++ " left" ]
+  , H.div [HA.class "progress-bar bg-light text-dark", widthFrac (1-fracLeft)]
+    [ H.text <| "...and has promised " ++ Utils.formatCents (prediction.maximumStakeCents - centsLeft) ++ " away"
+    ]
+  ]
 
 makeTable : List (H.Attribute msg) -> List (List (Html msg), a -> List (Html msg)) -> List a -> Html msg
 makeTable tableAttrs columns xs =

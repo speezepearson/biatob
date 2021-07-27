@@ -373,12 +373,6 @@ viewStakeWidgetTest =
     [ ("1", HQ.has [HS.disabled False])
     , ("0", HQ.has [HS.disabled True])
     ]
-  , variantTests "explains reduced creator stake"
-    (\remain -> viewStakeWidget QueueingUnnecessary "0" Unstarted Utils.Skeptic { mockPrediction | maximumStakeCents = 10 , remainingStakeCentsVsSkeptics = remain} |> HQ.fromHtml)
-    [ (10, HQ.hasNot [HS.containing [HS.class "reduced-stake-limit-explanation"]])
-    , ( 8, HQ.has [HS.containing [HS.class "reduced-stake-limit-explanation"]])
-    , ( 0, HQ.has [HS.containing [HS.class "reduced-stake-limit-explanation"]])
-    ]
   , variantTests "queues stakes depending on bettability"
     (\bettability -> viewStakeWidget bettability "1" Unstarted Utils.Skeptic {mockPrediction | creator = "creator"} |> HQ.fromHtml)
     [ ( QueueingNecessary (H.text "florbagorp")
