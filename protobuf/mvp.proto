@@ -36,6 +36,18 @@ message CredentialsConfig {
   }
 }
 
+message EmailFlowState {
+  oneof email_flow_state_kind {
+    Void unstarted = 1;
+    CodeSent code_sent = 2;
+    string verified = 3;
+  }
+  message CodeSent {
+    string email = 1;
+    HashedPassword code = 2;
+  }
+}
+
 message HashedPassword {
   bytes salt = 1;
   bytes scrypt = 2;
