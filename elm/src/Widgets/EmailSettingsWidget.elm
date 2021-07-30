@@ -9,8 +9,6 @@ import Biatob.Proto.Mvp as Pb
 import Utils exposing (EmailAddress, RequestStatus(..), isOk, viewError)
 
 import API
-import Parser exposing ((|.), (|=))
-import Set
 
 type alias Config msg =
   { setState : State -> msg
@@ -27,12 +25,6 @@ type alias State =
   , updateSettingsRequestStatus : RequestStatus
   }
 
-parseEmailAddress : State -> Result String EmailAddress
-parseEmailAddress state =
-  case Parser.run emailParser state.emailField of
-    Ok s -> Ok s
-    Err _ -> Err "doesn't look valid, sorry"
-
 init : State
 init =
   { emailField = ""
@@ -40,18 +32,6 @@ init =
   , registrationRequestStatus = Unstarted
   , updateSettingsRequestStatus = Unstarted
   }
-
-emailParser : Parser.Parser EmailAddress
-emailParser =
-  let
-    validNameChars = Set.fromList <| String.toList "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-+."
-    validDomainChars = Set.fromList <| String.toList "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-+."
-  in
-  Parser.succeed (\s1 s2 -> s1 ++ "@" ++ s2)
-    |= Parser.variable {start=\c -> Set.member c validNameChars, inner=\c -> Set.member c validNameChars, reserved=Set.empty}
-    |. Parser.symbol "@"
-    |= Parser.variable {start=\c -> Set.member c validDomainChars, inner=\c -> Set.member c validDomainChars, reserved=Set.empty}
-    |. Parser.end
 
 handleUpdateSettingsResponse : Result Http.Error Pb.UpdateSettingsResponse -> State -> State
 handleUpdateSettingsResponse res state =
@@ -106,12 +86,12 @@ view config state =
               , HA.value state.emailField
               , Utils.onEnter (config.setEmail {state | registrationRequestStatus = AwaitingResponse} {email=state.emailField}) config.ignore
               , HA.class "form-control form-control-sm mx-1 d-inline-block"
-              , HA.class <| if state.emailField == "" then "" else if isOk (parseEmailAddress state) then "" else "is-invalid"
+              , HA.class <| if state.emailField == "" then "" else if isOk (Utils.parseEmailAddress state.emailField) then "" else "is-invalid"
               , HA.style "width" "18em"
               ] []
             , H.button
                 [ HE.onClick (config.setEmail {state | registrationRequestStatus = AwaitingResponse} {email=state.emailField})
-                , HA.disabled <| state.registrationRequestStatus == AwaitingResponse || Result.toMaybe (parseEmailAddress state) == Nothing
+                , HA.disabled <| state.registrationRequestStatus == AwaitingResponse || Result.toMaybe (Utils.parseEmailAddress state.emailField) == Nothing
                 , HA.class "btn btn-sm py-0 btn-primary"
                 ] [H.text "Send verification"]
               , H.text " "
@@ -120,7 +100,7 @@ view config state =
                   AwaitingResponse -> H.text ""
                   Succeeded -> Utils.greenText "Success!"
                   Failed e -> Utils.redText e
-            , H.div [HA.class "invalid-feedback"] [viewError (parseEmailAddress state)]
+            , H.div [HA.class "invalid-feedback"] [viewError (Utils.parseEmailAddress state.emailField)]
             , H.div [HA.class "mx-2 text-secondary"]
               [ H.small [] [H.text "I will never ever intentionally share this with anybody unless you tell me to."]
               ]

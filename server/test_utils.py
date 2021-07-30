@@ -143,10 +143,20 @@ def Whoami(servicer: Servicer, actor: Optional[AuthorizingUsername]) -> Optional
 def SignOut(servicer: Servicer, actor: Optional[AuthorizingUsername]) -> None:
   servicer.SignOut(actor, mvp_pb2.SignOutRequest())
 
-def RegisterUsernameOk(servicer: Servicer, actor: Optional[AuthorizingUsername], username: Username, password: str = 'pw') -> mvp_pb2.AuthSuccess:
-  return assert_oneof(servicer.RegisterUsername(actor, mvp_pb2.RegisterUsernameRequest(username=username, password=password)), 'register_username_result', 'ok', mvp_pb2.AuthSuccess)
-def RegisterUsernameErr(servicer: Servicer, actor: Optional[AuthorizingUsername], username: Username, password: str = 'pw') -> mvp_pb2.RegisterUsernameResponse.Error:
-  return assert_oneof(servicer.RegisterUsername(actor, mvp_pb2.RegisterUsernameRequest(username=username, password=password)), 'register_username_result', 'error', mvp_pb2.RegisterUsernameResponse.Error)
+def RegisterUsernameOk(servicer: Servicer, actor: Optional[AuthorizingUsername], username: Username, password: str = 'pw', email_address: Optional[str] = None) -> mvp_pb2.AuthSuccess:
+  token_mint: TokenMint = servicer._token_mint  # type: ignore
+  return assert_oneof(servicer.RegisterUsername(actor, mvp_pb2.RegisterUsernameRequest(
+    username=username,
+    password=password,
+    proof_of_email=token_mint.sign_proof_of_email(email_address=email_address if email_address is not None else f'{username}@example.com'),
+  )), 'register_username_result', 'ok', mvp_pb2.AuthSuccess)
+def RegisterUsernameErr(servicer: Servicer, actor: Optional[AuthorizingUsername], username: Username, password: str = 'pw', email_address: Optional[str] = None) -> mvp_pb2.RegisterUsernameResponse.Error:
+  token_mint: TokenMint = servicer._token_mint  # type: ignore
+  return assert_oneof(servicer.RegisterUsername(actor, mvp_pb2.RegisterUsernameRequest(
+    username=username,
+    password=password,
+    proof_of_email=token_mint.sign_proof_of_email(email_address=email_address if email_address is not None else f'{username}@example.com'),
+  )), 'register_username_result', 'error', mvp_pb2.RegisterUsernameResponse.Error)
 
 def LogInUsernameOk(servicer: Servicer, actor: Optional[AuthorizingUsername], username: Username, password: str) -> mvp_pb2.AuthSuccess:
   return assert_oneof(servicer.LogInUsername(actor, mvp_pb2.LogInUsernameRequest(username=username, password=password)), 'log_in_username_result', 'ok', mvp_pb2.AuthSuccess)

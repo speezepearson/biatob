@@ -20,7 +20,7 @@ def create_user(
   email_resolution_notifications: Optional[bool] = None,
   email_reminders_to_resolve: Optional[bool] = None,
 ) -> None:
-  conn.register_username(username, 'password', password_id=f'{username} pwid')
+  conn.register_username(username=username, password='password', password_id=f'{username} pwid', email_address=f'{username}@example.com')
   if email_address:
     conn.set_email(username, mvp_pb2.EmailFlowState(verified=email_address))
   if email_resolution_notifications is not None:
@@ -48,24 +48,24 @@ def test_enforces_foreign_keys(conn: SqlConn):
 class TestRegisterUsername:
   def test_user_exists_after(self, conn: SqlConn):
     assert not conn.user_exists(ALICE)
-    conn.register_username(ALICE, 'password', password_id='alicepwid')
+    conn.register_username(username=ALICE, password='password', password_id='alicepwid', email_address=f'{ALICE}@example.com')
     assert conn.user_exists(ALICE)
 
   def test_no_double_registration(self, conn: SqlConn):
-    conn.register_username(ALICE, 'password', password_id='alicepwid')
+    conn.register_username(username=ALICE, password='password', password_id='alicepwid', email_address=f'{ALICE}@example.com')
     with pytest.raises(UsernameAlreadyRegisteredError):
-      conn.register_username(ALICE, 'password', password_id='alicepwid')
+      conn.register_username(username=ALICE, password='password', password_id='alicepwid', email_address=f'{ALICE}@example.com')
 
 
 class TestTrust:
   def test_initially_no_trust_until_set_trust(self, conn: SqlConn):
-    conn.register_username(ALICE, 'password', password_id='alicepwid')
-    conn.register_username(BOB, 'password', password_id='bobpwid')
+    conn.register_username(username=ALICE, password='password', password_id='alicepwid', email_address=f'{ALICE}@example.com')
+    conn.register_username(username=BOB, password='password', password_id='bobpwid', email_address=f'{BOB}@example.com')
     assert not conn.trusts(ALICE, BOB)
 
   def test_trust_follows_last_set_trust(self, conn: SqlConn):
-    conn.register_username(ALICE, 'password', password_id='alicepwid')
-    conn.register_username(BOB, 'password', password_id='bobpwid')
+    conn.register_username(username=ALICE, password='password', password_id='alicepwid', email_address=f'{ALICE}@example.com')
+    conn.register_username(username=BOB, password='password', password_id='bobpwid', email_address=f'{BOB}@example.com')
     conn.set_trusted(ALICE, BOB, True, now=T0)
     assert conn.trusts(ALICE, BOB)
     conn.set_trusted(ALICE, BOB, True, now=T0)
@@ -78,20 +78,20 @@ class TestTrust:
     assert conn.trusts(ALICE, BOB)
 
   def test_trust_is_only_one_way(self, conn: SqlConn):
-    conn.register_username(ALICE, 'password', password_id='alicepwid')
-    conn.register_username(BOB, 'password', password_id='bobpwid')
+    conn.register_username(username=ALICE, password='password', password_id='alicepwid', email_address=f'{ALICE}@example.com')
+    conn.register_username(username=BOB, password='password', password_id='bobpwid', email_address=f'{BOB}@example.com')
     conn.set_trusted(ALICE, BOB, True, now=T0)
     assert conn.trusts(ALICE, BOB)
     assert not conn.trusts(BOB, ALICE)
 
   def test_false_if_either_user_nonexistent(self, conn: SqlConn):
-    conn.register_username(ALICE, 'password', password_id='alicepwid')
+    conn.register_username(username=ALICE, password='password', password_id='alicepwid', email_address=f'{ALICE}@example.com')
     assert not conn.trusts(ALICE, BOB)
     assert not conn.trusts(BOB, ALICE)
     assert not conn.trusts(BOB, Username('charlie'))
 
   def test_everyone_trusts_self(self, conn: SqlConn):
-    conn.register_username(ALICE, 'password', password_id='alicepwid')
+    conn.register_username(username=ALICE, password='password', password_id='alicepwid', email_address=f'{ALICE}@example.com')
     assert conn.trusts(ALICE, ALICE)
 
 
@@ -102,29 +102,29 @@ def must(x: Optional[_T]) -> _T:
 
 class TestSettings:
   def test_get_settings_includes_trusted_users(self, conn: SqlConn):
-    conn.register_username(ALICE, 'password', password_id='alicepwid')
-    conn.register_username(BOB, 'password', password_id='bobpwid')
+    conn.register_username(username=ALICE, password='password', password_id='alicepwid', email_address=f'{ALICE}@example.com')
+    conn.register_username(username=BOB, password='password', password_id='bobpwid', email_address=f'{BOB}@example.com')
     conn.set_trusted(ALICE, BOB, True, now=T0)
     assert must(conn.get_settings(au(ALICE))).relationships == {BOB: mvp_pb2.Relationship(trusted_by_you=True)}
 
   def test_get_settings_includes_mutually_trusting_users(self, conn: SqlConn):
-    conn.register_username(ALICE, 'password', password_id='alicepwid')
-    conn.register_username(BOB, 'password', password_id='bobpwid')
+    conn.register_username(username=ALICE, password='password', password_id='alicepwid', email_address=f'{ALICE}@example.com')
+    conn.register_username(username=BOB, password='password', password_id='bobpwid', email_address=f'{BOB}@example.com')
     conn.set_trusted(ALICE, BOB, True, now=T0)
     conn.set_trusted(BOB, ALICE, True, now=T0)
     assert must(conn.get_settings(au(ALICE))).relationships == {BOB: mvp_pb2.Relationship(trusted_by_you=True, trusts_you=True)}
 
   def test_get_settings_includes_explicitly_untrusted_users(self, conn: SqlConn):
-    conn.register_username(ALICE, 'password', password_id='alicepwid')
-    conn.register_username(BOB, 'password', password_id='bobpwid')
+    conn.register_username(username=ALICE, password='password', password_id='alicepwid', email_address=f'{ALICE}@example.com')
+    conn.register_username(username=BOB, password='password', password_id='bobpwid', email_address=f'{BOB}@example.com')
     conn.set_trusted(ALICE, BOB, False, now=T0)
     assert must(conn.get_settings(au(ALICE))).relationships == {BOB: mvp_pb2.Relationship(trusted_by_you=False)}
 
   @pytest.mark.parametrize('a_trusts_b', [True, False])
   @pytest.mark.parametrize('b_trusts_a', [True, False, None])
   def test_get_settings_reports_trust_correctly(self, conn: SqlConn, a_trusts_b: bool, b_trusts_a: Optional[bool]):
-    conn.register_username(ALICE, 'password', password_id='alicepwid')
-    conn.register_username(BOB, 'password', password_id='bobpwid')
+    conn.register_username(username=ALICE, password='password', password_id='alicepwid', email_address=f'{ALICE}@example.com')
+    conn.register_username(username=BOB, password='password', password_id='bobpwid', email_address=f'{BOB}@example.com')
     conn.set_trusted(ALICE, BOB, a_trusts_b, now=T0)
     if b_trusts_a is not None:
       conn.set_trusted(BOB, ALICE, b_trusts_a, now=T0)
@@ -132,27 +132,27 @@ class TestSettings:
 
   @pytest.mark.parametrize('b_trusts_a', [True, False, None])
   def test_get_settings_ignores_unacknowledged_users(self, conn: SqlConn, b_trusts_a: Optional[bool]):
-    conn.register_username(ALICE, 'password', password_id='alicepwid')
-    conn.register_username(BOB, 'password', password_id='bobpwid')
+    conn.register_username(username=ALICE, password='password', password_id='alicepwid', email_address=f'{ALICE}@example.com')
+    conn.register_username(username=BOB, password='password', password_id='bobpwid', email_address=f'{BOB}@example.com')
     if b_trusts_a is not None:
       conn.set_trusted(BOB, ALICE, b_trusts_a, now=T0)
     assert must(conn.get_settings(au(ALICE))).relationships == {}
 
   @pytest.mark.parametrize('b_trusts_a', [True, False, None])
   def test_get_settings_includes_unacknowledged_users_if_explicitly_requested(self, conn: SqlConn, b_trusts_a: Optional[bool]):
-    conn.register_username(ALICE, 'password', password_id='alicepwid')
-    conn.register_username(BOB, 'password', password_id='bobpwid')
+    conn.register_username(username=ALICE, password='password', password_id='alicepwid', email_address=f'{ALICE}@example.com')
+    conn.register_username(username=BOB, password='password', password_id='bobpwid', email_address=f'{BOB}@example.com')
     if b_trusts_a is not None:
       conn.set_trusted(BOB, ALICE, b_trusts_a, now=T0)
     assert must(conn.get_settings(au(ALICE), include_relationships_with_users=[BOB])).relationships == {BOB: mvp_pb2.Relationship(trusts_you=b_trusts_a or False)}
 
   def test_persists_updated_settings(self, conn: SqlConn):
-    conn.register_username(ALICE, 'password', password_id='alicepwid')
+    conn.register_username(username=ALICE, password='password', password_id='alicepwid', email_address=f'{ALICE}@example.com')
     conn.update_settings(ALICE, mvp_pb2.UpdateSettingsRequest(email_resolution_notifications=mvp_pb2.MaybeBool(value=True)))
     assert must(conn.get_settings(au(ALICE))).email_resolution_notifications
 
   def test_persists_set_email(self, conn: SqlConn):
-    conn.register_username(ALICE, 'password', password_id='alicepwid')
+    conn.register_username(username=ALICE, password='password', password_id='alicepwid', email_address=f'{ALICE}@example.com')
     efs = mvp_pb2.EmailFlowState(verified='a@a')
     conn.set_email(ALICE, efs)
     assert must(conn.get_settings(au(ALICE))).email == efs
@@ -161,14 +161,14 @@ class TestSettings:
 
 class TestInvitations:
   def test_accept_returns_params_from_create(self, conn: SqlConn):
-    conn.register_username(ALICE, 'password', password_id='alicepwid')
-    conn.register_username(BOB, 'password', password_id='bobpwid')
+    conn.register_username(username=ALICE, password='password', password_id='alicepwid', email_address=f'{ALICE}@example.com')
+    conn.register_username(username=BOB, password='password', password_id='bobpwid', email_address=f'{BOB}@example.com')
     conn.create_invitation('mynonce', inviter=ALICE, recipient=BOB)
     assert conn.accept_invitation('mynonce', now=T0) == mvp_pb2.CheckInvitationResponse.Result(inviter=ALICE, recipient=BOB)
 
   def test_returns_none_if_no_such_invitation(self, conn: SqlConn):
-    conn.register_username(ALICE, 'password', password_id='alicepwid')
-    conn.register_username(BOB, 'password', password_id='bobpwid')
+    conn.register_username(username=ALICE, password='password', password_id='alicepwid', email_address=f'{ALICE}@example.com')
+    conn.register_username(username=BOB, password='password', password_id='bobpwid', email_address=f'{BOB}@example.com')
     conn.create_invitation('one nonce', inviter=ALICE, recipient=BOB)
     assert conn.accept_invitation('some other nonce', now=T0) is None
 
@@ -176,7 +176,7 @@ class TestInvitations:
 class TestPredictions:
   def test_view_contains_all_creation_fields(self, conn: SqlConn):
     predid = PredictionId(PRED_ID)
-    conn.register_username(ALICE, 'password', password_id='alicepwid')
+    conn.register_username(username=ALICE, password='password', password_id='alicepwid', email_address=f'{ALICE}@example.com')
 
     conn.create_prediction(now=T0, prediction_id=predid, creator=ALICE, request=mvp_pb2.CreatePredictionRequest(
       prediction='a thing will happen',
@@ -200,7 +200,7 @@ class TestPredictions:
     )
 
   def test_stake_errors_on_nonexistent_prediction(self, conn: SqlConn):
-    conn.register_username(ALICE, 'password', password_id='alicepwid')
+    conn.register_username(username=ALICE, password='password', password_id='alicepwid', email_address=f'{ALICE}@example.com')
     with pytest.raises(sqlalchemy.exc.IntegrityError):
       conn.stake(
         prediction_id=PredictionId(PRED_ID),
@@ -220,9 +220,9 @@ class TestResolutionNotifications:
     (mvp_pb2.EmailFlowState(verified='bob@example.com'), False, False),
   ])
   def test_emails_bettors_with_verified_email_and_setting_enabled(self, conn: SqlConn, efs: mvp_pb2.EmailFlowState, wants_notifs: bool, expect_email: bool):
-    conn.register_username(ALICE, 'password', password_id='alicepwid')
+    conn.register_username(username=ALICE, password='password', password_id='alicepwid', email_address=f'{ALICE}@example.com')
 
-    conn.register_username(BOB, 'password', password_id='bobpwid')
+    conn.register_username(username=BOB, password='password', password_id='bobpwid', email_address=f'{BOB}@example.com')
     conn.set_email(BOB, efs)
     conn.update_settings(BOB, mvp_pb2.UpdateSettingsRequest(email_resolution_notifications=mvp_pb2.MaybeBool(value=wants_notifs)))
 
@@ -233,10 +233,10 @@ class TestResolutionNotifications:
     assert set(conn.get_resolution_notification_addrs(PRED_ID)) == expected_emails
 
   def test_does_not_email_creator(self, conn: SqlConn):
-    conn.register_username(ALICE, 'password', password_id='alicepwid')
+    conn.register_username(username=ALICE, password='password', password_id='alicepwid', email_address=f'{ALICE}@example.com')
     conn.set_email(ALICE, mvp_pb2.EmailFlowState(verified='alice@example.com'))
     conn.update_settings(ALICE, mvp_pb2.UpdateSettingsRequest(email_resolution_notifications=mvp_pb2.MaybeBool(value=True)))
-    conn.register_username(BOB, 'password', password_id='bobpwid')
+    conn.register_username(username=BOB, password='password', password_id='bobpwid', email_address=f'{BOB}@example.com')
 
     conn.create_prediction(now=T0, prediction_id=PRED_ID, creator=ALICE, request=some_create_prediction_request())
     conn.stake(prediction_id=PRED_ID, bettor=BOB, bettor_is_a_skeptic=True, bettor_stake_cents=1, creator_stake_cents=1, state=mvp_pb2.TRADE_STATE_ACTIVE, now=T0)

@@ -38,8 +38,6 @@ type Msg
   | ChangePasswordFinished Pb.ChangePasswordRequest (Result Http.Error Pb.ChangePasswordResponse)
   | LogInUsername AuthWidget.State Pb.LogInUsernameRequest
   | LogInUsernameFinished Pb.LogInUsernameRequest (Result Http.Error Pb.LogInUsernameResponse)
-  | RegisterUsername AuthWidget.State Pb.RegisterUsernameRequest
-  | RegisterUsernameFinished Pb.RegisterUsernameRequest (Result Http.Error Pb.RegisterUsernameResponse)
   | SetEmail EmailSettingsWidget.State Pb.SetEmailRequest
   | SetEmailFinished Pb.SetEmailRequest (Result Http.Error Pb.SetEmailResponse)
   | SetTrusted TrustedUsersWidget.State Pb.SetTrustedRequest
@@ -94,18 +92,6 @@ update msg model =
                 , navbarAuth = model.navbarAuth |> AuthWidget.handleLogInUsernameResponse res
         }
       , case API.simplifyLogInUsernameResponse res of
-          Ok _ -> navigate <| Nothing
-          Err _ -> Cmd.none
-      )
-    RegisterUsername widgetState req ->
-      ( { model | navbarAuth = widgetState }
-      , API.postRegisterUsername (RegisterUsernameFinished req) req
-      )
-    RegisterUsernameFinished req res ->
-      ( { model | globals = model.globals |> Globals.handleRegisterUsernameResponse req res
-                , navbarAuth = model.navbarAuth |> AuthWidget.handleRegisterUsernameResponse res
-        }
-      , case API.simplifyRegisterUsernameResponse res of
           Ok _ -> navigate <| Nothing
           Err _ -> Cmd.none
       )
@@ -174,7 +160,6 @@ view model =
     Navbar.view
         { setState = SetAuthWidget
         , logInUsername = LogInUsername
-        , register = RegisterUsername
         , signOut = SignOut
         , ignore = Ignore
         , username = Globals.getOwnUsername model.globals

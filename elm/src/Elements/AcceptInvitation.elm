@@ -35,8 +35,6 @@ type Msg
   | AcceptInvitationFinished Pb.AcceptInvitationRequest (Result Http.Error Pb.AcceptInvitationResponse)
   | LogInUsername AuthWidget.State Pb.LogInUsernameRequest
   | LogInUsernameFinished Pb.LogInUsernameRequest (Result Http.Error Pb.LogInUsernameResponse)
-  | RegisterUsername AuthWidget.State Pb.RegisterUsernameRequest
-  | RegisterUsernameFinished Pb.RegisterUsernameRequest (Result Http.Error Pb.RegisterUsernameResponse)
   | SignOut AuthWidget.State Pb.SignOutRequest
   | SignOutFinished Pb.SignOutRequest (Result Http.Error Pb.SignOutResponse)
   | AuthWidgetExternallyModified AuthWidget.DomModification
@@ -89,18 +87,6 @@ update msg model =
           Ok _ -> navigate Nothing
           Err _ -> Cmd.none
       )
-    RegisterUsername widgetState req ->
-      ( { model | navbarAuth = widgetState }
-      , API.postRegisterUsername (RegisterUsernameFinished req) req
-      )
-    RegisterUsernameFinished req res ->
-      ( { model | globals = model.globals |> Globals.handleRegisterUsernameResponse req res
-                , navbarAuth = model.navbarAuth |> AuthWidget.handleRegisterUsernameResponse res
-        }
-      , case API.simplifyRegisterUsernameResponse res of
-          Ok _ -> navigate Nothing
-          Err _ -> Cmd.none
-      )
     SignOut widgetState req ->
       ( { model | navbarAuth = widgetState }
       , API.postSignOut (SignOutFinished req) req
@@ -133,7 +119,6 @@ view model =
     [ Navbar.view
         { setState = SetAuthWidget
         , logInUsername = LogInUsername
-        , register = RegisterUsername
         , signOut = SignOut
         , ignore = Ignore
         , username = Globals.getOwnUsername model.globals

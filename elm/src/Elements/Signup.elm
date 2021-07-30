@@ -1,8 +1,9 @@
-port module Elements.Login exposing (main)
+port module Elements.Signup exposing (..)
 
 import Browser
 import Html as H
 import Html.Attributes as HA
+import Html.Events as HE
 import Http
 import Json.Decode as JD
 import Time
@@ -13,6 +14,7 @@ import Widgets.Navbar as Navbar
 import Biatob.Proto.Mvp as Pb
 import API
 import Utils
+import Utils exposing (RequestStatus(..))
 
 port copy : String -> Cmd msg
 port navigate : Maybe String -> Cmd msg
@@ -21,14 +23,18 @@ port authWidgetExternallyChanged : (AuthWidget.DomModification -> msg) -> Sub ms
 type alias Model =
   { globals : Globals.Globals
   , navbarAuth : AuthWidget.State
-  , destination : String
+  , emailField : String
+  , sendVerificationEmailStatus : RequestStatus
   }
 type Msg
   = SetAuthWidget AuthWidget.State
   | LogInUsername AuthWidget.State Pb.LogInUsernameRequest
   | LogInUsernameFinished Pb.LogInUsernameRequest (Result Http.Error Pb.LogInUsernameResponse)
+  | SendVerificationEmail
+  | SendVerificationEmailFinished Pb.SendVerificationEmailRequest (Result Http.Error Pb.SendVerificationEmailResponse)
   | SignOut AuthWidget.State Pb.SignOutRequest
   | SignOutFinished Pb.SignOutRequest (Result Http.Error Pb.SignOutResponse)
+  | SetEmailField String
   | Tick Time.Posix
   | AuthWidgetExternallyModified AuthWidget.DomModification
   | Ignore
@@ -39,12 +45,13 @@ init flags =
     model =
       { globals = JD.decodeValue Globals.globalsDecoder flags |> Utils.mustResult "flags"
       , navbarAuth = AuthWidget.init
-      , destination = Utils.mustDecodeFromFlags JD.string "destination" flags
+      , emailField = ""
+      , sendVerificationEmailStatus = Unstarted
       }
   in
     ( model
     , if Globals.isLoggedIn model.globals then
-        navigate <| Just model.destination
+        navigate <| Just "/"
       else
         Cmd.none
     )
@@ -63,7 +70,7 @@ update msg model =
                 , navbarAuth = model.navbarAuth |> AuthWidget.handleLogInUsernameResponse res
         }
       , case API.simplifyLogInUsernameResponse res of
-          Ok _ -> navigate <| Just model.destination
+          Ok _ -> navigate Nothing
           Err _ -> Cmd.none
       )
     SignOut widgetState req ->
@@ -77,6 +84,17 @@ update msg model =
       , case API.simplifySignOutResponse res of
           Ok _ -> navigate <| Just "/"
           Err _ -> Cmd.none
+      )
+    SetEmailField value -> ( { model | emailField = value } , Cmd.none )
+    SendVerificationEmail ->
+      let req = {emailAddress=model.emailField} in ( { model | sendVerificationEmailStatus = AwaitingResponse } , API.postSendVerificationEmail (SendVerificationEmailFinished req) req )
+    SendVerificationEmailFinished req res ->
+      ( { model | globals = model.globals |> Globals.handleSendVerificationEmailResponse req res
+                , sendVerificationEmailStatus = case API.simplifySendVerificationEmailResponse res of
+                    Ok _ -> Succeeded
+                    Err e -> Failed e
+        }
+      , Cmd.none
       )
     Tick now ->
       ( { model | globals = model.globals |> Globals.tick now }
@@ -92,7 +110,7 @@ update msg model =
 
 view : Model -> Browser.Document Msg
 view model =
-  { title = "Log in"
+  { title = "Sign up"
   , body = [
     Navbar.view
         { setState = SetAuthWidget
@@ -104,9 +122,30 @@ view model =
         }
         model.navbarAuth
     ,
+    let email = Utils.parseEmailAddress model.emailField in
     H.main_ [HA.class "container"]
-    [ H.h2 [] [H.text "Log in"]
-    , H.text "...using the navbar at the top."
+    [ H.h2 [] [H.text "Sign up"]
+    , H.div [HA.class "mb-3"]
+      [ H.label [HA.for "sign-up-email-field", HA.class "form-label"] [H.text "Email address:"]
+      , H.input
+        [ HE.onInput SetEmailField
+        , HA.value model.emailField
+        , HA.id "sign-up-email-field"
+        , HA.class <| if Utils.isOk email then "" else "is-invalid"
+        ] []
+      , H.div [HA.class "invalid-feedback"]
+        [ case email of
+            Ok _ -> H.text ""
+            Err e -> H.text e
+        ]
+      , H.div [HA.class "form-text"] [H.text "I'll never ever intentionally share this with anybody unless you ask me to."]
+      ]
+    , H.button
+      [ HA.class "btn btn-primary"
+      , HE.onClick SendVerificationEmail
+      , HA.disabled <| (model.sendVerificationEmailStatus == AwaitingResponse) || Utils.isErr email
+      ]
+      [H.text "Submit"]
     ]
   ]}
 

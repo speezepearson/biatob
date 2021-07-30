@@ -1,8 +1,9 @@
-port module Elements.Login exposing (main)
+port module Elements.InitUser exposing (..)
 
 import Browser
 import Html as H
 import Html.Attributes as HA
+import Html.Events as HE
 import Http
 import Json.Decode as JD
 import Time
@@ -13,6 +14,7 @@ import Widgets.Navbar as Navbar
 import Biatob.Proto.Mvp as Pb
 import API
 import Utils
+import Utils exposing (RequestStatus(..))
 
 port copy : String -> Cmd msg
 port navigate : Maybe String -> Cmd msg
@@ -21,14 +23,24 @@ port authWidgetExternallyChanged : (AuthWidget.DomModification -> msg) -> Sub ms
 type alias Model =
   { globals : Globals.Globals
   , navbarAuth : AuthWidget.State
+  , usernameField : String
+  , passwordField : String
+  , confirmPasswordField : String
   , destination : String
+  , proofOfEmail : Pb.ProofOfEmail
+  , registerStatus : RequestStatus
   }
 type Msg
   = SetAuthWidget AuthWidget.State
   | LogInUsername AuthWidget.State Pb.LogInUsernameRequest
   | LogInUsernameFinished Pb.LogInUsernameRequest (Result Http.Error Pb.LogInUsernameResponse)
+  | RegisterUsername
+  | RegisterUsernameFinished Pb.RegisterUsernameRequest (Result Http.Error Pb.RegisterUsernameResponse)
   | SignOut AuthWidget.State Pb.SignOutRequest
   | SignOutFinished Pb.SignOutRequest (Result Http.Error Pb.SignOutResponse)
+  | SetUsernameField String
+  | SetPasswordField String
+  | SetConfirmPasswordField String
   | Tick Time.Posix
   | AuthWidgetExternallyModified AuthWidget.DomModification
   | Ignore
@@ -40,6 +52,11 @@ init flags =
       { globals = JD.decodeValue Globals.globalsDecoder flags |> Utils.mustResult "flags"
       , navbarAuth = AuthWidget.init
       , destination = Utils.mustDecodeFromFlags JD.string "destination" flags
+      , usernameField = ""
+      , passwordField = ""
+      , confirmPasswordField = ""
+      , proofOfEmail = Utils.mustDecodePbFromFlags Pb.proofOfEmailDecoder "proofOfEmail" flags
+      , registerStatus = Unstarted
       }
   in
     ( model
@@ -66,6 +83,16 @@ update msg model =
           Ok _ -> navigate <| Just model.destination
           Err _ -> Cmd.none
       )
+    RegisterUsername ->
+      ( { model | registerStatus = AwaitingResponse }
+      , let req = {username=model.usernameField, password=model.passwordField, proofOfEmail=Just model.proofOfEmail} in API.postRegisterUsername (RegisterUsernameFinished req) req
+      )
+    RegisterUsernameFinished req res ->
+      ( { model | globals = model.globals |> Globals.handleRegisterUsernameResponse req res }
+      , case API.simplifyRegisterUsernameResponse res of
+          Ok _ -> navigate <| Just model.destination
+          Err _ -> Cmd.none
+      )
     SignOut widgetState req ->
       ( { model | navbarAuth = widgetState }
       , API.postSignOut (SignOutFinished req) req
@@ -78,6 +105,9 @@ update msg model =
           Ok _ -> navigate <| Just "/"
           Err _ -> Cmd.none
       )
+    SetUsernameField value -> ( { model | usernameField = value } , Cmd.none )
+    SetPasswordField value -> ( { model | passwordField = value } , Cmd.none )
+    SetConfirmPasswordField value -> ( { model | confirmPasswordField = value } , Cmd.none )
     Tick now ->
       ( { model | globals = model.globals |> Globals.tick now }
       , Cmd.none
@@ -92,7 +122,7 @@ update msg model =
 
 view : Model -> Browser.Document Msg
 view model =
-  { title = "Log in"
+  { title = "Sign up"
   , body = [
     Navbar.view
         { setState = SetAuthWidget
@@ -105,8 +135,23 @@ view model =
         model.navbarAuth
     ,
     H.main_ [HA.class "container"]
-    [ H.h2 [] [H.text "Log in"]
-    , H.text "...using the navbar at the top."
+    [ H.h2 [] [H.text "Sign up"]
+    , H.div [HA.class "mb-3"]
+      [ H.label [HA.for "register-username-field", HA.class "form-label"] [H.text "Username:"]
+      , H.input [HE.onInput SetUsernameField, HA.value model.usernameField, HA.id "register-username-field"] []
+      , H.div [HA.class "form-text"] [H.text "How I'll identify you to other users."]
+      ]
+    , H.div [HA.class "mb-3"]
+      [ H.label [HA.for "register-password-field", HA.class "form-label"] [H.text "Password:"]
+      , H.input [HE.onInput SetUsernameField, HA.value model.usernameField, HA.id "register-password-field"] []
+      , H.div [HA.class "form-text"] [H.text "How I'll identify you to other users."]
+      ]
+    , H.div [HA.class "mb-3"]
+      [ H.label [HA.for "register-confirm-password-field", HA.class "form-label"] [H.text "Confirm password:"]
+      , H.input [HE.onInput SetUsernameField, HA.value model.usernameField, HA.id "register-confirm-password-field"] []
+      , H.div [HA.class "form-text"] [H.text "How I'll identify you to other users."]
+      ]
+    , H.button [HE.onClick RegisterUsername, HA.class "btn btn-primary"] [H.text "Submit"]
     ]
   ]}
 

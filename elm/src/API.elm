@@ -24,6 +24,8 @@ postWhoami : (Result Http.Error Pb.WhoamiResponse -> msg) -> Pb.WhoamiRequest ->
 postWhoami = hit {url="/api/Whoami", encoder=Pb.toWhoamiRequestEncoder, decoder=Pb.whoamiResponseDecoder}
 postSignOut : (Result Http.Error Pb.SignOutResponse -> msg) -> Pb.SignOutRequest -> Cmd msg
 postSignOut = hit {url="/api/SignOut", encoder=Pb.toSignOutRequestEncoder, decoder=Pb.signOutResponseDecoder}
+postSendVerificationEmail : (Result Http.Error Pb.SendVerificationEmailResponse -> msg) -> Pb.SendVerificationEmailRequest -> Cmd msg
+postSendVerificationEmail = hit {url="/api/SendVerificationEmail", encoder=Pb.toSendVerificationEmailRequestEncoder, decoder=Pb.sendVerificationEmailResponseDecoder}
 postRegisterUsername : (Result Http.Error Pb.RegisterUsernameResponse -> msg) -> Pb.RegisterUsernameRequest -> Cmd msg
 postRegisterUsername = hit {url="/api/RegisterUsername", encoder=Pb.toRegisterUsernameRequestEncoder, decoder=Pb.registerUsernameResponseDecoder}
 postLogInUsername : (Result Http.Error Pb.LogInUsernameResponse -> msg) -> Pb.LogInUsernameRequest -> Cmd msg
@@ -77,6 +79,19 @@ simplifyLogInUsernameResponse res =
         Just (Pb.LogInUsernameResultOk success) ->
           Ok success
         Just (Pb.LogInUsernameResultError e) ->
+          Err e.catchall
+        Nothing ->
+          Err "Invalid server response (neither Ok nor Error in protobuf)"
+
+simplifySendVerificationEmailResponse : Result Http.Error Pb.SendVerificationEmailResponse -> Result String Pb.Void
+simplifySendVerificationEmailResponse res =
+  case res of
+    Err e -> Err (httpErrorToString e)
+    Ok resp ->
+      case resp.sendVerificationEmailResult of
+        Just (Pb.SendVerificationEmailResultOk success) ->
+          Ok success
+        Just (Pb.SendVerificationEmailResultError e) ->
           Err e.catchall
         Nothing ->
           Err "Invalid server response (neither Ok nor Error in protobuf)"

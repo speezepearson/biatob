@@ -9,6 +9,7 @@ import secrets
 from typing import overload, Optional, Container, NewType, Callable
 
 from aiohttp import web
+from google.protobuf.message import Message
 
 from .protobuf import mvp_pb2
 
@@ -146,6 +147,7 @@ def describe_AcceptInvitationRequest_problems(request: mvp_pb2.AcceptInvitationR
 class Servicer(abc.ABC):
     def Whoami(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.WhoamiRequest) -> mvp_pb2.WhoamiResponse: pass
     def SignOut(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.SignOutRequest) -> mvp_pb2.SignOutResponse: pass
+    def SendVerificationEmail(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.SendVerificationEmailRequest) -> mvp_pb2.SendVerificationEmailResponse: pass
     def RegisterUsername(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.RegisterUsernameRequest) -> mvp_pb2.RegisterUsernameResponse: pass
     def LogInUsername(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.LogInUsernameRequest) -> mvp_pb2.LogInUsernameResponse: pass
     def CreatePrediction(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.CreatePredictionRequest) -> mvp_pb2.CreatePredictionResponse: pass
@@ -172,10 +174,13 @@ class TokenMint:
         self._secret_key = secret_key
         self._clock = clock
 
+    def _signature(self, message: Message) -> bytes:
+        return hmac.digest(key=self._secret_key, msg=message.SerializeToString(), digest='sha256')
+
     def _compute_token_hmac(self, token: mvp_pb2.AuthToken) -> bytes:
         scratchpad = copy.copy(token)
         scratchpad.hmac_of_rest = b''
-        return hmac.digest(key=self._secret_key, msg=scratchpad.SerializeToString(), digest='sha256')
+        return self._signature(scratchpad)
 
     def _sign_token(self, token: mvp_pb2.AuthToken) -> None:
         token.hmac_of_rest = self._compute_token_hmac(token=token)
@@ -206,3 +211,17 @@ class TokenMint:
 
     def revoke_token(self, token: mvp_pb2.AuthToken) -> None:
         pass  # TODO
+
+    def sign_proof_of_email(self, email_address: str) -> mvp_pb2.ProofOfEmail:
+        payload = mvp_pb2.ProofOfEmail.Payload(email_address=email_address)
+        salt = secrets.token_bytes(8)
+        return mvp_pb2.ProofOfEmail(
+            payload=payload,
+            salt=salt,
+            hmac=hmac.digest(key=self._secret_key, msg=payload.SerializeToString(), digest='sha256'),
+        )
+
+    def check_proof_of_email(self, proof: mvp_pb2.ProofOfEmail) -> Optional[str]:
+        if hmac.compare_digest(proof.hmac, self._signature(proof.payload)):
+            return proof.payload.email_address
+        return None

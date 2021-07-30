@@ -1,4 +1,5 @@
 from __future__ import annotations
+import copy
 from typing import Sequence
 
 from unittest.mock import ANY
@@ -95,8 +96,9 @@ class TestSignOut:
 class TestRegisterUsername:
 
   async def test_returns_auth_when_successful(self, any_servicer: Servicer):
-    token = RegisterUsernameOk(any_servicer, None, ALICE, 'secret').token
-    assert token.owner == ALICE
+    result = RegisterUsernameOk(any_servicer, None, ALICE, 'secret', email_address='alice@example.com')
+    assert result.token.owner == ALICE
+    assert result.user_info.email_address == 'alice@example.com'
 
   async def test_can_log_in_after_registering(self, any_servicer: Servicer):
     assert 'no such user' in str(LogInUsernameErr(any_servicer, None, ALICE, 'secret'))
@@ -110,6 +112,15 @@ class TestRegisterUsername:
     for try_password in [password, 'not '+password]:
       with assert_user_unchanged(any_servicer, ALICE, password):
         assert 'username taken' in str(RegisterUsernameErr(any_servicer, None, ALICE, try_password))
+
+  async def test_error_if_bad_email_signature(self, any_servicer: Servicer, token_mint: TokenMint):
+    valid_proof = token_mint.sign_proof_of_email(f'{ALICE}@example.com')
+    invalid_proof = copy.copy(valid_proof)
+    invalid_proof.hmac = bytes([(invalid_proof.hmac[0] + 1) % 256, *invalid_proof.hmac[1:]])
+    assert 'invalid signature' in str(assert_oneof(any_servicer.RegisterUsername(None, mvp_pb2.RegisterUsernameRequest(username=ALICE, password='secret', proof_of_email=invalid_proof)),
+      'register_username_result', 'error', mvp_pb2.RegisterUsernameResponse.Error))
+    assert_oneof(any_servicer.RegisterUsername(None, mvp_pb2.RegisterUsernameRequest(username=ALICE, password='secret', proof_of_email=valid_proof)),
+      'register_username_result', 'ok', object)
 
   async def test_error_if_already_logged_in(self, any_servicer: Servicer):
     password = 'pw'

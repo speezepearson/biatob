@@ -54,7 +54,7 @@ message HashedPassword {
 }
 
 message GenericUserInfo {
-  EmailFlowState email = 2;
+  string email_address = 10;
   bool email_reminders_to_resolve = 3;
   bool email_resolution_notifications = 4;
   bool allow_email_invitations = 8;
@@ -131,9 +131,32 @@ message AuthSuccess {
   GenericUserInfo user_info = 2;
 }
 
+message SendVerificationEmailRequest {
+  string email_address = 1;
+}
+message SendVerificationEmailResponse {
+  oneof send_verification_email_result {
+    Void ok = 1;
+    Error error = 2;
+  }
+  message Error {
+    string catchall = 1;
+  }
+}
+
+message ProofOfEmail {
+  Payload payload = 1;
+  bytes salt = 2;
+  bytes hmac = 3;
+  message Payload {
+    string email_address = 1;
+  }
+}
+
 message RegisterUsernameRequest {
   string username = 1;
   string password = 2;
+  ProofOfEmail proof_of_email = 3;
 }
 message RegisterUsernameResponse {
   oneof register_username_result {

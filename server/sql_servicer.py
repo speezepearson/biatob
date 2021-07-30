@@ -42,7 +42,7 @@ class SqlConn:
     with self._conn.begin():
       yield
 
-  def register_username(self, username: Username, password: str, password_id: str) -> None:
+  def register_username(self, username: Username, password: str, password_id: str, email_address: str) -> None:
       if self.user_exists(username):
         raise UsernameAlreadyRegisteredError(username)
       hashed_password = new_hashed_password(password)
@@ -53,6 +53,7 @@ class SqlConn:
       ))
       self._conn.execute(sqlalchemy.insert(schema.users).values(
         username=username,
+        email_address=email_address,
         login_password_id=password_id,
         email_flow_state=mvp_pb2.EmailFlowState(unstarted=mvp_pb2.VOID).SerializeToString(),
       ))
@@ -93,6 +94,9 @@ class SqlConn:
 
   def user_exists(self, user: Username) -> bool:
     return self._conn.execute(sqlalchemy.select(schema.users.c).where(schema.users.c.username == user)).first() is not None
+
+  def email_is_registered(self, email_address: str) -> bool:
+    return self._conn.execute(sqlalchemy.select(schema.users.c).where(schema.users.c.email_address == email_address)).first() is not None
 
   def trusts(self, a: Username, b: Username) -> bool:
     if a == b:
@@ -498,7 +502,7 @@ class SqlConn:
       email_resolution_notifications=row['email_resolution_notifications'],
       allow_email_invitations=row['allow_email_invitations'],
       email_invitation_acceptance_notifications=row['email_invitation_acceptance_notifications'],
-      email=mvp_pb2.EmailFlowState.FromString(row['email_flow_state']),
+      email_address=str(row['email_address']),
       relationships={
         who: mvp_pb2.Relationship(
           trusted_by_you=outgoing_relationships_by_name[who]['trusted'] if who in outgoing_relationships_by_name else False,
@@ -699,6 +703,28 @@ class SqlServicer(Servicer):
         return mvp_pb2.SignOutResponse()
 
     @transactional
+    @log_actor
+    @log_action
+    def SendVerificationEmail(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.SendVerificationEmailRequest) -> mvp_pb2.SendVerificationEmailResponse:
+      logger.debug('API call', email_address=request.email_address)
+      if actor is not None:
+        logger.warn('logged-in user trying to send a verification email', email_address=request.email_address)
+        return mvp_pb2.SendVerificationEmailResponse(error=mvp_pb2.SendVerificationEmailResponse.Error(catchall='already authenticated; first, log out'))
+
+      if self._conn.email_is_registered(request.email_address):
+        logger.info('email is already registered', email_address=request.email_address)
+        return mvp_pb2.SendVerificationEmailResponse(error=mvp_pb2.SendVerificationEmailResponse.Error(catchall='email is already registered'))
+
+      logger.info('sending verification email', email_address=request.email_address)
+      code = secrets.token_urlsafe(nbytes=16)
+      asyncio.create_task(self._emailer.send_email_verification(
+        to=request.email_address,
+        code=code,
+      ))
+
+      return mvp_pb2.SendVerificationEmailResponse(ok=mvp_pb2.VOID)
+
+    @transactional
     @ensure_actor_exists
     @log_actor
     @log_action
@@ -720,9 +746,18 @@ class SqlServicer(Servicer):
         logger.info('username taken', username=request.username)
         return mvp_pb2.RegisterUsernameResponse(error=mvp_pb2.RegisterUsernameResponse.Error(catchall='username taken'))
 
+      email_address = self._token_mint.check_proof_of_email(request.proof_of_email)
+      if email_address is None:
+        logger.warn('invalid HMAC for proof-of-email', request=request)
+        return mvp_pb2.RegisterUsernameResponse(error=mvp_pb2.RegisterUsernameResponse.Error(catchall='invalid signature'))
       logger.info('registering username', username=request.username)
       password_id = ''.join(self._rng.choices('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234567879_', k=16))
-      self._conn.register_username(Username(request.username), request.password, password_id=password_id)
+      self._conn.register_username(
+        username=Username(request.username),
+        email_address=email_address,
+        password=request.password,
+        password_id=password_id,
+      )
 
       login_response = self.LogInUsername(None, mvp_pb2.LogInUsernameRequest(username=request.username, password=request.password))
       if login_response.WhichOneof('log_in_username_result') != 'ok':

@@ -33,8 +33,6 @@ type Msg
   | SetEmailWidget EmailSettingsWidget.State
   | LogInUsername AuthWidgetLoc AuthWidget.State Pb.LogInUsernameRequest
   | LogInUsernameFinished AuthWidgetLoc Pb.LogInUsernameRequest (Result Http.Error Pb.LogInUsernameResponse)
-  | RegisterUsername AuthWidgetLoc AuthWidget.State Pb.RegisterUsernameRequest
-  | RegisterUsernameFinished AuthWidgetLoc Pb.RegisterUsernameRequest (Result Http.Error Pb.RegisterUsernameResponse)
   | SetEmail EmailSettingsWidget.State Pb.SetEmailRequest
   | SetEmailFinished Pb.SetEmailRequest (Result Http.Error Pb.SetEmailResponse)
   | SignOut AuthWidgetLoc AuthWidget.State Pb.SignOutRequest
@@ -76,16 +74,6 @@ update msg model =
     LogInUsernameFinished loc req res ->
       ( updateAuthWidget loc (AuthWidget.handleLogInUsernameResponse res) { model | globals = model.globals |> Globals.handleLogInUsernameResponse req res }
       , case API.simplifyLogInUsernameResponse res of
-          Ok _ -> navigate <| if loc == Inline then Just "/welcome#welcome-page-auth-widget" else Nothing
-          Err _ -> Cmd.none
-      )
-    RegisterUsername loc widgetState req ->
-      ( updateAuthWidget loc (always widgetState) model
-      , API.postRegisterUsername (RegisterUsernameFinished loc req) req
-      )
-    RegisterUsernameFinished loc req res ->
-      ( updateAuthWidget loc (AuthWidget.handleRegisterUsernameResponse res) { model | globals = model.globals |> Globals.handleRegisterUsernameResponse req res }
-      , case API.simplifyRegisterUsernameResponse res of
           Ok _ -> navigate <| if loc == Inline then Just "/welcome#welcome-page-auth-widget" else Nothing
           Err _ -> Cmd.none
       )
@@ -149,7 +137,6 @@ view model =
     Navbar.view
         { setState = SetAuthWidget Navbar
         , logInUsername = LogInUsername Navbar
-        , register = RegisterUsername Navbar
         , signOut = SignOut Navbar
         , ignore = Ignore
         , username = Globals.getOwnUsername model.globals
@@ -222,7 +209,6 @@ view model =
                 [ AuthWidget.view
                   { setState = SetAuthWidget Inline
                   , logInUsername = LogInUsername Inline
-                  , register = RegisterUsername Inline
                   , signOut = SignOut Inline
                   , ignore = Ignore
                   , username = Globals.getOwnUsername model.globals

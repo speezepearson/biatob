@@ -28,6 +28,7 @@ users = Table(
     Column('email_invitation_acceptance_notifications', BOOLEAN(), nullable=False, server_default=sqlalchemy.text('TRUE')),
     Column('login_password_id', pwid_t, ForeignKey('passwords.password_id'), nullable=False),  # will be nullable someday, if we add OAuth or something
     Column('email_flow_state', BLOB(), nullable=False),
+    Column('email_address', String(128), unique=True, nullable=False),
 )
 
 relationships = Table(

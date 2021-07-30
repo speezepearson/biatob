@@ -13,6 +13,7 @@ module Globals exposing
   , tick
   , handleWhoamiResponse
   , handleSignOutResponse
+  , handleSendVerificationEmailResponse
   , handleRegisterUsernameResponse
   , handleLogInUsernameResponse
   , handleCreatePredictionResponse
@@ -72,6 +73,8 @@ handleSignOutResponse _ res globals =
   case res of
     Ok _ -> { globals | self = Nothing }
     Err _ -> globals
+handleSendVerificationEmailResponse : Pb.SendVerificationEmailRequest -> Result Http.Error Pb.SendVerificationEmailResponse -> Globals -> Globals
+handleSendVerificationEmailResponse _ _ globals = globals
 handleRegisterUsernameResponse : Pb.RegisterUsernameRequest -> Result Http.Error Pb.RegisterUsernameResponse -> Globals -> Globals
 handleRegisterUsernameResponse _ res globals =
   case res of

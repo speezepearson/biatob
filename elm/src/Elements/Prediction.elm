@@ -156,8 +156,6 @@ type Msg
   | SendInvitationFinished Pb.SendInvitationRequest (Result Http.Error Pb.SendInvitationResponse)
   | LogInUsername AuthWidgetLoc AuthWidget.State Pb.LogInUsernameRequest
   | LogInUsernameFinished AuthWidgetLoc Pb.LogInUsernameRequest (Result Http.Error Pb.LogInUsernameResponse)
-  | RegisterUsername AuthWidgetLoc AuthWidget.State Pb.RegisterUsernameRequest
-  | RegisterUsernameFinished AuthWidgetLoc Pb.RegisterUsernameRequest (Result Http.Error Pb.RegisterUsernameResponse)
   | Resolve Pb.Resolution
   | ResolveFinished Pb.ResolveRequest (Result Http.Error Pb.ResolveResponse)
   | SetCreatorTrusted
@@ -237,7 +235,6 @@ view model =
     [ Navbar.view
         { setState = SetAuthWidget Navbar
         , logInUsername = LogInUsername Navbar
-        , register = RegisterUsername Navbar
         , signOut = SignOut Navbar
         , ignore = Ignore
         , username = Globals.getOwnUsername model.globals
@@ -455,7 +452,6 @@ viewBody model =
               [ AuthWidget.view
                 { setState = SetAuthWidget Inline
                 , logInUsername = LogInUsername Inline
-                , register = RegisterUsername Inline
                 , signOut = SignOut Inline
                 , ignore = Ignore
                 , username = Globals.getOwnUsername model.globals
@@ -1188,16 +1184,6 @@ update msg model =
     LogInUsernameFinished loc req res ->
       ( updateAuthWidget loc (AuthWidget.handleLogInUsernameResponse res) { model | globals = model.globals |> Globals.handleLogInUsernameResponse req res }
       , case API.simplifyLogInUsernameResponse res of
-          Ok _ -> navigate <| Nothing
-          Err _ -> Cmd.none
-      )
-    RegisterUsername loc widgetState req ->
-      ( updateAuthWidget loc (always widgetState) model
-      , API.postRegisterUsername (RegisterUsernameFinished loc req) req
-      )
-    RegisterUsernameFinished loc req res ->
-      ( updateAuthWidget loc (AuthWidget.handleRegisterUsernameResponse res) { model | globals = model.globals |> Globals.handleRegisterUsernameResponse req res }
-      , case API.simplifyRegisterUsernameResponse res of
           Ok _ -> navigate <| Nothing
           Err _ -> Cmd.none
       )

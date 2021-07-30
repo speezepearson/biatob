@@ -41,18 +41,18 @@ async def post_proto(client, url: str, request_pb: _Req, response_pb_cls: Type[_
   return (http_resp, pb_resp)
 
 
-async def test_Whoami_and_RegisterUsername(aiohttp_client, app):
+async def test_Whoami_and_RegisterUsername(aiohttp_client, app, token_mint: TokenMint):
   cli = await aiohttp_client(app)
   (http_resp, pb_resp) = await post_proto(cli, '/api/Whoami', mvp_pb2.WhoamiRequest(), mvp_pb2.WhoamiResponse)
   assert not pb_resp.username, pb_resp
 
-  (http_resp, pb_resp) = await post_proto(cli, '/api/RegisterUsername', mvp_pb2.RegisterUsernameRequest(username='potato', password='secret'), mvp_pb2.RegisterUsernameResponse)
+  (http_resp, pb_resp) = await post_proto(cli, '/api/RegisterUsername', mvp_pb2.RegisterUsernameRequest(username='potato', password='secret', proof_of_email=token_mint.sign_proof_of_email('potato@example.com')), mvp_pb2.RegisterUsernameResponse)
   assert pb_resp.ok.token.owner == 'potato', pb_resp
 
   (http_resp, pb_resp) = await post_proto(cli, '/api/Whoami', mvp_pb2.WhoamiRequest(), mvp_pb2.WhoamiResponse)
   assert pb_resp.username == 'potato', pb_resp
 
-async def test_CreatePrediction_and_GetPrediction(aiohttp_client, app, clock):
+async def test_CreatePrediction_and_GetPrediction(aiohttp_client, app, clock: MockClock, token_mint: TokenMint):
   create_pb_req = mvp_pb2.CreatePredictionRequest(
     prediction="Is 1 > 2?",
     certainty=mvp_pb2.CertaintyRange(low=0.90, high=1.00),
@@ -66,7 +66,7 @@ async def test_CreatePrediction_and_GetPrediction(aiohttp_client, app, clock):
   (http_resp, create_pb_resp) = await post_proto(cli, '/api/CreatePrediction', create_pb_req, mvp_pb2.CreatePredictionResponse)
   assert create_pb_resp.WhichOneof('create_prediction_result') == 'error', create_pb_resp
 
-  (http_resp, register_resp) = await post_proto(cli, '/api/RegisterUsername', mvp_pb2.RegisterUsernameRequest(username='potato', password='secret'), mvp_pb2.RegisterUsernameResponse)
+  (http_resp, register_resp) = await post_proto(cli, '/api/RegisterUsername', mvp_pb2.RegisterUsernameRequest(username='potato', password='secret', proof_of_email=token_mint.sign_proof_of_email('potato@example.com')), mvp_pb2.RegisterUsernameResponse)
   assert register_resp.WhichOneof('register_username_result') == 'ok', register_resp
 
   (http_resp, create_pb_resp) = await post_proto(cli, '/api/CreatePrediction', create_pb_req, mvp_pb2.CreatePredictionResponse)
@@ -84,7 +84,7 @@ async def test_CreatePrediction_and_GetPrediction(aiohttp_client, app, clock):
   assert returned_prediction.special_rules == create_pb_req.special_rules
 
 
-async def test_CreatePrediction_enforces_future_resolution(aiohttp_client, app, clock):
+async def test_CreatePrediction_enforces_future_resolution(aiohttp_client, app, clock: MockClock, token_mint: TokenMint):
   create_pb_req = mvp_pb2.CreatePredictionRequest(
     prediction="Is 1 > 2?",
     certainty=mvp_pb2.CertaintyRange(low=0.90, high=1.00),
@@ -95,7 +95,7 @@ async def test_CreatePrediction_enforces_future_resolution(aiohttp_client, app, 
   )
 
   cli = await aiohttp_client(app)
-  (http_resp, register_resp) = await post_proto(cli, '/api/RegisterUsername', mvp_pb2.RegisterUsernameRequest(username='potato', password='secret'), mvp_pb2.RegisterUsernameResponse)
+  (http_resp, register_resp) = await post_proto(cli, '/api/RegisterUsername', mvp_pb2.RegisterUsernameRequest(username='potato', password='secret', proof_of_email=token_mint.sign_proof_of_email('potato@example.com')), mvp_pb2.RegisterUsernameResponse)
   assert register_resp.WhichOneof('register_username_result') == 'ok', register_resp
 
   (http_resp, create_pb_resp) = await post_proto(cli, '/api/CreatePrediction', create_pb_req, mvp_pb2.CreatePredictionResponse)
