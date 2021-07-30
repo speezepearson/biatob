@@ -1,4 +1,5 @@
 import asyncio
+import base64
 import datetime
 from email.message import EmailMessage
 from unittest.mock import Mock, ANY
@@ -52,8 +53,9 @@ class TestSendBackup:
 
 class TestEmailVerification:
   async def test_smoke(self, aiosmtplib, emailer: Emailer):
-    await emailer.send_email_verification(to='a@a', proof_of_email=mvp_pb2.ProofOfEmail())
-    assert 'secret code' in message_to_string(aiosmtplib.send.call_args[1]['message'])
+    proof = mvp_pb2.ProofOfEmail(hmac=b'some signature')
+    await emailer.send_email_verification(to='a@a', proof_of_email=proof)
+    assert base64.urlsafe_b64encode(proof.SerializeToString()).decode().rstrip('=') in message_to_string(aiosmtplib.send.call_args[1]['message']).replace('=\n', '')
 
 class TestResolutionNotification:
   async def test_smoke(self, aiosmtplib, emailer: Emailer):

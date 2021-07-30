@@ -123,7 +123,7 @@ class Emailer:
         await self._send(
             to=to,
             subject='Your Biatob email-verification',
-            body=self._EmailVerification_template.render(email=to, code=base64.b64encode(proof_of_email.SerializeToString(), b'_-').decode()),
+            body=self._EmailVerification_template.render(email=to, code=base64.urlsafe_b64encode(proof_of_email.SerializeToString()).decode()),
         )
 
     async def send_backup(self, to: str, now: datetime.datetime, body: str) -> None:

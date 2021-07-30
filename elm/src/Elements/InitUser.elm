@@ -26,7 +26,6 @@ type alias Model =
   , usernameField : String
   , passwordField : String
   , confirmPasswordField : String
-  , destination : String
   , proofOfEmail : Pb.ProofOfEmail
   , registerStatus : RequestStatus
   }
@@ -48,22 +47,19 @@ type Msg
 init : JD.Value -> ( Model , Cmd Msg )
 init flags =
   let
+    proofOfEmail = Utils.mustDecodePbFromFlags Pb.proofOfEmailDecoder "proofOfEmailPbB64" flags
     model =
       { globals = JD.decodeValue Globals.globalsDecoder flags |> Utils.mustResult "flags"
       , navbarAuth = AuthWidget.init
-      , destination = Utils.mustDecodeFromFlags JD.string "destination" flags
-      , usernameField = ""
+      , usernameField = emailToSuggestedUsername (Utils.mustProofOfEmailPayload proofOfEmail).emailAddress
       , passwordField = ""
       , confirmPasswordField = ""
-      , proofOfEmail = Utils.mustDecodePbFromFlags Pb.proofOfEmailDecoder "proofOfEmail" flags
+      , proofOfEmail = proofOfEmail
       , registerStatus = Unstarted
       }
   in
     ( model
-    , if Globals.isLoggedIn model.globals then
-        navigate <| Just model.destination
-      else
-        Cmd.none
+    , Cmd.none
     )
 
 update : Msg -> Model -> (Model, Cmd Msg)
@@ -80,7 +76,7 @@ update msg model =
                 , navbarAuth = model.navbarAuth |> AuthWidget.handleLogInUsernameResponse res
         }
       , case API.simplifyLogInUsernameResponse res of
-          Ok _ -> navigate <| Just model.destination
+          Ok _ -> navigate <| Nothing
           Err _ -> Cmd.none
       )
     RegisterUsername ->
@@ -90,7 +86,7 @@ update msg model =
     RegisterUsernameFinished req res ->
       ( { model | globals = model.globals |> Globals.handleRegisterUsernameResponse req res }
       , case API.simplifyRegisterUsernameResponse res of
-          Ok _ -> navigate <| Just model.destination
+          Ok _ -> navigate <| Just "/new"
           Err _ -> Cmd.none
       )
     SignOut widgetState req ->
@@ -120,9 +116,27 @@ update msg model =
       ( model , Cmd.none )
 
 
+emailToSuggestedUsername : String -> String
+emailToSuggestedUsername email =
+  let
+    emailUsername =
+      email
+      |> String.split "@"
+      |> List.head
+      |> Utils.must "String.split with nonempty delimiter is always nonempty"
+    camelcase words =
+      words
+      |> List.map (\w -> String.toUpper (String.left 1 w) ++ String.dropLeft 1 w)
+      |> String.concat
+  in
+    if String.contains "." emailUsername then
+      camelcase (String.split "." emailUsername)
+    else
+      emailUsername
+
 view : Model -> Browser.Document Msg
 view model =
-  { title = "Sign up"
+  { title = "Register new user"
   , body = [
     Navbar.view
         { setState = SetAuthWidget
@@ -134,24 +148,95 @@ view model =
         }
         model.navbarAuth
     ,
-    H.main_ [HA.class "container"]
-    [ H.h2 [] [H.text "Sign up"]
-    , H.div [HA.class "mb-3"]
-      [ H.label [HA.for "register-username-field", HA.class "form-label"] [H.text "Username:"]
-      , H.input [HE.onInput SetUsernameField, HA.value model.usernameField, HA.id "register-username-field"] []
-      , H.div [HA.class "form-text"] [H.text "How I'll identify you to other users."]
-      ]
-    , H.div [HA.class "mb-3"]
-      [ H.label [HA.for "register-password-field", HA.class "form-label"] [H.text "Password:"]
-      , H.input [HE.onInput SetUsernameField, HA.value model.usernameField, HA.id "register-password-field"] []
-      , H.div [HA.class "form-text"] [H.text "How I'll identify you to other users."]
-      ]
-    , H.div [HA.class "mb-3"]
-      [ H.label [HA.for "register-confirm-password-field", HA.class "form-label"] [H.text "Confirm password:"]
-      , H.input [HE.onInput SetUsernameField, HA.value model.usernameField, HA.id "register-confirm-password-field"] []
-      , H.div [HA.class "form-text"] [H.text "How I'll identify you to other users."]
-      ]
-    , H.button [HE.onClick RegisterUsername, HA.class "btn btn-primary"] [H.text "Submit"]
+    let
+      username = Utils.parseUsername model.usernameField
+      password =
+        if String.length model.passwordField > 5 then
+          Ok model.passwordField
+        else
+          Err "Must be at least 6 characters."
+      canSubmit = Utils.isOk username && Utils.isOk password && model.confirmPasswordField == model.passwordField
+    in
+    H.main_ [HA.class "container"] <|
+    [ H.h2 [HA.class "text-center"] [H.text "Register new user"]
+    , H.div [HA.style "max-width" "50em", HA.class "mx-auto"] <|
+      case Globals.getOwnUsername model.globals of
+        Just self ->
+          [ H.text "You're already registered, as "
+          , Utils.renderUser self
+          , H.text "! You might want to "
+          , H.a [HA.href "/"] [H.text "visit the Home page"]
+          , H.text "?"
+          ]
+        Nothing ->
+          [ H.div [HA.class "mb-4"]
+            [ H.label [HA.class "form-label"] [H.text "Your email address:"]
+            , H.input
+              [ HA.readonly True
+              , HA.value (Utils.mustProofOfEmailPayload model.proofOfEmail).emailAddress
+              , HA.class "form-control"
+              ] []
+            , H.div [HA.class "form-text"] [H.text "I'll send you notifications at this address when something needs your attention."]
+            ]
+          , H.div [HA.class "mb-4"]
+            [ H.label [HA.for "register-username-field", HA.class "form-label"] [H.text "Username:"]
+            , H.input
+              [ HE.onInput SetUsernameField
+              , HA.value model.usernameField
+              , HA.id "register-username-field"
+              , HA.class "form-control"
+              , HA.class <| if model.usernameField == "" || Utils.isOk username then "" else "is-invalid"
+              ] []
+            , H.div [HA.class "form-text"] [H.text "How I'll identify you to other users."]
+            , H.div [HA.class "invalid-feedback"]
+              [ case username of
+                  Ok _ -> H.text ""
+                  Err e -> H.text e
+              ]
+            ]
+          , H.div [HA.class "row mb-4"]
+            [ H.div [HA.class "col-6"]
+              [ H.label [HA.for "register-password-field", HA.class "form-label"] [H.text "Password:"]
+              , H.input
+                [ HE.onInput SetPasswordField
+                , HA.type_ "password"
+                , HA.value model.passwordField
+                , HA.id "register-password-field"
+                , HA.class "form-control"
+                , HA.class <| if model.passwordField == "" || Utils.isOk password then "" else "is-invalid"
+                ] []
+              , H.div [HA.class "invalid-feedback"]
+                [ case password of
+                    Ok _ -> H.text ""
+                    Err e -> H.text e
+                ]
+              ]
+            , H.div [HA.class "col-6"]
+              [ H.label [HA.for "register-confirm-password-field", HA.class "form-label"] [H.text "Confirm password:"]
+              , H.input
+                [ HE.onInput SetConfirmPasswordField
+                , Utils.onEnter (if canSubmit then RegisterUsername else Ignore) Ignore
+                , HA.type_ "password"
+                , HA.value model.confirmPasswordField
+                , HA.id "register-confirm-password-field"
+                , HA.class "form-control"
+                , HA.class <| if model.confirmPasswordField == "" && model.passwordField == "" then "" else if model.confirmPasswordField == model.passwordField then "is-valid" else "is-invalid"
+                ] []
+              ]
+            ]
+          , H.div [HA.class "text-center"]
+            [ H.button
+              [ HE.onClick RegisterUsername
+              , HA.class "btn btn-primary"
+              , HA.disabled <| not canSubmit
+              ] [H.text "Finish signup"]
+            , case model.registerStatus of
+                Unstarted -> H.text ""
+                AwaitingResponse -> H.text ""
+                Succeeded -> Utils.greenText "Success!"
+                Failed e -> H.div [HA.style "color" "red"] [H.text e]
+            ]
+          ]
     ]
   ]}
 

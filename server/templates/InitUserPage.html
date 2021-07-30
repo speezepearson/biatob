@@ -1,0 +1,13 @@
+{% extends 'base_page.html' %}
+{% block title %} Register new user {% endblock %}
+{% block page_body %}
+  <script type="text/javascript" src="/elm/InitUser.js"></script>
+  <script type="text/javascript">
+
+    var proofOfEmailPbB64 = {{ proof_of_email_pb_b64 | tojson }};
+
+    main({elmApp: Elm.Elements.InitUser, flags: {proofOfEmailPbB64}});
+
+    if (e = document.getElementById('register-username-field')) { e.focus(); }
+  </script>
+{% endblock %}

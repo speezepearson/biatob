@@ -44,8 +44,8 @@ illegalUsernameCharacters s =
 
 parseUsername : String -> Result String Username
 parseUsername s =
-  if s=="" then
-    Err ""
+  if String.length s < 3 then
+    Err "must be at least 3 characters"
   else let badChars = illegalUsernameCharacters s in
   if not (Set.isEmpty badChars) then
     Err ("bad characters: " ++ Debug.toString (Set.toList badChars))

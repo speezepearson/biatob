@@ -283,15 +283,25 @@ class WebServer:
                 nonce=nonce,
             ))
 
-    async def verify_email(self, req: web.Request) -> web.Response:
+    async def signup(self, req: web.Request) -> web.Response:
+        auth = self._token_glue.parse_cookie(req)
+        auth_success = self._get_auth_success(auth)
+        return web.Response(
+            content_type='text/html',
+            body=self._jinja.get_template('SignupPage.html').render(
+                auth_success_pb_b64=pb_b64(auth_success),
+            ))
+
+    async def init_user(self, req: web.Request) -> web.Response:
         auth = self._token_glue.parse_cookie(req)
         auth_success = self._get_auth_success(auth)
         code = str(req.match_info['code'])
+        print('code (', type(code), ') =', code)
         return web.Response(
             content_type='text/html',
-            body=self._jinja.get_template('VerifyEmailPage.html').render(
+            body=self._jinja.get_template('InitUserPage.html').render(
                 auth_success_pb_b64=pb_b64(auth_success),
-                code=code,
+                proof_of_email_pb_b64=pb_b64(mvp_pb2.ProofOfEmail.FromString(base64.urlsafe_b64decode(code))),
             ))
 
     def add_to_app(self, app: web.Application) -> None:
@@ -311,7 +321,8 @@ class WebServer:
         app.router.add_get('/settings', self.get_settings)
         app.router.add_get('/login', self.get_login)
         app.router.add_get('/invitation/{nonce}/accept', self.accept_invitation)
-        app.router.add_get('/verify_email/{code}', self.verify_email)
+        app.router.add_get('/verify_email/{code}', self.init_user)
+        app.router.add_get('/signup', self.signup)
         app.router.add_get('/username/{username:[a-zA-Z0-9_-]+}', self.get_username)
         app.router.add_get('/u/{username:[a-zA-Z0-9_-]+}', self.get_username)
         app.router.add_get('/{username:[a-zA-Z0-9_-]+}', self.get_username)

@@ -122,30 +122,41 @@ view model =
         }
         model.navbarAuth
     ,
-    let email = Utils.parseEmailAddress model.emailField in
+    let
+      email = Utils.parseEmailAddress model.emailField
+      isError = (model.sendVerificationEmailStatus == AwaitingResponse) || Utils.isErr email
+    in
     H.main_ [HA.class "container"]
-    [ H.h2 [] [H.text "Sign up"]
-    , H.div [HA.class "mb-3"]
-      [ H.label [HA.for "sign-up-email-field", HA.class "form-label"] [H.text "Email address:"]
-      , H.input
-        [ HE.onInput SetEmailField
-        , HA.value model.emailField
-        , HA.id "sign-up-email-field"
-        , HA.class <| if Utils.isOk email then "" else "is-invalid"
-        ] []
-      , H.div [HA.class "invalid-feedback"]
-        [ case email of
-            Ok _ -> H.text ""
-            Err e -> H.text e
-        ]
-      , H.div [HA.class "form-text"] [H.text "I'll never ever intentionally share this with anybody unless you ask me to."]
-      ]
-    , H.button
-      [ HA.class "btn btn-primary"
-      , HE.onClick SendVerificationEmail
-      , HA.disabled <| (model.sendVerificationEmailStatus == AwaitingResponse) || Utils.isErr email
-      ]
-      [H.text "Submit"]
+    [ H.h2 [HA.class "text-center"] [H.text "Sign up"]
+    , H.div [HA.style "max-width" "50em", HA.class "mx-auto"] <|
+      case model.sendVerificationEmailStatus of
+        Succeeded ->
+          [ H.text "I've sent a verification email to "
+          , H.text model.emailField
+          , H.text "! Click the link it contains to finish registering."
+          ]
+        _ ->
+          [ H.div [HA.class "mb-3"]
+            [ H.label [HA.for "sign-up-email-field", HA.class "form-label"] [H.text "Email address:"]
+            , H.input
+              [ HE.onInput SetEmailField
+              , Utils.onEnter (if isError then Ignore else SendVerificationEmail) Ignore
+              , HA.value model.emailField
+              , HA.id "sign-up-email-field"
+              , HA.class "form-control"
+              , HA.class <| if model.emailField == "" || Utils.isOk email then "" else "is-invalid"
+              ] []
+            , H.div [HA.class "form-text"] [H.text "I'll never ever intentionally share this with anybody unless you ask me to."]
+            ]
+          , H.div [HA.class "text-center mt-4"]
+            [ H.button
+              [ HA.class "btn btn-primary"
+              , HE.onClick SendVerificationEmail
+              , HA.disabled <| isError
+              ]
+              [H.text "Send verification email"]
+            ]
+          ]
     ]
   ]}
 

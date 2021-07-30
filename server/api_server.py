@@ -32,6 +32,8 @@ class ApiServer:
         http_resp = proto_response(self._servicer.SignOut(actor=self._token_glue.get_authorizing_user(http_req), request=await parse_proto(http_req, mvp_pb2.SignOutRequest)))
         self._token_glue.del_cookie(http_req, http_resp)
         return http_resp
+    async def SendVerificationEmail(self, http_req: web.Request) -> web.Response:
+        return proto_response(self._servicer.SendVerificationEmail(actor=self._token_glue.get_authorizing_user(http_req), request=await parse_proto(http_req, mvp_pb2.SendVerificationEmailRequest)))
     async def RegisterUsername(self, http_req: web.Request) -> web.Response:
         pb_resp = self._servicer.RegisterUsername(actor=self._token_glue.get_authorizing_user(http_req), request=await parse_proto(http_req, mvp_pb2.RegisterUsernameRequest))
         http_resp = proto_response(pb_resp)
@@ -68,6 +70,7 @@ class ApiServer:
     def add_to_app(self, app: web.Application) -> None:
         app.router.add_post('/api/Whoami', self.Whoami)
         app.router.add_post('/api/SignOut', self.SignOut)
+        app.router.add_post('/api/SendVerificationEmail', self.SendVerificationEmail)
         app.router.add_post('/api/RegisterUsername', self.RegisterUsername)
         app.router.add_post('/api/LogInUsername', self.LogInUsername)
         app.router.add_post('/api/CreatePrediction', self.CreatePrediction)

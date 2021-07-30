@@ -1,0 +1,9 @@
+{% extends 'base_page.html' %}
+{% block title %} Register new user {% endblock %}
+{% block page_body %}
+  <script type="text/javascript" src="/elm/Signup.js"></script>
+  <script type="text/javascript">
+    main({elmApp: Elm.Elements.Signup, flags: {}});
+    if (e = document.getElementById('sign-up-email-field')) { e.focus(); }
+  </script>
+{% endblock %}
