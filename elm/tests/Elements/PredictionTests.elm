@@ -37,7 +37,6 @@ mockPrediction =
   , resolution = Nothing
   , yourTrades = []
   , resolvesAtUnixtime = 200
-  , allowEmailInvitations = False
   }
 
 exampleTrade : Pb.Trade

@@ -55,7 +55,6 @@ class SqlConn:
         username=username,
         email_address=email_address,
         login_password_id=password_id,
-        email_flow_state=mvp_pb2.EmailFlowState(unstarted=mvp_pb2.VOID).SerializeToString(),
       ))
 
   def get_username_password_info(self, username: Username) -> Optional[mvp_pb2.HashedPassword]:
@@ -125,10 +124,6 @@ class SqlConn:
       .where(schema.users.c.username == row['creator'])
     ).fetchone()
     assert creator_settings_row is not None  # else the "prediction.creator -> user.username" integrity constraint is broken
-    allow_email_invitations = (
-      creator_settings_row['allow_email_invitations'] and
-      mvp_pb2.EmailFlowState.FromString(creator_settings_row['email_flow_state']).WhichOneof('email_flow_state_kind') == 'verified'
-    )
 
     resolution = self.get_resolution(prediction_id)
 
@@ -159,7 +154,6 @@ class SqlConn:
       resolves_at_unixtime=row['resolves_at_unixtime'],
       special_rules=row['special_rules'],
       creator=row['creator'],
-      allow_email_invitations=allow_email_invitations,
       resolution=resolution,
       your_trades=[
         mvp_pb2.Trade(
@@ -442,39 +436,27 @@ class SqlConn:
       .where(schema.passwords.c.password_id == pwid)
     )
 
-  def set_email(self, user: Username, new_efs: mvp_pb2.EmailFlowState) -> None:
+  def change_email(self, user: Username, new_email_address: str) -> None:
     self._conn.execute(
       sqlalchemy.update(schema.users)
-      .values(email_flow_state=new_efs.SerializeToString())
+      .values(email_address=new_email_address)
       .where(schema.users.c.username == user)
     )
 
-  def get_email(self, user: Username) -> Optional[mvp_pb2.EmailFlowState]:
-    old_efs_binary = self._conn.execute(
-      sqlalchemy.select([schema.users.c.email_flow_state])
+  def get_email(self, user: Username) -> Optional[str]:
+    return self._conn.execute(
+      sqlalchemy.select([schema.users.c.email_address])
       .where(schema.users.c.username == user)
     ).scalar()
-    if old_efs_binary is None:
-      return None
-    return mvp_pb2.EmailFlowState.FromString(old_efs_binary)
 
   def get_resolution_notification_addrs(self, prediction_id: PredictionId) -> Iterable[str]:
-    result = set()
-    bettor_efs_rows = self._conn.execute(
-      sqlalchemy.select([schema.users.c.email_flow_state])
+    return [row['email_address'] for row in self._conn.execute(
+      sqlalchemy.select([schema.users.c.email_address])
       .where(sqlalchemy.and_(
         schema.trades.c.prediction_id == prediction_id,
         schema.trades.c.bettor == schema.users.c.username,
-        # schema.trades.c.state != mvp_pb2.TradeState.Name(mvp_pb2.TRADE_STATE_DISAVOWED),
-        schema.users.c.email_resolution_notifications,
       ))
-    ).fetchall()
-    for row in bettor_efs_rows:
-      bettor_efs = mvp_pb2.EmailFlowState.FromString(row['email_flow_state'])
-      if bettor_efs.WhichOneof('email_flow_state_kind') == 'verified':
-        result.add(bettor_efs.verified)
-
-    return result
+    )]
 
   def get_settings(self, user: AuthorizingUsername, include_relationships_with_users: Iterable[Username] = ()) -> Optional[mvp_pb2.GenericUserInfo]:
     row = self._conn.execute(
@@ -498,10 +480,6 @@ class SqlConn:
       ))
     )}
     return mvp_pb2.GenericUserInfo(
-      email_reminders_to_resolve=row['email_reminders_to_resolve'],
-      email_resolution_notifications=row['email_resolution_notifications'],
-      allow_email_invitations=row['allow_email_invitations'],
-      email_invitation_acceptance_notifications=row['email_invitation_acceptance_notifications'],
       email_address=str(row['email_address']),
       relationships={
         who: mvp_pb2.Relationship(
@@ -517,25 +495,7 @@ class SqlConn:
           .where(schema.email_invitations.c.inviter == user)
         )
       },
-)
-
-  def update_settings(self, user: Username, request: mvp_pb2.UpdateSettingsRequest) -> None:
-    update_kwargs = {}
-    if request.HasField('email_reminders_to_resolve'):
-      update_kwargs['email_reminders_to_resolve'] = request.email_reminders_to_resolve.value
-    if request.HasField('email_resolution_notifications'):
-      update_kwargs['email_resolution_notifications'] = request.email_resolution_notifications.value
-    if request.HasField('allow_email_invitations'):
-      update_kwargs['allow_email_invitations'] = request.allow_email_invitations.value
-    if request.HasField('email_invitation_acceptance_notifications'):
-      update_kwargs['email_invitation_acceptance_notifications'] = request.email_invitation_acceptance_notifications.value
-
-    if update_kwargs:
-      self._conn.execute(
-        sqlalchemy.update(schema.users)
-        .values(**update_kwargs)
-        .where(schema.users.c.username == user)
-      )
+    )
 
   def create_invitation(self, nonce: str, inviter: Username, recipient: Username) -> None:
     self._conn.execute(
@@ -616,25 +576,22 @@ class SqlConn:
       sqlalchemy.select([
         schema.predictions.c.prediction_id,
         schema.predictions.c.prediction,
-        schema.users.c.email_flow_state,
+        schema.users.c.email_address,
       ])
       .where(sqlalchemy.and_(
         schema.predictions.c.resolves_at_unixtime < now.timestamp(),
         sqlalchemy.not_(schema.predictions.c.resolution_reminder_sent),
         schema.predictions.c.creator == schema.users.c.username,
-        schema.users.c.email_reminders_to_resolve,
         sqlalchemy.not_(schema.predictions.c.prediction_id.in_(sqlalchemy.select(resolved_prediction_ids_q.c)))
       ))
     ).fetchall()
 
     for row in rows:
-      efs = mvp_pb2.EmailFlowState.FromString(row['email_flow_state'])
-      if efs.WhichOneof('email_flow_state_kind') == 'verified':
-        yield {
-          'prediction_id': row['prediction_id'],
-          'prediction_text': row['prediction'],
-          'email_address': efs.verified,
-        }
+      yield {
+        'prediction_id': PredictionId(str(row['prediction_id'])),
+        'prediction_text': str(row['prediction']),
+        'email_address': str(row['email_address']),
+      }
 
   def mark_resolution_reminder_sent(self, prediction_id: PredictionId) -> None:
     self._conn.execute(
@@ -716,10 +673,9 @@ class SqlServicer(Servicer):
         return mvp_pb2.SendVerificationEmailResponse(error=mvp_pb2.SendVerificationEmailResponse.Error(catchall='email is already registered'))
 
       logger.info('sending verification email', email_address=request.email_address)
-      code = secrets.token_urlsafe(nbytes=16)
       asyncio.create_task(self._emailer.send_email_verification(
         to=request.email_address,
-        code=code,
+        proof_of_email=self._token_mint.sign_proof_of_email(email_address=request.email_address),
       ))
 
       return mvp_pb2.SendVerificationEmailResponse(ok=mvp_pb2.VOID)
@@ -1041,62 +997,6 @@ class SqlServicer(Servicer):
     @ensure_actor_exists
     @log_actor
     @log_action
-    def SetEmail(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.SetEmailRequest) -> mvp_pb2.SetEmailResponse:
-      logger.debug('API call', request=request)
-      if actor is None:
-        logger.warn('not logged in')
-        return mvp_pb2.SetEmailResponse(error=mvp_pb2.SetEmailResponse.Error(catchall='must log in to set an email'))
-      problems = describe_SetEmailRequest_problems(request)
-      if problems is not None:
-        logger.warn('attempting to set invalid email', problems=problems)
-        return mvp_pb2.SetEmailResponse(error=mvp_pb2.SetEmailResponse.Error(catchall=problems))
-
-      if request.email:
-        # TODO: prevent an email address from getting "too many" emails if somebody abuses us
-        code = secrets.token_urlsafe(nbytes=16)
-        asyncio.create_task(self._emailer.send_email_verification(
-            to=request.email,
-            code=code,
-        ))
-        new_efs = mvp_pb2.EmailFlowState(code_sent=mvp_pb2.EmailFlowState.CodeSent(email=request.email, code=new_hashed_password(code)))
-      else:
-        new_efs = mvp_pb2.EmailFlowState(unstarted=mvp_pb2.VOID)
-
-      logger.info('setting email address', who=actor, address=request.email)
-      self._conn.set_email(actor, new_efs)
-      return mvp_pb2.SetEmailResponse(ok=new_efs)
-
-    @transactional
-    @ensure_actor_exists
-    @log_actor
-    @log_action
-    def VerifyEmail(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.VerifyEmailRequest) -> mvp_pb2.VerifyEmailResponse:
-      logger.debug('API call', request=request)  # okay to log the nonce because it's one-time-use
-      if actor is None:
-        logger.warn('not logged in')
-        return mvp_pb2.VerifyEmailResponse(error=mvp_pb2.VerifyEmailResponse.Error(catchall='must log in to verify your email address'))
-
-      old_efs = self._conn.get_email(actor)
-      if old_efs is None:
-        raise ForgottenTokenError(actor)
-
-      if old_efs.WhichOneof('email_flow_state_kind') != 'code_sent':
-        logger.warn('attempting to verify email, but no email outstanding', possible_malice=True)
-        return mvp_pb2.VerifyEmailResponse(error=mvp_pb2.VerifyEmailResponse.Error(catchall='you have no pending email-verification flow'))
-      code_sent_state = old_efs.code_sent
-      if not check_password(request.code, code_sent_state.code):
-        logger.warn('bad email-verification code', address=code_sent_state.email, possible_malice=True)
-        return mvp_pb2.VerifyEmailResponse(error=mvp_pb2.VerifyEmailResponse.Error(catchall='bad code'))
-
-      new_efs = mvp_pb2.EmailFlowState(verified=code_sent_state.email)
-      self._conn.set_email(actor, new_efs)
-      logger.info('verified email address', who=actor, address=code_sent_state.email)
-      return mvp_pb2.VerifyEmailResponse(ok=new_efs)
-
-    @transactional
-    @ensure_actor_exists
-    @log_actor
-    @log_action
     def GetSettings(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.GetSettingsRequest) -> mvp_pb2.GetSettingsResponse:
       if actor is None:
         logger.info('not logged in')
@@ -1111,20 +1011,6 @@ class SqlServicer(Servicer):
     @ensure_actor_exists
     @log_actor
     @log_action
-    def UpdateSettings(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.UpdateSettingsRequest) -> mvp_pb2.UpdateSettingsResponse:
-      logger.debug('API call', request=request)
-      if actor is None:
-        logger.warn('not logged in')
-        return mvp_pb2.UpdateSettingsResponse(error=mvp_pb2.UpdateSettingsResponse.Error(catchall='must log in to update your settings'))
-
-      self._conn.update_settings(actor, request)
-      logger.info('updated settings', request=request)
-      return mvp_pb2.UpdateSettingsResponse(ok=self._conn.get_settings(actor))
-
-    @transactional
-    @ensure_actor_exists
-    @log_actor
-    @log_action
     def SendInvitation(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.SendInvitationRequest) -> mvp_pb2.SendInvitationResponse:
       logger.debug('API call', request=request)
       if actor is None:
@@ -1133,21 +1019,12 @@ class SqlServicer(Servicer):
 
       inviter_email = self._conn.get_email(actor)
       assert inviter_email is not None  # the user _must_ exist: they authenticated successfully!
-      if inviter_email.WhichOneof('email_flow_state_kind') != 'verified':
-        logger.warn('trying to send email invitation to user without email set')
-        return mvp_pb2.SendInvitationResponse(error=mvp_pb2.SendInvitationResponse.Error(catchall='you need to add an email address before you can send invitations'))
 
       recipient = Username(request.recipient)
       recipient_settings = self._conn.get_settings(AuthorizingUsername(recipient))
       if recipient_settings is None:
         logger.warn('trying to send email invitation to nonexistent user')
         return mvp_pb2.SendInvitationResponse(error=mvp_pb2.SendInvitationResponse.Error(catchall='recipient user does not exist'))
-      if not recipient_settings.allow_email_invitations:
-        logger.warn('trying to send email invitation to user without allow_email_invitations set')
-        return mvp_pb2.SendInvitationResponse(error=mvp_pb2.SendInvitationResponse.Error(catchall='recipient user does not accept email invitations'))
-      if recipient_settings.email.WhichOneof('email_flow_state_kind') != 'verified':
-        logger.warn('trying to send email invitation to user without email set')
-        return mvp_pb2.SendInvitationResponse(error=mvp_pb2.SendInvitationResponse.Error(catchall='recipient user does not accept email invitations'))
 
       if self._conn.is_invitation_outstanding(inviter=actor, recipient=recipient):
         logger.warn('trying to send duplicate email invitation', request=request)
@@ -1164,9 +1041,9 @@ class SqlServicer(Servicer):
       )
       asyncio.create_task(self._emailer.send_invitation(
         inviter_username=actor,
-        inviter_email=inviter_email.verified,
+        inviter_email=inviter_email,
         recipient_username=recipient,
-        recipient_email=recipient_settings.email.verified,
+        recipient_email=recipient_settings.email_address,
         nonce=nonce,
       ))
       return mvp_pb2.SendInvitationResponse(ok=self._conn.get_settings(actor, include_relationships_with_users=[recipient]))
@@ -1197,12 +1074,12 @@ class SqlServicer(Servicer):
       if result is None:
         logger.warn('trying to accept nonexistent (or completed) invitation')
         return mvp_pb2.AcceptInvitationResponse(error=mvp_pb2.AcceptInvitationResponse.Error(catchall='no such invitation'))
-      inviter_settings = self._conn.get_settings(AuthorizingUsername(Username(result.inviter)))
-      if inviter_settings and inviter_settings.email_invitation_acceptance_notifications and inviter_settings.email.WhichOneof('email_flow_state_kind') == 'verified':
-        asyncio.create_task(self._emailer.send_invitation_acceptance_notification(
-          inviter_email=inviter_settings.email.verified,
-          recipient_username=Username(result.recipient),
-        ))
+      inviter_email = self._conn.get_email(Username(result.inviter))
+      assert inviter_email is not None  # inviter must have existed in order to issue the invitation
+      asyncio.create_task(self._emailer.send_invitation_acceptance_notification(
+        inviter_email=inviter_email,
+        recipient_username=Username(result.recipient),
+      ))
       return mvp_pb2.AcceptInvitationResponse(ok=mvp_pb2.GenericUserInfo() if (actor is None) else self._conn.get_settings(actor))
 
 

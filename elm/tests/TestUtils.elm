@@ -21,11 +21,7 @@ exampleToken =
   }
 exampleSettings : Pb.GenericUserInfo
 exampleSettings =
-  { email = Just {emailFlowStateKind=Just (Pb.EmailFlowStateKindUnstarted Pb.Void)}
-  , allowEmailInvitations = True
-  , emailRemindersToResolve = True
-  , emailResolutionNotifications = True
-  , emailInvitationAcceptanceNotifications = True
+  { emailAddress = "user@example.com"
   , invitations = Dict.empty
   , loginType = Just (Pb.LoginTypeLoginPassword {salt=emptyBytes, scrypt=emptyBytes})
   , relationships = Dict.empty

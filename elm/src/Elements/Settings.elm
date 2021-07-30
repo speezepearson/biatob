@@ -7,7 +7,6 @@ import Http
 import Json.Decode as JD
 
 import Widgets.ChangePasswordWidget as ChangePasswordWidget
-import Widgets.EmailSettingsWidget as EmailSettingsWidget
 import Widgets.TrustedUsersWidget as TrustedUsersWidget
 import Globals
 import API
@@ -24,7 +23,6 @@ port authWidgetExternallyChanged : (AuthWidget.DomModification -> msg) -> Sub ms
 type alias Model =
   { globals : Globals.Globals
   , navbarAuth : AuthWidget.State
-  , emailSettingsWidget : EmailSettingsWidget.State
   , trustedUsersWidget : TrustedUsersWidget.State
   , changePasswordWidget : ChangePasswordWidget.State
   }
@@ -32,20 +30,15 @@ type alias Model =
 type Msg
   = SetAuthWidget AuthWidget.State
   | SetChangePasswordWidget ChangePasswordWidget.State
-  | SetEmailWidget EmailSettingsWidget.State
   | SetTrustedUsersWidget TrustedUsersWidget.State
   | ChangePassword ChangePasswordWidget.State Pb.ChangePasswordRequest
   | ChangePasswordFinished Pb.ChangePasswordRequest (Result Http.Error Pb.ChangePasswordResponse)
   | LogInUsername AuthWidget.State Pb.LogInUsernameRequest
   | LogInUsernameFinished Pb.LogInUsernameRequest (Result Http.Error Pb.LogInUsernameResponse)
-  | SetEmail EmailSettingsWidget.State Pb.SetEmailRequest
-  | SetEmailFinished Pb.SetEmailRequest (Result Http.Error Pb.SetEmailResponse)
   | SetTrusted TrustedUsersWidget.State Pb.SetTrustedRequest
   | SetTrustedFinished Pb.SetTrustedRequest (Result Http.Error Pb.SetTrustedResponse)
   | SignOut AuthWidget.State Pb.SignOutRequest
   | SignOutFinished Pb.SignOutRequest (Result Http.Error Pb.SignOutResponse)
-  | UpdateSettings EmailSettingsWidget.State Pb.UpdateSettingsRequest
-  | UpdateSettingsFinished Pb.UpdateSettingsRequest (Result Http.Error Pb.UpdateSettingsResponse)
   | Copy String
   | Tick Time.Posix
   | AuthWidgetExternallyModified AuthWidget.DomModification
@@ -55,7 +48,6 @@ init : JD.Value -> ( Model , Cmd Msg )
 init flags =
   ( { globals = JD.decodeValue Globals.globalsDecoder flags |> Utils.mustResult "flags"
     , navbarAuth = AuthWidget.init
-    , emailSettingsWidget = EmailSettingsWidget.init
     , trustedUsersWidget = TrustedUsersWidget.init
     , changePasswordWidget = ChangePasswordWidget.init
     }
@@ -69,8 +61,6 @@ update msg model =
       ( { model | navbarAuth = widgetState } , Cmd.none )
     SetChangePasswordWidget widgetState ->
       ( { model | changePasswordWidget = widgetState } , Cmd.none )
-    SetEmailWidget widgetState ->
-      ( { model | emailSettingsWidget = widgetState } , Cmd.none )
     SetTrustedUsersWidget widgetState ->
       ( { model | trustedUsersWidget = widgetState } , Cmd.none )
     ChangePassword widgetState req ->
@@ -95,16 +85,6 @@ update msg model =
           Ok _ -> navigate <| Nothing
           Err _ -> Cmd.none
       )
-    SetEmail widgetState req ->
-      ( { model | emailSettingsWidget = widgetState }
-      , API.postSetEmail (SetEmailFinished req) req
-      )
-    SetEmailFinished req res ->
-      ( { model | globals = model.globals |> Globals.handleSetEmailResponse req res
-                , emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleSetEmailResponse res
-        }
-      , Cmd.none
-      )
     SetTrusted widgetState req ->
       ( { model | trustedUsersWidget = widgetState }
       , API.postSetTrusted (SetTrustedFinished req) req
@@ -126,16 +106,6 @@ update msg model =
       , case API.simplifySignOutResponse res of
           Ok _ -> navigate <| Just "/"
           Err _ -> Cmd.none
-      )
-    UpdateSettings widgetState req ->
-      ( { model | emailSettingsWidget = widgetState }
-      , API.postUpdateSettings (UpdateSettingsFinished req) req
-      )
-    UpdateSettingsFinished req res ->
-      ( { model | globals = model.globals |> Globals.handleUpdateSettingsResponse req res
-                , emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleUpdateSettingsResponse res
-        }
-      , Cmd.none
       )
     Copy s ->
       ( model
@@ -173,17 +143,6 @@ view model =
         Just {username, settings} ->
           H.div []
           [ H.h2 [] [H.text "Settings"]
-          , H.hr [] []
-          , H.h3 [] [H.text "Email"]
-          , EmailSettingsWidget.view
-              { setState = SetEmailWidget
-              , ignore = Ignore
-              , setEmail = SetEmail
-              , updateSettings = UpdateSettings
-              , userInfo = settings
-              , showAllEmailSettings = True
-              }
-              model.emailSettingsWidget
           , H.hr [] []
           , H.h3 [] [H.text "Trust"]
           , TrustedUsersWidget.view

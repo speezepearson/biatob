@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import datetime
 from email.message import EmailMessage
 import json
@@ -118,11 +119,11 @@ class Emailer:
             ),
         )
 
-    async def send_email_verification(self, to: str, code: str) -> None:
+    async def send_email_verification(self, to: str, proof_of_email: mvp_pb2.ProofOfEmail) -> None:
         await self._send(
             to=to,
             subject='Your Biatob email-verification',
-            body=self._EmailVerification_template.render(email=to, code=code),
+            body=self._EmailVerification_template.render(email=to, code=base64.b64encode(proof_of_email.SerializeToString(), b'_-').decode()),
         )
 
     async def send_backup(self, to: str, now: datetime.datetime, body: str) -> None:

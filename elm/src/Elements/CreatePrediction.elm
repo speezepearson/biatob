@@ -13,7 +13,6 @@ import Utils exposing (i, isOk, maxLegalStakeCents, viewError, Cents, RequestSta
 import Elements.Prediction as Prediction
 
 import Widgets.AuthWidget as AuthWidget
-import Widgets.EmailSettingsWidget as EmailSettingsWidget
 import Widgets.Navbar as Navbar
 import Globals
 import API
@@ -28,7 +27,6 @@ epsilon = 0.000001
 type alias Model =
   { globals : Globals.Globals
   , navbarAuth : AuthWidget.State
-  , emailSettingsWidget : EmailSettingsWidget.State
   , predictionField : String
   , resolvesAtField : String
   , stakeField : String
@@ -38,7 +36,6 @@ type alias Model =
   , openForSecondsField : String
   , viewPrivacyField : String
   , specialRulesField : String
-  , disableEmailAddressWarning : Bool
   , createRequestStatus : RequestStatus
   }
 
@@ -53,18 +50,12 @@ type Msg
   | SetViewPrivacyField String
   | SetSpecialRulesField String
   | SetAuthWidget AuthWidget.State
-  | SetEmailWidget EmailSettingsWidget.State
   | Create
   | CreateFinished Pb.CreatePredictionRequest (Result Http.Error Pb.CreatePredictionResponse)
   | LogInUsername AuthWidget.State Pb.LogInUsernameRequest
   | LogInUsernameFinished Pb.LogInUsernameRequest (Result Http.Error Pb.LogInUsernameResponse)
   | SignOut AuthWidget.State Pb.SignOutRequest
   | SignOutFinished Pb.SignOutRequest (Result Http.Error Pb.SignOutResponse)
-  | SetEmail EmailSettingsWidget.State Pb.SetEmailRequest
-  | SetEmailFinished Pb.SetEmailRequest (Result Http.Error Pb.SetEmailResponse)
-  | UpdateSettings EmailSettingsWidget.State Pb.UpdateSettingsRequest
-  | UpdateSettingsFinished Pb.UpdateSettingsRequest (Result Http.Error Pb.UpdateSettingsResponse)
-  | ToggleEmailAddressWarning
   | SaveFormState
   | Tick Time.Posix
   | AuthWidgetExternallyModified AuthWidget.DomModification
@@ -220,7 +211,6 @@ init : JD.Value -> ( Model , Cmd Msg )
 init flags =
   ( { globals = JD.decodeValue Globals.globalsDecoder flags |> Utils.mustResult "flags"
     , navbarAuth = AuthWidget.init
-    , emailSettingsWidget = EmailSettingsWidget.init
     , predictionField = ""
     , resolvesAtField = ""
     , stakeField = "20"
@@ -230,7 +220,6 @@ init flags =
     , openForSecondsField = "2"
     , viewPrivacyField = anybody
     , specialRulesField = ""
-    , disableEmailAddressWarning = False
     , createRequestStatus = Unstarted
     } |> case Utils.decodePbFromFlags Pb.savedCreatedPredictionFormStateDecoder "formStatePbB64" flags of
           Nothing -> identity
@@ -252,8 +241,6 @@ update msg model =
     SetSpecialRulesField s -> ( { model | specialRulesField = s } , Cmd.none )
     SetAuthWidget widgetState ->
       ( { model | navbarAuth = widgetState } , Cmd.none )
-    SetEmailWidget widgetState ->
-      ( { model | emailSettingsWidget = widgetState } , Cmd.none )
     Create ->
       case buildCreateRequest model of
         Just req ->
@@ -297,30 +284,6 @@ update msg model =
       , case API.simplifySignOutResponse res of
           Ok _ -> navigate Nothing
           Err _ -> Cmd.none
-      )
-    SetEmail widgetState req ->
-      ( { model | emailSettingsWidget = widgetState }
-      , API.postSetEmail (SetEmailFinished req) req
-      )
-    SetEmailFinished req res ->
-      ( { model | globals = model.globals |> Globals.handleSetEmailResponse req res
-                , emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleSetEmailResponse res
-        }
-      , Cmd.none
-      )
-    UpdateSettings widgetState req ->
-      ( { model | emailSettingsWidget = widgetState }
-      , API.postUpdateSettings (UpdateSettingsFinished req) req
-      )
-    UpdateSettingsFinished req res ->
-      ( { model | globals = model.globals |> Globals.handleUpdateSettingsResponse req res
-                , emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleUpdateSettingsResponse res
-        }
-      , Cmd.none
-      )
-    ToggleEmailAddressWarning ->
-      ( { model | disableEmailAddressWarning = model.disableEmailAddressWarning |> not }
-      , Cmd.none
       )
     SaveFormState ->
       ( model
@@ -667,47 +630,12 @@ view model =
           , H.hr [] []
           ]
     , viewForm model
-    , let
-
-        showEmailAddressWarning =
-          (not model.disableEmailAddressWarning) &&
-          case Globals.getUserInfo model.globals of
-            Nothing -> False
-            Just settings -> not (Globals.hasEmailAddress model.globals) || (not settings.allowEmailInvitations)
-      in
-      H.div []
-      [ if not showEmailAddressWarning then
-          H.text ""
-        else
-        H.div [HA.class "pre-creation-plea-for-email"]
-        [ H.text "When somebody new wants to bet on this prediction, I would ", Utils.i "really", H.text " like to be able to email you to ask you whether you trust them."
-        , H.hr [] []
-        , EmailSettingsWidget.view
-            { setState = SetEmailWidget
-            , ignore = Ignore
-            , setEmail = SetEmail
-            , updateSettings = UpdateSettings
-            , userInfo = Utils.must "checked that user is logged in" (Globals.getUserInfo model.globals)
-            , showAllEmailSettings = True
-            }
-            model.emailSettingsWidget
-        , H.small [] [H.details [HA.class "text-secondary"]
-          [ H.summary [HA.class "mx-1 mt-2"] [H.text "But I hate getting emails from weird web sites!"]
-          , H.div [HA.class "mx-3"]
-            [ H.text "Ugh, fine. I can sympathize."
-            , H.div [HA.class "mx-3"]
-              [ H.button [HA.class "btn btn-sm btn-outline-secondary", HE.onClick ToggleEmailAddressWarning] [H.text "I'm okay with it being somewhat awkward for new people to bet against me."]
-              ]
-            ]
-          ]
-        ]]
-      , H.div [HA.style "text-align" "center", HA.style "margin-bottom" "2em"]
+    , H.div [HA.style "text-align" "center", HA.style "margin-bottom" "2em"]
         [ H.button
             [ HE.onClick Create
             , HA.class "btn btn-primary mt-2"
             , HA.disabled <|
                 not (Globals.isLoggedIn model.globals)
-                || showEmailAddressWarning
                 || buildCreateRequest model == Nothing
                 || model.createRequestStatus == AwaitingResponse
             ]
@@ -718,7 +646,6 @@ view model =
             Succeeded -> Utils.greenText "Success!"
             Failed e -> H.div [HA.style "color" "red"] [H.text e]
         ]
-      ]
     , H.hr [] []
     , H.text "Preview:"
     , H.div [HA.style "border" "1px solid black", HA.style "padding" "1em", HA.style "margin" "1em"]
@@ -745,7 +672,6 @@ previewPrediction {request, creatorName, createdAt} =
   , resolution = Nothing
   , yourTrades = []
   , resolvesAtUnixtime = request.resolvesAtUnixtime
-  , allowEmailInvitations = False
   }
 
 subscriptions : Model -> Sub Msg

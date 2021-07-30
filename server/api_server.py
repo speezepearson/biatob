@@ -58,14 +58,8 @@ class ApiServer:
         return proto_response(self._servicer.GetUser(actor=self._token_glue.get_authorizing_user(http_req), request=await parse_proto(http_req, mvp_pb2.GetUserRequest)))
     async def ChangePassword(self, http_req: web.Request) -> web.Response:
         return proto_response(self._servicer.ChangePassword(actor=self._token_glue.get_authorizing_user(http_req), request=await parse_proto(http_req, mvp_pb2.ChangePasswordRequest)))
-    async def SetEmail(self, http_req: web.Request) -> web.Response:
-        return proto_response(self._servicer.SetEmail(actor=self._token_glue.get_authorizing_user(http_req), request=await parse_proto(http_req, mvp_pb2.SetEmailRequest)))
-    async def VerifyEmail(self, http_req: web.Request) -> web.Response:
-        return proto_response(self._servicer.VerifyEmail(actor=self._token_glue.get_authorizing_user(http_req), request=await parse_proto(http_req, mvp_pb2.VerifyEmailRequest)))
     async def GetSettings(self, http_req: web.Request) -> web.Response:
         return proto_response(self._servicer.GetSettings(actor=self._token_glue.get_authorizing_user(http_req), request=await parse_proto(http_req, mvp_pb2.GetSettingsRequest)))
-    async def UpdateSettings(self, http_req: web.Request) -> web.Response:
-        return proto_response(self._servicer.UpdateSettings(actor=self._token_glue.get_authorizing_user(http_req), request=await parse_proto(http_req, mvp_pb2.UpdateSettingsRequest)))
     async def SendInvitation(self, http_req: web.Request) -> web.Response:
         return proto_response(self._servicer.SendInvitation(actor=self._token_glue.get_authorizing_user(http_req), request=await parse_proto(http_req, mvp_pb2.SendInvitationRequest)))
     async def AcceptInvitation(self, http_req: web.Request) -> web.Response:
@@ -83,10 +77,7 @@ class ApiServer:
         app.router.add_post('/api/SetTrusted', self.SetTrusted)
         app.router.add_post('/api/GetUser', self.GetUser)
         app.router.add_post('/api/ChangePassword', self.ChangePassword)
-        app.router.add_post('/api/SetEmail', self.SetEmail)
-        app.router.add_post('/api/VerifyEmail', self.VerifyEmail)
         app.router.add_post('/api/GetSettings', self.GetSettings)
-        app.router.add_post('/api/UpdateSettings', self.UpdateSettings)
         app.router.add_post('/api/SendInvitation', self.SendInvitation)
         app.router.add_post('/api/AcceptInvitation', self.AcceptInvitation)
         self._token_glue.add_to_app(app)

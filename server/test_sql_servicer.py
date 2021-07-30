@@ -48,12 +48,12 @@ def test_backup_text(sqlite_engine: sqlalchemy.engine.Engine):
     assert 'predictions' in j
 
     conn.execute(sqlalchemy.insert(schema.passwords).values(password_id='pw', salt=b'abc', scrypt=b'def'))
-    conn.execute(sqlalchemy.insert(schema.users).values(username='a', login_password_id='pw', email_flow_state=b'\x00foo\xffbar', email_address='a@example.com'))
+    conn.execute(sqlalchemy.insert(schema.users).values(username='a', login_password_id='pw', email_address='a@example.com'))
     j = json.loads(_backup_text(conn))
     assert any(
       row['username'] == 'a'
       and row['login_password_id'] == 'pw'
-      and row['email_flow_state'] == {'__type__': str(bytes), '__repr__': repr(b'\x00foo\xffbar')}
+      and row['email_address'] == 'a@example.com'
       for row in j['users']
     )
 

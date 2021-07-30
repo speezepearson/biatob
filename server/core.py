@@ -131,12 +131,6 @@ def describe_CreatePredictionRequest_problems(request: mvp_pb2.CreatePredictionR
         problems.append(f'prediction must resolve after betting closes')
     return '; '.join(problems) if problems else None
 
-def describe_SetEmailRequest_problems(request: mvp_pb2.SetEmailRequest) -> Optional[str]:
-    problems = []
-    if request.email and not re.match('^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9_.-]+$', request.email):
-        problems.append('invalid-looking email address')
-    return '; '.join(problems) if problems else None
-
 def describe_AcceptInvitationRequest_problems(request: mvp_pb2.AcceptInvitationRequest) -> Optional[str]:
     problems = []
     if not request.nonce:
@@ -159,10 +153,7 @@ class Servicer(abc.ABC):
     def SetTrusted(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.SetTrustedRequest) -> mvp_pb2.SetTrustedResponse: pass
     def GetUser(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.GetUserRequest) -> mvp_pb2.GetUserResponse: pass
     def ChangePassword(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.ChangePasswordRequest) -> mvp_pb2.ChangePasswordResponse: pass
-    def SetEmail(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.SetEmailRequest) -> mvp_pb2.SetEmailResponse: pass
-    def VerifyEmail(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.VerifyEmailRequest) -> mvp_pb2.VerifyEmailResponse: pass
     def GetSettings(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.GetSettingsRequest) -> mvp_pb2.GetSettingsResponse: pass
-    def UpdateSettings(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.UpdateSettingsRequest) -> mvp_pb2.UpdateSettingsResponse: pass
     def SendInvitation(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.SendInvitationRequest) -> mvp_pb2.SendInvitationResponse: pass
     def CheckInvitation(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.CheckInvitationRequest) -> mvp_pb2.CheckInvitationResponse: pass
     def AcceptInvitation(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.AcceptInvitationRequest) -> mvp_pb2.AcceptInvitationResponse: pass

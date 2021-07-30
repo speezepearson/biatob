@@ -36,18 +36,6 @@ message CredentialsConfig {
   }
 }
 
-message EmailFlowState {
-  oneof email_flow_state_kind {
-    Void unstarted = 1;
-    CodeSent code_sent = 2;
-    string verified = 3;
-  }
-  message CodeSent {
-    string email = 1;
-    HashedPassword code = 2;
-  }
-}
-
 message HashedPassword {
   bytes salt = 1;
   bytes scrypt = 2;
@@ -55,10 +43,6 @@ message HashedPassword {
 
 message GenericUserInfo {
   string email_address = 10;
-  bool email_reminders_to_resolve = 3;
-  bool email_resolution_notifications = 4;
-  bool allow_email_invitations = 8;
-  bool email_invitation_acceptance_notifications = 9;
   map<string, Invitation> invitations = 5;
   map<string, Relationship> relationships = 6;
 
@@ -236,7 +220,6 @@ message UserPredictionView {
   ResolutionEvent resolution = 17;
   repeated Trade your_trades = 11;
   double resolves_at_unixtime = 15;
-  bool allow_email_invitations = 16;
 }
 
 message ListMyStakesRequest {
@@ -338,54 +321,11 @@ message ChangePasswordResponse {
   }
 }
 
-message SetEmailRequest {
-  string email = 1;
-}
-message SetEmailResponse {
-  oneof set_email_result {
-    EmailFlowState ok = 1;
-    Error error = 2;
-  }
-  message Error {
-    string catchall = 1;
-  }
-}
-
-message VerifyEmailRequest {
-  string code = 1;
-}
-message VerifyEmailResponse {
-  oneof verify_email_result {
-    EmailFlowState ok = 1;
-    Error error = 2;
-  }
-  message Error {
-    string catchall = 1;
-  }
-}
-
 message GetSettingsRequest {
   repeated string include_relationships_with_users = 1;
 }
 message GetSettingsResponse {
   oneof get_settings_result {
-    GenericUserInfo ok = 1;
-    Error error = 2;
-  }
-  message Error {
-    string catchall = 1;
-  }
-}
-
-message MaybeBool { bool value = 1; }
-message UpdateSettingsRequest {
-  MaybeBool email_reminders_to_resolve = 1;
-  MaybeBool email_resolution_notifications = 2;
-  MaybeBool allow_email_invitations = 3;
-  MaybeBool email_invitation_acceptance_notifications = 4;
-}
-message UpdateSettingsResponse {
-  oneof update_settings_result {
     GenericUserInfo ok = 1;
     Error error = 2;
   }

@@ -52,7 +52,7 @@ class TestSendBackup:
 
 class TestEmailVerification:
   async def test_smoke(self, aiosmtplib, emailer: Emailer):
-    await emailer.send_email_verification(to='a@a', code='secret code')
+    await emailer.send_email_verification(to='a@a', proof_of_email=mvp_pb2.ProofOfEmail())
     assert 'secret code' in message_to_string(aiosmtplib.send.call_args[1]['message'])
 
 class TestResolutionNotification:

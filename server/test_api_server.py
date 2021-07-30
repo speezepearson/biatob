@@ -46,8 +46,8 @@ async def test_Whoami_and_RegisterUsername(aiohttp_client, app, token_mint: Toke
   (http_resp, pb_resp) = await post_proto(cli, '/api/Whoami', mvp_pb2.WhoamiRequest(), mvp_pb2.WhoamiResponse)
   assert not pb_resp.username, pb_resp
 
-  (http_resp, pb_resp) = await post_proto(cli, '/api/RegisterUsername', mvp_pb2.RegisterUsernameRequest(username='potato', password='secret', proof_of_email=token_mint.sign_proof_of_email('potato@example.com')), mvp_pb2.RegisterUsernameResponse)
-  assert pb_resp.ok.token.owner == 'potato', pb_resp
+  (http_resp, reg_pb_resp) = await post_proto(cli, '/api/RegisterUsername', mvp_pb2.RegisterUsernameRequest(username='potato', password='secret', proof_of_email=token_mint.sign_proof_of_email('potato@example.com')), mvp_pb2.RegisterUsernameResponse)
+  assert reg_pb_resp.ok.token.owner == 'potato', reg_pb_resp
 
   (http_resp, pb_resp) = await post_proto(cli, '/api/Whoami', mvp_pb2.WhoamiRequest(), mvp_pb2.WhoamiResponse)
   assert pb_resp.username == 'potato', pb_resp
@@ -132,10 +132,7 @@ async def test_forgotten_token_recovery(aiohttp_client, app, any_servicer: Servi
   ('/api/SetTrusted', mvp_pb2.SetTrustedRequest(), mvp_pb2.SetTrustedResponse),
   ('/api/GetUser', mvp_pb2.GetUserRequest(), mvp_pb2.GetUserResponse),
   ('/api/ChangePassword', mvp_pb2.ChangePasswordRequest(), mvp_pb2.ChangePasswordResponse),
-  ('/api/SetEmail', mvp_pb2.SetEmailRequest(), mvp_pb2.SetEmailResponse),
-  ('/api/VerifyEmail', mvp_pb2.VerifyEmailRequest(), mvp_pb2.VerifyEmailResponse),
   ('/api/GetSettings', mvp_pb2.GetSettingsRequest(), mvp_pb2.GetSettingsResponse),
-  ('/api/UpdateSettings', mvp_pb2.UpdateSettingsRequest(), mvp_pb2.UpdateSettingsResponse),
   ('/api/SendInvitation', mvp_pb2.SendInvitationRequest(), mvp_pb2.SendInvitationResponse),
   ('/api/AcceptInvitation', mvp_pb2.AcceptInvitationRequest(), mvp_pb2.AcceptInvitationResponse),
 ])
@@ -143,7 +140,7 @@ async def test_smoke(aiohttp_client, app, any_servicer: Servicer, logged_in: boo
   cli = await aiohttp_client(app)
 
   if logged_in:
-    RegisterUsernameOk(any_servicer, None, u('rando'), password='pw')
+    create_user(any_servicer, u('rando'), password='pw')
     await post_proto(cli, '/api/LogInUsername', mvp_pb2.LogInUsernameRequest(username='rando', password='pw'), mvp_pb2.LogInUsernameResponse)
 
   await post_proto(cli, endpoint, request_pb, response_pb_cls)

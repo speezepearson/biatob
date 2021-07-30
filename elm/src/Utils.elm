@@ -145,9 +145,6 @@ mustProofOfEmailPayload {payload} = must "all `ProofOfEmail`s must have `payload
 mustUsernameGenericInfo : Pb.UsernameInfo -> Pb.GenericUserInfo
 mustUsernameGenericInfo {info} = must "all UserInfos must have GenericUserInfos" info
 
-mustEmailFlowStateKind : Pb.EmailFlowState -> Pb.EmailFlowStateKind
-mustEmailFlowStateKind {emailFlowStateKind} = must "all EmailFlowStates must have kinds" emailFlowStateKind
-
 mustGetSettingsResult : Pb.GetSettingsResponse -> Pb.GetSettingsResult
 mustGetSettingsResult {getSettingsResult} = must "all GetSettingsResponses must have results" getSettingsResult
 

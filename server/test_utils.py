@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import contextlib
 import datetime
 import pytest
@@ -91,8 +92,8 @@ def assert_prediction_unchanged(servicer: Servicer, prediction_id: PredictionId)
 
 
 def register_friend_pair(servicer: Servicer, u1: AuthorizingUsername, u2: AuthorizingUsername):
-  RegisterUsernameOk(servicer, None, u1)
-  RegisterUsernameOk(servicer, None, u2)
+  create_user(servicer, u1)
+  create_user(servicer, u2)
   servicer.SetTrusted(u1, mvp_pb2.SetTrustedRequest(who=u2, trusted=True))
   servicer.SetTrusted(u2, mvp_pb2.SetTrustedRequest(who=u1, trusted=True))
 
@@ -108,17 +109,6 @@ def some_create_prediction_request(**kwargs) -> mvp_pb2.CreatePredictionRequest:
   )
   init_kwargs.update(kwargs)
   return mvp_pb2.CreatePredictionRequest(**init_kwargs)  # type: ignore
-
-def set_and_verify_email(
-  servicer: Servicer,
-  emailer: Emailer,
-  actor: AuthorizingUsername,
-  email_address: str,
-) -> None:
-  servicer.SetEmail(actor, mvp_pb2.SetEmailRequest(email=email_address))
-  servicer.VerifyEmail(actor, mvp_pb2.VerifyEmailRequest(
-    code=get_call_kwarg(emailer.send_email_verification, 'code'),
-  ))
 
 def get_call_kwarg(mock_method: Callable[..., Any], kwarg: str) -> Any:
   return mock_method.call_args[1][kwarg]  # type: ignore
@@ -137,26 +127,32 @@ pid = PredictionId
 u = Username
 
 
+def create_user(servicer: Servicer, username: Username, password: str = 'pw', email_address: Optional[str] = None) -> None:
+  if email_address is None:
+    email_address = f'{username}@example.com'
+  SendVerificationEmailOk(servicer, None, email_address)
+  proof_of_email = servicer._emailer.send_email_verification.call_args[1]['proof_of_email']  # type: ignore
+  RegisterUsernameOk(servicer, actor=None, username=username, proof_of_email=proof_of_email, password=password)
+
 def Whoami(servicer: Servicer, actor: Optional[AuthorizingUsername]) -> Optional[Username]:
   return Username(servicer.Whoami(actor, mvp_pb2.WhoamiRequest()).username)
 
 def SignOut(servicer: Servicer, actor: Optional[AuthorizingUsername]) -> None:
   servicer.SignOut(actor, mvp_pb2.SignOutRequest())
 
-def RegisterUsernameOk(servicer: Servicer, actor: Optional[AuthorizingUsername], username: Username, password: str = 'pw', email_address: Optional[str] = None) -> mvp_pb2.AuthSuccess:
+def SendVerificationEmailOk(servicer: Servicer, actor: Optional[AuthorizingUsername], email_address: str) -> None:
   token_mint: TokenMint = servicer._token_mint  # type: ignore
-  return assert_oneof(servicer.RegisterUsername(actor, mvp_pb2.RegisterUsernameRequest(
-    username=username,
-    password=password,
-    proof_of_email=token_mint.sign_proof_of_email(email_address=email_address if email_address is not None else f'{username}@example.com'),
-  )), 'register_username_result', 'ok', mvp_pb2.AuthSuccess)
-def RegisterUsernameErr(servicer: Servicer, actor: Optional[AuthorizingUsername], username: Username, password: str = 'pw', email_address: Optional[str] = None) -> mvp_pb2.RegisterUsernameResponse.Error:
+  assert_oneof(servicer.SendVerificationEmail(actor, mvp_pb2.SendVerificationEmailRequest(email_address=email_address)), 'send_verification_email_result', 'ok', object)
+def SendVerificationEmailErr(servicer: Servicer, actor: Optional[AuthorizingUsername], email_address: str) -> mvp_pb2.SendVerificationEmailResponse.Error:
   token_mint: TokenMint = servicer._token_mint  # type: ignore
-  return assert_oneof(servicer.RegisterUsername(actor, mvp_pb2.RegisterUsernameRequest(
-    username=username,
-    password=password,
-    proof_of_email=token_mint.sign_proof_of_email(email_address=email_address if email_address is not None else f'{username}@example.com'),
-  )), 'register_username_result', 'error', mvp_pb2.RegisterUsernameResponse.Error)
+  return assert_oneof(servicer.SendVerificationEmail(actor, mvp_pb2.SendVerificationEmailRequest(email_address=email_address)), 'send_verification_email_result', 'error', mvp_pb2.SendVerificationEmailResponse.Error)
+
+def RegisterUsernameOk(servicer: Servicer, actor: Optional[AuthorizingUsername], proof_of_email: mvp_pb2.ProofOfEmail, username: Username, password: str = 'pw') -> mvp_pb2.AuthSuccess:
+  token_mint: TokenMint = servicer._token_mint  # type: ignore
+  return assert_oneof(servicer.RegisterUsername(actor, mvp_pb2.RegisterUsernameRequest(username=username, password=password, proof_of_email=proof_of_email)), 'register_username_result', 'ok', mvp_pb2.AuthSuccess)
+def RegisterUsernameErr(servicer: Servicer, actor: Optional[AuthorizingUsername], proof_of_email: mvp_pb2.ProofOfEmail, username: Username, password: str = 'pw') -> mvp_pb2.RegisterUsernameResponse.Error:
+  token_mint: TokenMint = servicer._token_mint  # type: ignore
+  return assert_oneof(servicer.RegisterUsername(actor, mvp_pb2.RegisterUsernameRequest(username=username, password=password, proof_of_email=proof_of_email)), 'register_username_result', 'error', mvp_pb2.RegisterUsernameResponse.Error)
 
 def LogInUsernameOk(servicer: Servicer, actor: Optional[AuthorizingUsername], username: Username, password: str) -> mvp_pb2.AuthSuccess:
   return assert_oneof(servicer.LogInUsername(actor, mvp_pb2.LogInUsernameRequest(username=username, password=password)), 'log_in_username_result', 'ok', mvp_pb2.AuthSuccess)
@@ -208,35 +204,10 @@ def ChangePasswordOk(servicer: Servicer, actor: Optional[AuthorizingUsername], o
 def ChangePasswordErr(servicer: Servicer, actor: Optional[AuthorizingUsername], old_password: str, new_password: str) -> mvp_pb2.ChangePasswordResponse.Error:
   return assert_oneof(servicer.ChangePassword(actor, mvp_pb2.ChangePasswordRequest(old_password=old_password, new_password=new_password)), 'change_password_result', 'error', mvp_pb2.ChangePasswordResponse.Error)
 
-def SetEmailOk(servicer: Servicer, actor: Optional[AuthorizingUsername], email: str) -> mvp_pb2.EmailFlowState:
-  return assert_oneof(servicer.SetEmail(actor, mvp_pb2.SetEmailRequest(email=email)), 'set_email_result', 'ok', mvp_pb2.EmailFlowState)
-def SetEmailErr(servicer: Servicer, actor: Optional[AuthorizingUsername], email: str) -> mvp_pb2.SetEmailResponse.Error:
-  return assert_oneof(servicer.SetEmail(actor, mvp_pb2.SetEmailRequest(email=email)), 'set_email_result', 'error', mvp_pb2.SetEmailResponse.Error)
-
-def VerifyEmailOk(servicer: Servicer, actor: Optional[AuthorizingUsername], code: str) -> mvp_pb2.EmailFlowState:
-  return assert_oneof(servicer.VerifyEmail(actor, mvp_pb2.VerifyEmailRequest(code=code)), 'verify_email_result', 'ok', mvp_pb2.EmailFlowState)
-def VerifyEmailErr(servicer: Servicer, actor: Optional[AuthorizingUsername], code: str) -> mvp_pb2.VerifyEmailResponse.Error:
-  return assert_oneof(servicer.VerifyEmail(actor, mvp_pb2.VerifyEmailRequest(code=code)), 'verify_email_result', 'error', mvp_pb2.VerifyEmailResponse.Error)
-
 def GetSettingsOk(servicer: Servicer, actor: Optional[AuthorizingUsername]) -> mvp_pb2.GenericUserInfo:
   return assert_oneof(servicer.GetSettings(actor, mvp_pb2.GetSettingsRequest()), 'get_settings_result', 'ok', mvp_pb2.GenericUserInfo)
 def GetSettingsErr(servicer: Servicer, actor: Optional[AuthorizingUsername]) -> mvp_pb2.GetSettingsResponse.Error:
   return assert_oneof(servicer.GetSettings(actor, mvp_pb2.GetSettingsRequest()), 'get_settings_result', 'error', mvp_pb2.GetSettingsResponse.Error)
-
-def UpdateSettingsOk(servicer: Servicer, actor: Optional[AuthorizingUsername], *, email_resolution_notifications: Optional[bool] = None, email_reminders_to_resolve: Optional[bool] = None, allow_email_invitations: Optional[bool] = None, email_invitation_acceptance_notifications: Optional[bool] = None) -> mvp_pb2.GenericUserInfo:
-  return assert_oneof(servicer.UpdateSettings(actor, mvp_pb2.UpdateSettingsRequest(
-    email_resolution_notifications=None if email_resolution_notifications is None else mvp_pb2.MaybeBool(value=email_resolution_notifications),
-    email_reminders_to_resolve=None if email_reminders_to_resolve is None else mvp_pb2.MaybeBool(value=email_reminders_to_resolve),
-    allow_email_invitations=None if allow_email_invitations is None else mvp_pb2.MaybeBool(value=allow_email_invitations),
-    email_invitation_acceptance_notifications=None if email_invitation_acceptance_notifications is None else mvp_pb2.MaybeBool(value=email_invitation_acceptance_notifications))
-  ), 'update_settings_result', 'ok', mvp_pb2.GenericUserInfo)
-def UpdateSettingsErr(servicer: Servicer, actor: Optional[AuthorizingUsername], *, email_resolution_notifications: Optional[bool] = None, email_reminders_to_resolve: Optional[bool] = None, allow_email_invitations: Optional[bool] = None, email_invitation_acceptance_notifications: Optional[bool] = None) -> mvp_pb2.UpdateSettingsResponse.Error:
-  return assert_oneof(servicer.UpdateSettings(actor, mvp_pb2.UpdateSettingsRequest(
-    email_resolution_notifications=None if email_resolution_notifications is None else mvp_pb2.MaybeBool(value=email_resolution_notifications),
-    email_reminders_to_resolve=None if email_reminders_to_resolve is None else mvp_pb2.MaybeBool(value=email_reminders_to_resolve),
-    allow_email_invitations=None if allow_email_invitations is None else mvp_pb2.MaybeBool(value=allow_email_invitations),
-    email_invitation_acceptance_notifications=None if email_invitation_acceptance_notifications is None else mvp_pb2.MaybeBool(value=email_invitation_acceptance_notifications))
-  ), 'update_settings_result', 'error', mvp_pb2.UpdateSettingsResponse.Error)
 
 def SendInvitationOk(servicer: Servicer, actor: Optional[AuthorizingUsername], recipient: str) -> mvp_pb2.GenericUserInfo:
   return assert_oneof(servicer.SendInvitation(actor, mvp_pb2.SendInvitationRequest(recipient=recipient)), 'send_invitation_result', 'ok', mvp_pb2.GenericUserInfo)
@@ -252,21 +223,3 @@ def AcceptInvitationOk(servicer: Servicer, actor: Optional[AuthorizingUsername],
   return assert_oneof(servicer.AcceptInvitation(actor, mvp_pb2.AcceptInvitationRequest(nonce=nonce)), 'accept_invitation_result', 'ok', mvp_pb2.GenericUserInfo)
 def AcceptInvitationErr(servicer: Servicer, actor: Optional[AuthorizingUsername], nonce: str) -> mvp_pb2.AcceptInvitationResponse.Error:
   return assert_oneof(servicer.AcceptInvitation(actor, mvp_pb2.AcceptInvitationRequest(nonce=nonce)), 'accept_invitation_result', 'error', mvp_pb2.AcceptInvitationResponse.Error)
-
-
-
-def init_user(
-  any_servicer: Servicer,
-  username: AuthorizingUsername,
-  email: Optional[Tuple[Emailer, str]] = None,
-  trust_users: Sequence[Username] = (),
-  password: str = 'pw',
-  **settings: Any,
-):
-  RegisterUsernameOk(any_servicer, None, username, password=password)
-  if email is not None:
-    emailer, address = email
-    set_and_verify_email(any_servicer, emailer, username, address)
-  UpdateSettingsOk(any_servicer, username, **settings)
-  for trustee in trust_users:
-    SetTrustedOk(any_servicer, username, trustee, True)

@@ -23,7 +23,6 @@ mockPrediction =
   , resolution = Nothing
   , yourTrades = []
   , resolvesAtUnixtime = 200
-  , allowEmailInvitations = False
   }
 exampleResolutionEvent : Pb.ResolutionEvent
 exampleResolutionEvent =
