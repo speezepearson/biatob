@@ -290,7 +290,6 @@ type PrereqsForStaking
   | NeedsToSetTrusted
   | NeedsToSendEmailInvitation
   | NeedsToWaitForInvitation
-  | NeedsToTextUserPageLink
 
 getBetParameters : Utils.BetSide -> Pb.UserPredictionView -> { remainingCreatorStake : Cents , creatorStakeFactor : Float , maxBettorStake : Cents }
 getBetParameters side prediction =
@@ -478,28 +477,10 @@ viewBody model =
               ]
             , H.div [HA.class "text-center text-secondary"]
               [ H.text "This will require sharing your email address ("
-              , H.code [HA.style "color" "inherit"] [ H.text <| Utils.must "must have email address, else would take the NeedsEmailAddress branch" <| userEmailAddress model ]
+              , H.code [HA.style "color" "inherit"] [ H.text <| (Globals.getUserInfo model.globals |> Utils.must "must be logged in, else would take the NeedsAccount branch").emailAddress ]
               , H.text ") with them."
               ]
             , maybeOrYouCouldSwapUserPages
-            ]
-          NeedsToTextUserPageLink ->
-            H.div [HA.id "make-a-bet-section"]
-            [ H.p []
-              [ H.h4 [HA.class "text-center"] [H.text "Make a bet"]
-              , viewStakeWidget
-                ( QueueingNecessary <|
-                  H.span []
-                  [ H.span [HA.class "text-danger"]
-                    [ H.text "You'll need to contact them over SMS/IM/email/whatever,"
-                    ]
-                  , H.text " send them a link to "
-                  , H.a [HA.href <| Utils.pathToUserPage <| Utils.must "checked user is logged in" <| Globals.getOwnUsername model.globals] [H.text "your user page"]
-                  , H.text ", and ask them to mark you as trusted. Sorry it's such a hassle. I'd normally offer to ask them for you, but they disabled that option."
-                  ]
-                )
-                model.stakeField model.stakeStatus model.bettorSide prediction
-              ]
             ]
       ]
     , if not (Globals.isLoggedIn model.globals) then
