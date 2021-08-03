@@ -51,7 +51,11 @@ init flags =
     model =
       { globals = JD.decodeValue Globals.globalsDecoder flags |> Utils.mustResult "flags"
       , navbarAuth = AuthWidget.init
-      , usernameField = emailToSuggestedUsername (Utils.mustProofOfEmailPayload proofOfEmail).emailAddress
+      , usernameField =
+          let suggestion = emailToSuggestedUsername (Utils.mustProofOfEmailPayload proofOfEmail).emailAddress in
+          case Utils.parseUsername suggestion of
+            Ok s -> s
+            Err _ -> ""
       , passwordField = ""
       , confirmPasswordField = ""
       , proofOfEmail = proofOfEmail
@@ -121,9 +125,8 @@ emailToSuggestedUsername email =
   let
     emailUsername =
       email
-      |> String.split "@"
-      |> List.head
-      |> Utils.must "String.split with nonempty delimiter is always nonempty"
+      |> String.split "@" >> List.head >> Utils.must "String.split with nonempty delimiter is always nonempty"
+      |> String.split "+" >> List.head >> Utils.must "String.split with nonempty delimiter is always nonempty"
     camelcase words =
       words
       |> List.map (\w -> String.toUpper (String.left 1 w) ++ String.dropLeft 1 w)
@@ -191,7 +194,7 @@ view model =
             , H.div [HA.class "invalid-feedback"]
               [ case username of
                   Ok _ -> H.text ""
-                  Err e -> H.text e
+                  Err errs -> H.text <| String.join "; " (List.map Utils.usernameProblemToString errs)
               ]
             ]
           , H.div [HA.class "row mb-4"]

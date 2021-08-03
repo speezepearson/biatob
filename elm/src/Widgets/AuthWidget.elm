@@ -98,7 +98,6 @@ view config state =
           , HE.onInput (\s -> config.setState {state | usernameField=s})
           , HA.value state.usernameField
           ] []
-        , H.div [HA.class "invalid-feedback"] [viewError username]
         ]
       , let password = Utils.parsePassword state.passwordField in
         H.div [HA.class "col-4"]

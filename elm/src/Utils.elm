@@ -42,15 +42,25 @@ illegalUsernameCharacters s =
   in
     Set.diff presentChars okayChars
 
-parseUsername : String -> Result String Username
+type UsernameProblem
+  = TooShort
+  | IllegalCharacters (Set.Set Char)
+minUsernameLength = 3
+usernameProblemToString : UsernameProblem -> String
+usernameProblemToString problem =
+  case problem of
+    TooShort -> "must be at least " ++ String.fromInt minUsernameLength ++ "characters"
+    IllegalCharacters chars -> "illegal characters: " ++ Debug.toString chars
+parseUsername : String -> Result (List UsernameProblem) Username
 parseUsername s =
   if String.length s < 3 then
-    Err "must be at least 3 characters"
+    Err [TooShort]
   else let badChars = illegalUsernameCharacters s in
   if not (Set.isEmpty badChars) then
-    Err ("bad characters: " ++ Debug.toString (Set.toList badChars))
+    Err [IllegalCharacters badChars]
   else
     Ok s
+
 parsePassword : String -> Result String Password
 parsePassword s =
   if s=="" then

@@ -146,7 +146,7 @@ view model =
               , HA.class "form-control"
               , HA.class <| if model.emailField == "" || Utils.isOk email then "" else "is-invalid"
               ] []
-            , H.div [HA.class "form-text"] [H.text "I'll never ever intentionally share this with anybody unless you ask me to."]
+            , H.div [HA.class "form-text"] [H.text "I'll never ever intentionally share this with anybody unless you ask me to. I just need it so I can notify you when e.g. you owe somebody money."]
             ]
           , H.div [HA.class "text-center mt-4"]
             [ H.button
