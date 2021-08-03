@@ -296,7 +296,6 @@ class WebServer:
         auth = self._token_glue.parse_cookie(req)
         auth_success = self._get_auth_success(auth)
         code = str(req.match_info['code'])
-        print('code (', type(code), ') =', code)
         return web.Response(
             content_type='text/html',
             body=self._jinja.get_template('InitUserPage.html').render(
