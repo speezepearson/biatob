@@ -52,6 +52,8 @@ class ApiServer:
         return proto_response(self._servicer.GetPrediction(actor=self._token_glue.get_authorizing_user(http_req), request=await parse_proto(http_req, mvp_pb2.GetPredictionRequest)))
     async def Stake(self, http_req: web.Request) -> web.Response:
         return proto_response(self._servicer.Stake(actor=self._token_glue.get_authorizing_user(http_req), request=await parse_proto(http_req, mvp_pb2.StakeRequest)))
+    async def Follow(self, http_req: web.Request) -> web.Response:
+        return proto_response(self._servicer.Follow(actor=self._token_glue.get_authorizing_user(http_req), request=await parse_proto(http_req, mvp_pb2.FollowRequest)))
     async def Resolve(self, http_req: web.Request) -> web.Response:
         return proto_response(self._servicer.Resolve(actor=self._token_glue.get_authorizing_user(http_req), request=await parse_proto(http_req, mvp_pb2.ResolveRequest)))
     async def SetTrusted(self, http_req: web.Request) -> web.Response:
@@ -76,6 +78,7 @@ class ApiServer:
         app.router.add_post('/api/CreatePrediction', self.CreatePrediction)
         app.router.add_post('/api/GetPrediction', self.GetPrediction)
         app.router.add_post('/api/Stake', self.Stake)
+        app.router.add_post('/api/Follow', self.Follow)
         app.router.add_post('/api/Resolve', self.Resolve)
         app.router.add_post('/api/SetTrusted', self.SetTrusted)
         app.router.add_post('/api/GetUser', self.GetUser)

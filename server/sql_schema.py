@@ -53,6 +53,13 @@ predictions = Table(
   Column('view_privacy', String(96), CheckConstraint("view_privacy in ('PREDICTION_VIEW_PRIVACY_ANYBODY', 'PREDICTION_VIEW_PRIVACY_ANYBODY_WITH_THE_LINK')"), nullable=False, server_default='PREDICTION_VIEW_PRIVACY_ANYBODY'),
 )
 
+prediction_follows = Table(
+  'prediction_follows',
+  metadata,
+  Column('prediction_id', predid_t, ForeignKey('predictions.prediction_id'), primary_key=True, nullable=False),
+  Column('follower', username_t, ForeignKey('users.username'), primary_key=True, nullable=False),
+)
+
 trades = Table(
   'trades',
   metadata,

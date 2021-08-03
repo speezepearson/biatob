@@ -184,6 +184,11 @@ def StakeOk(servicer: Servicer, actor: Optional[AuthorizingUsername], request: m
 def StakeErr(servicer: Servicer, actor: Optional[AuthorizingUsername], request: mvp_pb2.StakeRequest) -> mvp_pb2.StakeResponse.Error:
   return assert_oneof(servicer.Stake(actor, request), 'stake_result', 'error', mvp_pb2.StakeResponse.Error)
 
+def FollowOk(servicer: Servicer, actor: Optional[AuthorizingUsername], prediction_id: PredictionId, follow: bool) -> mvp_pb2.UserPredictionView:
+  return assert_oneof(servicer.Follow(actor, mvp_pb2.FollowRequest(prediction_id=prediction_id, follow=follow)), 'follow_result', 'ok', mvp_pb2.UserPredictionView)
+def FollowErr(servicer: Servicer, actor: Optional[AuthorizingUsername], prediction_id: PredictionId, follow: bool) -> mvp_pb2.FollowResponse.Error:
+  return assert_oneof(servicer.Follow(actor, mvp_pb2.FollowRequest(prediction_id=prediction_id, follow=follow)), 'follow_result', 'error', mvp_pb2.FollowResponse.Error)
+
 def ResolveOk(servicer: Servicer, actor: Optional[AuthorizingUsername], prediction_id: PredictionId, resolution: mvp_pb2.Resolution.V, notes: str = '') -> mvp_pb2.UserPredictionView:
   return assert_oneof(servicer.Resolve(actor, mvp_pb2.ResolveRequest(prediction_id=prediction_id, resolution=resolution, notes=notes)), 'resolve_result', 'ok', mvp_pb2.UserPredictionView)
 def ResolveErr(servicer: Servicer, actor: Optional[AuthorizingUsername], prediction_id: PredictionId, resolution: mvp_pb2.Resolution.V, notes: str = '') -> mvp_pb2.ResolveResponse.Error:

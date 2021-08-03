@@ -40,6 +40,8 @@ postListPredictions : (Result Http.Error Pb.ListPredictionsResponse -> msg) -> P
 postListPredictions = hit {url="/api/ListPredictions", encoder=Pb.toListPredictionsRequestEncoder, decoder=Pb.listPredictionsResponseDecoder}
 postStake : (Result Http.Error Pb.StakeResponse -> msg) -> Pb.StakeRequest -> Cmd msg
 postStake = hit {url="/api/Stake", encoder=Pb.toStakeRequestEncoder, decoder=Pb.stakeResponseDecoder}
+postFollow : (Result Http.Error Pb.FollowResponse -> msg) -> Pb.FollowRequest -> Cmd msg
+postFollow = hit {url="/api/Follow", encoder=Pb.toFollowRequestEncoder, decoder=Pb.followResponseDecoder}
 postResolve : (Result Http.Error Pb.ResolveResponse -> msg) -> Pb.ResolveRequest -> Cmd msg
 postResolve = hit {url="/api/Resolve", encoder=Pb.toResolveRequestEncoder, decoder=Pb.resolveResponseDecoder}
 postSetTrusted : (Result Http.Error Pb.SetTrustedResponse -> msg) -> Pb.SetTrustedRequest -> Cmd msg
@@ -157,6 +159,19 @@ simplifyStakeResponse res =
         Just (Pb.StakeResultOk result) ->
           Ok result
         Just (Pb.StakeResultError e) ->
+          Err e.catchall
+        Nothing ->
+          Err "Invalid server response (neither Ok nor Error in protobuf)"
+
+simplifyFollowResponse : Result Http.Error Pb.FollowResponse -> Result String Pb.UserPredictionView
+simplifyFollowResponse res =
+  case res of
+    Err e -> Err (httpErrorToString e)
+    Ok resp ->
+      case resp.followResult of
+        Just (Pb.FollowResultOk result) ->
+          Ok result
+        Just (Pb.FollowResultError e) ->
           Err e.catchall
         Nothing ->
           Err "Invalid server response (neither Ok nor Error in protobuf)"

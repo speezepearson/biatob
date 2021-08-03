@@ -128,6 +128,7 @@ async def test_forgotten_token_recovery(aiohttp_client, app, any_servicer: Servi
   ('/api/CreatePrediction', mvp_pb2.CreatePredictionRequest(), mvp_pb2.CreatePredictionResponse),
   ('/api/GetPrediction', mvp_pb2.GetPredictionRequest(), mvp_pb2.GetPredictionResponse),
   ('/api/Stake', mvp_pb2.StakeRequest(), mvp_pb2.StakeResponse),
+  ('/api/Follow', mvp_pb2.FollowRequest(), mvp_pb2.FollowResponse),
   ('/api/Resolve', mvp_pb2.ResolveRequest(), mvp_pb2.ResolveResponse),
   ('/api/SetTrusted', mvp_pb2.SetTrustedRequest(), mvp_pb2.SetTrustedResponse),
   ('/api/GetUser', mvp_pb2.GetUserRequest(), mvp_pb2.GetUserResponse),

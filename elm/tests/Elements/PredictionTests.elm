@@ -37,6 +37,7 @@ mockPrediction =
   , resolution = Nothing
   , yourTrades = []
   , resolvesAtUnixtime = 200
+  , yourFollowingStatus = Pb.PredictionFollowingNotFollowing
   }
 
 exampleTrade : Pb.Trade

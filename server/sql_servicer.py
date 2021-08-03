@@ -143,6 +143,14 @@ class SqlConn:
       row['maximum_stake_cents'] - self.get_creator_exposure_cents(prediction_id, against_skeptics=True)
     )
 
+    follow_row = self._conn.execute(
+      sqlalchemy.select(schema.prediction_follows.c)
+      .where(sqlalchemy.and_(
+        schema.prediction_follows.c.prediction_id == prediction_id,
+        schema.prediction_follows.c.follower == viewer,
+      ))
+    ).fetchone()
+
     return mvp_pb2.UserPredictionView(
       prediction=row['prediction'],
       certainty=mvp_pb2.CertaintyRange(low=row['certainty_low_p'], high=row['certainty_high_p']),
@@ -168,6 +176,11 @@ class SqlConn:
         )
         for t in trade_rows
       ],
+      your_following_status=(
+        mvp_pb2.PREDICTION_FOLLOWING_MANDATORY_BECAUSE_STAKED if (creator_is_viewer or trade_rows) else
+        mvp_pb2.PREDICTION_FOLLOWING_FOLLOWING if follow_row is not None else
+        mvp_pb2.PREDICTION_FOLLOWING_NOT_FOLLOWING
+      ),
     )
 
   def list_stakes(self, user: Username) -> Iterable[PredictionId]:
@@ -328,6 +341,29 @@ class SqlConn:
       updated_at_unixtime=now.timestamp(),
     ))
 
+  def set_following(
+    self,
+    prediction_id: PredictionId,
+    follower: Username,
+    follow: bool,
+  ) -> None:
+    if follow:
+      self._conn.execute(
+        sqlalchemy.insert(schema.prediction_follows)
+        .values(
+          prediction_id=prediction_id,
+          follower=follower,
+        )
+      )
+    else:
+      self._conn.execute(
+        sqlalchemy.delete(schema.prediction_follows)
+        .where(sqlalchemy.and_(
+          schema.prediction_follows.c.prediction_id == prediction_id,
+          schema.prediction_follows.c.follower == follower,
+        ))
+      )
+
   def resolve(
     self,
     request: mvp_pb2.ResolveRequest,
@@ -450,13 +486,21 @@ class SqlConn:
     ).scalar()
 
   def get_resolution_notification_addrs(self, prediction_id: PredictionId) -> Iterable[str]:
-    return [row['email_address'] for row in self._conn.execute(
+    q_bettors = (
       sqlalchemy.select([schema.users.c.email_address])
       .where(sqlalchemy.and_(
-        schema.trades.c.prediction_id == prediction_id,
-        schema.trades.c.bettor == schema.users.c.username,
+          schema.trades.c.prediction_id == prediction_id,
+          schema.trades.c.bettor == schema.users.c.username,
       ))
-    )]
+    )
+    q_followers = (
+      sqlalchemy.select([schema.users.c.email_address])
+      .where(sqlalchemy.and_(
+          schema.prediction_follows.c.prediction_id == prediction_id,
+          schema.prediction_follows.c.follower == schema.users.c.username,
+      ))
+    )
+    return {row['email_address'] for row in self._conn.execute(q_bettors.union(q_followers))}
 
   def get_settings(self, user: AuthorizingUsername, include_relationships_with_users: Iterable[Username] = ()) -> Optional[mvp_pb2.GenericUserInfo]:
     row = self._conn.execute(
@@ -889,6 +933,29 @@ class SqlServicer(Servicer):
       )
       logger.info('trade executed', prediction_id=request.prediction_id, request=request)
       return mvp_pb2.StakeResponse(ok=self._conn.view_prediction(actor, PredictionId(request.prediction_id)))
+
+    @transactional
+    @ensure_actor_exists
+    @log_actor
+    @log_action
+    def Follow(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.FollowRequest) -> mvp_pb2.FollowResponse:
+      logger.debug('API call', request=request)
+      if actor is None:
+        logger.warn('not logged in')
+        return mvp_pb2.FollowResponse(error=mvp_pb2.FollowResponse.Error(catchall='must log in to follow'))
+
+      predinfo = self._conn.get_prediction_info(PredictionId(request.prediction_id))
+      if predinfo is None:
+        logger.warn('trying to follow nonexistent prediction', prediction_id=request.prediction_id)
+        return mvp_pb2.FollowResponse(error=mvp_pb2.FollowResponse.Error(catchall='no such prediction'))
+
+      self._conn.set_following(
+        prediction_id=PredictionId(request.prediction_id),
+        follower=actor,
+        follow=request.follow,
+      )
+      logger.info('trade executed', prediction_id=request.prediction_id, request=request)
+      return mvp_pb2.FollowResponse(ok=self._conn.view_prediction(actor, PredictionId(request.prediction_id)))
 
     @transactional
     @ensure_actor_exists

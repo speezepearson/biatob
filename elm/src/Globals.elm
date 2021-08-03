@@ -20,6 +20,7 @@ module Globals exposing
   , handleListMyStakesResponse
   , handleListPredictionsResponse
   , handleStakeResponse
+  , handleFollowResponse
   , handleResolveResponse
   , handleSetTrustedResponse
   , handleGetUserResponse
@@ -113,6 +114,13 @@ handleStakeResponse req res globals =
   case res of
     Ok {stakeResult} -> case Debug.log "stakeResult" stakeResult of
       Just (Pb.StakeResultOk newPrediction) -> { globals | serverState = globals.serverState |> addPrediction req.predictionId newPrediction }
+      _ -> globals
+    Err _ -> globals
+handleFollowResponse : Pb.FollowRequest -> Result Http.Error Pb.FollowResponse -> Globals -> Globals
+handleFollowResponse req res globals =
+  case res of
+    Ok {followResult} -> case Debug.log "followResult" followResult of
+      Just (Pb.FollowResultOk newPrediction) -> { globals | serverState = globals.serverState |> addPrediction req.predictionId newPrediction }
       _ -> globals
     Err _ -> globals
 handleResolveResponse : Pb.ResolveRequest -> Result Http.Error Pb.ResolveResponse -> Globals -> Globals

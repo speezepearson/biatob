@@ -219,6 +219,12 @@ message GetPredictionResponse {
     Void no_such_prediction = 2;
   }
 }
+
+enum PredictionFollowingStatus {
+  PREDICTION_FOLLOWING_NOT_FOLLOWING = 0;
+  PREDICTION_FOLLOWING_FOLLOWING = 1;
+  PREDICTION_FOLLOWING_MANDATORY_BECAUSE_STAKED = 2;
+}
 message UserPredictionView {
   string prediction = 1;
   CertaintyRange certainty = 2;
@@ -232,6 +238,7 @@ message UserPredictionView {
   ResolutionEvent resolution = 17;
   repeated Trade your_trades = 11;
   double resolves_at_unixtime = 15;
+  PredictionFollowingStatus your_following_status = 18;
 }
 
 message ListMyStakesRequest {
@@ -255,6 +262,20 @@ message ListPredictionsRequest {
 message ListPredictionsResponse {
   oneof list_predictions_result {
     PredictionsById ok = 1;
+    Error error = 2;
+  }
+  message Error {
+    string catchall = 1;
+  }
+}
+
+message FollowRequest {
+  string prediction_id = 1;
+  bool follow = 2;
+}
+message FollowResponse {
+  oneof follow_result {
+    UserPredictionView ok = 1;
     Error error = 2;
   }
   message Error {

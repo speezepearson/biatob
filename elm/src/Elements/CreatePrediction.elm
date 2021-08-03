@@ -672,6 +672,7 @@ previewPrediction {request, creatorName, createdAt} =
   , resolution = Nothing
   , yourTrades = []
   , resolvesAtUnixtime = request.resolvesAtUnixtime
+  , yourFollowingStatus = Pb.PredictionFollowingNotFollowing
   }
 
 subscriptions : Model -> Sub Msg

@@ -171,6 +171,7 @@ class TestPredictions:
       special_rules='my rules',
       creator=ALICE,
       resolves_at_unixtime=T1.timestamp(),
+      your_following_status=mvp_pb2.PREDICTION_FOLLOWING_MANDATORY_BECAUSE_STAKED,
     )
 
   def test_stake_errors_on_nonexistent_prediction(self, conn: SqlConn):

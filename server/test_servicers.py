@@ -226,6 +226,7 @@ class TestGetPrediction:
       creator=ALICE,
       resolution=mvp_pb2.ResolutionEvent(unixtime=resolve_time, resolution=mvp_pb2.RESOLUTION_YES),
       your_trades=[mvp_pb2.Trade(bettor=BOB, bettor_is_a_skeptic=True, bettor_stake_cents=1_00, creator_stake_cents=1_00, transacted_unixtime=stake_time, updated_unixtime=stake_time, state=mvp_pb2.TRADE_STATE_ACTIVE)],
+      your_following_status=mvp_pb2.PREDICTION_FOLLOWING_MANDATORY_BECAUSE_STAKED,
     )
 
 
@@ -569,6 +570,66 @@ class TestStake:
         pred = self._arrange_dequeue_failure(any_servicer)
         assert pred.remaining_stake_cents_vs_skeptics + sum(t.creator_stake_cents for t in pred.your_trades) > pred.maximum_stake_cents
         assert pred.remaining_stake_cents_vs_skeptics + sum(t.creator_stake_cents for t in pred.your_trades if t.state == mvp_pb2.TRADE_STATE_ACTIVE) == pred.maximum_stake_cents
+
+
+class TestFollowing:
+
+  async def test_returns_new_prediction(self, any_servicer: Servicer):
+    create_user(any_servicer, ALICE)
+    create_user(any_servicer, BOB)
+    prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
+    old_pred = GetPredictionOk(any_servicer, BOB, prediction_id)
+    resp_pred = FollowOk(any_servicer, BOB, prediction_id, True)
+    new_pred = GetPredictionOk(any_servicer, BOB, prediction_id)
+    assert new_pred == resp_pred != old_pred
+
+  async def test_initially_not_following_for_rando(self, any_servicer: Servicer):
+    create_user(any_servicer, ALICE)
+    create_user(any_servicer, BOB)
+    prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
+    assert GetPredictionOk(any_servicer, BOB, prediction_id).your_following_status == mvp_pb2.PREDICTION_FOLLOWING_NOT_FOLLOWING
+
+  async def test_mandatory_for_creator(self, any_servicer: Servicer):
+    create_user(any_servicer, ALICE)
+    prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
+    assert GetPredictionOk(any_servicer, ALICE, prediction_id).your_following_status == mvp_pb2.PREDICTION_FOLLOWING_MANDATORY_BECAUSE_STAKED
+
+  async def test_mandatory_for_bettor(self, any_servicer: Servicer):
+    register_friend_pair(any_servicer, ALICE, BOB)
+    prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
+    pred = StakeOk(any_servicer, BOB, some_stake_request(prediction_id))
+    assert pred.your_following_status == mvp_pb2.PREDICTION_FOLLOWING_MANDATORY_BECAUSE_STAKED
+
+  async def test_sets_following_on_prediction_view(self, any_servicer: Servicer):
+    create_user(any_servicer, ALICE)
+    create_user(any_servicer, BOB)
+    prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
+    assert FollowOk(any_servicer, BOB, prediction_id, True).your_following_status == mvp_pb2.PREDICTION_FOLLOWING_FOLLOWING
+
+  async def test_unsets_following_on_prediction_view(self, any_servicer: Servicer):
+    create_user(any_servicer, ALICE)
+    create_user(any_servicer, BOB)
+    prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
+    FollowOk(any_servicer, BOB, prediction_id, True)
+    assert FollowOk(any_servicer, BOB, prediction_id, False).your_following_status == mvp_pb2.PREDICTION_FOLLOWING_NOT_FOLLOWING
+
+  async def test_receives_email_notification(self, any_servicer: Servicer, emailer: Emailer):
+    create_user(any_servicer, ALICE)
+    create_user(any_servicer, BOB, email_address='bob@example.com')
+    prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
+    FollowOk(any_servicer, BOB, prediction_id, True)
+    ResolveOk(any_servicer, ALICE, prediction_id, mvp_pb2.RESOLUTION_YES)
+    assert 'bob@example.com' in emailer.send_resolution_notifications.call_args[1]['bccs']  # type: ignore
+
+  async def test_no_email_notification_after_unfollow(self, any_servicer: Servicer, emailer: Emailer):
+    create_user(any_servicer, ALICE)
+    create_user(any_servicer, BOB, email_address='bob@example.com')
+    prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
+    FollowOk(any_servicer, BOB, prediction_id, True)
+    FollowOk(any_servicer, BOB, prediction_id, False)
+    ResolveOk(any_servicer, ALICE, prediction_id, mvp_pb2.RESOLUTION_YES)
+    calls = emailer.send_resolution_notifications.call_args_list  # type: ignore
+    assert not any('bob@example.com' in call[1]['bccs'] for call in calls)
 
 
 class TestResolve:

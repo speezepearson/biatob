@@ -36,6 +36,7 @@ type alias Model =
   , bettorSide : Utils.BetSide
   , stakeStatus : RequestStatus
   , sendInvitationStatus : RequestStatus
+  , followStatus : RequestStatus
   , setTrustedStatus : RequestStatus
   , shareEmbedding : EmbeddingFields
   }
@@ -161,6 +162,8 @@ type Msg
   | SignOutFinished AuthWidgetLoc Pb.SignOutRequest (Result Http.Error Pb.SignOutResponse)
   | Stake Cents
   | StakeFinished Pb.StakeRequest (Result Http.Error Pb.StakeResponse)
+  | Follow Bool
+  | FollowFinished Pb.FollowRequest (Result Http.Error Pb.FollowResponse)
   | SetBettorSide Utils.BetSide
   | SetStakeField String
   | SetEmbeddingFormat EmbeddingFormat
@@ -195,6 +198,7 @@ initInternal globals predictionId =
   , stakeStatus = Unstarted
   , setTrustedStatus = Unstarted
   , sendInvitationStatus = Unstarted
+  , followStatus = Unstarted
   , stakeField = "10"
   , bettorSide = Utils.Skeptic
   , shareEmbedding = { format = EmbedHtml, contentType = Image , style = PlainLink , fontSize = FourteenPt }
@@ -386,7 +390,40 @@ viewBody model =
   [ H.h2 [HA.id "prediction-title", HA.class "text-center"] <| List.map H.text <| getTitleTextChunks model.globals.timeZone prediction
   , H.hr [] []
   , H.div [HA.class "row row-cols-12"]
-    [ H.div [HA.class "col-md-4"] [viewSummaryTable model.globals.now model.globals.timeZone prediction]
+    [ H.div [HA.class "col-md-4"]
+      [ viewSummaryTable model.globals.now model.globals.timeZone prediction
+      , if isOwnPrediction then H.text "" else
+        case prediction.yourFollowingStatus of
+          Pb.PredictionFollowingNotFollowing ->
+            H.div []
+            [ H.button
+              [ HE.onClick (Follow True)
+              , HA.disabled (model.followStatus == AwaitingResponse)
+              , HA.class "btn btn-sm btn-outline-primary"
+              ]
+              [ H.text "Notify me when this prediction resolves"
+              ]
+            ]
+          Pb.PredictionFollowingFollowing ->
+            H.div []
+            [ H.text "I'll notify you when this prediction resolves. "
+            , H.button
+              [ HE.onClick (Follow False)
+              , HA.disabled (model.followStatus == AwaitingResponse)
+              , HA.class "btn btn-sm btn-outline-primary"
+              ]
+              [ H.text "No, don't notify me"
+              ]
+            ]
+          Pb.PredictionFollowingMandatoryBecauseStaked ->
+            H.div []
+            [ H.text "You have a stake in this prediction, so I'll notify you when it resolves."
+            ]
+          Pb.PredictionFollowingStatusUnrecognized_ _ ->
+            H.div []
+            [ Utils.redText "Something's gone very wrong! I'm not sure whether I'll notify you when this prediction resolves!"
+            ]
+      ]
     , H.div [HA.class "col-md-8"]
       [ viewYourStake (Globals.getOwnUsername model.globals) model.globals.timeZone prediction
       , case getPrereqsForStaking model of
@@ -1162,6 +1199,22 @@ update msg model =
             } |> updateBettorInputFields prediction
           Err e ->
             { model | globals = model.globals |> Globals.handleStakeResponse req res
+                    , stakeStatus = Failed e
+            }
+      , Cmd.none
+      )
+    Follow follow ->
+      ( { model | stakeStatus = AwaitingResponse }
+      , let req = {predictionId=model.predictionId, follow=follow} in API.postFollow (FollowFinished req) req
+      )
+    FollowFinished req res ->
+      ( case API.simplifyFollowResponse res of
+          Ok prediction ->
+            { model | globals = model.globals |> Globals.handleFollowResponse req res
+                    , stakeStatus = Succeeded
+            } |> updateBettorInputFields prediction
+          Err e ->
+            { model | globals = model.globals |> Globals.handleFollowResponse req res
                     , stakeStatus = Failed e
             }
       , Cmd.none
