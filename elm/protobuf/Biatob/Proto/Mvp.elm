@@ -2,9 +2,9 @@
 
 
 module Biatob.Proto.Mvp exposing
-    ( TradeState(..), Void(..), Resolution(..), PredictionViewPrivacy(..), AuthToken, DatabaseKind(..), DatabaseInfo, DatabaseInfoMysqlDbCredentials, CredentialsConfig, CredentialsConfigSmtpCredentials, EmailFlowStateKind(..), EmailFlowState, EmailFlowStateCodeSent, HashedPassword, LoginType(..), GenericUserInfo, GenericUserInfoInvitation, Relationship, UsernameInfo, EmailAttempt, ResolutionEventPriorRevision(..), ResolutionEvent, Trade, WhoamiRequest, WhoamiResponse, SignOutRequest, SignOutResponse, AuthSuccess, RegisterUsernameRequest, RegisterUsernameResult(..), RegisterUsernameResponse, RegisterUsernameResponseError, LogInUsernameRequest, LogInUsernameResult(..), LogInUsernameResponse, LogInUsernameResponseError, CertaintyRange, CreatePredictionRequest, CreatePredictionResult(..), CreatePredictionResponse, CreatePredictionResponseError, GetPredictionRequest, GetPredictionResult(..), GetPredictionResponse, GetPredictionResponseError, UserPredictionView, ListMyStakesRequest, ListMyStakesResult(..), ListMyStakesResponse, ListMyStakesResponseError, PredictionsById, ListPredictionsRequest, ListPredictionsResult(..), ListPredictionsResponse, ListPredictionsResponseError, StakeRequest, StakeResult(..), StakeResponse, StakeResponseError, ResolveRequest, ResolveResult(..), ResolveResponse, ResolveResponseError, SetTrustedRequest, SetTrustedResult(..), SetTrustedResponse, SetTrustedResponseError, GetUserRequest, GetUserResult(..), GetUserResponse, GetUserResponseError, ChangePasswordRequest, ChangePasswordResult(..), ChangePasswordResponse, ChangePasswordResponseError, SetEmailRequest, SetEmailResult(..), SetEmailResponse, SetEmailResponseError, VerifyEmailRequest, VerifyEmailResult(..), VerifyEmailResponse, VerifyEmailResponseError, GetSettingsRequest, GetSettingsResult(..), GetSettingsResponse, GetSettingsResponseError, MaybeBool, UpdateSettingsRequest, UpdateSettingsResult(..), UpdateSettingsResponse, UpdateSettingsResponseError, SendInvitationRequest, SendInvitationResult(..), SendInvitationResponse, SendInvitationResponseError, CheckInvitationRequest, CheckInvitationResult(..), CheckInvitationResponse, CheckInvitationResponseResult, CheckInvitationResponseError, AcceptInvitationRequest, AcceptInvitationResult(..), AcceptInvitationResponse, AcceptInvitationResponseError, SavedCreatedPredictionFormState
-    , authTokenDecoder, databaseInfoDecoder, credentialsConfigDecoder, emailFlowStateDecoder, hashedPasswordDecoder, genericUserInfoDecoder, relationshipDecoder, usernameInfoDecoder, emailAttemptDecoder, resolutionEventDecoder, tradeDecoder, whoamiRequestDecoder, whoamiResponseDecoder, signOutRequestDecoder, signOutResponseDecoder, authSuccessDecoder, registerUsernameRequestDecoder, registerUsernameResponseDecoder, logInUsernameRequestDecoder, logInUsernameResponseDecoder, certaintyRangeDecoder, createPredictionRequestDecoder, createPredictionResponseDecoder, getPredictionRequestDecoder, getPredictionResponseDecoder, userPredictionViewDecoder, listMyStakesRequestDecoder, listMyStakesResponseDecoder, predictionsByIdDecoder, listPredictionsRequestDecoder, listPredictionsResponseDecoder, stakeRequestDecoder, stakeResponseDecoder, resolveRequestDecoder, resolveResponseDecoder, setTrustedRequestDecoder, setTrustedResponseDecoder, getUserRequestDecoder, getUserResponseDecoder, changePasswordRequestDecoder, changePasswordResponseDecoder, setEmailRequestDecoder, setEmailResponseDecoder, verifyEmailRequestDecoder, verifyEmailResponseDecoder, getSettingsRequestDecoder, getSettingsResponseDecoder, maybeBoolDecoder, updateSettingsRequestDecoder, updateSettingsResponseDecoder, sendInvitationRequestDecoder, sendInvitationResponseDecoder, checkInvitationRequestDecoder, checkInvitationResponseDecoder, acceptInvitationRequestDecoder, acceptInvitationResponseDecoder, savedCreatedPredictionFormStateDecoder
-    , toAuthTokenEncoder, toDatabaseInfoEncoder, toCredentialsConfigEncoder, toEmailFlowStateEncoder, toHashedPasswordEncoder, toGenericUserInfoEncoder, toRelationshipEncoder, toUsernameInfoEncoder, toEmailAttemptEncoder, toResolutionEventEncoder, toTradeEncoder, toWhoamiRequestEncoder, toWhoamiResponseEncoder, toSignOutRequestEncoder, toSignOutResponseEncoder, toAuthSuccessEncoder, toRegisterUsernameRequestEncoder, toRegisterUsernameResponseEncoder, toLogInUsernameRequestEncoder, toLogInUsernameResponseEncoder, toCertaintyRangeEncoder, toCreatePredictionRequestEncoder, toCreatePredictionResponseEncoder, toGetPredictionRequestEncoder, toGetPredictionResponseEncoder, toUserPredictionViewEncoder, toListMyStakesRequestEncoder, toListMyStakesResponseEncoder, toPredictionsByIdEncoder, toListPredictionsRequestEncoder, toListPredictionsResponseEncoder, toStakeRequestEncoder, toStakeResponseEncoder, toResolveRequestEncoder, toResolveResponseEncoder, toSetTrustedRequestEncoder, toSetTrustedResponseEncoder, toGetUserRequestEncoder, toGetUserResponseEncoder, toChangePasswordRequestEncoder, toChangePasswordResponseEncoder, toSetEmailRequestEncoder, toSetEmailResponseEncoder, toVerifyEmailRequestEncoder, toVerifyEmailResponseEncoder, toGetSettingsRequestEncoder, toGetSettingsResponseEncoder, toMaybeBoolEncoder, toUpdateSettingsRequestEncoder, toUpdateSettingsResponseEncoder, toSendInvitationRequestEncoder, toSendInvitationResponseEncoder, toCheckInvitationRequestEncoder, toCheckInvitationResponseEncoder, toAcceptInvitationRequestEncoder, toAcceptInvitationResponseEncoder, toSavedCreatedPredictionFormStateEncoder
+    ( TradeState(..), Void(..), Resolution(..), PredictionViewPrivacy(..), AuthToken, DatabaseKind(..), DatabaseInfo, DatabaseInfoMysqlDbCredentials, CredentialsConfig, CredentialsConfigSmtpCredentials, EmailFlowStateKind(..), EmailFlowState, EmailFlowStateCodeSent, HashedPassword, LoginType(..), GenericUserInfo, GenericUserInfoInvitation, Relationship, UsernameInfo, EmailAttempt, ResolutionEventPriorRevision(..), ResolutionEvent, Trade, WhoamiRequest, WhoamiResponse, SignOutRequest, SignOutResponse, AuthSuccess, SendVerificationEmailRequest, SendVerificationEmailResult(..), SendVerificationEmailResponse, SendVerificationEmailResponseError, ProofOfEmail, ProofOfEmailPayload, RegisterUsernameRequest, RegisterUsernameResult(..), RegisterUsernameResponse, RegisterUsernameResponseError, LogInUsernameRequest, LogInUsernameResult(..), LogInUsernameResponse, LogInUsernameResponseError, CertaintyRange, CreatePredictionRequest, CreatePredictionResult(..), CreatePredictionResponse, CreatePredictionResponseError, GetPredictionRequest, GetPredictionResult(..), GetPredictionResponse, GetPredictionResponseError, UserPredictionView, ListMyStakesRequest, ListMyStakesResult(..), ListMyStakesResponse, ListMyStakesResponseError, PredictionsById, ListPredictionsRequest, ListPredictionsResult(..), ListPredictionsResponse, ListPredictionsResponseError, StakeRequest, StakeResult(..), StakeResponse, StakeResponseError, ResolveRequest, ResolveResult(..), ResolveResponse, ResolveResponseError, SetTrustedRequest, SetTrustedResult(..), SetTrustedResponse, SetTrustedResponseError, GetUserRequest, GetUserResult(..), GetUserResponse, GetUserResponseError, ChangePasswordRequest, ChangePasswordResult(..), ChangePasswordResponse, ChangePasswordResponseError, GetSettingsRequest, GetSettingsResult(..), GetSettingsResponse, GetSettingsResponseError, SendInvitationRequest, SendInvitationResult(..), SendInvitationResponse, SendInvitationResponseError, CheckInvitationRequest, CheckInvitationResult(..), CheckInvitationResponse, CheckInvitationResponseResult, CheckInvitationResponseError, AcceptInvitationRequest, AcceptInvitationResult(..), AcceptInvitationResponse, AcceptInvitationResponseError, SavedCreatedPredictionFormState
+    , authTokenDecoder, databaseInfoDecoder, credentialsConfigDecoder, emailFlowStateDecoder, hashedPasswordDecoder, genericUserInfoDecoder, relationshipDecoder, usernameInfoDecoder, emailAttemptDecoder, resolutionEventDecoder, tradeDecoder, whoamiRequestDecoder, whoamiResponseDecoder, signOutRequestDecoder, signOutResponseDecoder, authSuccessDecoder, sendVerificationEmailRequestDecoder, sendVerificationEmailResponseDecoder, proofOfEmailDecoder, registerUsernameRequestDecoder, registerUsernameResponseDecoder, logInUsernameRequestDecoder, logInUsernameResponseDecoder, certaintyRangeDecoder, createPredictionRequestDecoder, createPredictionResponseDecoder, getPredictionRequestDecoder, getPredictionResponseDecoder, userPredictionViewDecoder, listMyStakesRequestDecoder, listMyStakesResponseDecoder, predictionsByIdDecoder, listPredictionsRequestDecoder, listPredictionsResponseDecoder, stakeRequestDecoder, stakeResponseDecoder, resolveRequestDecoder, resolveResponseDecoder, setTrustedRequestDecoder, setTrustedResponseDecoder, getUserRequestDecoder, getUserResponseDecoder, changePasswordRequestDecoder, changePasswordResponseDecoder, getSettingsRequestDecoder, getSettingsResponseDecoder, sendInvitationRequestDecoder, sendInvitationResponseDecoder, checkInvitationRequestDecoder, checkInvitationResponseDecoder, acceptInvitationRequestDecoder, acceptInvitationResponseDecoder, savedCreatedPredictionFormStateDecoder
+    , toAuthTokenEncoder, toDatabaseInfoEncoder, toCredentialsConfigEncoder, toEmailFlowStateEncoder, toHashedPasswordEncoder, toGenericUserInfoEncoder, toRelationshipEncoder, toUsernameInfoEncoder, toEmailAttemptEncoder, toResolutionEventEncoder, toTradeEncoder, toWhoamiRequestEncoder, toWhoamiResponseEncoder, toSignOutRequestEncoder, toSignOutResponseEncoder, toAuthSuccessEncoder, toSendVerificationEmailRequestEncoder, toSendVerificationEmailResponseEncoder, toProofOfEmailEncoder, toRegisterUsernameRequestEncoder, toRegisterUsernameResponseEncoder, toLogInUsernameRequestEncoder, toLogInUsernameResponseEncoder, toCertaintyRangeEncoder, toCreatePredictionRequestEncoder, toCreatePredictionResponseEncoder, toGetPredictionRequestEncoder, toGetPredictionResponseEncoder, toUserPredictionViewEncoder, toListMyStakesRequestEncoder, toListMyStakesResponseEncoder, toPredictionsByIdEncoder, toListPredictionsRequestEncoder, toListPredictionsResponseEncoder, toStakeRequestEncoder, toStakeResponseEncoder, toResolveRequestEncoder, toResolveResponseEncoder, toSetTrustedRequestEncoder, toSetTrustedResponseEncoder, toGetUserRequestEncoder, toGetUserResponseEncoder, toChangePasswordRequestEncoder, toChangePasswordResponseEncoder, toGetSettingsRequestEncoder, toGetSettingsResponseEncoder, toSendInvitationRequestEncoder, toSendInvitationResponseEncoder, toCheckInvitationRequestEncoder, toCheckInvitationResponseEncoder, toAcceptInvitationRequestEncoder, toAcceptInvitationResponseEncoder, toSavedCreatedPredictionFormStateEncoder
     )
 
 {-| ProtoBuf module: `Biatob.Proto.Mvp`
@@ -20,17 +20,17 @@ To run it use [`elm-protocol-buffers`](https://package.elm-lang.org/packages/eri
 
 # Model
 
-@docs TradeState, Void, Resolution, PredictionViewPrivacy, AuthToken, DatabaseKind, DatabaseInfo, DatabaseInfoMysqlDbCredentials, CredentialsConfig, CredentialsConfigSmtpCredentials, EmailFlowStateKind, EmailFlowState, EmailFlowStateCodeSent, HashedPassword, LoginType, GenericUserInfo, GenericUserInfoInvitation, Relationship, UsernameInfo, EmailAttempt, ResolutionEventPriorRevision, ResolutionEvent, Trade, WhoamiRequest, WhoamiResponse, SignOutRequest, SignOutResponse, AuthSuccess, RegisterUsernameRequest, RegisterUsernameResult, RegisterUsernameResponse, RegisterUsernameResponseError, LogInUsernameRequest, LogInUsernameResult, LogInUsernameResponse, LogInUsernameResponseError, CertaintyRange, CreatePredictionRequest, CreatePredictionResult, CreatePredictionResponse, CreatePredictionResponseError, GetPredictionRequest, GetPredictionResult, GetPredictionResponse, GetPredictionResponseError, UserPredictionView, ListMyStakesRequest, ListMyStakesResult, ListMyStakesResponse, ListMyStakesResponseError, PredictionsById, ListPredictionsRequest, ListPredictionsResult, ListPredictionsResponse, ListPredictionsResponseError, StakeRequest, StakeResult, StakeResponse, StakeResponseError, ResolveRequest, ResolveResult, ResolveResponse, ResolveResponseError, SetTrustedRequest, SetTrustedResult, SetTrustedResponse, SetTrustedResponseError, GetUserRequest, GetUserResult, GetUserResponse, GetUserResponseError, ChangePasswordRequest, ChangePasswordResult, ChangePasswordResponse, ChangePasswordResponseError, SetEmailRequest, SetEmailResult, SetEmailResponse, SetEmailResponseError, VerifyEmailRequest, VerifyEmailResult, VerifyEmailResponse, VerifyEmailResponseError, GetSettingsRequest, GetSettingsResult, GetSettingsResponse, GetSettingsResponseError, MaybeBool, UpdateSettingsRequest, UpdateSettingsResult, UpdateSettingsResponse, UpdateSettingsResponseError, SendInvitationRequest, SendInvitationResult, SendInvitationResponse, SendInvitationResponseError, CheckInvitationRequest, CheckInvitationResult, CheckInvitationResponse, CheckInvitationResponseResult, CheckInvitationResponseError, AcceptInvitationRequest, AcceptInvitationResult, AcceptInvitationResponse, AcceptInvitationResponseError, SavedCreatedPredictionFormState
+@docs TradeState, Void, Resolution, PredictionViewPrivacy, AuthToken, DatabaseKind, DatabaseInfo, DatabaseInfoMysqlDbCredentials, CredentialsConfig, CredentialsConfigSmtpCredentials, EmailFlowStateKind, EmailFlowState, EmailFlowStateCodeSent, HashedPassword, LoginType, GenericUserInfo, GenericUserInfoInvitation, Relationship, UsernameInfo, EmailAttempt, ResolutionEventPriorRevision, ResolutionEvent, Trade, WhoamiRequest, WhoamiResponse, SignOutRequest, SignOutResponse, AuthSuccess, SendVerificationEmailRequest, SendVerificationEmailResult, SendVerificationEmailResponse, SendVerificationEmailResponseError, ProofOfEmail, ProofOfEmailPayload, RegisterUsernameRequest, RegisterUsernameResult, RegisterUsernameResponse, RegisterUsernameResponseError, LogInUsernameRequest, LogInUsernameResult, LogInUsernameResponse, LogInUsernameResponseError, CertaintyRange, CreatePredictionRequest, CreatePredictionResult, CreatePredictionResponse, CreatePredictionResponseError, GetPredictionRequest, GetPredictionResult, GetPredictionResponse, GetPredictionResponseError, UserPredictionView, ListMyStakesRequest, ListMyStakesResult, ListMyStakesResponse, ListMyStakesResponseError, PredictionsById, ListPredictionsRequest, ListPredictionsResult, ListPredictionsResponse, ListPredictionsResponseError, StakeRequest, StakeResult, StakeResponse, StakeResponseError, ResolveRequest, ResolveResult, ResolveResponse, ResolveResponseError, SetTrustedRequest, SetTrustedResult, SetTrustedResponse, SetTrustedResponseError, GetUserRequest, GetUserResult, GetUserResponse, GetUserResponseError, ChangePasswordRequest, ChangePasswordResult, ChangePasswordResponse, ChangePasswordResponseError, GetSettingsRequest, GetSettingsResult, GetSettingsResponse, GetSettingsResponseError, SendInvitationRequest, SendInvitationResult, SendInvitationResponse, SendInvitationResponseError, CheckInvitationRequest, CheckInvitationResult, CheckInvitationResponse, CheckInvitationResponseResult, CheckInvitationResponseError, AcceptInvitationRequest, AcceptInvitationResult, AcceptInvitationResponse, AcceptInvitationResponseError, SavedCreatedPredictionFormState
 
 
 # Decoder
 
-@docs authTokenDecoder, databaseInfoDecoder, credentialsConfigDecoder, emailFlowStateDecoder, hashedPasswordDecoder, genericUserInfoDecoder, relationshipDecoder, usernameInfoDecoder, emailAttemptDecoder, resolutionEventDecoder, tradeDecoder, whoamiRequestDecoder, whoamiResponseDecoder, signOutRequestDecoder, signOutResponseDecoder, authSuccessDecoder, registerUsernameRequestDecoder, registerUsernameResponseDecoder, logInUsernameRequestDecoder, logInUsernameResponseDecoder, certaintyRangeDecoder, createPredictionRequestDecoder, createPredictionResponseDecoder, getPredictionRequestDecoder, getPredictionResponseDecoder, userPredictionViewDecoder, listMyStakesRequestDecoder, listMyStakesResponseDecoder, predictionsByIdDecoder, listPredictionsRequestDecoder, listPredictionsResponseDecoder, stakeRequestDecoder, stakeResponseDecoder, resolveRequestDecoder, resolveResponseDecoder, setTrustedRequestDecoder, setTrustedResponseDecoder, getUserRequestDecoder, getUserResponseDecoder, changePasswordRequestDecoder, changePasswordResponseDecoder, setEmailRequestDecoder, setEmailResponseDecoder, verifyEmailRequestDecoder, verifyEmailResponseDecoder, getSettingsRequestDecoder, getSettingsResponseDecoder, maybeBoolDecoder, updateSettingsRequestDecoder, updateSettingsResponseDecoder, sendInvitationRequestDecoder, sendInvitationResponseDecoder, checkInvitationRequestDecoder, checkInvitationResponseDecoder, acceptInvitationRequestDecoder, acceptInvitationResponseDecoder, savedCreatedPredictionFormStateDecoder
+@docs authTokenDecoder, databaseInfoDecoder, credentialsConfigDecoder, emailFlowStateDecoder, hashedPasswordDecoder, genericUserInfoDecoder, relationshipDecoder, usernameInfoDecoder, emailAttemptDecoder, resolutionEventDecoder, tradeDecoder, whoamiRequestDecoder, whoamiResponseDecoder, signOutRequestDecoder, signOutResponseDecoder, authSuccessDecoder, sendVerificationEmailRequestDecoder, sendVerificationEmailResponseDecoder, proofOfEmailDecoder, registerUsernameRequestDecoder, registerUsernameResponseDecoder, logInUsernameRequestDecoder, logInUsernameResponseDecoder, certaintyRangeDecoder, createPredictionRequestDecoder, createPredictionResponseDecoder, getPredictionRequestDecoder, getPredictionResponseDecoder, userPredictionViewDecoder, listMyStakesRequestDecoder, listMyStakesResponseDecoder, predictionsByIdDecoder, listPredictionsRequestDecoder, listPredictionsResponseDecoder, stakeRequestDecoder, stakeResponseDecoder, resolveRequestDecoder, resolveResponseDecoder, setTrustedRequestDecoder, setTrustedResponseDecoder, getUserRequestDecoder, getUserResponseDecoder, changePasswordRequestDecoder, changePasswordResponseDecoder, getSettingsRequestDecoder, getSettingsResponseDecoder, sendInvitationRequestDecoder, sendInvitationResponseDecoder, checkInvitationRequestDecoder, checkInvitationResponseDecoder, acceptInvitationRequestDecoder, acceptInvitationResponseDecoder, savedCreatedPredictionFormStateDecoder
 
 
 # Encoder
 
-@docs toAuthTokenEncoder, toDatabaseInfoEncoder, toCredentialsConfigEncoder, toEmailFlowStateEncoder, toHashedPasswordEncoder, toGenericUserInfoEncoder, toRelationshipEncoder, toUsernameInfoEncoder, toEmailAttemptEncoder, toResolutionEventEncoder, toTradeEncoder, toWhoamiRequestEncoder, toWhoamiResponseEncoder, toSignOutRequestEncoder, toSignOutResponseEncoder, toAuthSuccessEncoder, toRegisterUsernameRequestEncoder, toRegisterUsernameResponseEncoder, toLogInUsernameRequestEncoder, toLogInUsernameResponseEncoder, toCertaintyRangeEncoder, toCreatePredictionRequestEncoder, toCreatePredictionResponseEncoder, toGetPredictionRequestEncoder, toGetPredictionResponseEncoder, toUserPredictionViewEncoder, toListMyStakesRequestEncoder, toListMyStakesResponseEncoder, toPredictionsByIdEncoder, toListPredictionsRequestEncoder, toListPredictionsResponseEncoder, toStakeRequestEncoder, toStakeResponseEncoder, toResolveRequestEncoder, toResolveResponseEncoder, toSetTrustedRequestEncoder, toSetTrustedResponseEncoder, toGetUserRequestEncoder, toGetUserResponseEncoder, toChangePasswordRequestEncoder, toChangePasswordResponseEncoder, toSetEmailRequestEncoder, toSetEmailResponseEncoder, toVerifyEmailRequestEncoder, toVerifyEmailResponseEncoder, toGetSettingsRequestEncoder, toGetSettingsResponseEncoder, toMaybeBoolEncoder, toUpdateSettingsRequestEncoder, toUpdateSettingsResponseEncoder, toSendInvitationRequestEncoder, toSendInvitationResponseEncoder, toCheckInvitationRequestEncoder, toCheckInvitationResponseEncoder, toAcceptInvitationRequestEncoder, toAcceptInvitationResponseEncoder, toSavedCreatedPredictionFormStateEncoder
+@docs toAuthTokenEncoder, toDatabaseInfoEncoder, toCredentialsConfigEncoder, toEmailFlowStateEncoder, toHashedPasswordEncoder, toGenericUserInfoEncoder, toRelationshipEncoder, toUsernameInfoEncoder, toEmailAttemptEncoder, toResolutionEventEncoder, toTradeEncoder, toWhoamiRequestEncoder, toWhoamiResponseEncoder, toSignOutRequestEncoder, toSignOutResponseEncoder, toAuthSuccessEncoder, toSendVerificationEmailRequestEncoder, toSendVerificationEmailResponseEncoder, toProofOfEmailEncoder, toRegisterUsernameRequestEncoder, toRegisterUsernameResponseEncoder, toLogInUsernameRequestEncoder, toLogInUsernameResponseEncoder, toCertaintyRangeEncoder, toCreatePredictionRequestEncoder, toCreatePredictionResponseEncoder, toGetPredictionRequestEncoder, toGetPredictionResponseEncoder, toUserPredictionViewEncoder, toListMyStakesRequestEncoder, toListMyStakesResponseEncoder, toPredictionsByIdEncoder, toListPredictionsRequestEncoder, toListPredictionsResponseEncoder, toStakeRequestEncoder, toStakeResponseEncoder, toResolveRequestEncoder, toResolveResponseEncoder, toSetTrustedRequestEncoder, toSetTrustedResponseEncoder, toGetUserRequestEncoder, toGetUserResponseEncoder, toChangePasswordRequestEncoder, toChangePasswordResponseEncoder, toGetSettingsRequestEncoder, toGetSettingsResponseEncoder, toSendInvitationRequestEncoder, toSendInvitationResponseEncoder, toCheckInvitationRequestEncoder, toCheckInvitationResponseEncoder, toAcceptInvitationRequestEncoder, toAcceptInvitationResponseEncoder, toSavedCreatedPredictionFormStateEncoder
 
 -}
 
@@ -173,11 +173,7 @@ type LoginType
 {-| `GenericUserInfo` message
 -}
 type alias GenericUserInfo =
-    { email : Maybe EmailFlowState
-    , emailRemindersToResolve : Bool
-    , emailResolutionNotifications : Bool
-    , allowEmailInvitations : Bool
-    , emailInvitationAcceptanceNotifications : Bool
+    { emailAddress : String
     , invitations : Dict.Dict String (Maybe GenericUserInfoInvitation)
     , relationships : Dict.Dict String (Maybe Relationship)
     , loginType : Maybe LoginType
@@ -277,11 +273,56 @@ type alias AuthSuccess =
     }
 
 
+{-| `SendVerificationEmailRequest` message
+-}
+type alias SendVerificationEmailRequest =
+    { emailAddress : String
+    }
+
+
+{-| SendVerificationEmailResult
+-}
+type SendVerificationEmailResult
+    = SendVerificationEmailResultOk Void
+    | SendVerificationEmailResultError SendVerificationEmailResponseError
+
+
+{-| `SendVerificationEmailResponse` message
+-}
+type alias SendVerificationEmailResponse =
+    { sendVerificationEmailResult : Maybe SendVerificationEmailResult
+    }
+
+
+{-| `SendVerificationEmailResponseError` message
+-}
+type alias SendVerificationEmailResponseError =
+    { catchall : String
+    }
+
+
+{-| `ProofOfEmail` message
+-}
+type alias ProofOfEmail =
+    { payload : Maybe ProofOfEmailPayload
+    , salt : Bytes.Bytes
+    , hmac : Bytes.Bytes
+    }
+
+
+{-| `ProofOfEmailPayload` message
+-}
+type alias ProofOfEmailPayload =
+    { emailAddress : String
+    }
+
+
 {-| `RegisterUsernameRequest` message
 -}
 type alias RegisterUsernameRequest =
     { username : String
     , password : String
+    , proofOfEmail : Maybe ProofOfEmail
     }
 
 
@@ -422,7 +463,6 @@ type alias UserPredictionView =
     , resolution : Maybe ResolutionEvent
     , yourTrades : List Trade
     , resolvesAtUnixtime : Float
-    , allowEmailInvitations : Bool
     }
 
 
@@ -634,62 +674,6 @@ type alias ChangePasswordResponseError =
     }
 
 
-{-| `SetEmailRequest` message
--}
-type alias SetEmailRequest =
-    { email : String
-    }
-
-
-{-| SetEmailResult
--}
-type SetEmailResult
-    = SetEmailResultOk EmailFlowState
-    | SetEmailResultError SetEmailResponseError
-
-
-{-| `SetEmailResponse` message
--}
-type alias SetEmailResponse =
-    { setEmailResult : Maybe SetEmailResult
-    }
-
-
-{-| `SetEmailResponseError` message
--}
-type alias SetEmailResponseError =
-    { catchall : String
-    }
-
-
-{-| `VerifyEmailRequest` message
--}
-type alias VerifyEmailRequest =
-    { code : String
-    }
-
-
-{-| VerifyEmailResult
--}
-type VerifyEmailResult
-    = VerifyEmailResultOk EmailFlowState
-    | VerifyEmailResultError VerifyEmailResponseError
-
-
-{-| `VerifyEmailResponse` message
--}
-type alias VerifyEmailResponse =
-    { verifyEmailResult : Maybe VerifyEmailResult
-    }
-
-
-{-| `VerifyEmailResponseError` message
--}
-type alias VerifyEmailResponseError =
-    { catchall : String
-    }
-
-
 {-| `GetSettingsRequest` message
 -}
 type alias GetSettingsRequest =
@@ -714,44 +698,6 @@ type alias GetSettingsResponse =
 {-| `GetSettingsResponseError` message
 -}
 type alias GetSettingsResponseError =
-    { catchall : String
-    }
-
-
-{-| `MaybeBool` message
--}
-type alias MaybeBool =
-    { value : Bool
-    }
-
-
-{-| `UpdateSettingsRequest` message
--}
-type alias UpdateSettingsRequest =
-    { emailRemindersToResolve : Maybe MaybeBool
-    , emailResolutionNotifications : Maybe MaybeBool
-    , allowEmailInvitations : Maybe MaybeBool
-    , emailInvitationAcceptanceNotifications : Maybe MaybeBool
-    }
-
-
-{-| UpdateSettingsResult
--}
-type UpdateSettingsResult
-    = UpdateSettingsResultOk GenericUserInfo
-    | UpdateSettingsResultError UpdateSettingsResponseError
-
-
-{-| `UpdateSettingsResponse` message
--}
-type alias UpdateSettingsResponse =
-    { updateSettingsResult : Maybe UpdateSettingsResult
-    }
-
-
-{-| `UpdateSettingsResponseError` message
--}
-type alias UpdateSettingsResponseError =
     { catchall : String
     }
 
@@ -1037,12 +983,8 @@ hashedPasswordDecoder =
 -}
 genericUserInfoDecoder : Decode.Decoder GenericUserInfo
 genericUserInfoDecoder =
-    Decode.message (GenericUserInfo Nothing False False False False Dict.empty Dict.empty Nothing)
-        [ Decode.optional 2 (Decode.map Just emailFlowStateDecoder) setEmail
-        , Decode.optional 3 Decode.bool setEmailRemindersToResolve
-        , Decode.optional 4 Decode.bool setEmailResolutionNotifications
-        , Decode.optional 8 Decode.bool setAllowEmailInvitations
-        , Decode.optional 9 Decode.bool setEmailInvitationAcceptanceNotifications
+    Decode.message (GenericUserInfo "" Dict.empty Dict.empty Nothing)
+        [ Decode.optional 10 Decode.string setEmailAddress
         , Decode.mapped 5 ( "", Nothing ) Decode.string (Decode.map Just genericUserInfoInvitationDecoder) .invitations setInvitations
         , Decode.mapped 6 ( "", Nothing ) Decode.string (Decode.map Just relationshipDecoder) .relationships setRelationships
         , Decode.oneOf
@@ -1164,13 +1106,61 @@ authSuccessDecoder =
         ]
 
 
+{-| `SendVerificationEmailRequest` decoder
+-}
+sendVerificationEmailRequestDecoder : Decode.Decoder SendVerificationEmailRequest
+sendVerificationEmailRequestDecoder =
+    Decode.message (SendVerificationEmailRequest "")
+        [ Decode.optional 1 Decode.string setEmailAddress
+        ]
+
+
+{-| `SendVerificationEmailResponse` decoder
+-}
+sendVerificationEmailResponseDecoder : Decode.Decoder SendVerificationEmailResponse
+sendVerificationEmailResponseDecoder =
+    Decode.message (SendVerificationEmailResponse Nothing)
+        [ Decode.oneOf
+            [ ( 1, Decode.map SendVerificationEmailResultOk voidDecoder )
+            , ( 2, Decode.map SendVerificationEmailResultError sendVerificationEmailResponseErrorDecoder )
+            ]
+            setSendVerificationEmailResult
+        ]
+
+
+sendVerificationEmailResponseErrorDecoder : Decode.Decoder SendVerificationEmailResponseError
+sendVerificationEmailResponseErrorDecoder =
+    Decode.message (SendVerificationEmailResponseError "")
+        [ Decode.optional 1 Decode.string setCatchall
+        ]
+
+
+{-| `ProofOfEmail` decoder
+-}
+proofOfEmailDecoder : Decode.Decoder ProofOfEmail
+proofOfEmailDecoder =
+    Decode.message (ProofOfEmail Nothing (Encode.encode <| Encode.string "") (Encode.encode <| Encode.string ""))
+        [ Decode.optional 1 (Decode.map Just proofOfEmailPayloadDecoder) setPayload
+        , Decode.optional 2 Decode.bytes setSalt
+        , Decode.optional 3 Decode.bytes setHmac
+        ]
+
+
+proofOfEmailPayloadDecoder : Decode.Decoder ProofOfEmailPayload
+proofOfEmailPayloadDecoder =
+    Decode.message (ProofOfEmailPayload "")
+        [ Decode.optional 1 Decode.string setEmailAddress
+        ]
+
+
 {-| `RegisterUsernameRequest` decoder
 -}
 registerUsernameRequestDecoder : Decode.Decoder RegisterUsernameRequest
 registerUsernameRequestDecoder =
-    Decode.message (RegisterUsernameRequest "" "")
+    Decode.message (RegisterUsernameRequest "" "" Nothing)
         [ Decode.optional 1 Decode.string setUsername
         , Decode.optional 2 Decode.string setPassword
+        , Decode.optional 3 (Decode.map Just proofOfEmailDecoder) setProofOfEmail
         ]
 
 
@@ -1304,7 +1294,7 @@ getPredictionResponseErrorDecoder =
 -}
 userPredictionViewDecoder : Decode.Decoder UserPredictionView
 userPredictionViewDecoder =
-    Decode.message (UserPredictionView "" Nothing 0 0 0 0 0 "" "" Nothing [] 0 False)
+    Decode.message (UserPredictionView "" Nothing 0 0 0 0 0 "" "" Nothing [] 0)
         [ Decode.optional 1 Decode.string setPrediction
         , Decode.optional 2 (Decode.map Just certaintyRangeDecoder) setCertainty
         , Decode.optional 3 Decode.uint32 setMaximumStakeCents
@@ -1317,7 +1307,6 @@ userPredictionViewDecoder =
         , Decode.optional 17 (Decode.map Just resolutionEventDecoder) setResolution
         , Decode.repeated 11 tradeDecoder .yourTrades setYourTrades
         , Decode.optional 15 Decode.double setResolvesAtUnixtime
-        , Decode.optional 16 Decode.bool setAllowEmailInvitations
         ]
 
 
@@ -1538,64 +1527,6 @@ changePasswordResponseErrorDecoder =
         ]
 
 
-{-| `SetEmailRequest` decoder
--}
-setEmailRequestDecoder : Decode.Decoder SetEmailRequest
-setEmailRequestDecoder =
-    Decode.message (SetEmailRequest "")
-        [ Decode.optional 1 Decode.string setEmail
-        ]
-
-
-{-| `SetEmailResponse` decoder
--}
-setEmailResponseDecoder : Decode.Decoder SetEmailResponse
-setEmailResponseDecoder =
-    Decode.message (SetEmailResponse Nothing)
-        [ Decode.oneOf
-            [ ( 1, Decode.map SetEmailResultOk emailFlowStateDecoder )
-            , ( 2, Decode.map SetEmailResultError setEmailResponseErrorDecoder )
-            ]
-            setSetEmailResult
-        ]
-
-
-setEmailResponseErrorDecoder : Decode.Decoder SetEmailResponseError
-setEmailResponseErrorDecoder =
-    Decode.message (SetEmailResponseError "")
-        [ Decode.optional 1 Decode.string setCatchall
-        ]
-
-
-{-| `VerifyEmailRequest` decoder
--}
-verifyEmailRequestDecoder : Decode.Decoder VerifyEmailRequest
-verifyEmailRequestDecoder =
-    Decode.message (VerifyEmailRequest "")
-        [ Decode.optional 1 Decode.string setCode
-        ]
-
-
-{-| `VerifyEmailResponse` decoder
--}
-verifyEmailResponseDecoder : Decode.Decoder VerifyEmailResponse
-verifyEmailResponseDecoder =
-    Decode.message (VerifyEmailResponse Nothing)
-        [ Decode.oneOf
-            [ ( 1, Decode.map VerifyEmailResultOk emailFlowStateDecoder )
-            , ( 2, Decode.map VerifyEmailResultError verifyEmailResponseErrorDecoder )
-            ]
-            setVerifyEmailResult
-        ]
-
-
-verifyEmailResponseErrorDecoder : Decode.Decoder VerifyEmailResponseError
-verifyEmailResponseErrorDecoder =
-    Decode.message (VerifyEmailResponseError "")
-        [ Decode.optional 1 Decode.string setCatchall
-        ]
-
-
 {-| `GetSettingsRequest` decoder
 -}
 getSettingsRequestDecoder : Decode.Decoder GetSettingsRequest
@@ -1621,47 +1552,6 @@ getSettingsResponseDecoder =
 getSettingsResponseErrorDecoder : Decode.Decoder GetSettingsResponseError
 getSettingsResponseErrorDecoder =
     Decode.message (GetSettingsResponseError "")
-        [ Decode.optional 1 Decode.string setCatchall
-        ]
-
-
-{-| `MaybeBool` decoder
--}
-maybeBoolDecoder : Decode.Decoder MaybeBool
-maybeBoolDecoder =
-    Decode.message (MaybeBool False)
-        [ Decode.optional 1 Decode.bool setValue
-        ]
-
-
-{-| `UpdateSettingsRequest` decoder
--}
-updateSettingsRequestDecoder : Decode.Decoder UpdateSettingsRequest
-updateSettingsRequestDecoder =
-    Decode.message (UpdateSettingsRequest Nothing Nothing Nothing Nothing)
-        [ Decode.optional 1 (Decode.map Just maybeBoolDecoder) setEmailRemindersToResolve
-        , Decode.optional 2 (Decode.map Just maybeBoolDecoder) setEmailResolutionNotifications
-        , Decode.optional 3 (Decode.map Just maybeBoolDecoder) setAllowEmailInvitations
-        , Decode.optional 4 (Decode.map Just maybeBoolDecoder) setEmailInvitationAcceptanceNotifications
-        ]
-
-
-{-| `UpdateSettingsResponse` decoder
--}
-updateSettingsResponseDecoder : Decode.Decoder UpdateSettingsResponse
-updateSettingsResponseDecoder =
-    Decode.message (UpdateSettingsResponse Nothing)
-        [ Decode.oneOf
-            [ ( 1, Decode.map UpdateSettingsResultOk genericUserInfoDecoder )
-            , ( 2, Decode.map UpdateSettingsResultError updateSettingsResponseErrorDecoder )
-            ]
-            setUpdateSettingsResult
-        ]
-
-
-updateSettingsResponseErrorDecoder : Decode.Decoder UpdateSettingsResponseError
-updateSettingsResponseErrorDecoder =
-    Decode.message (UpdateSettingsResponseError "")
         [ Decode.optional 1 Decode.string setCatchall
         ]
 
@@ -1962,11 +1852,7 @@ toLoginTypeEncoder model =
 toGenericUserInfoEncoder : GenericUserInfo -> Encode.Encoder
 toGenericUserInfoEncoder model =
     Encode.message
-        [ ( 2, (Maybe.withDefault Encode.none << Maybe.map toEmailFlowStateEncoder) model.email )
-        , ( 3, Encode.bool model.emailRemindersToResolve )
-        , ( 4, Encode.bool model.emailResolutionNotifications )
-        , ( 8, Encode.bool model.allowEmailInvitations )
-        , ( 9, Encode.bool model.emailInvitationAcceptanceNotifications )
+        [ ( 10, Encode.string model.emailAddress )
         , ( 5, Encode.dict Encode.string (Maybe.withDefault Encode.none << Maybe.map toGenericUserInfoInvitationEncoder) model.invitations )
         , ( 6, Encode.dict Encode.string (Maybe.withDefault Encode.none << Maybe.map toRelationshipEncoder) model.relationships )
         , Maybe.withDefault ( 0, Encode.none ) <| Maybe.map toLoginTypeEncoder model.loginType
@@ -2080,6 +1966,59 @@ toAuthSuccessEncoder model =
         ]
 
 
+{-| `SendVerificationEmailRequest` encoder
+-}
+toSendVerificationEmailRequestEncoder : SendVerificationEmailRequest -> Encode.Encoder
+toSendVerificationEmailRequestEncoder model =
+    Encode.message
+        [ ( 1, Encode.string model.emailAddress )
+        ]
+
+
+toSendVerificationEmailResultEncoder : SendVerificationEmailResult -> ( Int, Encode.Encoder )
+toSendVerificationEmailResultEncoder model =
+    case model of
+        SendVerificationEmailResultOk value ->
+            ( 1, toVoidEncoder value )
+
+        SendVerificationEmailResultError value ->
+            ( 2, toSendVerificationEmailResponseErrorEncoder value )
+
+
+{-| `SendVerificationEmailResponse` encoder
+-}
+toSendVerificationEmailResponseEncoder : SendVerificationEmailResponse -> Encode.Encoder
+toSendVerificationEmailResponseEncoder model =
+    Encode.message
+        [ Maybe.withDefault ( 0, Encode.none ) <| Maybe.map toSendVerificationEmailResultEncoder model.sendVerificationEmailResult
+        ]
+
+
+toSendVerificationEmailResponseErrorEncoder : SendVerificationEmailResponseError -> Encode.Encoder
+toSendVerificationEmailResponseErrorEncoder model =
+    Encode.message
+        [ ( 1, Encode.string model.catchall )
+        ]
+
+
+{-| `ProofOfEmail` encoder
+-}
+toProofOfEmailEncoder : ProofOfEmail -> Encode.Encoder
+toProofOfEmailEncoder model =
+    Encode.message
+        [ ( 1, (Maybe.withDefault Encode.none << Maybe.map toProofOfEmailPayloadEncoder) model.payload )
+        , ( 2, Encode.bytes model.salt )
+        , ( 3, Encode.bytes model.hmac )
+        ]
+
+
+toProofOfEmailPayloadEncoder : ProofOfEmailPayload -> Encode.Encoder
+toProofOfEmailPayloadEncoder model =
+    Encode.message
+        [ ( 1, Encode.string model.emailAddress )
+        ]
+
+
 {-| `RegisterUsernameRequest` encoder
 -}
 toRegisterUsernameRequestEncoder : RegisterUsernameRequest -> Encode.Encoder
@@ -2087,6 +2026,7 @@ toRegisterUsernameRequestEncoder model =
     Encode.message
         [ ( 1, Encode.string model.username )
         , ( 2, Encode.string model.password )
+        , ( 3, (Maybe.withDefault Encode.none << Maybe.map toProofOfEmailEncoder) model.proofOfEmail )
         ]
 
 
@@ -2257,7 +2197,6 @@ toUserPredictionViewEncoder model =
         , ( 17, (Maybe.withDefault Encode.none << Maybe.map toResolutionEventEncoder) model.resolution )
         , ( 11, Encode.list toTradeEncoder model.yourTrades )
         , ( 15, Encode.double model.resolvesAtUnixtime )
-        , ( 16, Encode.bool model.allowEmailInvitations )
         ]
 
 
@@ -2520,76 +2459,6 @@ toChangePasswordResponseErrorEncoder model =
         ]
 
 
-{-| `SetEmailRequest` encoder
--}
-toSetEmailRequestEncoder : SetEmailRequest -> Encode.Encoder
-toSetEmailRequestEncoder model =
-    Encode.message
-        [ ( 1, Encode.string model.email )
-        ]
-
-
-toSetEmailResultEncoder : SetEmailResult -> ( Int, Encode.Encoder )
-toSetEmailResultEncoder model =
-    case model of
-        SetEmailResultOk value ->
-            ( 1, toEmailFlowStateEncoder value )
-
-        SetEmailResultError value ->
-            ( 2, toSetEmailResponseErrorEncoder value )
-
-
-{-| `SetEmailResponse` encoder
--}
-toSetEmailResponseEncoder : SetEmailResponse -> Encode.Encoder
-toSetEmailResponseEncoder model =
-    Encode.message
-        [ Maybe.withDefault ( 0, Encode.none ) <| Maybe.map toSetEmailResultEncoder model.setEmailResult
-        ]
-
-
-toSetEmailResponseErrorEncoder : SetEmailResponseError -> Encode.Encoder
-toSetEmailResponseErrorEncoder model =
-    Encode.message
-        [ ( 1, Encode.string model.catchall )
-        ]
-
-
-{-| `VerifyEmailRequest` encoder
--}
-toVerifyEmailRequestEncoder : VerifyEmailRequest -> Encode.Encoder
-toVerifyEmailRequestEncoder model =
-    Encode.message
-        [ ( 1, Encode.string model.code )
-        ]
-
-
-toVerifyEmailResultEncoder : VerifyEmailResult -> ( Int, Encode.Encoder )
-toVerifyEmailResultEncoder model =
-    case model of
-        VerifyEmailResultOk value ->
-            ( 1, toEmailFlowStateEncoder value )
-
-        VerifyEmailResultError value ->
-            ( 2, toVerifyEmailResponseErrorEncoder value )
-
-
-{-| `VerifyEmailResponse` encoder
--}
-toVerifyEmailResponseEncoder : VerifyEmailResponse -> Encode.Encoder
-toVerifyEmailResponseEncoder model =
-    Encode.message
-        [ Maybe.withDefault ( 0, Encode.none ) <| Maybe.map toVerifyEmailResultEncoder model.verifyEmailResult
-        ]
-
-
-toVerifyEmailResponseErrorEncoder : VerifyEmailResponseError -> Encode.Encoder
-toVerifyEmailResponseErrorEncoder model =
-    Encode.message
-        [ ( 1, Encode.string model.catchall )
-        ]
-
-
 {-| `GetSettingsRequest` encoder
 -}
 toGetSettingsRequestEncoder : GetSettingsRequest -> Encode.Encoder
@@ -2620,53 +2489,6 @@ toGetSettingsResponseEncoder model =
 
 toGetSettingsResponseErrorEncoder : GetSettingsResponseError -> Encode.Encoder
 toGetSettingsResponseErrorEncoder model =
-    Encode.message
-        [ ( 1, Encode.string model.catchall )
-        ]
-
-
-{-| `MaybeBool` encoder
--}
-toMaybeBoolEncoder : MaybeBool -> Encode.Encoder
-toMaybeBoolEncoder model =
-    Encode.message
-        [ ( 1, Encode.bool model.value )
-        ]
-
-
-{-| `UpdateSettingsRequest` encoder
--}
-toUpdateSettingsRequestEncoder : UpdateSettingsRequest -> Encode.Encoder
-toUpdateSettingsRequestEncoder model =
-    Encode.message
-        [ ( 1, (Maybe.withDefault Encode.none << Maybe.map toMaybeBoolEncoder) model.emailRemindersToResolve )
-        , ( 2, (Maybe.withDefault Encode.none << Maybe.map toMaybeBoolEncoder) model.emailResolutionNotifications )
-        , ( 3, (Maybe.withDefault Encode.none << Maybe.map toMaybeBoolEncoder) model.allowEmailInvitations )
-        , ( 4, (Maybe.withDefault Encode.none << Maybe.map toMaybeBoolEncoder) model.emailInvitationAcceptanceNotifications )
-        ]
-
-
-toUpdateSettingsResultEncoder : UpdateSettingsResult -> ( Int, Encode.Encoder )
-toUpdateSettingsResultEncoder model =
-    case model of
-        UpdateSettingsResultOk value ->
-            ( 1, toGenericUserInfoEncoder value )
-
-        UpdateSettingsResultError value ->
-            ( 2, toUpdateSettingsResponseErrorEncoder value )
-
-
-{-| `UpdateSettingsResponse` encoder
--}
-toUpdateSettingsResponseEncoder : UpdateSettingsResponse -> Encode.Encoder
-toUpdateSettingsResponseEncoder model =
-    Encode.message
-        [ Maybe.withDefault ( 0, Encode.none ) <| Maybe.map toUpdateSettingsResultEncoder model.updateSettingsResult
-        ]
-
-
-toUpdateSettingsResponseErrorEncoder : UpdateSettingsResponseError -> Encode.Encoder
-toUpdateSettingsResponseErrorEncoder model =
     Encode.message
         [ ( 1, Encode.string model.catchall )
         ]
@@ -2901,24 +2723,9 @@ setScrypt value model =
     { model | scrypt = value }
 
 
-setEmailRemindersToResolve : a -> { b | emailRemindersToResolve : a } -> { b | emailRemindersToResolve : a }
-setEmailRemindersToResolve value model =
-    { model | emailRemindersToResolve = value }
-
-
-setEmailResolutionNotifications : a -> { b | emailResolutionNotifications : a } -> { b | emailResolutionNotifications : a }
-setEmailResolutionNotifications value model =
-    { model | emailResolutionNotifications = value }
-
-
-setAllowEmailInvitations : a -> { b | allowEmailInvitations : a } -> { b | allowEmailInvitations : a }
-setAllowEmailInvitations value model =
-    { model | allowEmailInvitations = value }
-
-
-setEmailInvitationAcceptanceNotifications : a -> { b | emailInvitationAcceptanceNotifications : a } -> { b | emailInvitationAcceptanceNotifications : a }
-setEmailInvitationAcceptanceNotifications value model =
-    { model | emailInvitationAcceptanceNotifications = value }
+setEmailAddress : a -> { b | emailAddress : a } -> { b | emailAddress : a }
+setEmailAddress value model =
+    { model | emailAddress = value }
 
 
 setInvitations : a -> { b | invitations : a } -> { b | invitations : a }
@@ -3021,14 +2828,34 @@ setUserInfo value model =
     { model | userInfo = value }
 
 
-setRegisterUsernameResult : a -> { b | registerUsernameResult : a } -> { b | registerUsernameResult : a }
-setRegisterUsernameResult value model =
-    { model | registerUsernameResult = value }
+setSendVerificationEmailResult : a -> { b | sendVerificationEmailResult : a } -> { b | sendVerificationEmailResult : a }
+setSendVerificationEmailResult value model =
+    { model | sendVerificationEmailResult = value }
 
 
 setCatchall : a -> { b | catchall : a } -> { b | catchall : a }
 setCatchall value model =
     { model | catchall = value }
+
+
+setPayload : a -> { b | payload : a } -> { b | payload : a }
+setPayload value model =
+    { model | payload = value }
+
+
+setHmac : a -> { b | hmac : a } -> { b | hmac : a }
+setHmac value model =
+    { model | hmac = value }
+
+
+setProofOfEmail : a -> { b | proofOfEmail : a } -> { b | proofOfEmail : a }
+setProofOfEmail value model =
+    { model | proofOfEmail = value }
+
+
+setRegisterUsernameResult : a -> { b | registerUsernameResult : a } -> { b | registerUsernameResult : a }
+setRegisterUsernameResult value model =
+    { model | registerUsernameResult = value }
 
 
 setUsernameTaken : a -> { b | usernameTaken : a } -> { b | usernameTaken : a }
@@ -3196,16 +3023,6 @@ setChangePasswordResult value model =
     { model | changePasswordResult = value }
 
 
-setSetEmailResult : a -> { b | setEmailResult : a } -> { b | setEmailResult : a }
-setSetEmailResult value model =
-    { model | setEmailResult = value }
-
-
-setVerifyEmailResult : a -> { b | verifyEmailResult : a } -> { b | verifyEmailResult : a }
-setVerifyEmailResult value model =
-    { model | verifyEmailResult = value }
-
-
 setIncludeRelationshipsWithUsers : a -> { b | includeRelationshipsWithUsers : a } -> { b | includeRelationshipsWithUsers : a }
 setIncludeRelationshipsWithUsers value model =
     { model | includeRelationshipsWithUsers = value }
@@ -3214,16 +3031,6 @@ setIncludeRelationshipsWithUsers value model =
 setGetSettingsResult : a -> { b | getSettingsResult : a } -> { b | getSettingsResult : a }
 setGetSettingsResult value model =
     { model | getSettingsResult = value }
-
-
-setValue : a -> { b | value : a } -> { b | value : a }
-setValue value model =
-    { model | value = value }
-
-
-setUpdateSettingsResult : a -> { b | updateSettingsResult : a } -> { b | updateSettingsResult : a }
-setUpdateSettingsResult value model =
-    { model | updateSettingsResult = value }
 
 
 setRecipient : a -> { b | recipient : a } -> { b | recipient : a }

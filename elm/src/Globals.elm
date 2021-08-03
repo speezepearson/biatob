@@ -7,12 +7,12 @@ module Globals exposing
   , getTrustRelationship
   , getRelationship
   , getOwnUsername
-  , hasEmailAddress
   , ServerState
   , globalsDecoder
   , tick
   , handleWhoamiResponse
   , handleSignOutResponse
+  , handleSendVerificationEmailResponse
   , handleRegisterUsernameResponse
   , handleLogInUsernameResponse
   , handleCreatePredictionResponse
@@ -24,10 +24,7 @@ module Globals exposing
   , handleSetTrustedResponse
   , handleGetUserResponse
   , handleChangePasswordResponse
-  , handleSetEmailResponse
-  , handleVerifyEmailResponse
   , handleGetSettingsResponse
-  , handleUpdateSettingsResponse
   , handleSendInvitationResponse
   , handleAcceptInvitationResponse
   )
@@ -72,6 +69,8 @@ handleSignOutResponse _ res globals =
   case res of
     Ok _ -> { globals | self = Nothing }
     Err _ -> globals
+handleSendVerificationEmailResponse : Pb.SendVerificationEmailRequest -> Result Http.Error Pb.SendVerificationEmailResponse -> Globals -> Globals
+handleSendVerificationEmailResponse _ _ globals = globals
 handleRegisterUsernameResponse : Pb.RegisterUsernameRequest -> Result Http.Error Pb.RegisterUsernameResponse -> Globals -> Globals
 handleRegisterUsernameResponse _ res globals =
   case res of
@@ -139,32 +138,11 @@ handleGetUserResponse req res globals =
     Err _ -> globals
 handleChangePasswordResponse : Pb.ChangePasswordRequest -> Result Http.Error Pb.ChangePasswordResponse -> Globals -> Globals
 handleChangePasswordResponse _ _ globals = globals
-handleSetEmailResponse : Pb.SetEmailRequest -> Result Http.Error Pb.SetEmailResponse -> Globals -> Globals
-handleSetEmailResponse _ res globals =
-  case res of
-    Ok {setEmailResult} -> case setEmailResult of
-      Just (Pb.SetEmailResultOk email) -> globals |> updateUserInfo (\u -> { u | email = Just email })
-      _ -> globals
-    Err _ -> globals
-handleVerifyEmailResponse : Pb.VerifyEmailRequest -> Result Http.Error Pb.VerifyEmailResponse -> Globals -> Globals
-handleVerifyEmailResponse _ res globals =
-  case res of
-    Ok {verifyEmailResult} -> case verifyEmailResult of
-      Just (Pb.VerifyEmailResultOk email) -> globals |> updateUserInfo (\u -> { u | email = Just email })
-      _ -> globals
-    Err _ -> globals
 handleGetSettingsResponse : Pb.GetSettingsRequest -> Result Http.Error Pb.GetSettingsResponse -> Globals -> Globals
 handleGetSettingsResponse _ res globals =
   case res of
     Ok {getSettingsResult} -> case getSettingsResult of
       Just (Pb.GetSettingsResultOk newInfo) -> globals |> updateUserInfo (always newInfo)
-      _ -> globals
-    Err _ -> globals
-handleUpdateSettingsResponse : Pb.UpdateSettingsRequest -> Result Http.Error Pb.UpdateSettingsResponse -> Globals -> Globals
-handleUpdateSettingsResponse _ res globals =
-  case res of
-    Ok {updateSettingsResult} -> case updateSettingsResult of
-      Just (Pb.UpdateSettingsResultOk newInfo) -> globals |> updateUserInfo (always newInfo)
       _ -> globals
     Err _ -> globals
 handleSendInvitationResponse : Pb.SendInvitationRequest -> Result Http.Error Pb.SendInvitationResponse -> Globals -> Globals
@@ -244,12 +222,3 @@ globalsDecoder =
 getOwnUsername : Globals -> Maybe Username
 getOwnUsername globals =
   globals.self |> Maybe.map .username
-
-hasEmailAddress : Globals -> Bool
-hasEmailAddress globals =
-  case getUserInfo globals of
-    Nothing -> False
-    Just settings ->
-      case Utils.mustUserInfoEmail settings |> Utils.mustEmailFlowStateKind of
-        Pb.EmailFlowStateKindVerified _ -> True
-        _ -> False

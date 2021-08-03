@@ -14,7 +14,6 @@ import Utils exposing (isOk, viewError, RequestStatus(..), Username)
 type alias Config msg =
   { setState : State -> msg
   , logInUsername : State -> Pb.LogInUsernameRequest -> msg
-  , register : State -> Pb.RegisterUsernameRequest -> msg
   , signOut : State -> Pb.SignOutRequest -> msg
   , ignore : msg
   , username : Maybe Username
@@ -42,12 +41,6 @@ handleDomModification mod state =
 handleLogInUsernameResponse : Result Http.Error Pb.LogInUsernameResponse -> State -> State
 handleLogInUsernameResponse res state =
   { state | requestStatus = case API.simplifyLogInUsernameResponse res of
-              Ok _ -> Succeeded
-              Err e -> Failed e
-  }
-handleRegisterUsernameResponse : Result Http.Error Pb.RegisterUsernameResponse -> State -> State
-handleRegisterUsernameResponse res state =
-  { state | requestStatus = case API.simplifyRegisterUsernameResponse res of
               Ok _ -> Succeeded
               Err e -> Failed e
   }
@@ -89,13 +82,6 @@ view config state =
               { username = state.usernameField , password = state.passwordField }
           else
             config.ignore
-        registerMsg =
-          if canSubmit then
-            config.register
-            { state | requestStatus = AwaitingResponse }
-            { username = state.usernameField , password = state.passwordField }
-          else
-            config.ignore
       in
       [ let username = Utils.parseUsername state.usernameField in
         H.div [HA.class "col-4"]
@@ -112,7 +98,6 @@ view config state =
           , HE.onInput (\s -> config.setState {state | usernameField=s})
           , HA.value state.usernameField
           ] []
-        , H.div [HA.class "invalid-feedback"] [viewError username]
         ]
       , let password = Utils.parsePassword state.passwordField in
         H.div [HA.class "col-4"]
@@ -139,10 +124,9 @@ view config state =
           ]
           [H.text "Log in"]
         , H.span [] [H.text " or "]
-        , H.button
-          [ HA.disabled <| (state.requestStatus == AwaitingResponse) || not canSubmit
-          , HE.onClick registerMsg
-          , HA.class "btn btn-sm py-0 btn-secondary"
+        , H.a
+          [ HA.href "/signup" -- TODO: include destination
+          , HA.target "_blank"
           ]
           [H.text "Sign up"]
         ]

@@ -24,8 +24,8 @@ class TestFindInvariantViolations:
     with sqlite_engine.connect() as raw_conn:
       now = datetime.datetime(2020, 1, 1, 0, 0, 0)
       conn = SqlConn(raw_conn)
-      conn.register_username(ALICE, 'secret', 'alice_pwid')
-      conn.register_username(BOB, 'secret', 'bob_pwid')
+      conn.register_username(username=ALICE, password='secret', password_id='alice_pwid', email_address=f'{ALICE}@example.com')
+      conn.register_username(username=BOB, password='secret', password_id='bob_pwid', email_address=f'{BOB}@example.com')
       predid = PredictionId('my_pred')
       conn.create_prediction(now, predid, ALICE, some_create_prediction_request(
         maximum_stake_cents=100,
@@ -48,12 +48,12 @@ def test_backup_text(sqlite_engine: sqlalchemy.engine.Engine):
     assert 'predictions' in j
 
     conn.execute(sqlalchemy.insert(schema.passwords).values(password_id='pw', salt=b'abc', scrypt=b'def'))
-    conn.execute(sqlalchemy.insert(schema.users).values(username='a', login_password_id='pw', email_flow_state=b'\x00foo\xffbar'))
+    conn.execute(sqlalchemy.insert(schema.users).values(username='a', login_password_id='pw', email_address='a@example.com'))
     j = json.loads(_backup_text(conn))
     assert any(
       row['username'] == 'a'
       and row['login_password_id'] == 'pw'
-      and row['email_flow_state'] == {'__type__': str(bytes), '__repr__': repr(b'\x00foo\xffbar')}
+      and row['email_address'] == 'a@example.com'
       for row in j['users']
     )
 

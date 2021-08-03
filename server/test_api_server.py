@@ -41,18 +41,18 @@ async def post_proto(client, url: str, request_pb: _Req, response_pb_cls: Type[_
   return (http_resp, pb_resp)
 
 
-async def test_Whoami_and_RegisterUsername(aiohttp_client, app):
+async def test_Whoami_and_RegisterUsername(aiohttp_client, app, token_mint: TokenMint):
   cli = await aiohttp_client(app)
   (http_resp, pb_resp) = await post_proto(cli, '/api/Whoami', mvp_pb2.WhoamiRequest(), mvp_pb2.WhoamiResponse)
   assert not pb_resp.username, pb_resp
 
-  (http_resp, pb_resp) = await post_proto(cli, '/api/RegisterUsername', mvp_pb2.RegisterUsernameRequest(username='potato', password='secret'), mvp_pb2.RegisterUsernameResponse)
-  assert pb_resp.ok.token.owner == 'potato', pb_resp
+  (http_resp, reg_pb_resp) = await post_proto(cli, '/api/RegisterUsername', mvp_pb2.RegisterUsernameRequest(username='potato', password='secret', proof_of_email=token_mint.sign_proof_of_email('potato@example.com')), mvp_pb2.RegisterUsernameResponse)
+  assert reg_pb_resp.ok.token.owner == 'potato', reg_pb_resp
 
   (http_resp, pb_resp) = await post_proto(cli, '/api/Whoami', mvp_pb2.WhoamiRequest(), mvp_pb2.WhoamiResponse)
   assert pb_resp.username == 'potato', pb_resp
 
-async def test_CreatePrediction_and_GetPrediction(aiohttp_client, app, clock):
+async def test_CreatePrediction_and_GetPrediction(aiohttp_client, app, clock: MockClock, token_mint: TokenMint):
   create_pb_req = mvp_pb2.CreatePredictionRequest(
     prediction="Is 1 > 2?",
     certainty=mvp_pb2.CertaintyRange(low=0.90, high=1.00),
@@ -66,7 +66,7 @@ async def test_CreatePrediction_and_GetPrediction(aiohttp_client, app, clock):
   (http_resp, create_pb_resp) = await post_proto(cli, '/api/CreatePrediction', create_pb_req, mvp_pb2.CreatePredictionResponse)
   assert create_pb_resp.WhichOneof('create_prediction_result') == 'error', create_pb_resp
 
-  (http_resp, register_resp) = await post_proto(cli, '/api/RegisterUsername', mvp_pb2.RegisterUsernameRequest(username='potato', password='secret'), mvp_pb2.RegisterUsernameResponse)
+  (http_resp, register_resp) = await post_proto(cli, '/api/RegisterUsername', mvp_pb2.RegisterUsernameRequest(username='potato', password='secret', proof_of_email=token_mint.sign_proof_of_email('potato@example.com')), mvp_pb2.RegisterUsernameResponse)
   assert register_resp.WhichOneof('register_username_result') == 'ok', register_resp
 
   (http_resp, create_pb_resp) = await post_proto(cli, '/api/CreatePrediction', create_pb_req, mvp_pb2.CreatePredictionResponse)
@@ -84,7 +84,7 @@ async def test_CreatePrediction_and_GetPrediction(aiohttp_client, app, clock):
   assert returned_prediction.special_rules == create_pb_req.special_rules
 
 
-async def test_CreatePrediction_enforces_future_resolution(aiohttp_client, app, clock):
+async def test_CreatePrediction_enforces_future_resolution(aiohttp_client, app, clock: MockClock, token_mint: TokenMint):
   create_pb_req = mvp_pb2.CreatePredictionRequest(
     prediction="Is 1 > 2?",
     certainty=mvp_pb2.CertaintyRange(low=0.90, high=1.00),
@@ -95,7 +95,7 @@ async def test_CreatePrediction_enforces_future_resolution(aiohttp_client, app, 
   )
 
   cli = await aiohttp_client(app)
-  (http_resp, register_resp) = await post_proto(cli, '/api/RegisterUsername', mvp_pb2.RegisterUsernameRequest(username='potato', password='secret'), mvp_pb2.RegisterUsernameResponse)
+  (http_resp, register_resp) = await post_proto(cli, '/api/RegisterUsername', mvp_pb2.RegisterUsernameRequest(username='potato', password='secret', proof_of_email=token_mint.sign_proof_of_email('potato@example.com')), mvp_pb2.RegisterUsernameResponse)
   assert register_resp.WhichOneof('register_username_result') == 'ok', register_resp
 
   (http_resp, create_pb_resp) = await post_proto(cli, '/api/CreatePrediction', create_pb_req, mvp_pb2.CreatePredictionResponse)
@@ -132,10 +132,7 @@ async def test_forgotten_token_recovery(aiohttp_client, app, any_servicer: Servi
   ('/api/SetTrusted', mvp_pb2.SetTrustedRequest(), mvp_pb2.SetTrustedResponse),
   ('/api/GetUser', mvp_pb2.GetUserRequest(), mvp_pb2.GetUserResponse),
   ('/api/ChangePassword', mvp_pb2.ChangePasswordRequest(), mvp_pb2.ChangePasswordResponse),
-  ('/api/SetEmail', mvp_pb2.SetEmailRequest(), mvp_pb2.SetEmailResponse),
-  ('/api/VerifyEmail', mvp_pb2.VerifyEmailRequest(), mvp_pb2.VerifyEmailResponse),
   ('/api/GetSettings', mvp_pb2.GetSettingsRequest(), mvp_pb2.GetSettingsResponse),
-  ('/api/UpdateSettings', mvp_pb2.UpdateSettingsRequest(), mvp_pb2.UpdateSettingsResponse),
   ('/api/SendInvitation', mvp_pb2.SendInvitationRequest(), mvp_pb2.SendInvitationResponse),
   ('/api/AcceptInvitation', mvp_pb2.AcceptInvitationRequest(), mvp_pb2.AcceptInvitationResponse),
 ])
@@ -143,7 +140,7 @@ async def test_smoke(aiohttp_client, app, any_servicer: Servicer, logged_in: boo
   cli = await aiohttp_client(app)
 
   if logged_in:
-    RegisterUsernameOk(any_servicer, None, u('rando'), password='pw')
+    create_user(any_servicer, u('rando'), password='pw')
     await post_proto(cli, '/api/LogInUsername', mvp_pb2.LogInUsernameRequest(username='rando', password='pw'), mvp_pb2.LogInUsernameResponse)
 
   await post_proto(cli, endpoint, request_pb, response_pb_cls)

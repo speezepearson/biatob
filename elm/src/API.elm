@@ -24,6 +24,8 @@ postWhoami : (Result Http.Error Pb.WhoamiResponse -> msg) -> Pb.WhoamiRequest ->
 postWhoami = hit {url="/api/Whoami", encoder=Pb.toWhoamiRequestEncoder, decoder=Pb.whoamiResponseDecoder}
 postSignOut : (Result Http.Error Pb.SignOutResponse -> msg) -> Pb.SignOutRequest -> Cmd msg
 postSignOut = hit {url="/api/SignOut", encoder=Pb.toSignOutRequestEncoder, decoder=Pb.signOutResponseDecoder}
+postSendVerificationEmail : (Result Http.Error Pb.SendVerificationEmailResponse -> msg) -> Pb.SendVerificationEmailRequest -> Cmd msg
+postSendVerificationEmail = hit {url="/api/SendVerificationEmail", encoder=Pb.toSendVerificationEmailRequestEncoder, decoder=Pb.sendVerificationEmailResponseDecoder}
 postRegisterUsername : (Result Http.Error Pb.RegisterUsernameResponse -> msg) -> Pb.RegisterUsernameRequest -> Cmd msg
 postRegisterUsername = hit {url="/api/RegisterUsername", encoder=Pb.toRegisterUsernameRequestEncoder, decoder=Pb.registerUsernameResponseDecoder}
 postLogInUsername : (Result Http.Error Pb.LogInUsernameResponse -> msg) -> Pb.LogInUsernameRequest -> Cmd msg
@@ -46,14 +48,8 @@ postGetUser : (Result Http.Error Pb.GetUserResponse -> msg) -> Pb.GetUserRequest
 postGetUser = hit {url="/api/GetUser", encoder=Pb.toGetUserRequestEncoder, decoder=Pb.getUserResponseDecoder}
 postChangePassword : (Result Http.Error Pb.ChangePasswordResponse -> msg) -> Pb.ChangePasswordRequest -> Cmd msg
 postChangePassword = hit {url="/api/ChangePassword", encoder=Pb.toChangePasswordRequestEncoder, decoder=Pb.changePasswordResponseDecoder}
-postSetEmail : (Result Http.Error Pb.SetEmailResponse -> msg) -> Pb.SetEmailRequest -> Cmd msg
-postSetEmail = hit {url="/api/SetEmail", encoder=Pb.toSetEmailRequestEncoder, decoder=Pb.setEmailResponseDecoder}
-postVerifyEmail : (Result Http.Error Pb.VerifyEmailResponse -> msg) -> Pb.VerifyEmailRequest -> Cmd msg
-postVerifyEmail = hit {url="/api/VerifyEmail", encoder=Pb.toVerifyEmailRequestEncoder, decoder=Pb.verifyEmailResponseDecoder}
 postGetSettings : (Result Http.Error Pb.GetSettingsResponse -> msg) -> Pb.GetSettingsRequest -> Cmd msg
 postGetSettings = hit {url="/api/GetSettings", encoder=Pb.toGetSettingsRequestEncoder, decoder=Pb.getSettingsResponseDecoder}
-postUpdateSettings : (Result Http.Error Pb.UpdateSettingsResponse -> msg) -> Pb.UpdateSettingsRequest -> Cmd msg
-postUpdateSettings = hit {url="/api/UpdateSettings", encoder=Pb.toUpdateSettingsRequestEncoder, decoder=Pb.updateSettingsResponseDecoder}
 postSendInvitation : (Result Http.Error Pb.SendInvitationResponse -> msg) -> Pb.SendInvitationRequest -> Cmd msg
 postSendInvitation = hit {url="/api/SendInvitation", encoder=Pb.toSendInvitationRequestEncoder, decoder=Pb.sendInvitationResponseDecoder}
 postAcceptInvitation : (Result Http.Error Pb.AcceptInvitationResponse -> msg) -> Pb.AcceptInvitationRequest -> Cmd msg
@@ -77,6 +73,19 @@ simplifyLogInUsernameResponse res =
         Just (Pb.LogInUsernameResultOk success) ->
           Ok success
         Just (Pb.LogInUsernameResultError e) ->
+          Err e.catchall
+        Nothing ->
+          Err "Invalid server response (neither Ok nor Error in protobuf)"
+
+simplifySendVerificationEmailResponse : Result Http.Error Pb.SendVerificationEmailResponse -> Result String Pb.Void
+simplifySendVerificationEmailResponse res =
+  case res of
+    Err e -> Err (httpErrorToString e)
+    Ok resp ->
+      case resp.sendVerificationEmailResult of
+        Just (Pb.SendVerificationEmailResultOk success) ->
+          Ok success
+        Just (Pb.SendVerificationEmailResultError e) ->
           Err e.catchall
         Nothing ->
           Err "Invalid server response (neither Ok nor Error in protobuf)"
@@ -161,45 +170,6 @@ simplifyResolveResponse res =
         Just (Pb.ResolveResultOk result) ->
           Ok result
         Just (Pb.ResolveResultError e) ->
-          Err e.catchall
-        Nothing ->
-          Err "Invalid server response (neither Ok nor Error in protobuf)"
-
-simplifyUpdateSettingsResponse : Result Http.Error Pb.UpdateSettingsResponse -> Result String Pb.GenericUserInfo
-simplifyUpdateSettingsResponse res =
-  case res of
-    Err e -> Err (httpErrorToString e)
-    Ok resp ->
-      case resp.updateSettingsResult of
-        Just (Pb.UpdateSettingsResultOk result) ->
-          Ok result
-        Just (Pb.UpdateSettingsResultError e) ->
-          Err e.catchall
-        Nothing ->
-          Err "Invalid server response (neither Ok nor Error in protobuf)"
-
-simplifySetEmailResponse : Result Http.Error Pb.SetEmailResponse -> Result String Pb.EmailFlowState
-simplifySetEmailResponse res =
-  case res of
-    Err e -> Err (httpErrorToString e)
-    Ok resp ->
-      case resp.setEmailResult of
-        Just (Pb.SetEmailResultOk result) ->
-          Ok result
-        Just (Pb.SetEmailResultError e) ->
-          Err e.catchall
-        Nothing ->
-          Err "Invalid server response (neither Ok nor Error in protobuf)"
-
-simplifyVerifyEmailResponse : Result Http.Error Pb.VerifyEmailResponse -> Result String Pb.EmailFlowState
-simplifyVerifyEmailResponse res =
-  case res of
-    Err e -> Err (httpErrorToString e)
-    Ok resp ->
-      case resp.verifyEmailResult of
-        Just (Pb.VerifyEmailResultOk result) ->
-          Ok result
-        Just (Pb.VerifyEmailResultError e) ->
           Err e.catchall
         Nothing ->
           Err "Invalid server response (neither Ok nor Error in protobuf)"

@@ -1,4 +1,5 @@
 from __future__ import annotations
+import copy
 from typing import Sequence
 
 from unittest.mock import ANY
@@ -16,12 +17,8 @@ CHARLIE = au('charlie')
 
 class TestCUJs:
   async def test_cuj__register__create__invite__accept__stake__resolve(self, any_servicer: Servicer, emailer: Emailer, clock: MockClock):
-    RegisterUsernameOk(any_servicer, None, ALICE)
-    set_and_verify_email(any_servicer, emailer, ALICE, 'creator@example.com')
-    UpdateSettingsOk(any_servicer, ALICE, allow_email_invitations=True)
-
-    RegisterUsernameOk(any_servicer, None, BOB)
-    set_and_verify_email(any_servicer, emailer, BOB, 'friend@example.com')
+    create_user(any_servicer, ALICE)
+    create_user(any_servicer, BOB)
 
     prediction_id = CreatePredictionOk(any_servicer, ALICE, dict(
         prediction='a thing will happen',
@@ -54,23 +51,6 @@ class TestCUJs:
     assert prediction.resolution == mvp_pb2.ResolutionEvent(unixtime=clock.now().timestamp(), resolution=mvp_pb2.RESOLUTION_YES)
 
 
-  async def test_cuj___set_email__verify_email__update_settings(self, any_servicer: Servicer, emailer: Emailer):
-    RegisterUsernameOk(any_servicer, None, ALICE)
-
-    assert SetEmailOk(any_servicer, ALICE, 'nobody@example.com').code_sent.email == 'nobody@example.com'
-
-    emailer.send_email_verification.assert_called_once()  # type: ignore
-    code = emailer.send_email_verification.call_args[1]['code']  # type: ignore
-
-    assert VerifyEmailOk(any_servicer, ALICE, code).verified == 'nobody@example.com'
-
-    assert not UpdateSettingsOk(any_servicer, ALICE, email_reminders_to_resolve=False).email_reminders_to_resolve
-    assert not GetSettingsOk(any_servicer, ALICE).email_reminders_to_resolve
-
-    assert UpdateSettingsOk(any_servicer, ALICE, email_reminders_to_resolve=True).email_reminders_to_resolve
-    assert GetSettingsOk(any_servicer, ALICE).email_reminders_to_resolve
-
-
 
 class TestWhoami:
 
@@ -78,7 +58,7 @@ class TestWhoami:
     assert not any_servicer.Whoami(actor=None, request=mvp_pb2.WhoamiRequest()).username
 
   async def test_returns_token_when_logged_in(self, any_servicer: Servicer):
-    RegisterUsernameOk(any_servicer, None, ALICE)
+    create_user(any_servicer, ALICE)
     assert any_servicer.Whoami(actor=ALICE, request=mvp_pb2.WhoamiRequest()).username == ALICE
 
 
@@ -88,42 +68,83 @@ class TestSignOut:
     any_servicer.SignOut(actor=None, request=mvp_pb2.SignOutRequest())
 
   async def test_smoke_logged_in(self, any_servicer: Servicer):
-    RegisterUsernameOk(any_servicer, None, ALICE)
+    create_user(any_servicer, ALICE)
     any_servicer.SignOut(actor=ALICE, request=mvp_pb2.SignOutRequest())
+
+
+class TestSendVerificationEmail:
+  async def test_success_if_unauthed_and_email_is_fresh(self, any_servicer: Servicer):
+    SendVerificationEmailOk(any_servicer, None, 'example@example.com')
+
+  async def test_ok_to_send_to_same_address_multiple_times(self, any_servicer: Servicer):
+    SendVerificationEmailOk(any_servicer, None, 'example@example.com')
+    SendVerificationEmailOk(any_servicer, None, 'example@example.com')
+    SendVerificationEmailOk(any_servicer, None, 'example@example.com')
+
+  async def test_error_if_authed(self, any_servicer: Servicer):
+    create_user(any_servicer, ALICE)
+    assert 'first, log out' in str(SendVerificationEmailErr(any_servicer, ALICE, 'new.email.address@example.com'))
+
+  async def test_error_if_email_is_already_registered(self, any_servicer: Servicer):
+    create_user(any_servicer, ALICE, email_address='alice@example.com')
+    assert 'email is already registered' in str(SendVerificationEmailErr(any_servicer, None, 'alice@example.com'))
 
 
 class TestRegisterUsername:
 
-  async def test_returns_auth_when_successful(self, any_servicer: Servicer):
-    token = RegisterUsernameOk(any_servicer, None, ALICE, 'secret').token
-    assert token.owner == ALICE
+  @staticmethod
+  def get_proof_of_email(any_servicer: Servicer, emailer: Emailer, email_address: str) -> mvp_pb2.ProofOfEmail:
+    SendVerificationEmailOk(any_servicer, None, email_address)
+    return emailer.send_email_verification.call_args[1]['proof_of_email']  # type: ignore
 
-  async def test_can_log_in_after_registering(self, any_servicer: Servicer):
+  async def test_success_if_good_signature(self, any_servicer: Servicer, emailer: Emailer):
+    proof_of_email = self.get_proof_of_email(any_servicer, emailer, 'alice@example.com')
+    RegisterUsernameOk(any_servicer, None, proof_of_email, username=ALICE)
+
+  async def test_returns_auth_when_successful(self, any_servicer: Servicer, emailer: Emailer):
+    proof_of_email = self.get_proof_of_email(any_servicer, emailer, 'alice@example.com')
+    result = RegisterUsernameOk(any_servicer, None, proof_of_email, username=ALICE)
+    assert result.token.owner == ALICE
+    assert result.user_info.email_address == 'alice@example.com'
+
+  async def test_can_log_in_after_registering(self, any_servicer: Servicer, emailer: Emailer):
     assert 'no such user' in str(LogInUsernameErr(any_servicer, None, ALICE, 'secret'))
-    RegisterUsernameOk(any_servicer, None, ALICE, 'secret')
+    proof_of_email = self.get_proof_of_email(any_servicer, emailer, 'alice@example.com')
+    RegisterUsernameOk(any_servicer, None, proof_of_email, username=ALICE, password='secret')
     assert LogInUsernameOk(any_servicer, None, ALICE, 'secret').token.owner == ALICE
 
-  async def test_error_when_already_exists(self, any_servicer: Servicer):
+  async def test_error_when_already_exists(self, any_servicer: Servicer, emailer: Emailer):
     password = 'pw'
-    RegisterUsernameOk(any_servicer, None, ALICE, password=password)
+    proof_of_email = self.get_proof_of_email(any_servicer, emailer, 'alice@example.com')
+    RegisterUsernameOk(any_servicer, None, proof_of_email, username=ALICE, password=password)
 
     for try_password in [password, 'not '+password]:
       with assert_user_unchanged(any_servicer, ALICE, password):
-        assert 'username taken' in str(RegisterUsernameErr(any_servicer, None, ALICE, try_password))
+        assert 'username taken' in str(RegisterUsernameErr(any_servicer, None, proof_of_email, username=ALICE, password=try_password))
 
-  async def test_error_if_already_logged_in(self, any_servicer: Servicer):
+  async def test_error_if_bad_email_signature(self, any_servicer: Servicer, emailer: Emailer):
+    valid_proof = self.get_proof_of_email(any_servicer, emailer, 'alice@example.com')
+    invalid_proof = copy.copy(valid_proof)
+    invalid_proof.hmac = bytes([(invalid_proof.hmac[0] + 1) % 256, *invalid_proof.hmac[1:]])
+    assert 'invalid signature' in str(RegisterUsernameErr(any_servicer, None, invalid_proof, username=ALICE))
+    RegisterUsernameOk(any_servicer, None, valid_proof, username=ALICE)  # ensure the failure was due to the mangled signature
+
+  async def test_error_if_already_logged_in(self, any_servicer: Servicer, emailer: Emailer):
     password = 'pw'
-    RegisterUsernameOk(any_servicer, None, ALICE, password=password)
+    proof_of_email = self.get_proof_of_email(any_servicer, emailer, 'alice@example.com')
+    RegisterUsernameOk(any_servicer, None, proof_of_email, username=ALICE, password=password)
     with assert_user_unchanged(any_servicer, ALICE, password):
-      assert 'first, log out' in str(RegisterUsernameErr(any_servicer, ALICE, ALICE, 'secret'))
+      proof_of_email = self.get_proof_of_email(any_servicer, emailer, 'bob@example.com')
+      assert 'first, log out' in str(RegisterUsernameErr(any_servicer, ALICE, proof_of_email, BOB))
 
   @pytest.mark.parametrize('username,error', [
     (u('foo bar!baz\xfequux'), 'must be alphanumeric'),
     (u('login'), 'is a reserved word'),
     (u('api'), 'is a reserved word'),
   ])
-  async def test_error_if_invalid_username(self, any_servicer: Servicer, username: Username, error: str):
-    assert error in str(RegisterUsernameErr(any_servicer, None, username, 'secret'))
+  async def test_error_if_invalid_username(self, any_servicer: Servicer, emailer: Emailer, username: Username, error: str):
+    proof_of_email = self.get_proof_of_email(any_servicer, emailer, 'alice@example.com')
+    assert error in str(RegisterUsernameErr(any_servicer, None, proof_of_email, username, 'secret'))
 
 
 class TestLogInUsername:
@@ -132,16 +153,16 @@ class TestLogInUsername:
     assert 'no such user' in str(LogInUsernameErr(any_servicer, None, ALICE, 'some password'))
 
   async def test_success_when_user_exists_and_password_right(self, any_servicer: Servicer):
-    RegisterUsernameOk(any_servicer, None, ALICE, 'password')
+    create_user(any_servicer, ALICE, password='password')
     assert LogInUsernameOk(any_servicer, None, ALICE, 'password').token.owner == ALICE
 
   async def test_error_if_wrong_password(self, any_servicer: Servicer):
-    RegisterUsernameOk(any_servicer, None, ALICE, 'password')
+    create_user(any_servicer, ALICE, password='password')
     assert 'bad password' in str(LogInUsernameErr(any_servicer, None, ALICE, 'WRONG'))
 
   async def test_error_if_already_logged_in(self, any_servicer: Servicer):
     orig_pw = 'pw'
-    RegisterUsernameOk(any_servicer, None, ALICE, orig_pw)
+    create_user(any_servicer, ALICE, password=orig_pw)
     assert 'first, log out' in str(LogInUsernameErr(any_servicer, ALICE, ALICE, orig_pw))
 
 
@@ -151,19 +172,19 @@ class TestCreatePrediction:
     assert 'must log in to create predictions' in str(CreatePredictionErr(any_servicer, None, {}))
 
   async def test_smoke_logged_in(self, any_servicer: Servicer):
-    RegisterUsernameOk(any_servicer, None, ALICE)
+    create_user(any_servicer, ALICE)
     prediction_id = CreatePredictionOk(any_servicer, ALICE, dict(prediction='a thing will happen'))
     assert GetPredictionOk(any_servicer, ALICE, prediction_id).prediction == 'a thing will happen'
 
   async def test_returns_distinct_ids(self, any_servicer: Servicer):
-    RegisterUsernameOk(any_servicer, None, ALICE)
+    create_user(any_servicer, ALICE)
     ids = {CreatePredictionOk(any_servicer, ALICE, {}) for _ in range(30)}
     assert len(ids) == 30
     for prediction_id in ids:
       GetPredictionOk(any_servicer, ALICE, prediction_id)
 
   async def test_returns_urlsafe_ids(self, any_servicer: Servicer):
-    RegisterUsernameOk(any_servicer, None, ALICE)
+    create_user(any_servicer, ALICE)
     ids = {CreatePredictionOk(any_servicer, ALICE, {}) for _ in range(30)}
     assert all(id.isalnum() for id in ids)
 
@@ -209,18 +230,18 @@ class TestGetPrediction:
 
 
   async def test_success_if_logged_out(self, any_servicer: Servicer):
-    RegisterUsernameOk(any_servicer, None, ALICE)
+    create_user(any_servicer, ALICE)
     prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
     GetPredictionOk(any_servicer, None, prediction_id)
 
   async def test_success_if_logged_in(self, any_servicer: Servicer):
-    RegisterUsernameOk(any_servicer, None, ALICE)
-    RegisterUsernameOk(any_servicer, None, BOB)
+    create_user(any_servicer, ALICE)
+    create_user(any_servicer, BOB)
     prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
     GetPredictionOk(any_servicer, BOB, prediction_id)
 
   async def test_error_if_no_such_prediction(self, any_servicer: Servicer):
-    RegisterUsernameOk(any_servicer, None, BOB)
+    create_user(any_servicer, BOB)
     assert 'no such prediction' in str(GetPredictionErr(any_servicer, BOB, PredictionId('12345')))
 
 class TestListMyStakes:
@@ -229,15 +250,15 @@ class TestListMyStakes:
       assert 'must log in to create predictions' in str(CreatePredictionErr(any_servicer, None, {}))
 
   async def test_includes_own_predictions(self, any_servicer: Servicer):
-    RegisterUsernameOk(any_servicer, None, ALICE)
-    RegisterUsernameOk(any_servicer, None, BOB)
+    create_user(any_servicer, ALICE)
+    create_user(any_servicer, BOB)
     prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
     irrelevant_prediction_id = CreatePredictionOk(any_servicer, BOB, {})
     assert set(ListMyStakesOk(any_servicer, ALICE).predictions.keys()) == {prediction_id}
 
   async def test_includes_others_predictions(self, any_servicer: Servicer):
     register_friend_pair(any_servicer, ALICE, BOB)
-    RegisterUsernameOk(any_servicer, None, CHARLIE)
+    create_user(any_servicer, CHARLIE)
     prediction_id = CreatePredictionOk(any_servicer, BOB, {})
     irrelevant_prediction_id = CreatePredictionOk(any_servicer, CHARLIE, {})
     StakeOk(any_servicer, ALICE, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_stake_cents=1_00))
@@ -247,7 +268,7 @@ class TestListMyStakes:
 class TestListPredictions:
 
   async def test_returns_all_own_predictions(self, any_servicer: Servicer):
-    RegisterUsernameOk(any_servicer, None, ALICE)
+    create_user(any_servicer, ALICE)
     all_prediction_ids = {
       CreatePredictionOk(any_servicer, ALICE, {'view_privacy': privacy})
       for privacy in mvp_pb2.PredictionViewPrivacy.values()
@@ -255,19 +276,19 @@ class TestListPredictions:
     assert set(ListPredictionsOk(any_servicer, ALICE, ALICE).predictions.keys()) == all_prediction_ids
 
   async def test_returns_globally_accessible_predictions_for_other_person(self, any_servicer: Servicer):
-    RegisterUsernameOk(any_servicer, None, ALICE)
+    create_user(any_servicer, ALICE)
     prediction_id = CreatePredictionOk(any_servicer, ALICE, {'view_privacy': mvp_pb2.PREDICTION_VIEW_PRIVACY_ANYBODY})
     assert prediction_id in ListPredictionsOk(any_servicer, None, ALICE).predictions.keys()
 
   async def test_does_not_return_linkonly_predictions_for_other_person(self, any_servicer: Servicer):
-    RegisterUsernameOk(any_servicer, None, ALICE)
+    create_user(any_servicer, ALICE)
     prediction_id = CreatePredictionOk(any_servicer, ALICE, {'view_privacy': mvp_pb2.PREDICTION_VIEW_PRIVACY_ANYBODY_WITH_THE_LINK})
     print('SRP', ListPredictionsOk(any_servicer, None, ALICE).predictions)
     assert prediction_id not in ListPredictionsOk(any_servicer, None, ALICE).predictions.keys()
 
   async def test_ignores_unrelated_predictions(self, any_servicer: Servicer):
-    RegisterUsernameOk(any_servicer, None, ALICE)
-    RegisterUsernameOk(any_servicer, None, BOB)
+    create_user(any_servicer, ALICE)
+    create_user(any_servicer, BOB)
     prediction_id = CreatePredictionOk(any_servicer, BOB, {'view_privacy': mvp_pb2.PREDICTION_VIEW_PRIVACY_ANYBODY})
 
     assert prediction_id not in ListPredictionsOk(any_servicer, ALICE, ALICE).predictions.keys()
@@ -413,15 +434,15 @@ class TestStake:
           )))
 
   async def test_error_if_logged_out(self, any_servicer: Servicer):
-    RegisterUsernameOk(any_servicer, None, ALICE)
+    create_user(any_servicer, ALICE)
     prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
     with assert_prediction_unchanged(any_servicer, prediction_id=prediction_id):
       assert 'must log in to bet' in str(StakeErr(any_servicer, None, mvp_pb2.StakeRequest(prediction_id=prediction_id)))
 
   async def test_error_if_bettor_doesnt_trust_creator(self, any_servicer: Servicer):
-    RegisterUsernameOk(any_servicer, None, ALICE)
+    create_user(any_servicer, ALICE)
     prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
-    RegisterUsernameOk(any_servicer, None, BOB)
+    create_user(any_servicer, BOB)
     SetTrustedOk(any_servicer, ALICE, BOB, True)
     with assert_prediction_unchanged(any_servicer, prediction_id=prediction_id):
       assert "you don\\'t trust the creator" in str(StakeErr(any_servicer, BOB, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_stake_cents=10)))
@@ -430,8 +451,8 @@ class TestStake:
 
     @staticmethod
     def _make_bob_trust_alice(any_servicer: Servicer):
-      RegisterUsernameOk(any_servicer, None, ALICE)
-      RegisterUsernameOk(any_servicer, None, BOB)
+      create_user(any_servicer, ALICE)
+      create_user(any_servicer, BOB)
       SetTrustedOk(any_servicer, BOB, ALICE, True)
 
     async def test_queues_if_creator_doesnt_trust_bettor(self, any_servicer: Servicer):
@@ -450,7 +471,7 @@ class TestStake:
 
     async def test_queued_trade_is_mostly_exactly_like_nonqueued_trade(self, any_servicer: Servicer, clock: MockClock):
       register_friend_pair(any_servicer, ALICE, BOB)
-      RegisterUsernameOk(any_servicer, None, CHARLIE)
+      create_user(any_servicer, CHARLIE)
       SetTrustedOk(any_servicer, CHARLIE, ALICE, True)
       prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
       request = some_stake_request(prediction_id)
@@ -488,7 +509,7 @@ class TestStake:
 
     async def test_queued_trade_partially_applied_when_mutual_trust_created_if_would_overfill(self, any_servicer: Servicer):
       register_friend_pair(any_servicer, ALICE, BOB)
-      RegisterUsernameOk(any_servicer, None, CHARLIE)
+      create_user(any_servicer, CHARLIE)
       SetTrustedOk(any_servicer, CHARLIE, ALICE, True)
       prediction_id = CreatePredictionOk(any_servicer, ALICE, dict(
           certainty=mvp_pb2.CertaintyRange(low=0.50, high=1.00),
@@ -515,7 +536,7 @@ class TestStake:
     class TestDequeueFailure:
       def _arrange_dequeue_failure(self, any_servicer: Servicer) -> mvp_pb2.UserPredictionView:
         register_friend_pair(any_servicer, ALICE, BOB)
-        RegisterUsernameOk(any_servicer, None, CHARLIE)
+        create_user(any_servicer, CHARLIE)
         SetTrustedOk(any_servicer, CHARLIE, ALICE, True)
         prediction_id = CreatePredictionOk(any_servicer, ALICE, dict(
             certainty=mvp_pb2.CertaintyRange(low=0.50, high=1.00),
@@ -536,15 +557,15 @@ class TestStake:
         SetTrustedOk(any_servicer, ALICE, CHARLIE, True)
         return GetPredictionOk(any_servicer, ALICE, prediction_id)
 
-      def test_sets_state(self, any_servicer: Servicer):
+      async def test_sets_state(self, any_servicer: Servicer):
         [failed_trade, _] = self._arrange_dequeue_failure(any_servicer).your_trades
         assert failed_trade.state == mvp_pb2.TRADE_STATE_DEQUEUE_FAILED
 
-      def test_notes_reflect_failure(self, any_servicer: Servicer):
+      async def test_notes_reflect_failure(self, any_servicer: Servicer):
         [failed_trade, _] = self._arrange_dequeue_failure(any_servicer).your_trades
         assert failed_trade.notes == '[trade ignored during dequeue due to trivial stakes]'
 
-      def test_failed_trade_doesnt_affect_exposure(self, any_servicer: Servicer):
+      async def test_failed_trade_doesnt_affect_exposure(self, any_servicer: Servicer):
         pred = self._arrange_dequeue_failure(any_servicer)
         assert pred.remaining_stake_cents_vs_skeptics + sum(t.creator_stake_cents for t in pred.your_trades) > pred.maximum_stake_cents
         assert pred.remaining_stake_cents_vs_skeptics + sum(t.creator_stake_cents for t in pred.your_trades if t.state == mvp_pb2.TRADE_STATE_ACTIVE) == pred.maximum_stake_cents
@@ -553,7 +574,7 @@ class TestStake:
 class TestResolve:
 
   async def test_returns_new_prediction(self, any_servicer: Servicer):
-    RegisterUsernameOk(any_servicer, None, ALICE)
+    create_user(any_servicer, ALICE)
     prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
     old_pred = GetPredictionOk(any_servicer, ALICE, prediction_id)
     resp_pred = ResolveOk(any_servicer, ALICE, prediction_id, mvp_pb2.RESOLUTION_YES)
@@ -561,7 +582,7 @@ class TestResolve:
     assert new_pred == resp_pred != old_pred
 
   async def test_smoke(self, any_servicer: Servicer, clock: MockClock):
-    RegisterUsernameOk(any_servicer, None, ALICE)
+    create_user(any_servicer, ALICE)
     prediction_id = CreatePredictionOk(any_servicer, ALICE, {'open_seconds': 86400})
     clock.tick(18472)  # some random length less than open_seconds
 
@@ -572,7 +593,7 @@ class TestResolve:
     )
 
   async def test_remembers_prior_revision_when_reresolved(self, any_servicer: Servicer, clock: MockClock):
-    RegisterUsernameOk(any_servicer, None, ALICE)
+    create_user(any_servicer, ALICE)
     prediction_id = CreatePredictionOk(any_servicer, ALICE, {'open_seconds': 86400})
     first_res = ResolveOk(any_servicer, ALICE, prediction_id, mvp_pb2.RESOLUTION_YES, notes='first').resolution
     clock.tick()
@@ -581,17 +602,17 @@ class TestResolve:
     assert second_res.prior_revision == first_res
 
   async def test_error_if_no_such_prediction(self, any_servicer: Servicer):
-    RegisterUsernameOk(any_servicer, None, ALICE)
+    create_user(any_servicer, ALICE)
     prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
     assert 'no such prediction' in str(ResolveErr(any_servicer, ALICE, pid('not_'+prediction_id), mvp_pb2.RESOLUTION_YES))
 
   async def test_error_if_notes_too_long(self, any_servicer: Servicer):
-    RegisterUsernameOk(any_servicer, None, ALICE)
+    create_user(any_servicer, ALICE)
     prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
     assert 'unreasonably long notes' in str(ResolveErr(any_servicer, ALICE, prediction_id, mvp_pb2.RESOLUTION_YES, notes=99999*'foo'))
 
   async def test_error_if_invalid_resolution(self, any_servicer: Servicer):
-    RegisterUsernameOk(any_servicer, None, ALICE)
+    create_user(any_servicer, ALICE)
     prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
     bad_resolution_value: mvp_pb2.Resolution.V = 99  # type: ignore
     assert 'unrecognized resolution' in str(ResolveErr(any_servicer, ALICE, prediction_id, bad_resolution_value))
@@ -600,16 +621,13 @@ class TestResolve:
     register_friend_pair(any_servicer, ALICE, BOB)
     prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
 
-    RegisterUsernameOk(any_servicer, None, CHARLIE)
+    create_user(any_servicer, CHARLIE)
     for actor in [BOB, CHARLIE]:
       with assert_prediction_unchanged(any_servicer, prediction_id=prediction_id):
         assert 'not the creator' in str(ResolveErr(any_servicer, actor, prediction_id, mvp_pb2.RESOLUTION_NO))
 
   async def test_sends_notifications(self, emailer: Emailer, any_servicer: Servicer):
-    RegisterUsernameOk(any_servicer, None, ALICE)
-    init_user(any_servicer, BOB, email=(emailer, 'bob@example.com'), email_resolution_notifications=True, trust_users=[ALICE])
-    SetTrustedOk(any_servicer, ALICE, BOB, True)
-
+    register_friend_pair(any_servicer, ALICE, BOB)
     prediction_id = CreatePredictionOk(any_servicer, ALICE, dict(prediction='a thing will happen'))
     StakeOk(any_servicer, BOB, request=mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_is_a_skeptic=True, bettor_stake_cents=10))
 
@@ -625,20 +643,20 @@ class TestResolve:
 class TestSetTrusted:
 
   async def test_error_when_logged_out(self, any_servicer: Servicer):
-    RegisterUsernameOk(any_servicer, None, ALICE)
+    create_user(any_servicer, ALICE)
     assert 'must log in to trust folks' in str(SetTrustedErr(any_servicer, None, ALICE, True))
 
   async def test_error_if_nonexistent(self, any_servicer: Servicer):
-    RegisterUsernameOk(any_servicer, None, ALICE)
+    create_user(any_servicer, ALICE)
     assert 'no such user' in str(SetTrustedErr(any_servicer, ALICE, u('nonexistent'), True))
 
   async def test_error_if_self(self, any_servicer: Servicer):
-    RegisterUsernameOk(any_servicer, None, ALICE)
+    create_user(any_servicer, ALICE)
     assert 'cannot set trust for self' in str(SetTrustedErr(any_servicer, ALICE, ALICE, True))
 
   async def test_happy_path(self, any_servicer: Servicer):
     register_friend_pair(any_servicer, ALICE, BOB)
-    RegisterUsernameOk(any_servicer, None, CHARLIE)
+    create_user(any_servicer, CHARLIE)
 
     alice_view_of_bob = GetUserOk(any_servicer, ALICE, BOB)
     assert alice_view_of_bob.trusted_by_you
@@ -650,8 +668,8 @@ class TestSetTrusted:
 
   @pytest.mark.parametrize('trust', [True, False])
   async def test_removing_trust_deletes_outgoing_invitation(self, any_servicer: Servicer, emailer: Emailer, trust: bool):
-    init_user(any_servicer, ALICE, email=(emailer, 'alice@example.com'))
-    init_user(any_servicer, BOB, email=(emailer, 'bob@example.com'), allow_email_invitations=True)
+    create_user(any_servicer, ALICE)
+    create_user(any_servicer, BOB)
 
     SendInvitationOk(any_servicer, ALICE, BOB)
     SetTrustedOk(any_servicer, ALICE, BOB, trust)
@@ -663,11 +681,11 @@ class TestSetTrusted:
 class TestGetUser:
 
   async def test_error_when_nonexistent(self, any_servicer: Servicer):
-    RegisterUsernameOk(any_servicer, None, ALICE)
+    create_user(any_servicer, ALICE)
     assert 'no such user' in str(GetUserErr(any_servicer, None, u('nonexistentuser')))
 
   async def test_success_when_self(self, any_servicer: Servicer):
-    RegisterUsernameOk(any_servicer, None, ALICE)
+    create_user(any_servicer, ALICE)
     resp = GetUserOk(any_servicer, ALICE, ALICE)
     assert resp == mvp_pb2.Relationship(trusted_by_you=True, trusts_you=True)
 
@@ -677,19 +695,19 @@ class TestGetUser:
     assert resp == mvp_pb2.Relationship(trusted_by_you=True, trusts_you=True)
 
   async def test_shows_trust_correctly_when_logged_in(self, any_servicer: Servicer):
-    RegisterUsernameOk(any_servicer, None, ALICE)
-    RegisterUsernameOk(any_servicer, None, BOB)
+    create_user(any_servicer, ALICE)
+    create_user(any_servicer, BOB)
     SetTrustedOk(any_servicer, BOB, ALICE, True)
     resp = GetUserOk(any_servicer, ALICE, BOB)
     assert resp == mvp_pb2.Relationship(trusted_by_you=False, trusts_you=True)
 
-    RegisterUsernameOk(any_servicer, None, CHARLIE)
+    create_user(any_servicer, CHARLIE)
     SetTrustedOk(any_servicer, ALICE, CHARLIE, True)
     resp = GetUserOk(any_servicer, ALICE, CHARLIE)
     assert resp == mvp_pb2.Relationship(trusted_by_you=True, trusts_you=False)
 
   async def test_no_trust_when_logged_out(self, any_servicer: Servicer):
-    RegisterUsernameOk(any_servicer, None, ALICE)
+    create_user(any_servicer, ALICE)
     resp = GetUserOk(any_servicer, None, ALICE)
     assert resp == mvp_pb2.Relationship(trusted_by_you=False, trusts_you=False)
 
@@ -697,106 +715,22 @@ class TestGetUser:
 class TestChangePassword:
 
   async def test_error_if_logged_out(self, any_servicer: Servicer):
-    RegisterUsernameOk(any_servicer, None, ALICE, 'original pw')
+    create_user(any_servicer, ALICE, password='original pw')
     with assert_user_unchanged(any_servicer, ALICE, 'original pw'):
       assert 'must log in' in str(ChangePasswordErr(any_servicer, None, 'original pw', 'new password'))
 
   async def test_can_log_in_with_new_password(self, any_servicer: Servicer):
     orig_pw = 'pw'
-    RegisterUsernameOk(any_servicer, None, ALICE, password=orig_pw)
+    create_user(any_servicer, ALICE, password=orig_pw)
     ChangePasswordOk(any_servicer, ALICE, orig_pw, 'new password')
     assert LogInUsernameOk(any_servicer, None, ALICE, 'new password').token.owner == ALICE
 
   async def test_error_when_wrong_old_password(self, any_servicer: Servicer):
     orig_pw = 'pw'
-    RegisterUsernameOk(any_servicer, None, ALICE, password=orig_pw)
+    create_user(any_servicer, ALICE, password=orig_pw)
     with assert_user_unchanged(any_servicer, ALICE, orig_pw):
       assert 'wrong old password' in str(ChangePasswordErr(any_servicer, ALICE, 'WRONG', 'new password'))
 
-
-class TestSetEmail:
-
-  async def test_changes_settings(self, any_servicer: Servicer):
-    RegisterUsernameOk(any_servicer, None, ALICE)
-    SetEmailOk(any_servicer, ALICE, 'nobody@example.com')
-    assert GetSettingsOk(any_servicer, ALICE).email.code_sent.email == 'nobody@example.com'
-
-  async def test_returns_new_flow_state(self, any_servicer: Servicer):
-    RegisterUsernameOk(any_servicer, None, ALICE)
-    assert SetEmailOk(any_servicer, ALICE, 'nobody@example.com').code_sent.email == 'nobody@example.com'
-
-  async def test_sends_code_in_email(self, emailer: Emailer, any_servicer: Servicer):
-    RegisterUsernameOk(any_servicer, None, ALICE)
-    SetEmailOk(any_servicer, ALICE, 'nobody@example.com')
-    emailer.send_email_verification.assert_called_once_with(to='nobody@example.com', code=ANY)  # type: ignore
-
-  async def test_works_in_code_sent_state(self, emailer: Emailer, any_servicer: Servicer):
-    RegisterUsernameOk(any_servicer, None, ALICE)
-    SetEmailOk(any_servicer, ALICE, 'old@old.old')
-    SetEmailOk(any_servicer, ALICE, 'new@new.new')
-    assert GetSettingsOk(any_servicer, ALICE).email.code_sent.email == 'new@new.new'
-    emailer.send_email_verification.assert_called_with(to='new@new.new', code=ANY)  # type: ignore
-
-  async def test_works_in_verified_state(self, emailer: Emailer, any_servicer: Servicer):
-    RegisterUsernameOk(any_servicer, None, ALICE)
-    set_and_verify_email(any_servicer, emailer, ALICE, 'old@old.old')
-    SetEmailOk(any_servicer, ALICE, 'new@new.new')
-    assert GetSettingsOk(any_servicer, ALICE).email.code_sent.email == 'new@new.new'
-    emailer.send_email_verification.assert_called_with(to='new@new.new', code=ANY)  # type: ignore
-
-  async def test_clears_email_when_address_is_empty(self, emailer: Emailer, any_servicer: Servicer):
-    RegisterUsernameOk(any_servicer, None, ALICE)
-    SetEmailOk(any_servicer, ALICE, 'nobody@example.com')
-    emailer.send_email_verification.reset_mock()  # type: ignore
-    assert SetEmailOk(any_servicer, ALICE, '').WhichOneof('email_flow_state_kind') == 'unstarted'
-    emailer.send_email_verification.assert_not_called()  # type: ignore
-
-  async def test_error_if_logged_out(self, any_servicer: Servicer):
-    assert 'must log in' in str(SetEmailErr(any_servicer, None, 'nobody@example.com'))
-
-  async def test_validates_email(self, any_servicer: Servicer):
-    RegisterUsernameOk(any_servicer, None, ALICE, 'pw')
-    for good_email_address in ['a@b', 'b@c.com', 'a.b-c_d+tag@example.com']:
-      assert SetEmailOk(any_servicer, ALICE, good_email_address).code_sent.email == good_email_address
-    for bad_email_address in ['bad email', 'bad@example.com  ', 'good@example.com, evil@example.com']:
-      with assert_user_unchanged(any_servicer, ALICE, 'pw'):
-        assert 'invalid-looking email' in str(SetEmailErr(any_servicer, ALICE, bad_email_address))
-
-
-class TestVerifyEmail:
-
-  async def test_happy_path(self, emailer: Emailer, any_servicer: Servicer):
-    RegisterUsernameOk(any_servicer, None, ALICE)
-    SetEmailOk(any_servicer, ALICE, 'nobody@example.com')
-    code = emailer.send_email_verification.call_args[1]['code']  # type: ignore
-    assert VerifyEmailOk(any_servicer, ALICE, code=code).verified == 'nobody@example.com'
-
-  async def test_error_if_wrong_code(self, emailer: Emailer, any_servicer: Servicer):
-    RegisterUsernameOk(any_servicer, None, ALICE)
-    SetEmailOk(any_servicer, ALICE, 'nobody@example.com')
-    code = emailer.send_email_verification.call_args[1]['code']  # type: ignore
-    assert 'bad code' in str(VerifyEmailErr(any_servicer, ALICE, code='not ' + code))
-
-  async def test_error_if_unstarted(self, emailer: Emailer, any_servicer: Servicer):
-    RegisterUsernameOk(any_servicer, None, ALICE)
-    assert 'no pending email-verification' in str(VerifyEmailErr(any_servicer, ALICE, code='some code'))
-
-  async def test_error_if_restarted(self, emailer: Emailer, any_servicer: Servicer):
-    RegisterUsernameOk(any_servicer, None, ALICE)
-    SetEmailOk(any_servicer, ALICE, 'old@old.old')
-    code = emailer.send_email_verification.call_args[1]['code']  # type: ignore
-    SetEmailOk(any_servicer, ALICE, 'new@new.new')
-    assert 'bad code' in str(VerifyEmailErr(any_servicer, ALICE, code=code))
-
-  async def test_error_if_already_verified(self, emailer: Emailer, any_servicer: Servicer):
-    RegisterUsernameOk(any_servicer, None, ALICE)
-    SetEmailOk(any_servicer, ALICE, 'nobody@example.com')
-    code = emailer.send_email_verification.call_args[1]['code']  # type: ignore
-    VerifyEmailOk(any_servicer, ALICE, code=code)
-    assert 'no pending email-verification' in str(VerifyEmailErr(any_servicer, ALICE, code=code))
-
-  async def test_error_if_logged_out(self, any_servicer: Servicer):
-    assert 'must log in' in str(VerifyEmailErr(any_servicer, None, code='foo'))
 
 
 class TestGetSettings:
@@ -810,83 +744,22 @@ class TestGetSettings:
     assert dict(geninfo.relationships) == {BOB: mvp_pb2.Relationship(trusted_by_you=True, trusts_you=True)}
 
 
-class TestUpdateSettings:
-
-  async def test_error_if_logged_out(self, any_servicer: Servicer):
-    assert 'must log in' in str(UpdateSettingsErr(any_servicer, None))
-
-  async def test_noop_if_no_args_given(self, any_servicer: Servicer):
-    RegisterUsernameOk(any_servicer, None, ALICE, 'pw')
-    with assert_user_unchanged(any_servicer, ALICE, 'pw'):
-      UpdateSettingsOk(any_servicer, ALICE)
-
-  async def test_resolution_notification_settings_are_persisted(self, any_servicer: Servicer):
-    RegisterUsernameOk(any_servicer, None, ALICE)
-    UpdateSettingsOk(any_servicer, ALICE, email_resolution_notifications=False)
-    assert not GetSettingsOk(any_servicer, ALICE).email_resolution_notifications
-    UpdateSettingsOk(any_servicer, ALICE, email_resolution_notifications=True)
-    assert GetSettingsOk(any_servicer, ALICE).email_resolution_notifications
-
-  async def test_reminder_settings_are_persisted(self, any_servicer: Servicer):
-    RegisterUsernameOk(any_servicer, None, ALICE)
-    UpdateSettingsOk(any_servicer, ALICE, email_reminders_to_resolve=False)
-    assert not GetSettingsOk(any_servicer, ALICE).email_reminders_to_resolve
-    UpdateSettingsOk(any_servicer, ALICE, email_reminders_to_resolve=True)
-    assert GetSettingsOk(any_servicer, ALICE).email_reminders_to_resolve
-
-  async def test_email_invitation_settings_are_persisted(self, any_servicer: Servicer):
-    RegisterUsernameOk(any_servicer, None, ALICE)
-    UpdateSettingsOk(any_servicer, ALICE, allow_email_invitations=False)
-    assert not GetSettingsOk(any_servicer, ALICE).allow_email_invitations
-    UpdateSettingsOk(any_servicer, ALICE, allow_email_invitations=True)
-    assert GetSettingsOk(any_servicer, ALICE).allow_email_invitations
-
-  async def test_invitation_acceptance_notification_settings_are_persisted(self, any_servicer: Servicer):
-    RegisterUsernameOk(any_servicer, None, ALICE)
-    UpdateSettingsOk(any_servicer, ALICE, email_invitation_acceptance_notifications=False)
-    assert not GetSettingsOk(any_servicer, ALICE).email_invitation_acceptance_notifications
-    UpdateSettingsOk(any_servicer, ALICE, email_invitation_acceptance_notifications=True)
-    assert GetSettingsOk(any_servicer, ALICE).email_invitation_acceptance_notifications
-
-  async def test_response_has_new_settings(self, any_servicer: Servicer):
-    RegisterUsernameOk(any_servicer, None, ALICE)
-    resp = UpdateSettingsOk(any_servicer, ALICE, email_reminders_to_resolve=True)
-    assert resp == GetSettingsOk(any_servicer, ALICE)
-
 
 class TestSendInvitation:
 
   async def test_error_if_logged_out(self, any_servicer: Servicer):
     assert 'must log in' in str(SendInvitationErr(any_servicer, None, 'anybody'))
 
-  async def test_error_if_inviter_has_no_email(self, any_servicer: Servicer, emailer: Emailer):
-    init_user(any_servicer, ALICE, email=(emailer, 'alice@example.com'))
-    RegisterUsernameOk(any_servicer, None, BOB)
-
-    assert 'you need to add an email address before you can send invitations' in str(SendInvitationErr(any_servicer, BOB, ALICE))
-
-  async def test_error_if_recipient_has_no_email(self, any_servicer: Servicer, emailer: Emailer):
-    RegisterUsernameOk(any_servicer, None, ALICE)
-    init_user(any_servicer, BOB, email=(emailer, 'bob@example.com'))
-
-    assert 'does not accept email invitations' in str(SendInvitationErr(any_servicer, BOB, ALICE))
-
-  async def test_error_if_recipient_disabled_email_invitations(self, any_servicer: Servicer, emailer: Emailer):
-    init_user(any_servicer, ALICE, email=(emailer, 'alice@example.com'), allow_email_invitations=False)
-    init_user(any_servicer, BOB, email=(emailer, 'bob@example.com'))
-
-    assert 'does not accept email invitations' in str(SendInvitationErr(any_servicer, BOB, ALICE))
-
   async def test_error_if_already_sent(self, any_servicer: Servicer, emailer: Emailer):
-    init_user(any_servicer, ALICE, email=(emailer, 'alice@example.com'), allow_email_invitations=True)
-    init_user(any_servicer, BOB, email=(emailer, 'bob@example.com'))
+    create_user(any_servicer, ALICE)
+    create_user(any_servicer, BOB)
 
     SendInvitationOk(any_servicer, BOB, ALICE)
     assert 'already asked this user if they trust you' in str(SendInvitationErr(any_servicer, BOB, ALICE))
 
   async def test_sends_email(self, any_servicer: Servicer, emailer: Emailer):
-    init_user(any_servicer, ALICE, email=(emailer, 'alice@example.com'), allow_email_invitations=True)
-    init_user(any_servicer, BOB, email=(emailer, 'bob@example.com'))
+    create_user(any_servicer, ALICE)
+    create_user(any_servicer, BOB)
 
     SendInvitationOk(any_servicer, BOB, ALICE)
 
@@ -905,8 +778,8 @@ class TestCheckInvitation:
     assert 'no such invitation' in str(CheckInvitationErr(any_servicer, None, 'asdf'))
 
   async def test_returns_info_from_send(self, any_servicer: Servicer, emailer: Emailer):
-    init_user(any_servicer, ALICE, email=(emailer, 'alice@example.com'), allow_email_invitations=True)
-    init_user(any_servicer, BOB, email=(emailer, 'bob@example.com'))
+    create_user(any_servicer, ALICE)
+    create_user(any_servicer, BOB)
 
     SendInvitationOk(any_servicer, BOB, 'alice')
     resp = CheckInvitationOk(any_servicer, None, get_call_kwarg(emailer.send_invitation, 'nonce'))
@@ -917,8 +790,8 @@ class TestCheckInvitation:
 class TestAcceptInvitation:
 
   async def test_sets_intended_trust_if_logged_in_as_recipient(self, any_servicer: Servicer, emailer: Emailer, clock: MockClock):
-    init_user(any_servicer, ALICE, email=(emailer, 'alice@example.com'), allow_email_invitations=True)
-    init_user(any_servicer, BOB, email=(emailer, 'bob@example.com'))
+    create_user(any_servicer, ALICE)
+    create_user(any_servicer, BOB)
     SendInvitationOk(any_servicer, BOB, ALICE)
     AcceptInvitationOk(any_servicer, ALICE, get_call_kwarg(emailer.send_invitation, 'nonce'))
 
@@ -926,8 +799,8 @@ class TestAcceptInvitation:
     assert rel.trusts_you and rel.trusted_by_you
 
   async def test_commits_queued_trades(self, any_servicer: Servicer, emailer: Emailer, clock: MockClock):
-    init_user(any_servicer,ALICE, email=(emailer, 'alice@example.com'))
-    init_user(any_servicer,BOB, email=(emailer, 'bob@example.com'))
+    create_user(any_servicer, ALICE)
+    create_user(any_servicer, BOB)
     prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
     SendInvitationOk(any_servicer, BOB, ALICE)
     StakeOk(any_servicer, BOB, some_stake_request(prediction_id))
@@ -936,17 +809,17 @@ class TestAcceptInvitation:
     assert trade.state == mvp_pb2.TRADE_STATE_ACTIVE
 
   async def test_successfully_creates_trust_even_if_logged_out(self, any_servicer: Servicer, emailer: Emailer):
-    init_user(any_servicer, ALICE, email=(emailer, 'alice@example.com'), allow_email_invitations=True)
-    init_user(any_servicer, BOB, email=(emailer, 'bob@example.com'))
+    create_user(any_servicer, ALICE)
+    create_user(any_servicer, BOB)
     SendInvitationOk(any_servicer, BOB, ALICE)
     AcceptInvitationOk(any_servicer, None, get_call_kwarg(emailer.send_invitation, 'nonce'))
     rel = GetSettingsOk(any_servicer, ALICE).relationships[BOB]
     assert rel.trusts_you and rel.trusted_by_you
 
   async def test_sets_intended_trust_if_logged_in_as_other_user(self, any_servicer: Servicer, emailer: Emailer, clock: MockClock):
-    init_user(any_servicer, ALICE, email=(emailer, 'alice@example.com'), allow_email_invitations=True)
-    init_user(any_servicer, BOB, email=(emailer, 'bob@example.com'))
-    RegisterUsernameOk(any_servicer, None, CHARLIE, password='pw')
+    create_user(any_servicer, ALICE)
+    create_user(any_servicer, BOB)
+    create_user(any_servicer, CHARLIE, password='pw')
 
     SendInvitationOk(any_servicer, BOB, ALICE)
     with assert_user_unchanged(any_servicer, CHARLIE, 'pw'):
@@ -955,39 +828,22 @@ class TestAcceptInvitation:
     rel = GetSettingsOk(any_servicer, ALICE).relationships[BOB]
     assert rel.trusts_you and rel.trusted_by_you
 
-  async def test_sends_email_to_inviter_if_settings_appropriate(self, any_servicer: Servicer, emailer: Emailer):
-    init_user(any_servicer, ALICE, email=(emailer, 'alice@example.com'), allow_email_invitations=True)
-    init_user(any_servicer, BOB, email=(emailer, 'bob@example.com'), email_invitation_acceptance_notifications=True)
+  async def test_sends_email_to_inviter(self, any_servicer: Servicer, emailer: Emailer):
+    create_user(any_servicer, ALICE)
+    create_user(any_servicer, BOB)
 
     SendInvitationOk(any_servicer, BOB, ALICE)
     AcceptInvitationOk(any_servicer, None, get_call_kwarg(emailer.send_invitation, 'nonce'))
     emailer.send_invitation_acceptance_notification.assert_called_once_with(inviter_email='bob@example.com', recipient_username=ALICE)  # type: ignore
 
-  async def test_does_not_send_email_to_inviter_if_no_email(self, any_servicer: Servicer, emailer: Emailer):
-    init_user(any_servicer, ALICE, email=(emailer, 'alice@example.com'), allow_email_invitations=True)
-    init_user(any_servicer, BOB, email=(emailer, 'bob@example.com'))
-
-    SendInvitationOk(any_servicer, BOB, ALICE)
-    SetEmailOk(any_servicer, BOB, '')
-    AcceptInvitationOk(any_servicer, None, get_call_kwarg(emailer.send_invitation, 'nonce'))
-    emailer.send_invitation_acceptance_notification.assert_not_called()  # type: ignore
-
-  async def test_does_not_send_email_to_inviter_if_notifications_disabled(self, any_servicer: Servicer, emailer: Emailer):
-    init_user(any_servicer, ALICE, email=(emailer, 'alice@example.com'), allow_email_invitations=True)
-    init_user(any_servicer, BOB, email=(emailer, 'bob@example.com'), email_invitation_acceptance_notifications=False)
-
-    SendInvitationOk(any_servicer, BOB, ALICE)
-    AcceptInvitationOk(any_servicer, None, get_call_kwarg(emailer.send_invitation, 'nonce'))
-    emailer.send_invitation_acceptance_notification.assert_not_called()  # type: ignore
-
   async def test_error_when_no_such_invitation(self, any_servicer: Servicer):
-    RegisterUsernameOk(any_servicer, None, ALICE, password='pw')
+    create_user(any_servicer, ALICE, password='pw')
     with assert_user_unchanged(any_servicer, ALICE, 'pw'):
       assert 'no such invitation' in str(AcceptInvitationErr(any_servicer, ALICE, nonce='asdf'))
 
   async def test_error_when_invitation_is_already_used(self, any_servicer: Servicer, emailer: Emailer):
-    init_user(any_servicer, ALICE, email=(emailer, 'alice@example.com'), allow_email_invitations=True)
-    init_user(any_servicer, BOB, email=(emailer, 'bob@example.com'), password='pw')
+    create_user(any_servicer, ALICE)
+    create_user(any_servicer, BOB)
     SendInvitationOk(any_servicer, BOB, ALICE)
     nonce = get_call_kwarg(emailer.send_invitation, 'nonce')
     AcceptInvitationOk(any_servicer, ALICE, nonce)

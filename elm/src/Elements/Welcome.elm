@@ -10,7 +10,6 @@ import Time
 import Utils
 
 import Widgets.AuthWidget as AuthWidget
-import Widgets.EmailSettingsWidget as EmailSettingsWidget
 import Globals
 import API
 import Widgets.Navbar as Navbar
@@ -24,23 +23,15 @@ type alias Model =
   { globals : Globals.Globals
   , navbarAuth : AuthWidget.State
   , authWidget : AuthWidget.State
-  , emailSettingsWidget : EmailSettingsWidget.State
   }
 
 type AuthWidgetLoc = Navbar | Inline
 type Msg
   = SetAuthWidget AuthWidgetLoc AuthWidget.State
-  | SetEmailWidget EmailSettingsWidget.State
   | LogInUsername AuthWidgetLoc AuthWidget.State Pb.LogInUsernameRequest
   | LogInUsernameFinished AuthWidgetLoc Pb.LogInUsernameRequest (Result Http.Error Pb.LogInUsernameResponse)
-  | RegisterUsername AuthWidgetLoc AuthWidget.State Pb.RegisterUsernameRequest
-  | RegisterUsernameFinished AuthWidgetLoc Pb.RegisterUsernameRequest (Result Http.Error Pb.RegisterUsernameResponse)
-  | SetEmail EmailSettingsWidget.State Pb.SetEmailRequest
-  | SetEmailFinished Pb.SetEmailRequest (Result Http.Error Pb.SetEmailResponse)
   | SignOut AuthWidgetLoc AuthWidget.State Pb.SignOutRequest
   | SignOutFinished AuthWidgetLoc Pb.SignOutRequest (Result Http.Error Pb.SignOutResponse)
-  | UpdateSettings EmailSettingsWidget.State Pb.UpdateSettingsRequest
-  | UpdateSettingsFinished Pb.UpdateSettingsRequest (Result Http.Error Pb.UpdateSettingsResponse)
   | Copy String
   | Tick Time.Posix
   | AuthWidgetExternallyModified AuthWidget.DomModification
@@ -51,7 +42,6 @@ init flags =
   ( { globals = JD.decodeValue Globals.globalsDecoder flags |> Utils.mustResult "flags"
     , navbarAuth = AuthWidget.init
     , authWidget = AuthWidget.init
-    , emailSettingsWidget = EmailSettingsWidget.init
     }
   , Cmd.none
   )
@@ -67,8 +57,6 @@ update msg model =
   case msg of
     SetAuthWidget loc widgetState ->
       ( updateAuthWidget loc (always widgetState) model , Cmd.none )
-    SetEmailWidget widgetState ->
-      ( { model | emailSettingsWidget = widgetState } , Cmd.none )
     LogInUsername loc widgetState req ->
       ( updateAuthWidget loc (always widgetState) model
       , API.postLogInUsername (LogInUsernameFinished loc req) req
@@ -79,26 +67,6 @@ update msg model =
           Ok _ -> navigate <| if loc == Inline then Just "/welcome#welcome-page-auth-widget" else Nothing
           Err _ -> Cmd.none
       )
-    RegisterUsername loc widgetState req ->
-      ( updateAuthWidget loc (always widgetState) model
-      , API.postRegisterUsername (RegisterUsernameFinished loc req) req
-      )
-    RegisterUsernameFinished loc req res ->
-      ( updateAuthWidget loc (AuthWidget.handleRegisterUsernameResponse res) { model | globals = model.globals |> Globals.handleRegisterUsernameResponse req res }
-      , case API.simplifyRegisterUsernameResponse res of
-          Ok _ -> navigate <| if loc == Inline then Just "/welcome#welcome-page-auth-widget" else Nothing
-          Err _ -> Cmd.none
-      )
-    SetEmail widgetState req ->
-      ( { model | emailSettingsWidget = widgetState }
-      , API.postSetEmail (SetEmailFinished req) req
-      )
-    SetEmailFinished req res ->
-      ( { model | globals = model.globals |> Globals.handleSetEmailResponse req res
-                , emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleSetEmailResponse res
-        }
-      , Cmd.none
-      )
     SignOut loc widgetState req ->
       ( updateAuthWidget loc (always widgetState) model
       , API.postSignOut (SignOutFinished loc req) req
@@ -108,16 +76,6 @@ update msg model =
       , case API.simplifySignOutResponse res of
           Ok _ -> navigate <| Just "/"
           Err _ -> Cmd.none
-      )
-    UpdateSettings widgetState req ->
-      ( { model | emailSettingsWidget = widgetState }
-      , API.postUpdateSettings (UpdateSettingsFinished req) req
-      )
-    UpdateSettingsFinished req res ->
-      ( { model | globals = model.globals |> Globals.handleUpdateSettingsResponse req res
-                , emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleUpdateSettingsResponse res
-        }
-      , Cmd.none
       )
     Copy s ->
       ( model
@@ -149,7 +107,6 @@ view model =
     Navbar.view
         { setState = SetAuthWidget Navbar
         , logInUsername = LogInUsername Navbar
-        , register = RegisterUsername Navbar
         , signOut = SignOut Navbar
         , ignore = Ignore
         , username = Globals.getOwnUsername model.globals
@@ -217,36 +174,7 @@ view model =
         ]
     , H.ul []
         [ H.li [HA.style "margin-bottom" "1em"]
-            [ H.text " Create an account:   "
-            , H.div [HA.id "welcome-page-auth-widget", HA.class "container m-2"]
-                [ AuthWidget.view
-                  { setState = SetAuthWidget Inline
-                  , logInUsername = LogInUsername Inline
-                  , register = RegisterUsername Inline
-                  , signOut = SignOut Inline
-                  , ignore = Ignore
-                  , username = Globals.getOwnUsername model.globals
-                  , id = "inline-auth"
-                  }
-                  model.authWidget
-                ]
-            ]
-        , H.li [HA.style "margin-bottom" "1em"]
-            [ H.text " I strongly recommend adding an email address, so I can remind you to resolve your predictions, notify you when predictions resolve, and ask you if you trust people who want to bet on your predictions: "
-            , H.div [HA.style "border" "1px solid gray", HA.style "padding" "0.5em", HA.style "margin" "0.5em"]
-                [ case Globals.getUserInfo model.globals of
-                    Nothing -> H.text "(first, log in)"
-                    Just userInfo ->
-                      EmailSettingsWidget.view
-                        { setState = SetEmailWidget
-                        , ignore = Ignore
-                        , setEmail = SetEmail
-                        , updateSettings = UpdateSettings
-                        , userInfo = userInfo
-                        , showAllEmailSettings = True
-                        }
-                        model.emailSettingsWidget
-                ]
+            [ H.a [HA.href "/signup"] [H.text "Create an account!"]
             ]
         , H.li [HA.style "margin-bottom" "1em"]
             [ H.text " Go to "

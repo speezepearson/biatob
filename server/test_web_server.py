@@ -31,9 +31,9 @@ def app(loop, web_server):
   '/fast',
 ])
 async def test_smoke(aiohttp_client, app, api_server, any_servicer, path: str, logged_in: bool):
-  rando = token_owner(RegisterUsernameOk(any_servicer, None, u('rando')).token)
+  create_user(any_servicer, u('rando'))
   api_server.add_to_app(app)
-  prediction_id = any_servicer.CreatePrediction(rando, some_create_prediction_request()).new_prediction_id
+  prediction_id = any_servicer.CreatePrediction(u('rando'), some_create_prediction_request()).new_prediction_id
   assert prediction_id
 
   cli = await aiohttp_client(app)
@@ -49,9 +49,9 @@ async def test_smoke(aiohttp_client, app, api_server, any_servicer, path: str, l
   '/p/{prediction_id}/embed-darkgreen-14pt.png',
 ])
 async def test_smoke_for_prediction_paths(aiohttp_client, app, api_server, any_servicer: Servicer, path: str, logged_in: bool):
-  rando = token_owner(RegisterUsernameOk(any_servicer, None, u('rando')).token)
+  create_user(any_servicer, u('rando'))
   api_server.add_to_app(app)
-  prediction_id = any_servicer.CreatePrediction(rando, some_create_prediction_request()).new_prediction_id
+  prediction_id = any_servicer.CreatePrediction(au('rando'), some_create_prediction_request()).new_prediction_id
   assert prediction_id
 
   cli = await aiohttp_client(app)
@@ -68,14 +68,14 @@ async def test_smoke_for_prediction_paths(aiohttp_client, app, api_server, any_s
   '/{username}',
 ])
 async def test_smoke_for_username_paths(aiohttp_client, app, api_server, any_servicer: Servicer, path: str, logged_in: bool):
-  viewee = token_owner(RegisterUsernameOk(any_servicer, None, u('viewee')).token)
+  create_user(any_servicer, u('viewee'))
   api_server.add_to_app(app)
 
   cli = await aiohttp_client(app)
   if logged_in:
     await post_proto(cli, '/api/RegisterUsername', mvp_pb2.RegisterUsernameRequest(username='alice', password='alice'), mvp_pb2.RegisterUsernameResponse)
 
-  resp = await cli.get(path.format(username=viewee))
+  resp = await cli.get(path.format(username=u('viewee')))
   assert resp.status == 200
 
 @pytest.mark.parametrize('logged_in', [True, False])
@@ -85,12 +85,8 @@ async def test_smoke_for_username_paths(aiohttp_client, app, api_server, any_ser
 async def test_smoke_for_invitation_paths(aiohttp_client, app, api_server, any_servicer: Servicer, emailer: Emailer, path: str, logged_in: bool):
   api_server.add_to_app(app)
 
-  RegisterUsernameOk(any_servicer, None, u('recipient'))
-  set_and_verify_email(any_servicer, emailer, au('recipient'), 'recipient@example.com')
-  any_servicer.UpdateSettings(au('recipient'), mvp_pb2.UpdateSettingsRequest(allow_email_invitations=mvp_pb2.MaybeBool(value=True)))
-
-  RegisterUsernameOk(any_servicer, None, u('inviter'))
-  set_and_verify_email(any_servicer, emailer, au('inviter'), 'inviter@example.com')
+  create_user(any_servicer, u('recipient'))
+  create_user(any_servicer, u('inviter'))
   assert_oneof(any_servicer.SendInvitation(au('inviter'), mvp_pb2.SendInvitationRequest(recipient='recipient')), 'send_invitation_result', 'ok', object)
   nonce = get_call_kwarg(emailer.send_invitation, 'nonce')
 

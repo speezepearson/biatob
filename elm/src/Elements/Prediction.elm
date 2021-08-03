@@ -11,7 +11,6 @@ import Http
 import Widgets.CopyWidget as CopyWidget
 import Widgets.AuthWidget as AuthWidget
 import Widgets.Navbar as Navbar
-import Widgets.EmailSettingsWidget as EmailSettingsWidget
 import Globals
 import API
 import Biatob.Proto.Mvp as Pb
@@ -31,7 +30,6 @@ type alias Model =
   , navbarAuth : AuthWidget.State
   , authWidget : AuthWidget.State
   , predictionId : PredictionId
-  , emailSettingsWidget : EmailSettingsWidget.State
   , resolveNotesField : String
   , resolveStatus : RequestStatus
   , stakeField : String
@@ -151,25 +149,18 @@ type AuthWidgetLoc = Navbar | Inline
 
 type Msg
   = SetAuthWidget AuthWidgetLoc AuthWidget.State
-  | SetEmailWidget EmailSettingsWidget.State
   | SendInvitation
   | SendInvitationFinished Pb.SendInvitationRequest (Result Http.Error Pb.SendInvitationResponse)
   | LogInUsername AuthWidgetLoc AuthWidget.State Pb.LogInUsernameRequest
   | LogInUsernameFinished AuthWidgetLoc Pb.LogInUsernameRequest (Result Http.Error Pb.LogInUsernameResponse)
-  | RegisterUsername AuthWidgetLoc AuthWidget.State Pb.RegisterUsernameRequest
-  | RegisterUsernameFinished AuthWidgetLoc Pb.RegisterUsernameRequest (Result Http.Error Pb.RegisterUsernameResponse)
   | Resolve Pb.Resolution
   | ResolveFinished Pb.ResolveRequest (Result Http.Error Pb.ResolveResponse)
   | SetCreatorTrusted
   | SetCreatorTrustedFinished Pb.SetTrustedRequest (Result Http.Error Pb.SetTrustedResponse)
-  | SetEmail EmailSettingsWidget.State Pb.SetEmailRequest
-  | SetEmailFinished Pb.SetEmailRequest (Result Http.Error Pb.SetEmailResponse)
   | SignOut AuthWidgetLoc AuthWidget.State Pb.SignOutRequest
   | SignOutFinished AuthWidgetLoc Pb.SignOutRequest (Result Http.Error Pb.SignOutResponse)
   | Stake Cents
   | StakeFinished Pb.StakeRequest (Result Http.Error Pb.StakeResponse)
-  | UpdateSettings EmailSettingsWidget.State Pb.UpdateSettingsRequest
-  | UpdateSettingsFinished Pb.UpdateSettingsRequest (Result Http.Error Pb.UpdateSettingsResponse)
   | SetBettorSide Utils.BetSide
   | SetStakeField String
   | SetEmbeddingFormat EmbeddingFormat
@@ -199,7 +190,6 @@ initInternal globals predictionId =
   , navbarAuth = AuthWidget.init
   , authWidget = AuthWidget.init
   , predictionId = predictionId
-  , emailSettingsWidget = EmailSettingsWidget.init
   , resolveNotesField = ""
   , resolveStatus = Unstarted
   , stakeStatus = Unstarted
@@ -237,7 +227,6 @@ view model =
     [ Navbar.view
         { setState = SetAuthWidget Navbar
         , logInUsername = LogInUsername Navbar
-        , register = RegisterUsername Navbar
         , signOut = SignOut Navbar
         , ignore = Ignore
         , username = Globals.getOwnUsername model.globals
@@ -261,11 +250,7 @@ viewBodyMockup globals prediction =
       }
     mockSettings : Pb.GenericUserInfo
     mockSettings =
-      { email = Just {emailFlowStateKind=Just (Pb.EmailFlowStateKindUnstarted Pb.Void)}
-      , allowEmailInvitations = True
-      , emailRemindersToResolve = True
-      , emailResolutionNotifications = True
-      , emailInvitationAcceptanceNotifications = True
+      { emailAddress = "example@example.com"
       , invitations = Dict.empty
       , loginType = Just (Pb.LoginTypeLoginPassword {salt=emptyBytes, scrypt=emptyBytes})
       , relationships = Dict.singleton prediction.creator (Just {trustsYou=True, trustedByYou=True})
@@ -282,10 +267,6 @@ viewBodyMockup globals prediction =
   |> H.div []
   |> H.map (\_ -> ())
 
-predictionAllowsEmailInvitation : Model -> Bool
-predictionAllowsEmailInvitation model =
-  (mustPrediction model).allowEmailInvitations
-
 pendingEmailInvitation : Model -> Bool
 pendingEmailInvitation model =
   case Globals.getUserInfo model.globals of
@@ -298,13 +279,7 @@ pendingEmailInvitation model =
 
 userEmailAddress : Model -> Maybe String
 userEmailAddress model =
-  case Globals.getUserInfo model.globals of
-    Just settings -> case settings.email of
-      Just efs -> case efs.emailFlowStateKind of
-        Just (Pb.EmailFlowStateKindVerified addr) -> Just addr
-        _ -> Nothing
-      _ -> Nothing
-    _ -> Nothing
+  Globals.getUserInfo model.globals |> Maybe.map .emailAddress
 
 type PrereqsForStaking
   = CanAlreadyStake
@@ -313,10 +288,8 @@ type PrereqsForStaking
   | BettingClosed
   | NeedsAccount
   | NeedsToSetTrusted
-  | NeedsEmailAddress
   | NeedsToSendEmailInvitation
   | NeedsToWaitForInvitation
-  | NeedsToTextUserPageLink
 
 getBetParameters : Utils.BetSide -> Pb.UserPredictionView -> { remainingCreatorStake : Cents , creatorStakeFactor : Float , maxBettorStake : Cents }
 getBetParameters side prediction =
@@ -370,17 +343,11 @@ getPrereqsForStaking model =
     CanAlreadyStake
   else if Globals.getRelationship model.globals creator |> Maybe.map (\r -> r.trustsYou && not r.trustedByYou) |> Maybe.withDefault False then
     NeedsToSetTrusted
-  else if Globals.getRelationship model.globals creator |> Maybe.map (not << .trustedByYou) |> Maybe.withDefault False |> (&&) (not (predictionAllowsEmailInvitation model)) then
-    NeedsToSetTrusted
-  else if predictionAllowsEmailInvitation model then
+  else
     if pendingEmailInvitation model then
       NeedsToWaitForInvitation
-    else if userEmailAddress model /= Nothing then
-      NeedsToSendEmailInvitation
     else
-      NeedsEmailAddress
-  else
-    NeedsToTextUserPageLink
+      NeedsToSendEmailInvitation
 
 viewYourStake : Maybe Username -> Time.Zone -> Pb.UserPredictionView -> Html Msg
 viewYourStake self timeZone prediction =
@@ -408,7 +375,10 @@ viewBody model =
         Just self ->
           H.small [] [H.details [HA.class "mt-2 text-secondary"]
           [ H.summary [] [H.text "But I hate giving out my email address!"]
-          , H.text "Well, if you trust ", Utils.renderUser prediction.creator, H.text ", you presumably have some way to communicate with them over SMS or email or whatever. You could send them a link to "
+          , H.text "Well, if you trust ", Utils.renderUser prediction.creator, H.text ", you presumably have some way to communicate with them over SMS or email or whatever."
+          , H.text "You could go to "
+          , H.a [HA.href <| Utils.pathToUserPage prediction.creator] [H.text "their user page"]
+          , H.text " and mark them as trusted, then send them a link to "
           , H.a [HA.href <| Utils.pathToUserPage self] [H.text "your user page"]
           , H.text " and ask them to mark you as trusted."
           ]]
@@ -455,7 +425,6 @@ viewBody model =
               [ AuthWidget.view
                 { setState = SetAuthWidget Inline
                 , logInUsername = LogInUsername Inline
-                , register = RegisterUsername Inline
                 , signOut = SignOut Inline
                 , ignore = Ignore
                 , username = Globals.getOwnUsername model.globals
@@ -511,53 +480,10 @@ viewBody model =
               ]
             , H.div [HA.class "text-center text-secondary"]
               [ H.text "This will require sharing your email address ("
-              , H.code [HA.style "color" "inherit"] [ H.text <| Utils.must "must have email address, else would take the NeedsEmailAddress branch" <| userEmailAddress model ]
+              , H.code [HA.style "color" "inherit"] [ H.text <| (Globals.getUserInfo model.globals |> Utils.must "must be logged in, else would take the NeedsAccount branch").emailAddress ]
               , H.text ") with them."
               ]
             , maybeOrYouCouldSwapUserPages
-            ]
-          NeedsEmailAddress ->
-            H.div [HA.id "make-a-bet-section"]
-            [ H.p []
-              [ H.h4 [HA.class "text-center"] [H.text "Make a bet"]
-              , H.text "You need an email address in order to bet!"
-              , H.br [] []
-              , H.small [HA.class "mx-3 text-secondary"]
-                [ H.text " I need it so I can identify you to "
-                , Utils.renderUser prediction.creator
-                , H.text " when I ask them whether they trust you."
-                ]
-              , H.div [HA.class "m-1 mx-4"]
-                [ EmailSettingsWidget.view
-                  { setState = SetEmailWidget
-                  , ignore = Ignore
-                  , setEmail = SetEmail
-                  , updateSettings = UpdateSettings
-                  , userInfo = Utils.must "checked that user is logged in" (Globals.getUserInfo model.globals)
-                  , showAllEmailSettings = False
-                  }
-                  model.emailSettingsWidget
-                ]
-              , maybeOrYouCouldSwapUserPages
-              ]
-            ]
-          NeedsToTextUserPageLink ->
-            H.div [HA.id "make-a-bet-section"]
-            [ H.p []
-              [ H.h4 [HA.class "text-center"] [H.text "Make a bet"]
-              , viewStakeWidget
-                ( QueueingNecessary <|
-                  H.span []
-                  [ H.span [HA.class "text-danger"]
-                    [ H.text "You'll need to contact them over SMS/IM/email/whatever,"
-                    ]
-                  , H.text " send them a link to "
-                  , H.a [HA.href <| Utils.pathToUserPage <| Utils.must "checked user is logged in" <| Globals.getOwnUsername model.globals] [H.text "your user page"]
-                  , H.text ", and ask them to mark you as trusted. Sorry it's such a hassle. I'd normally offer to ask them for you, but they disabled that option."
-                  ]
-                )
-                model.stakeField model.stakeStatus model.bettorSide prediction
-              ]
             ]
       ]
     , if not (Globals.isLoggedIn model.globals) then
@@ -1167,8 +1093,6 @@ update msg model =
   case msg of
     SetAuthWidget loc widgetState ->
       ( updateAuthWidget loc (always widgetState) model , Cmd.none )
-    SetEmailWidget widgetState ->
-      ( { model | emailSettingsWidget = widgetState } , Cmd.none )
     SendInvitation ->
       ( { model | sendInvitationStatus = AwaitingResponse }
       , let req = {recipient=(mustPrediction model).creator} in API.postSendInvitation (SendInvitationFinished req) req
@@ -1188,16 +1112,6 @@ update msg model =
     LogInUsernameFinished loc req res ->
       ( updateAuthWidget loc (AuthWidget.handleLogInUsernameResponse res) { model | globals = model.globals |> Globals.handleLogInUsernameResponse req res }
       , case API.simplifyLogInUsernameResponse res of
-          Ok _ -> navigate <| Nothing
-          Err _ -> Cmd.none
-      )
-    RegisterUsername loc widgetState req ->
-      ( updateAuthWidget loc (always widgetState) model
-      , API.postRegisterUsername (RegisterUsernameFinished loc req) req
-      )
-    RegisterUsernameFinished loc req res ->
-      ( updateAuthWidget loc (AuthWidget.handleRegisterUsernameResponse res) { model | globals = model.globals |> Globals.handleRegisterUsernameResponse req res }
-      , case API.simplifyRegisterUsernameResponse res of
           Ok _ -> navigate <| Nothing
           Err _ -> Cmd.none
       )
@@ -1226,16 +1140,6 @@ update msg model =
         }
       , Cmd.none
       )
-    SetEmail widgetState req ->
-      ( { model | emailSettingsWidget = widgetState }
-      , API.postSetEmail (SetEmailFinished req) req
-      )
-    SetEmailFinished req res ->
-      ( { model | globals = model.globals |> Globals.handleSetEmailResponse req res
-                , emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleSetEmailResponse res
-        }
-      , Cmd.none
-      )
     SignOut loc widgetState req ->
       ( updateAuthWidget loc (always widgetState) model
       , API.postSignOut (SignOutFinished loc req) req
@@ -1260,16 +1164,6 @@ update msg model =
             { model | globals = model.globals |> Globals.handleStakeResponse req res
                     , stakeStatus = Failed e
             }
-      , Cmd.none
-      )
-    UpdateSettings widgetState req ->
-      ( { model | emailSettingsWidget = widgetState }
-      , API.postUpdateSettings (UpdateSettingsFinished req) req
-      )
-    UpdateSettingsFinished req res ->
-      ( { model | globals = model.globals |> Globals.handleUpdateSettingsResponse req res
-                , emailSettingsWidget = model.emailSettingsWidget |> EmailSettingsWidget.handleUpdateSettingsResponse res
-        }
       , Cmd.none
       )
     SetBettorSide bettorSide ->

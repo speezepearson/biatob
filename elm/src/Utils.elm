@@ -14,7 +14,7 @@ import Protobuf.Encode as PE
 import Dict exposing (Dict)
 
 import Biatob.Proto.Mvp as Pb
-import Parser
+import Parser exposing ((|.), (|=))
 
 type alias Username = String
 type alias Password = String
@@ -42,15 +42,25 @@ illegalUsernameCharacters s =
   in
     Set.diff presentChars okayChars
 
-parseUsername : String -> Result String Username
+type UsernameProblem
+  = TooShort
+  | IllegalCharacters (Set.Set Char)
+minUsernameLength = 3
+usernameProblemToString : UsernameProblem -> String
+usernameProblemToString problem =
+  case problem of
+    TooShort -> "must be at least " ++ String.fromInt minUsernameLength ++ "characters"
+    IllegalCharacters chars -> "illegal characters: " ++ Debug.toString chars
+parseUsername : String -> Result (List UsernameProblem) Username
 parseUsername s =
-  if s=="" then
-    Err ""
+  if String.length s < 3 then
+    Err [TooShort]
   else let badChars = illegalUsernameCharacters s in
   if not (Set.isEmpty badChars) then
-    Err ("bad characters: " ++ Debug.toString (Set.toList badChars))
+    Err [IllegalCharacters badChars]
   else
     Ok s
+
 parsePassword : String -> Result String Password
 parsePassword s =
   if s=="" then
@@ -139,14 +149,11 @@ mustDecodeFromFlags dec field val =
 mustPredictionCertainty : Pb.UserPredictionView -> Pb.CertaintyRange
 mustPredictionCertainty {certainty} = must "all predictions must have certainties" certainty
 
+mustProofOfEmailPayload : Pb.ProofOfEmail -> Pb.ProofOfEmailPayload
+mustProofOfEmailPayload {payload} = must "all `ProofOfEmail`s must have `payload`s" payload
+
 mustUsernameGenericInfo : Pb.UsernameInfo -> Pb.GenericUserInfo
 mustUsernameGenericInfo {info} = must "all UserInfos must have GenericUserInfos" info
-
-mustUserInfoEmail : Pb.GenericUserInfo -> Pb.EmailFlowState
-mustUserInfoEmail {email} = email |> Maybe.withDefault {emailFlowStateKind=Just (Pb.EmailFlowStateKindUnstarted Pb.Void)}
-
-mustEmailFlowStateKind : Pb.EmailFlowState -> Pb.EmailFlowStateKind
-mustEmailFlowStateKind {emailFlowStateKind} = must "all EmailFlowStates must have kinds" emailFlowStateKind
 
 mustGetSettingsResult : Pb.GetSettingsResponse -> Pb.GetSettingsResult
 mustGetSettingsResult {getSettingsResult} = must "all GetSettingsResponses must have results" getSettingsResult
@@ -359,3 +366,24 @@ dropdown toMsg ignore options =
           )
   in
   builder
+
+
+
+
+emailParser : Parser.Parser EmailAddress
+emailParser =
+  let
+    validNameChars = Set.fromList <| String.toList "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-+."
+    validDomainChars = Set.fromList <| String.toList "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-+."
+  in
+  Parser.succeed (\s1 s2 -> s1 ++ "@" ++ s2)
+    |= Parser.variable {start=\c -> Set.member c validNameChars, inner=\c -> Set.member c validNameChars, reserved=Set.empty}
+    |. Parser.symbol "@"
+    |= Parser.variable {start=\c -> Set.member c validDomainChars, inner=\c -> Set.member c validDomainChars, reserved=Set.empty}
+    |. Parser.end
+
+parseEmailAddress : String -> Result String EmailAddress
+parseEmailAddress field =
+  case Parser.run emailParser field of
+    Ok s -> Ok s
+    Err _ -> Err "doesn't look valid, sorry"
