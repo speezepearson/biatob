@@ -7,7 +7,6 @@ module Globals exposing
   , getTrustRelationship
   , getRelationship
   , getOwnUsername
-  , hasEmailAddress
   , ServerState
   , globalsDecoder
   , tick
@@ -223,7 +222,3 @@ globalsDecoder =
 getOwnUsername : Globals -> Maybe Username
 getOwnUsername globals =
   globals.self |> Maybe.map .username
-
-hasEmailAddress : Globals -> Bool
-hasEmailAddress globals =
-  getUserInfo globals /= Nothing

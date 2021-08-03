@@ -375,7 +375,10 @@ viewBody model =
         Just self ->
           H.small [] [H.details [HA.class "mt-2 text-secondary"]
           [ H.summary [] [H.text "But I hate giving out my email address!"]
-          , H.text "Well, if you trust ", Utils.renderUser prediction.creator, H.text ", you presumably have some way to communicate with them over SMS or email or whatever. You could send them a link to "
+          , H.text "Well, if you trust ", Utils.renderUser prediction.creator, H.text ", you presumably have some way to communicate with them over SMS or email or whatever."
+          , H.text "You could go to "
+          , H.a [HA.href <| Utils.pathToUserPage prediction.creator] [H.text "their user page"]
+          , H.text " and mark them as trusted, then send them a link to "
           , H.a [HA.href <| Utils.pathToUserPage self] [H.text "your user page"]
           , H.text " and ask them to mark you as trusted."
           ]]
