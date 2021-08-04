@@ -472,13 +472,6 @@ class SqlConn:
       .where(schema.passwords.c.password_id == pwid)
     )
 
-  def change_email(self, user: Username, new_email_address: str) -> None:
-    self._conn.execute(
-      sqlalchemy.update(schema.users)
-      .values(email_address=new_email_address)
-      .where(schema.users.c.username == user)
-    )
-
   def get_email(self, user: Username) -> Optional[str]:
     return self._conn.execute(
       sqlalchemy.select([schema.users.c.email_address])
