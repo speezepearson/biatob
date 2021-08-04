@@ -29,8 +29,8 @@ users = Table(
 relationships = Table(
   'relationships',
   metadata,
-  Column('subject_username', username_t, ForeignKey('users.username'), primary_key=True, nullable=False),
-  Column('object_username', username_t, ForeignKey('users.username'), primary_key=True, nullable=False),
+  Column('subject_username', ForeignKey('users.username'), primary_key=True, nullable=False),
+  Column('object_username', ForeignKey('users.username'), primary_key=True, nullable=False),
   Column('trusted', BOOLEAN(), nullable=False, server_default=sqlalchemy.text('FALSE')),
 )
 Index('relationships_by_subject_username', relationships.c.subject_username)
@@ -48,7 +48,7 @@ predictions = Table(
   Column('closes_at_unixtime', REAL(), CheckConstraint('closes_at_unixtime > created_at_unixtime'), nullable=False),
   Column('resolves_at_unixtime', REAL(), CheckConstraint('resolves_at_unixtime > created_at_unixtime'), nullable=False),
   Column('special_rules', TEXT(), nullable=False),
-  Column('creator', username_t, ForeignKey('users.username'), nullable=False),
+  Column('creator', ForeignKey('users.username'), nullable=False),
   Column('resolution_reminder_sent', BOOLEAN(), nullable=False, server_default=sqlalchemy.text('FALSE')),
   Column('view_privacy', String(96), CheckConstraint("view_privacy in ('PREDICTION_VIEW_PRIVACY_ANYBODY', 'PREDICTION_VIEW_PRIVACY_ANYBODY_WITH_THE_LINK')"), nullable=False, server_default='PREDICTION_VIEW_PRIVACY_ANYBODY'),
 )
@@ -56,15 +56,15 @@ predictions = Table(
 prediction_follows = Table(
   'prediction_follows',
   metadata,
-  Column('prediction_id', predid_t, ForeignKey('predictions.prediction_id'), primary_key=True, nullable=False),
-  Column('follower', username_t, ForeignKey('users.username'), primary_key=True, nullable=False),
+  Column('prediction_id', ForeignKey('predictions.prediction_id'), primary_key=True, nullable=False),
+  Column('follower', ForeignKey('users.username'), primary_key=True, nullable=False),
 )
 
 trades = Table(
   'trades',
   metadata,
-  Column('prediction_id', predid_t, ForeignKey('predictions.prediction_id'), primary_key=True, nullable=False),
-  Column('bettor', username_t, ForeignKey('users.username'), primary_key=True, nullable=False),
+  Column('prediction_id', ForeignKey('predictions.prediction_id'), primary_key=True, nullable=False),
+  Column('bettor', ForeignKey('users.username'), primary_key=True, nullable=False),
   Column('transacted_at_unixtime', REAL(), primary_key=True, nullable=False),
   Column('bettor_is_a_skeptic', BOOLEAN(), nullable=False),
   Column('bettor_stake_cents', Integer(), CheckConstraint('bettor_stake_cents > 0'), nullable=False),
@@ -79,7 +79,7 @@ Index('trades_by_bettor', trades.c.bettor)
 resolutions = Table(
   'resolutions',
   metadata,
-  Column('prediction_id', predid_t, ForeignKey('predictions.prediction_id'), primary_key=True, nullable=False),
+  Column('prediction_id', ForeignKey('predictions.prediction_id'), primary_key=True, nullable=False),
   Column('resolved_at_unixtime', REAL(), primary_key=True, nullable=False),
   Column('resolution', String(64), CheckConstraint("resolution IN ('RESOLUTION_INVALID', 'RESOLUTION_NO', 'RESOLUTION_NONE_YET', 'RESOLUTION_YES')"), nullable=False),
   Column('notes', TEXT(), nullable=False, server_default=sqlalchemy.text("''")),
@@ -89,8 +89,8 @@ Index('resolutions_by_prediction_id', resolutions.c.prediction_id)
 email_invitations = Table(
   'email_invitations',
   metadata,
-  Column('inviter', username_t, ForeignKey('users.username'), primary_key=True, nullable=False),
-  Column('recipient', username_t, ForeignKey('users.username'), primary_key=True, nullable=False),
+  Column('inviter', ForeignKey('users.username'), primary_key=True, nullable=False),
+  Column('recipient', ForeignKey('users.username'), primary_key=True, nullable=False),
   Column('nonce', String(64), unique=True, nullable=False),
 )
 Index('email_invitations_by_nonce', email_invitations.c.nonce)
