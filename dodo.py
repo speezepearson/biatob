@@ -129,7 +129,7 @@ def task_userstories():
 def task_devsetup():
   import sys
   def print_instructions():
-    print("[to edit the server] Install Python dependencies: `pip install -r server/requirements.txt`", file=sys.stderr)
+    print("[to edit the server] Install Python dependencies: `pip install -r server/requirements.txt -r server/requirements.txt`", file=sys.stderr)
     if not has_executable('elm'):
       print("[to edit the UI] Install Elm: https://github.com/elm/compiler/blob/master/installers/linux/README.md", file=sys.stderr)
     if not has_executable('elm-test'):

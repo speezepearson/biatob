@@ -8,12 +8,3 @@ aiosmtplib
 structlog
 sqlalchemy
 pymysql
-alembic
-
-# testing
-pytest-aiohttp
-pytest
-mypy
-mypy-protobuf
-sqlalchemy-stubs
-types-protobuf
