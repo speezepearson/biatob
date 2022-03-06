@@ -390,7 +390,7 @@ viewBody model =
   [ H.h2 [HA.id "prediction-title", HA.class "text-center"] <| List.map H.text <| getTitleTextChunks model.globals.timeZone prediction
   , H.hr [] []
   , H.div [HA.class "row row-cols-12"]
-    [ H.div [HA.class "col-md-4"]
+    [ H.div [HA.class "col-md-4 overflow-hidden"]
       [ viewSummaryTable model.globals.now model.globals.timeZone prediction
       , if isOwnPrediction then H.text "" else
         case prediction.yourFollowingStatus of
@@ -735,49 +735,47 @@ getTitleTextChunks timeZone prediction =
 
 viewSummaryTable : Time.Posix -> Time.Zone -> Pb.UserPredictionView -> Html Msg
 viewSummaryTable now timeZone prediction =
-  H.table [HA.class "table table-sm", HA.class "col-4"]
-  [ H.tbody []
-    [ H.tr []
-      [ H.th [HA.scope "row"] [H.text "Prediction by:"]
-      , H.td [] [Utils.renderUser prediction.creator]
-      ]
-    , H.tr []
-      [ H.th [HA.scope "row"] [H.text "Confidence:"]
-      , H.td [] [H.text <|
-          (String.fromInt <| round <| 100 * (Utils.mustPredictionCertainty prediction).low)
-          ++ "-" ++
-          (String.fromInt <| round <| 100 * (Utils.mustPredictionCertainty prediction).high)
-          ++ "%"]
-      ]
-    , H.tr []
-      [ H.th [HA.scope "row"] [H.text "Stakes:"]
-      , H.td [] [H.text <| "up to " ++ Utils.formatCents prediction.maximumStakeCents]
-      ]
-    , H.tr []
-      [ H.th [HA.scope "row"] [H.text "Created at:"]
-      , H.td [] [H.text <| Utils.yearMonthDayHourMinuteStr timeZone (Utils.unixtimeToTime prediction.createdUnixtime)]
-      ]
-    , let secondsRemaining = prediction.closesUnixtime - Utils.timeToUnixtime now in
-      H.tr []
-      [ H.th [HA.scope "row"] [H.text <| "Betting " ++ (if secondsRemaining < 0 then "closed" else "closes") ++ ":"]
-      , H.td []
-        [ H.text <| Utils.yearMonthDayHourMinuteStr timeZone (Utils.unixtimeToTime prediction.closesUnixtime)
-        , if 0 < secondsRemaining && secondsRemaining < 86400 * 3 then
-            H.text <| " (in " ++ Utils.renderIntervalSeconds secondsRemaining ++ ")"
-          else
-            H.text ""
-        ]
-      ]
-    , viewResolutionRow now timeZone prediction
-    , case prediction.specialRules of
-        "" ->
-          H.text ""
-        rules ->
-          H.tr []
-          [ H.th [HA.scope "row"] [H.text "Special rules:"]
-          , H.td [] [H.text rules]
-          ]
+  H.div []
+  [ H.div []
+    [ H.strong [] [H.text "Prediction by: "]
+    , H.span [] [Utils.renderUser prediction.creator]
     ]
+  , H.div []
+    [ H.strong [] [H.text "Confidence: "]
+    , H.span [] [H.text <|
+        (String.fromInt <| round <| 100 * (Utils.mustPredictionCertainty prediction).low)
+        ++ "-" ++
+        (String.fromInt <| round <| 100 * (Utils.mustPredictionCertainty prediction).high)
+        ++ "%"]
+    ]
+  , H.div []
+    [ H.strong [] [H.text "Stakes: "]
+    , H.span [] [H.text <| "up to " ++ Utils.formatCents prediction.maximumStakeCents]
+    ]
+  , H.div []
+    [ H.strong [] [H.text "Created at: "]
+    , H.span [] [H.text <| Utils.yearMonthDayHourMinuteStr timeZone (Utils.unixtimeToTime prediction.createdUnixtime)]
+    ]
+  , let secondsRemaining = prediction.closesUnixtime - Utils.timeToUnixtime now in
+    H.div []
+    [ H.strong [] [H.text <| "Betting " ++ (if secondsRemaining < 0 then "closed" else "closes") ++ ": "]
+    , H.span []
+      [ H.text <| Utils.yearMonthDayHourMinuteStr timeZone (Utils.unixtimeToTime prediction.closesUnixtime)
+      , if 0 < secondsRemaining && secondsRemaining < 86400 * 3 then
+          H.text <| " (in " ++ Utils.renderIntervalSeconds secondsRemaining ++ ")"
+        else
+          H.text ""
+      ]
+    ]
+  , viewResolutionRow now timeZone prediction
+  , case prediction.specialRules of
+      "" ->
+        H.text ""
+      rules ->
+        H.div []
+        [ H.strong [] [H.text "Special rules: "]
+        , H.span [] [H.text rules]
+        ]
   ]
 
 unfoldResolutionEvent : Maybe Pb.ResolutionEvent -> List Pb.ResolutionEvent
@@ -816,32 +814,30 @@ viewResolutionRow now timeZone prediction =
           revisions
         ]
   in
-  H.tr []
-  [ H.th [HA.scope "row"] [H.text "Resolution:"]
-  , H.td []
-    [ case Utils.currentResolution prediction of
-        Pb.ResolutionYes ->
-          H.text "it happened"
-        Pb.ResolutionNo ->
-          H.text "it didn't happen"
-        Pb.ResolutionInvalid ->
-          H.text "INVALID PREDICTION"
-        Pb.ResolutionNoneYet ->
-          H.text <|
-            "none yet"
-            ++ if prediction.resolvesAtUnixtime < Utils.timeToUnixtime now then
-              " (even though it should have resolved by now! Consider nudging the creator.)"
-            else
-              ""
-        Pb.ResolutionUnrecognized_ _ ->
-          H.span [HA.style "color" "red"]
-            [ H.text "Oh dear, something has gone very strange with this prediction. Please "
-            , H.a [HA.href "mailto:bugs@biatob.com"] [H.text "email bugs@biatob.com"]
-            , H.text " with this URL to report it!"
-            ]
-    , H.text " "
-    , auditLog
-    ]
+  H.div []
+  [ H.strong [] [H.text "Resolution: "]
+  , case Utils.currentResolution prediction of
+      Pb.ResolutionYes ->
+        H.text "it happened"
+      Pb.ResolutionNo ->
+        H.text "it didn't happen"
+      Pb.ResolutionInvalid ->
+        H.text "INVALID PREDICTION"
+      Pb.ResolutionNoneYet ->
+        H.text <|
+          "none yet"
+          ++ if prediction.resolvesAtUnixtime < Utils.timeToUnixtime now then
+            " (even though it should have resolved by now! Consider nudging the creator.)"
+          else
+            ""
+      Pb.ResolutionUnrecognized_ _ ->
+        H.span [HA.style "color" "red"]
+          [ H.text "Oh dear, something has gone very strange with this prediction. Please "
+          , H.a [HA.href "mailto:bugs@biatob.com"] [H.text "email bugs@biatob.com"]
+          , H.text " with this URL to report it!"
+          ]
+  , H.text " "
+  , auditLog
   ]
 
 viewTradesAsCreator : Time.Zone -> Pb.UserPredictionView -> Html msg
