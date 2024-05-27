@@ -67,7 +67,7 @@ COLOR_NAME_TO_COLOR = {
 @functools.lru_cache(maxsize=256)
 def render_text(text: str, style: Style, file_format: str = 'png') -> bytes:
     font = ImageFont.truetype(str(style.fontpath.resolve()), style.fontsize)
-    w, h = font.getsize(text)
+    _,_,w, h = font.getbbox(text)
     if style.underline:
         h += 2
     img = Image.new('RGBA', (w, h), color=(255,255,255,0))
