@@ -28,19 +28,23 @@ export default defineSchema({
     name: v.optional(v.string()),
     // App-specific fields
     username: v.optional(v.string()),
-    createdAt: v.optional(v.number()),
+    // Override for _creationTime when migrating data. Use getCreationTime() helper.
+    creationTimeOverride: v.optional(v.number()),
   })
     .index("by_username", ["username"])
     .index("email", ["email"]),
 
   // Predictions table
   predictions: defineTable({
-    predictionId: v.string(), // human-readable ID
+    // LEGACY: Human-readable ID from old system. Keep for URL backwards compatibility.
+    // New code should reference predictions by _id.
+    predictionId: v.string(),
     prediction: v.string(), // the prediction text
     certaintyLowP: v.number(), // 0-1 probability range low
     certaintyHighP: v.number(), // 0-1 probability range high
     maximumStakeCents: v.number(),
-    createdAt: v.number(),
+    // Override for _creationTime when migrating data. Use getCreationTime() helper.
+    creationTimeOverride: v.optional(v.number()),
     closesAt: v.number(), // when betting stops
     resolvesAt: v.number(), // expected resolution date
     specialRules: v.optional(v.string()),
@@ -111,8 +115,10 @@ export default defineSchema({
   emailInvitations: defineTable({
     inviterId: v.id("users"),
     recipientEmail: v.string(),
-    nonce: v.string(), // unique token for acceptance
-    createdAt: v.number(),
+    // LEGACY: Nonce from old system for URL backwards compatibility.
+    nonce: v.string(),
+    // Override for _creationTime when migrating data. Use getCreationTime() helper.
+    creationTimeOverride: v.optional(v.number()),
     acceptedAt: v.optional(v.number()),
     acceptedByUserId: v.optional(v.id("users")),
   })

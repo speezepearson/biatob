@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 import { auth } from "./auth";
+import { getCreationTime } from "./helpers";
 
 // Generate a cryptographically secure random prediction ID (lowercase alphanumeric only)
 function generatePredictionId(): string {
@@ -51,15 +52,14 @@ export const create = mutation({
     }
 
     const predictionId = generatePredictionId();
-    const now = Date.now();
 
+    // Note: _creationTime is set automatically by Convex; creationTimeOverride is only for migration
     const id = await ctx.db.insert("predictions", {
       predictionId,
       prediction: args.prediction,
       certaintyLowP: args.certaintyLowP,
       certaintyHighP: args.certaintyHighP,
       maximumStakeCents: args.maximumStakeCents,
-      createdAt: now,
       closesAt: args.closesAt,
       resolvesAt: args.resolvesAt,
       specialRules: args.specialRules,
@@ -150,6 +150,7 @@ export const getByPredictionId = query({
 
     return {
       ...prediction,
+      createdAt: getCreationTime(prediction),
       creatorUsername: creator?.username || "Unknown",
       resolution,
       trades: enrichedTrades,
@@ -169,7 +170,12 @@ export const getByPredictionId = query({
 export const get = query({
   args: { id: v.id("predictions") },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.id);
+    const prediction = await ctx.db.get(args.id);
+    if (!prediction) return null;
+    return {
+      ...prediction,
+      createdAt: getCreationTime(prediction),
+    };
   },
 });
 
@@ -195,6 +201,7 @@ export const listByCreator = query({
 
         return {
           ...p,
+          createdAt: getCreationTime(p),
           resolution: resolutions[0] || null,
         };
       })
@@ -262,6 +269,7 @@ export const listMyStakes = query({
 
         return {
           ...p,
+          createdAt: getCreationTime(p),
           creatorUsername: creator?.username || "Unknown",
           resolution: resolutions[0] || null,
           isCreator: p.creatorId === userId,
@@ -383,6 +391,7 @@ export const listPublic = query({
 
         return {
           ...p,
+          createdAt: getCreationTime(p),
           creatorUsername: creator?.username || "Unknown",
           resolution: resolutions[0] || null,
         };

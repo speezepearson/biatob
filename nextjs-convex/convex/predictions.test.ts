@@ -10,11 +10,11 @@ async function setupAuthenticatedUser(
   userData: { username: string; email: string }
 ) {
   // Create user directly in database
+  // Note: _creationTime is set automatically by Convex
   const userId = await t.run(async (ctx) => {
     return await ctx.db.insert("users", {
       username: userData.username,
       email: userData.email,
-      createdAt: Date.now(),
     });
   });
 

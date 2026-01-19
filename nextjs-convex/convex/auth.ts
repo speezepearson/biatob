@@ -6,6 +6,7 @@ import { DataModel } from "./_generated/dataModel";
 import { scrypt } from "@noble/hashes/scrypt.js";
 import { Scrypt } from "oslo/password";
 import { internal } from "./_generated/api";
+import { getCreationTime } from "./helpers";
 
 // Scrypt parameters - pinned to prevent breakage on library updates
 const SCRYPT_PARAMS = { N: 16384, r: 8, p: 1, dkLen: 64 };
@@ -150,10 +151,10 @@ export const migrateFromLegacy = internalMutation({
 
     // Create the user in Convex Auth by inserting into the users table
     // and the authAccounts table
+    // Note: _creationTime is set automatically; creationTimeOverride is for migrated data
     const userId = await ctx.db.insert("users", {
       email: args.email,
       username: args.username,
-      createdAt: Date.now(),
     });
 
     // Create auth account linked to this user
@@ -276,7 +277,7 @@ export const currentUser = query({
       username: user.username,
       email: user.email,
       name: user.name,
-      createdAt: user.createdAt,
+      createdAt: getCreationTime(user),
     };
   },
 });
@@ -309,10 +310,9 @@ export const setUsername = mutation({
       throw new Error("Username already taken");
     }
 
-    // Update user
+    // Update user - only update username, creation time is immutable
     await ctx.db.patch(userId, {
       username,
-      createdAt: Date.now(),
     });
 
     return { success: true };
@@ -331,7 +331,7 @@ export const getUserById = query({
       username: user.username,
       email: user.email,
       name: user.name,
-      createdAt: user.createdAt,
+      createdAt: getCreationTime(user),
     };
   },
 });
@@ -352,7 +352,7 @@ export const getCurrentUser = query({
       _id: user._id,
       username: user.username,
       email: user.email,
-      createdAt: user.createdAt,
+      createdAt: getCreationTime(user),
     };
   },
 });

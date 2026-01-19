@@ -204,7 +204,7 @@ async function main() {
       _tempId: string;
       email: string;
       username: string;
-      createdAt: number;
+      creationTimeOverride: number;
     }> = [];
 
     const legacyPasswordHashes: Array<{
@@ -223,7 +223,8 @@ async function main() {
         _tempId: tempId,
         email: u.email_address.toLowerCase(),
         username: u.username,
-        createdAt: Date.now(), // Will be updated if we have prediction creation times
+        // Note: Old system didn't track user creation time; we could infer from first prediction
+        creationTimeOverride: Date.now(),
       });
 
       // Get password hash for this user
@@ -250,7 +251,7 @@ async function main() {
       certaintyLowP: number;
       certaintyHighP: number;
       maximumStakeCents: number;
-      createdAt: number;
+      creationTimeOverride: number;
       closesAt: number;
       resolvesAt: number;
       specialRules: string | undefined;
@@ -277,7 +278,7 @@ async function main() {
         certaintyLowP: p.certainty_low_p,
         certaintyHighP: p.certainty_high_p,
         maximumStakeCents: p.maximum_stake_cents,
-        createdAt: Math.floor(p.created_at_unixtime * 1000), // Convert to milliseconds
+        creationTimeOverride: Math.floor(p.created_at_unixtime * 1000), // Convert to milliseconds
         closesAt: Math.floor(p.closes_at_unixtime * 1000),
         resolvesAt: Math.floor(p.resolves_at_unixtime * 1000),
         specialRules: p.special_rules || undefined,
@@ -416,7 +417,7 @@ async function main() {
       inviterId: string;
       recipientEmail: string;
       nonce: string;
-      createdAt: number;
+      creationTimeOverride: number;
     }> = [];
 
     for (const inv of oldInvitations) {
@@ -434,7 +435,8 @@ async function main() {
         inviterId,
         recipientEmail: recipientUser?.email_address.toLowerCase() || inv.recipient,
         nonce: inv.nonce,
-        createdAt: Date.now(), // Old schema doesn't have timestamp
+        // Old schema doesn't have timestamp; using current time as fallback
+        creationTimeOverride: Date.now(),
       });
     }
 

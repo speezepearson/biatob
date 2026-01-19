@@ -24,7 +24,8 @@ export default defineSchema({
     isAnonymous: v.optional(v.boolean()),
     name: v.optional(v.string()),
     username: v.optional(v.string()),
-    createdAt: v.optional(v.number()),
+    // Override for _creationTime when migrating data. Use getCreationTime() helper.
+    creationTimeOverride: v.optional(v.number()),
     passwordHash: v.optional(v.string()), // for auth testing
   })
     .index("by_username", ["username"])
@@ -43,19 +44,22 @@ export default defineSchema({
   emailVerifications: defineTable({
     email: v.string(),
     code: v.string(),
-    createdAt: v.number(),
+    // Override for _creationTime when migrating data. Use getCreationTime() helper.
+    creationTimeOverride: v.optional(v.number()),
     verified: v.boolean(),
   })
     .index("by_email", ["email"]),
 
   // Predictions table
   predictions: defineTable({
+    // LEGACY: Human-readable ID from old system. Keep for URL backwards compatibility.
     predictionId: v.string(),
     prediction: v.string(),
     certaintyLowP: v.number(),
     certaintyHighP: v.number(),
     maximumStakeCents: v.number(),
-    createdAt: v.number(),
+    // Override for _creationTime when migrating data. Use getCreationTime() helper.
+    creationTimeOverride: v.optional(v.number()),
     closesAt: v.number(),
     resolvesAt: v.number(),
     specialRules: v.optional(v.string()),
@@ -126,8 +130,10 @@ export default defineSchema({
   emailInvitations: defineTable({
     inviterId: v.id("users"),
     recipientEmail: v.string(),
+    // LEGACY: Nonce from old system for URL backwards compatibility.
     nonce: v.string(),
-    createdAt: v.number(),
+    // Override for _creationTime when migrating data. Use getCreationTime() helper.
+    creationTimeOverride: v.optional(v.number()),
     acceptedAt: v.optional(v.number()),
     acceptedByUserId: v.optional(v.id("users")),
   })

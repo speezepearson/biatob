@@ -1,0 +1,15 @@
+{
+  "extends": ["next/core-web-vitals"],
+  "plugins": ["local-rules"],
+  "rules": {
+    "local-rules/no-direct-creation-time": "error"
+  },
+  "overrides": [
+    {
+      "files": ["convex/helpers.ts"],
+      "rules": {
+        "local-rules/no-direct-creation-time": "off"
+      }
+    }
+  ]
+}

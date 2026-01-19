@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { auth } from "./auth";
+import { getCreationTime } from "./helpers";
 
 // Generate a cryptographically secure random nonce
 function generateNonce(): string {
@@ -111,7 +112,7 @@ export const getUser = query({
     return {
       _id: targetUser._id,
       username: targetUser.username,
-      createdAt: targetUser.createdAt,
+      createdAt: getCreationTime(targetUser),
       isTrustedByMe,
       trustsMe,
       mutualTrust: isTrustedByMe && trustsMe,
@@ -205,7 +206,7 @@ export const getSettings = query({
       trustedByUsers: trustedByUsers.filter((u) => u !== null),
       sentInvitations: sentInvitations.map((i) => ({
         recipientEmail: i.recipientEmail,
-        createdAt: i.createdAt,
+        createdAt: getCreationTime(i),
         accepted: !!i.acceptedAt,
       })),
     };
@@ -271,7 +272,7 @@ export const sendInvitation = mutation({
       inviterId: userId,
       recipientEmail: email,
       nonce,
-      createdAt: Date.now(),
+      // Note: _creationTime is set automatically; creationTimeOverride is only for migration
     });
 
     return {
