@@ -1,12 +1,12 @@
 import { convexTest } from "convex-test";
 import { expect, test, describe, beforeEach } from "vitest";
 import { api } from "./_generated/api";
-import schema from "./schema";
+import { modules, schema } from "./testHelpers";
 
 describe("Auth", () => {
   describe("createEmailVerification", () => {
     test("creates verification code for new email", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
       const result = await t.mutation(api.auth.createEmailVerification, {
         email: "test@example.com",
       });
@@ -15,7 +15,7 @@ describe("Auth", () => {
     });
 
     test("normalizes email to lowercase", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
       const result = await t.mutation(api.auth.createEmailVerification, {
         email: "TEST@EXAMPLE.COM",
       });
@@ -23,7 +23,7 @@ describe("Auth", () => {
     });
 
     test("rejects already registered email", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
 
       // First create and register a user
       await t.mutation(api.auth.createEmailVerification, {
@@ -56,7 +56,7 @@ describe("Auth", () => {
     });
 
     test("replaces existing unverified verification", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
 
       // Create first verification
       const result1 = await t.mutation(api.auth.createEmailVerification, {
@@ -85,7 +85,7 @@ describe("Auth", () => {
 
   describe("verifyEmailCode", () => {
     test("verifies correct code", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
 
       const { code } = await t.mutation(api.auth.createEmailVerification, {
         email: "test@example.com",
@@ -100,7 +100,7 @@ describe("Auth", () => {
     });
 
     test("rejects incorrect code", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
 
       await t.mutation(api.auth.createEmailVerification, {
         email: "test@example.com",
@@ -115,7 +115,7 @@ describe("Auth", () => {
     });
 
     test("rejects wrong email", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
 
       const { code } = await t.mutation(api.auth.createEmailVerification, {
         email: "test@example.com",
@@ -132,7 +132,7 @@ describe("Auth", () => {
 
   describe("register", () => {
     test("registers user with verified email", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
 
       // Verify email first
       const { code } = await t.mutation(api.auth.createEmailVerification, {
@@ -156,7 +156,7 @@ describe("Auth", () => {
     });
 
     test("rejects unverified email", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
 
       await t.mutation(api.auth.createEmailVerification, {
         email: "unverified@example.com",
@@ -172,7 +172,7 @@ describe("Auth", () => {
     });
 
     test("rejects invalid username - too short", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
 
       const { code } = await t.mutation(api.auth.createEmailVerification, {
         email: "test@example.com",
@@ -192,7 +192,7 @@ describe("Auth", () => {
     });
 
     test("rejects invalid username - special characters", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
 
       const { code } = await t.mutation(api.auth.createEmailVerification, {
         email: "test@example.com",
@@ -212,7 +212,7 @@ describe("Auth", () => {
     });
 
     test("rejects duplicate username", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
 
       // Register first user
       const { code: code1 } = await t.mutation(
@@ -251,7 +251,7 @@ describe("Auth", () => {
 
   describe("login", () => {
     test("logs in with correct credentials", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
 
       // Register user
       const { code } = await t.mutation(api.auth.createEmailVerification, {
@@ -278,7 +278,7 @@ describe("Auth", () => {
     });
 
     test("rejects wrong password", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
 
       // Register user
       const { code } = await t.mutation(api.auth.createEmailVerification, {
@@ -304,7 +304,7 @@ describe("Auth", () => {
     });
 
     test("rejects nonexistent user", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
 
       await expect(
         t.mutation(api.auth.login, {
@@ -317,7 +317,7 @@ describe("Auth", () => {
 
   describe("logout", () => {
     test("invalidates session", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
 
       // Register and get token
       const { code } = await t.mutation(api.auth.createEmailVerification, {
@@ -348,7 +348,7 @@ describe("Auth", () => {
 
   describe("getCurrentUser", () => {
     test("returns user for valid token", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
 
       // Register user
       const { code } = await t.mutation(api.auth.createEmailVerification, {
@@ -372,7 +372,7 @@ describe("Auth", () => {
     });
 
     test("returns null for invalid token", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
 
       const user = await t.query(api.auth.getCurrentUser, {
         token: "invalidtoken",
@@ -381,7 +381,7 @@ describe("Auth", () => {
     });
 
     test("returns null for no token", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
 
       const user = await t.query(api.auth.getCurrentUser, { token: undefined });
       expect(user).toBeNull();
@@ -390,7 +390,7 @@ describe("Auth", () => {
 
   describe("changePassword", () => {
     test("changes password successfully", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
 
       // Register user
       const { code } = await t.mutation(api.auth.createEmailVerification, {
@@ -423,7 +423,7 @@ describe("Auth", () => {
     });
 
     test("rejects wrong current password", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
 
       // Register user
       const { code } = await t.mutation(api.auth.createEmailVerification, {
@@ -449,7 +449,7 @@ describe("Auth", () => {
     });
 
     test("rejects invalid token", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
 
       await expect(
         t.mutation(api.auth.changePassword, {

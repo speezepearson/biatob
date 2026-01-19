@@ -1,7 +1,12 @@
 import { convexTest } from "convex-test";
 import { expect } from "vitest";
 import { api } from "./_generated/api";
-import schema from "./schema";
+import schema from "./testSchema";
+
+// Import all Convex modules for testing
+// This uses Vite's import.meta.glob to dynamically load modules
+// Note: Without eager: true, each entry is a function that returns a promise of the module
+const modules = import.meta.glob("./**/*.*s");
 
 // Test time utilities
 export class MockClock {
@@ -55,9 +60,9 @@ export class EmailCapture {
   }
 }
 
-// Create a test context with Convex
+// Create a test context with Convex - pass modules explicitly
 export function createTestContext() {
-  return convexTest(schema);
+  return convexTest(schema, modules);
 }
 
 // Test fixtures
@@ -200,3 +205,6 @@ export async function establishMutualTrust(
 export function expectError(fn: () => Promise<any>, messageContains?: string) {
   return expect(fn()).rejects.toThrow(messageContains);
 }
+
+// Export modules for direct use
+export { modules, schema };

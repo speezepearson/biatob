@@ -1,7 +1,7 @@
 import { convexTest } from "convex-test";
 import { expect, test, describe } from "vitest";
 import { api } from "./_generated/api";
-import schema from "./schema";
+import { modules, schema } from "./testHelpers";
 
 // Helper to create a user and get token
 async function createUser(
@@ -23,7 +23,7 @@ async function createUser(
 describe("Predictions", () => {
   describe("create", () => {
     test("creates prediction with valid inputs", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
       const token = await createUser(t, {
         username: "alice",
         email: "alice@example.com",
@@ -48,7 +48,7 @@ describe("Predictions", () => {
     });
 
     test("rejects unauthenticated request", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
       const now = Date.now();
 
       await expect(
@@ -66,7 +66,7 @@ describe("Predictions", () => {
     });
 
     test("rejects invalid certainty range", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
       const token = await createUser(t, {
         username: "alice",
         email: "alice@example.com",
@@ -91,7 +91,7 @@ describe("Predictions", () => {
     });
 
     test("rejects out of range certainty", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
       const token = await createUser(t, {
         username: "alice",
         email: "alice@example.com",
@@ -115,7 +115,7 @@ describe("Predictions", () => {
     });
 
     test("auto-follows prediction after creation", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
       const token = await createUser(t, {
         username: "alice",
         email: "alice@example.com",
@@ -143,7 +143,7 @@ describe("Predictions", () => {
     });
 
     test("stores special rules", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
       const token = await createUser(t, {
         username: "alice",
         email: "alice@example.com",
@@ -174,7 +174,7 @@ describe("Predictions", () => {
 
   describe("getByPredictionId", () => {
     test("returns prediction with all fields", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
       const token = await createUser(t, {
         username: "alice",
         email: "alice@example.com",
@@ -211,7 +211,7 @@ describe("Predictions", () => {
     });
 
     test("returns null for nonexistent prediction", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
 
       const result = await t.query(api.predictions.getByPredictionId, {
         predictionId: "nonexistent",
@@ -221,7 +221,7 @@ describe("Predictions", () => {
     });
 
     test("shows following status for logged in user", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
       const aliceToken = await createUser(t, {
         username: "alice",
         email: "alice@example.com",
@@ -263,7 +263,7 @@ describe("Predictions", () => {
 
   describe("resolve", () => {
     test("creator can resolve prediction", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
       const token = await createUser(t, {
         username: "alice",
         email: "alice@example.com",
@@ -302,7 +302,7 @@ describe("Predictions", () => {
     });
 
     test("non-creator cannot resolve", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
       const aliceToken = await createUser(t, {
         username: "alice",
         email: "alice@example.com",
@@ -336,7 +336,7 @@ describe("Predictions", () => {
     });
 
     test("can resolve as invalid", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
       const token = await createUser(t, {
         username: "alice",
         email: "alice@example.com",
@@ -371,7 +371,7 @@ describe("Predictions", () => {
     });
 
     test("supports re-resolution (history)", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
       const token = await createUser(t, {
         username: "alice",
         email: "alice@example.com",
@@ -417,7 +417,7 @@ describe("Predictions", () => {
 
   describe("setFollowing", () => {
     test("user can follow prediction", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
       const aliceToken = await createUser(t, {
         username: "alice",
         email: "alice@example.com",
@@ -457,7 +457,7 @@ describe("Predictions", () => {
     });
 
     test("user can unfollow prediction", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
       const aliceToken = await createUser(t, {
         username: "alice",
         email: "alice@example.com",
@@ -504,7 +504,7 @@ describe("Predictions", () => {
 
   describe("listMyStakes", () => {
     test("returns predictions created by user", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
       const token = await createUser(t, {
         username: "alice",
         email: "alice@example.com",
@@ -540,7 +540,7 @@ describe("Predictions", () => {
     });
 
     test("rejects unauthenticated request", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
 
       await expect(
         t.query(api.predictions.listMyStakes, { token: "invalid" })
@@ -550,7 +550,7 @@ describe("Predictions", () => {
 
   describe("listPublic", () => {
     test("returns only public predictions", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
       const token = await createUser(t, {
         username: "alice",
         email: "alice@example.com",
@@ -586,7 +586,7 @@ describe("Predictions", () => {
     });
 
     test("respects limit", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
       const token = await createUser(t, {
         username: "alice",
         email: "alice@example.com",

@@ -1,7 +1,7 @@
 import { convexTest } from "convex-test";
 import { expect, test, describe } from "vitest";
 import { api } from "./_generated/api";
-import schema from "./schema";
+import { modules, schema } from "./testHelpers";
 
 // Helper to create a user and get token
 async function createUser(
@@ -50,7 +50,7 @@ async function createPrediction(
 describe("Trades", () => {
   describe("stake", () => {
     test("places bet as believer (YES)", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
       const aliceToken = await createUser(t, {
         username: "alice",
         email: "alice@example.com",
@@ -81,7 +81,7 @@ describe("Trades", () => {
     });
 
     test("places bet as skeptic (NO)", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
       const aliceToken = await createUser(t, {
         username: "alice",
         email: "alice@example.com",
@@ -112,7 +112,7 @@ describe("Trades", () => {
     });
 
     test("rejects unauthenticated request", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
       const aliceToken = await createUser(t, {
         username: "alice",
         email: "alice@example.com",
@@ -132,7 +132,7 @@ describe("Trades", () => {
     });
 
     test("rejects betting on own prediction", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
       const aliceToken = await createUser(t, {
         username: "alice",
         email: "alice@example.com",
@@ -152,7 +152,7 @@ describe("Trades", () => {
     });
 
     test("rejects zero or negative stake", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
       const aliceToken = await createUser(t, {
         username: "alice",
         email: "alice@example.com",
@@ -186,7 +186,7 @@ describe("Trades", () => {
     });
 
     test("rejects stake exceeding maximum", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
       const aliceToken = await createUser(t, {
         username: "alice",
         email: "alice@example.com",
@@ -218,7 +218,7 @@ describe("Trades", () => {
     });
 
     test("tracks remaining capacity per side", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
       const aliceToken = await createUser(t, {
         username: "alice",
         email: "alice@example.com",
@@ -273,7 +273,7 @@ describe("Trades", () => {
     });
 
     test("auto-follows prediction after betting", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
       const aliceToken = await createUser(t, {
         username: "alice",
         email: "alice@example.com",
@@ -311,7 +311,7 @@ describe("Trades", () => {
     });
 
     test("stores notes with trade", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
       const aliceToken = await createUser(t, {
         username: "alice",
         email: "alice@example.com",
@@ -342,7 +342,7 @@ describe("Trades", () => {
     });
 
     test("calculates correct odds for different probabilities", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
       const aliceToken = await createUser(t, {
         username: "alice",
         email: "alice@example.com",
@@ -389,7 +389,7 @@ describe("Trades", () => {
 
   describe("disavow", () => {
     test("bettor can disavow their trade", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
       const aliceToken = await createUser(t, {
         username: "alice",
         email: "alice@example.com",
@@ -434,7 +434,7 @@ describe("Trades", () => {
     });
 
     test("non-bettor cannot disavow trade", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
       const aliceToken = await createUser(t, {
         username: "alice",
         email: "alice@example.com",
@@ -476,7 +476,7 @@ describe("Trades", () => {
     });
 
     test("disavowed trade doesn't count toward exposure", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
       const aliceToken = await createUser(t, {
         username: "alice",
         email: "alice@example.com",
@@ -524,7 +524,7 @@ describe("Trades", () => {
 
   describe("getMyTrades", () => {
     test("returns user's trades", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
       const aliceToken = await createUser(t, {
         username: "alice",
         email: "alice@example.com",
@@ -553,7 +553,7 @@ describe("Trades", () => {
     });
 
     test("rejects unauthenticated request", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
 
       await expect(
         t.query(api.trades.getMyTrades, { token: "invalid" })

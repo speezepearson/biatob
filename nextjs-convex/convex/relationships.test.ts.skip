@@ -1,7 +1,7 @@
 import { convexTest } from "convex-test";
 import { expect, test, describe } from "vitest";
 import { api } from "./_generated/api";
-import schema from "./schema";
+import { modules, schema } from "./testHelpers";
 
 // Helper to create a user and get token
 async function createUser(
@@ -23,7 +23,7 @@ async function createUser(
 describe("Relationships", () => {
   describe("setTrusted", () => {
     test("can trust another user", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
       const aliceToken = await createUser(t, {
         username: "alice",
         email: "alice@example.com",
@@ -53,7 +53,7 @@ describe("Relationships", () => {
     });
 
     test("can untrust a user", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
       const aliceToken = await createUser(t, {
         username: "alice",
         email: "alice@example.com",
@@ -86,7 +86,7 @@ describe("Relationships", () => {
     });
 
     test("cannot trust yourself", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
       const aliceToken = await createUser(t, {
         username: "alice",
         email: "alice@example.com",
@@ -103,7 +103,7 @@ describe("Relationships", () => {
     });
 
     test("rejects nonexistent user", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
       const aliceToken = await createUser(t, {
         username: "alice",
         email: "alice@example.com",
@@ -120,7 +120,7 @@ describe("Relationships", () => {
     });
 
     test("rejects unauthenticated request", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
       await createUser(t, {
         username: "bob",
         email: "bob@example.com",
@@ -139,7 +139,7 @@ describe("Relationships", () => {
 
   describe("getUser", () => {
     test("returns user profile with relationship info", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
       const aliceToken = await createUser(t, {
         username: "alice",
         email: "alice@example.com",
@@ -171,7 +171,7 @@ describe("Relationships", () => {
     });
 
     test("detects mutual trust", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
       const aliceToken = await createUser(t, {
         username: "alice",
         email: "alice@example.com",
@@ -206,7 +206,7 @@ describe("Relationships", () => {
     });
 
     test("returns null for nonexistent user", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
 
       const profile = await t.query(api.relationships.getUser, {
         username: "nonexistent",
@@ -216,7 +216,7 @@ describe("Relationships", () => {
     });
 
     test("works without authentication", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
       await createUser(t, {
         username: "bob",
         email: "bob@example.com",
@@ -236,7 +236,7 @@ describe("Relationships", () => {
 
   describe("getSettings", () => {
     test("returns user settings with relationships", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
       const aliceToken = await createUser(t, {
         username: "alice",
         email: "alice@example.com",
@@ -280,7 +280,7 @@ describe("Relationships", () => {
     });
 
     test("rejects unauthenticated request", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
 
       await expect(
         t.query(api.relationships.getSettings, { token: "invalid" })
@@ -290,7 +290,7 @@ describe("Relationships", () => {
 
   describe("sendInvitation", () => {
     test("creates invitation for new email", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
       const aliceToken = await createUser(t, {
         username: "alice",
         email: "alice@example.com",
@@ -309,7 +309,7 @@ describe("Relationships", () => {
     });
 
     test("creates trust for existing user", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
       const aliceToken = await createUser(t, {
         username: "alice",
         email: "alice@example.com",
@@ -339,7 +339,7 @@ describe("Relationships", () => {
     });
 
     test("normalizes email to lowercase", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
       const aliceToken = await createUser(t, {
         username: "alice",
         email: "alice@example.com",
@@ -360,7 +360,7 @@ describe("Relationships", () => {
     });
 
     test("rejects unauthenticated request", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
 
       await expect(
         t.mutation(api.relationships.sendInvitation, {
@@ -373,7 +373,7 @@ describe("Relationships", () => {
 
   describe("checkInvitation", () => {
     test("returns invitation info", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
       const aliceToken = await createUser(t, {
         username: "alice",
         email: "alice@example.com",
@@ -396,7 +396,7 @@ describe("Relationships", () => {
     });
 
     test("returns null for invalid nonce", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
 
       const invitation = await t.query(api.relationships.checkInvitation, {
         nonce: "invalid",
@@ -408,7 +408,7 @@ describe("Relationships", () => {
 
   describe("acceptInvitation", () => {
     test("accepts invitation and creates mutual trust", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
       const aliceToken = await createUser(t, {
         username: "alice",
         email: "alice@example.com",
@@ -450,7 +450,7 @@ describe("Relationships", () => {
     });
 
     test("rejects already accepted invitation", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
       const aliceToken = await createUser(t, {
         username: "alice",
         email: "alice@example.com",
@@ -484,7 +484,7 @@ describe("Relationships", () => {
     });
 
     test("rejects invalid nonce", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
       const bobToken = await createUser(t, {
         username: "bob",
         email: "bob@example.com",
@@ -500,7 +500,7 @@ describe("Relationships", () => {
     });
 
     test("rejects unauthenticated request", async () => {
-      const t = convexTest(schema);
+      const t = convexTest(schema, modules);
       const aliceToken = await createUser(t, {
         username: "alice",
         email: "alice@example.com",

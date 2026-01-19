@@ -12,4 +12,8 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./"),
     },
   },
+  // Handle ESM module resolution for convex-test
+  esbuild: {
+    target: "node18",
+  },
 });

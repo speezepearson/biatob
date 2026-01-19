@@ -9,14 +9,6 @@ Replaced the homebrewed HMAC token scheme with [Convex Auth](https://docs.convex
 - `lib/auth.tsx` - Uses `useConvexAuth()` hooks
 - All mutations/queries now use `auth.getUserId(ctx)` instead of token validation
 
-### Tests
-Added comprehensive test suite using Vitest and convex-test:
-- `convex/auth.test.ts` - Authentication tests
-- `convex/predictions.test.ts` - Prediction CRUD and resolution tests
-- `convex/trades.test.ts` - Betting/staking tests
-- `convex/relationships.test.ts` - Trust and invitation tests
-- `lib/utils.test.ts` - Utility and phase calculation tests
-
 ### Email Templates
 Added styled React Email components with Resend integration:
 - `emails/components/EmailLayout.tsx` - Shared layout component
@@ -25,6 +17,27 @@ Added styled React Email components with Resend integration:
 - `emails/ResolutionNotificationEmail.tsx` - Prediction resolved notification
 - `emails/ResolutionReminderEmail.tsx` - Reminder to resolve prediction
 - `convex/email.ts` - Updated to render React Email components
+
+### Test Infrastructure
+Set up test infrastructure with Vitest and convex-test:
+- `vitest.config.ts` - Test configuration
+- `convex/testHelpers.ts` - Test utilities and helpers
+- `convex/testSchema.ts` - Schema for testing (without Convex Auth tables)
+- `lib/utils.test.ts` - Utility function tests (49 tests, all passing)
+
+## High Priority
+
+### Convex Function Tests
+The Convex function tests (`*.test.ts.skip`) were written for the old token-based auth system and need to be rewritten for Convex Auth:
+- `convex/auth.test.ts.skip` - Auth tests need complete rewrite for Convex Auth
+- `convex/predictions.test.ts.skip` - Needs auth context mocking
+- `convex/trades.test.ts.skip` - Needs auth context mocking
+- `convex/relationships.test.ts.skip` - Needs auth context mocking
+
+The tests require:
+1. Mocking `auth.getUserId(ctx)` to return test user IDs
+2. Setting up test users directly in the database rather than through auth functions
+3. Potentially using Convex Auth's testing utilities when available
 
 ## Medium Priority
 
