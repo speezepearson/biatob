@@ -25,19 +25,16 @@ Set up test infrastructure with Vitest and convex-test:
 - `convex/testSchema.ts` - Schema for testing (without Convex Auth tables)
 - `lib/utils.test.ts` - Utility function tests (49 tests, all passing)
 
-## High Priority
-
 ### Convex Function Tests
-The Convex function tests (`*.test.ts.skip`) were written for the old token-based auth system and need to be rewritten for Convex Auth:
-- `convex/auth.test.ts.skip` - Auth tests need complete rewrite for Convex Auth
-- `convex/predictions.test.ts.skip` - Needs auth context mocking
-- `convex/trades.test.ts.skip` - Needs auth context mocking
-- `convex/relationships.test.ts.skip` - Needs auth context mocking
+Rewrote all Convex function tests using `convex-test` with `t.withIdentity()` for auth mocking:
+- `convex/predictions.test.ts` - 14 tests for prediction CRUD operations
+- `convex/trades.test.ts` - 12 tests for staking and disavowing
+- `convex/relationships.test.ts` - 16 tests for trust and invitations
 
-The tests require:
-1. Mocking `auth.getUserId(ctx)` to return test user IDs
-2. Setting up test users directly in the database rather than through auth functions
-3. Potentially using Convex Auth's testing utilities when available
+All 91 tests passing. Auth is mocked by creating users directly in the database and using `t.withIdentity({ subject: \`${userId}|test-session\` })`.
+
+### GitHub Actions
+Added CI workflow (`.github/workflows/test.yml`) that runs tests on PRs and pushes to main.
 
 ## Medium Priority
 
