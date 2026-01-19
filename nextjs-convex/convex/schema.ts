@@ -1,17 +1,25 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { authTables } from "@convex-dev/auth/server";
 
 export default defineSchema({
-  // Users table
+  // Convex Auth tables
+  ...authTables,
+
+  // Users table - extended with app-specific fields
   users: defineTable({
-    username: v.string(),
-    email: v.string(),
-    passwordHash: v.string(), // scrypt hash stored as base64
-    passwordSalt: v.string(), // salt stored as base64
-    createdAt: v.number(),
+    // Required by Convex Auth
+    email: v.optional(v.string()),
+    emailVerificationTime: v.optional(v.number()),
+    image: v.optional(v.string()),
+    isAnonymous: v.optional(v.boolean()),
+    name: v.optional(v.string()),
+    // App-specific fields
+    username: v.optional(v.string()),
+    createdAt: v.optional(v.number()),
   })
     .index("by_username", ["username"])
-    .index("by_email", ["email"]),
+    .index("email", ["email"]),
 
   // Predictions table
   predictions: defineTable({
@@ -99,25 +107,4 @@ export default defineSchema({
     .index("by_nonce", ["nonce"])
     .index("by_inviter", ["inviterId"])
     .index("by_recipient", ["recipientEmail"]),
-
-  // Email verification tokens
-  emailVerifications: defineTable({
-    email: v.string(),
-    code: v.string(),
-    createdAt: v.number(),
-    expiresAt: v.number(),
-    verified: v.boolean(),
-  })
-    .index("by_email", ["email"])
-    .index("by_email_and_code", ["email", "code"]),
-
-  // Auth sessions
-  sessions: defineTable({
-    userId: v.id("users"),
-    token: v.string(),
-    createdAt: v.number(),
-    expiresAt: v.number(),
-  })
-    .index("by_token", ["token"])
-    .index("by_user", ["userId"]),
 });

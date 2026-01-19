@@ -1,0 +1,463 @@
+import { convexTest } from "convex-test";
+import { expect, test, describe, beforeEach } from "vitest";
+import { api } from "./_generated/api";
+import schema from "./schema";
+
+describe("Auth", () => {
+  describe("createEmailVerification", () => {
+    test("creates verification code for new email", async () => {
+      const t = convexTest(schema);
+      const result = await t.mutation(api.auth.createEmailVerification, {
+        email: "test@example.com",
+      });
+      expect(result.code).toMatch(/^\d{6}$/);
+      expect(result.email).toBe("test@example.com");
+    });
+
+    test("normalizes email to lowercase", async () => {
+      const t = convexTest(schema);
+      const result = await t.mutation(api.auth.createEmailVerification, {
+        email: "TEST@EXAMPLE.COM",
+      });
+      expect(result.email).toBe("test@example.com");
+    });
+
+    test("rejects already registered email", async () => {
+      const t = convexTest(schema);
+
+      // First create and register a user
+      await t.mutation(api.auth.createEmailVerification, {
+        email: "taken@example.com",
+      });
+
+      // Get the code and verify
+      const verifications = await t.run(async (ctx) => {
+        return await ctx.db.query("emailVerifications").collect();
+      });
+      const code = verifications[0].code;
+
+      await t.mutation(api.auth.verifyEmailCode, {
+        email: "taken@example.com",
+        code,
+      });
+
+      await t.mutation(api.auth.register, {
+        username: "taken",
+        email: "taken@example.com",
+        password: "password123",
+      });
+
+      // Now try to create verification for same email
+      await expect(
+        t.mutation(api.auth.createEmailVerification, {
+          email: "taken@example.com",
+        })
+      ).rejects.toThrow("Email already registered");
+    });
+
+    test("replaces existing unverified verification", async () => {
+      const t = convexTest(schema);
+
+      // Create first verification
+      const result1 = await t.mutation(api.auth.createEmailVerification, {
+        email: "test@example.com",
+      });
+
+      // Create second verification for same email
+      const result2 = await t.mutation(api.auth.createEmailVerification, {
+        email: "test@example.com",
+      });
+
+      // Codes should be different
+      expect(result1.code).not.toBe(result2.code);
+
+      // Only one verification should exist
+      const verifications = await t.run(async (ctx) => {
+        return await ctx.db
+          .query("emailVerifications")
+          .filter((q) => q.eq(q.field("email"), "test@example.com"))
+          .collect();
+      });
+      expect(verifications.length).toBe(1);
+      expect(verifications[0].code).toBe(result2.code);
+    });
+  });
+
+  describe("verifyEmailCode", () => {
+    test("verifies correct code", async () => {
+      const t = convexTest(schema);
+
+      const { code } = await t.mutation(api.auth.createEmailVerification, {
+        email: "test@example.com",
+      });
+
+      const result = await t.mutation(api.auth.verifyEmailCode, {
+        email: "test@example.com",
+        code,
+      });
+
+      expect(result.success).toBe(true);
+    });
+
+    test("rejects incorrect code", async () => {
+      const t = convexTest(schema);
+
+      await t.mutation(api.auth.createEmailVerification, {
+        email: "test@example.com",
+      });
+
+      await expect(
+        t.mutation(api.auth.verifyEmailCode, {
+          email: "test@example.com",
+          code: "000000",
+        })
+      ).rejects.toThrow("Invalid verification code");
+    });
+
+    test("rejects wrong email", async () => {
+      const t = convexTest(schema);
+
+      const { code } = await t.mutation(api.auth.createEmailVerification, {
+        email: "test@example.com",
+      });
+
+      await expect(
+        t.mutation(api.auth.verifyEmailCode, {
+          email: "wrong@example.com",
+          code,
+        })
+      ).rejects.toThrow("Invalid verification code");
+    });
+  });
+
+  describe("register", () => {
+    test("registers user with verified email", async () => {
+      const t = convexTest(schema);
+
+      // Verify email first
+      const { code } = await t.mutation(api.auth.createEmailVerification, {
+        email: "new@example.com",
+      });
+      await t.mutation(api.auth.verifyEmailCode, {
+        email: "new@example.com",
+        code,
+      });
+
+      // Register
+      const result = await t.mutation(api.auth.register, {
+        username: "newuser",
+        email: "new@example.com",
+        password: "password123",
+      });
+
+      expect(result.token).toBeDefined();
+      expect(result.token.length).toBe(64);
+      expect(result.userId).toBeDefined();
+    });
+
+    test("rejects unverified email", async () => {
+      const t = convexTest(schema);
+
+      await t.mutation(api.auth.createEmailVerification, {
+        email: "unverified@example.com",
+      });
+
+      await expect(
+        t.mutation(api.auth.register, {
+          username: "newuser",
+          email: "unverified@example.com",
+          password: "password123",
+        })
+      ).rejects.toThrow("Email not verified");
+    });
+
+    test("rejects invalid username - too short", async () => {
+      const t = convexTest(schema);
+
+      const { code } = await t.mutation(api.auth.createEmailVerification, {
+        email: "test@example.com",
+      });
+      await t.mutation(api.auth.verifyEmailCode, {
+        email: "test@example.com",
+        code,
+      });
+
+      await expect(
+        t.mutation(api.auth.register, {
+          username: "ab",
+          email: "test@example.com",
+          password: "password123",
+        })
+      ).rejects.toThrow("Username must be 3-32 characters");
+    });
+
+    test("rejects invalid username - special characters", async () => {
+      const t = convexTest(schema);
+
+      const { code } = await t.mutation(api.auth.createEmailVerification, {
+        email: "test@example.com",
+      });
+      await t.mutation(api.auth.verifyEmailCode, {
+        email: "test@example.com",
+        code,
+      });
+
+      await expect(
+        t.mutation(api.auth.register, {
+          username: "user@name",
+          email: "test@example.com",
+          password: "password123",
+        })
+      ).rejects.toThrow("Username must be 3-32 characters");
+    });
+
+    test("rejects duplicate username", async () => {
+      const t = convexTest(schema);
+
+      // Register first user
+      const { code: code1 } = await t.mutation(
+        api.auth.createEmailVerification,
+        { email: "first@example.com" }
+      );
+      await t.mutation(api.auth.verifyEmailCode, {
+        email: "first@example.com",
+        code: code1,
+      });
+      await t.mutation(api.auth.register, {
+        username: "taken",
+        email: "first@example.com",
+        password: "password123",
+      });
+
+      // Try to register with same username
+      const { code: code2 } = await t.mutation(
+        api.auth.createEmailVerification,
+        { email: "second@example.com" }
+      );
+      await t.mutation(api.auth.verifyEmailCode, {
+        email: "second@example.com",
+        code: code2,
+      });
+
+      await expect(
+        t.mutation(api.auth.register, {
+          username: "taken",
+          email: "second@example.com",
+          password: "password123",
+        })
+      ).rejects.toThrow("Username already taken");
+    });
+  });
+
+  describe("login", () => {
+    test("logs in with correct credentials", async () => {
+      const t = convexTest(schema);
+
+      // Register user
+      const { code } = await t.mutation(api.auth.createEmailVerification, {
+        email: "user@example.com",
+      });
+      await t.mutation(api.auth.verifyEmailCode, {
+        email: "user@example.com",
+        code,
+      });
+      await t.mutation(api.auth.register, {
+        username: "testuser",
+        email: "user@example.com",
+        password: "password123",
+      });
+
+      // Login
+      const result = await t.mutation(api.auth.login, {
+        username: "testuser",
+        password: "password123",
+      });
+
+      expect(result.token).toBeDefined();
+      expect(result.token.length).toBe(64);
+    });
+
+    test("rejects wrong password", async () => {
+      const t = convexTest(schema);
+
+      // Register user
+      const { code } = await t.mutation(api.auth.createEmailVerification, {
+        email: "user@example.com",
+      });
+      await t.mutation(api.auth.verifyEmailCode, {
+        email: "user@example.com",
+        code,
+      });
+      await t.mutation(api.auth.register, {
+        username: "testuser",
+        email: "user@example.com",
+        password: "password123",
+      });
+
+      // Try wrong password
+      await expect(
+        t.mutation(api.auth.login, {
+          username: "testuser",
+          password: "wrongpassword",
+        })
+      ).rejects.toThrow("Invalid username or password");
+    });
+
+    test("rejects nonexistent user", async () => {
+      const t = convexTest(schema);
+
+      await expect(
+        t.mutation(api.auth.login, {
+          username: "nouser",
+          password: "password123",
+        })
+      ).rejects.toThrow("Invalid username or password");
+    });
+  });
+
+  describe("logout", () => {
+    test("invalidates session", async () => {
+      const t = convexTest(schema);
+
+      // Register and get token
+      const { code } = await t.mutation(api.auth.createEmailVerification, {
+        email: "user@example.com",
+      });
+      await t.mutation(api.auth.verifyEmailCode, {
+        email: "user@example.com",
+        code,
+      });
+      const { token } = await t.mutation(api.auth.register, {
+        username: "testuser",
+        email: "user@example.com",
+        password: "password123",
+      });
+
+      // Verify session works
+      const userBefore = await t.query(api.auth.getCurrentUser, { token });
+      expect(userBefore).not.toBeNull();
+
+      // Logout
+      await t.mutation(api.auth.logout, { token });
+
+      // Verify session is gone
+      const userAfter = await t.query(api.auth.getCurrentUser, { token });
+      expect(userAfter).toBeNull();
+    });
+  });
+
+  describe("getCurrentUser", () => {
+    test("returns user for valid token", async () => {
+      const t = convexTest(schema);
+
+      // Register user
+      const { code } = await t.mutation(api.auth.createEmailVerification, {
+        email: "user@example.com",
+      });
+      await t.mutation(api.auth.verifyEmailCode, {
+        email: "user@example.com",
+        code,
+      });
+      const { token } = await t.mutation(api.auth.register, {
+        username: "testuser",
+        email: "user@example.com",
+        password: "password123",
+      });
+
+      const user = await t.query(api.auth.getCurrentUser, { token });
+
+      expect(user).not.toBeNull();
+      expect(user!.username).toBe("testuser");
+      expect(user!.email).toBe("user@example.com");
+    });
+
+    test("returns null for invalid token", async () => {
+      const t = convexTest(schema);
+
+      const user = await t.query(api.auth.getCurrentUser, {
+        token: "invalidtoken",
+      });
+      expect(user).toBeNull();
+    });
+
+    test("returns null for no token", async () => {
+      const t = convexTest(schema);
+
+      const user = await t.query(api.auth.getCurrentUser, { token: undefined });
+      expect(user).toBeNull();
+    });
+  });
+
+  describe("changePassword", () => {
+    test("changes password successfully", async () => {
+      const t = convexTest(schema);
+
+      // Register user
+      const { code } = await t.mutation(api.auth.createEmailVerification, {
+        email: "user@example.com",
+      });
+      await t.mutation(api.auth.verifyEmailCode, {
+        email: "user@example.com",
+        code,
+      });
+      const { token } = await t.mutation(api.auth.register, {
+        username: "testuser",
+        email: "user@example.com",
+        password: "oldpassword",
+      });
+
+      // Change password
+      const result = await t.mutation(api.auth.changePassword, {
+        token,
+        currentPassword: "oldpassword",
+        newPassword: "newpassword",
+      });
+      expect(result.success).toBe(true);
+
+      // Verify can login with new password
+      const { token: newToken } = await t.mutation(api.auth.login, {
+        username: "testuser",
+        password: "newpassword",
+      });
+      expect(newToken).toBeDefined();
+    });
+
+    test("rejects wrong current password", async () => {
+      const t = convexTest(schema);
+
+      // Register user
+      const { code } = await t.mutation(api.auth.createEmailVerification, {
+        email: "user@example.com",
+      });
+      await t.mutation(api.auth.verifyEmailCode, {
+        email: "user@example.com",
+        code,
+      });
+      const { token } = await t.mutation(api.auth.register, {
+        username: "testuser",
+        email: "user@example.com",
+        password: "oldpassword",
+      });
+
+      await expect(
+        t.mutation(api.auth.changePassword, {
+          token,
+          currentPassword: "wrongpassword",
+          newPassword: "newpassword",
+        })
+      ).rejects.toThrow("Current password is incorrect");
+    });
+
+    test("rejects invalid token", async () => {
+      const t = convexTest(schema);
+
+      await expect(
+        t.mutation(api.auth.changePassword, {
+          token: "invalidtoken",
+          currentPassword: "oldpassword",
+          newPassword: "newpassword",
+        })
+      ).rejects.toThrow("Not authenticated");
+    });
+  });
+});

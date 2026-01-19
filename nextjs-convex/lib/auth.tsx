@@ -4,91 +4,53 @@ import {
   createContext,
   useContext,
   useState,
-  useEffect,
   ReactNode,
 } from "react";
 import { useQuery, useMutation } from "convex/react";
+import {
+  useConvexAuth,
+  Authenticated,
+  Unauthenticated,
+  AuthLoading,
+} from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 
 interface User {
   _id: Id<"users">;
-  username: string;
-  email: string;
-  createdAt: number;
+  username?: string;
+  email?: string;
+  name?: string;
+  createdAt?: number;
 }
 
 interface AuthContextType {
   user: User | null;
-  token: string | null;
   isLoading: boolean;
-  login: (username: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
-  register: (username: string, email: string, password: string) => Promise<void>;
+  isAuthenticated: boolean;
+  needsUsername: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const TOKEN_KEY = "biatob_auth_token";
-
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [token, setToken] = useState<string | null>(null);
-  const [isInitialized, setIsInitialized] = useState(false);
+  const { isLoading, isAuthenticated } = useConvexAuth();
 
-  // Load token from localStorage on mount
-  useEffect(() => {
-    const storedToken = localStorage.getItem(TOKEN_KEY);
-    if (storedToken) {
-      setToken(storedToken);
-    }
-    setIsInitialized(true);
-  }, []);
-
-  // Get current user from token
+  // Get current user when authenticated
   const user = useQuery(
-    api.auth.getCurrentUser,
-    isInitialized ? { token: token ?? undefined } : "skip"
+    api.auth.currentUser,
+    isAuthenticated ? {} : "skip"
   );
 
-  const loginMutation = useMutation(api.auth.login);
-  const logoutMutation = useMutation(api.auth.logout);
-  const registerMutation = useMutation(api.auth.register);
-
-  const login = async (username: string, password: string) => {
-    const result = await loginMutation({ username, password });
-    localStorage.setItem(TOKEN_KEY, result.token);
-    setToken(result.token);
-  };
-
-  const logout = async () => {
-    if (token) {
-      try {
-        await logoutMutation({ token });
-      } catch (e) {
-        // Ignore errors on logout
-      }
-    }
-    localStorage.removeItem(TOKEN_KEY);
-    setToken(null);
-  };
-
-  const register = async (username: string, email: string, password: string) => {
-    const result = await registerMutation({ username, email, password });
-    localStorage.setItem(TOKEN_KEY, result.token);
-    setToken(result.token);
-  };
-
-  const isLoading = !isInitialized || (token !== null && user === undefined);
+  const needsUsername = isAuthenticated && user !== undefined && !user?.username;
 
   return (
     <AuthContext.Provider
       value={{
         user: user ?? null,
-        token,
-        isLoading,
-        login,
-        logout,
-        register,
+        isLoading: isLoading || (isAuthenticated && user === undefined),
+        isAuthenticated,
+        needsUsername,
       }}
     >
       {children}
@@ -103,3 +65,6 @@ export function useAuth() {
   }
   return context;
 }
+
+// Re-export Convex Auth components for convenience
+export { Authenticated, Unauthenticated, AuthLoading };

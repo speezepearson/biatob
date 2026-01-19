@@ -1,19 +1,30 @@
 # TODO
 
-## High Priority
+## Completed
 
 ### Switch to Convex Auth
-The current authentication implementation uses a homebrewed HMAC token scheme with manual session management. This should be replaced with [Convex Auth](https://docs.convex.dev/auth) which provides:
-- Built-in session management
-- OAuth providers (Google, GitHub, etc.)
-- Email/password authentication
-- Secure token handling without manual HMAC signing
+Replaced the homebrewed HMAC token scheme with [Convex Auth](https://docs.convex.dev/auth):
+- `convex/auth.ts` - Now uses `convexAuth()` with Password provider
+- `convex/http.ts` - Added HTTP routes for auth
+- `lib/auth.tsx` - Uses `useConvexAuth()` hooks
+- All mutations/queries now use `auth.getUserId(ctx)` instead of token validation
 
-Files to refactor:
-- `convex/auth.ts` - Replace with Convex Auth configuration
-- `convex/schema.ts` - Remove `sessions`, `emailVerifications` tables
-- `lib/auth.tsx` - Use Convex Auth React hooks
-- All pages using `token` prop - Switch to Convex Auth's `useConvexAuth()`
+### Tests
+Added comprehensive test suite using Vitest and convex-test:
+- `convex/auth.test.ts` - Authentication tests
+- `convex/predictions.test.ts` - Prediction CRUD and resolution tests
+- `convex/trades.test.ts` - Betting/staking tests
+- `convex/relationships.test.ts` - Trust and invitation tests
+- `lib/utils.test.ts` - Utility and phase calculation tests
+
+### Email Templates
+Added styled React Email components with Resend integration:
+- `emails/components/EmailLayout.tsx` - Shared layout component
+- `emails/VerificationEmail.tsx` - Verification code email
+- `emails/InvitationEmail.tsx` - Trust invitation email
+- `emails/ResolutionNotificationEmail.tsx` - Prediction resolved notification
+- `emails/ResolutionReminderEmail.tsx` - Reminder to resolve prediction
+- `convex/email.ts` - Updated to render React Email components
 
 ## Medium Priority
 
@@ -29,18 +40,7 @@ The original app generated social media preview images using PIL/Pillow showing 
 - Create a Convex HTTP action that generates images
 - Use a third-party service like Cloudinary
 
-### Tests
-No test suite exists. Should add:
-- Unit tests for utility functions (`lib/utils.ts`)
-- Integration tests for Convex functions
-- E2E tests with Playwright or Cypress
-
 ## Low Priority
-
-### Email Templates
-Current email notifications are plain text. The original had styled HTML templates via Jinja2. Consider:
-- Using React Email for component-based email templates
-- Adding proper HTML styling to match app branding
 
 ### Fast Bet Page
 The original had a dedicated "Fast Bet" page for quick betting. Currently this functionality is only available on the prediction detail page. Could add a streamlined betting interface.

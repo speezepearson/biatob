@@ -3,18 +3,20 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useAuthActions } from "@convex-dev/auth/react";
 import { useAuth } from "@/lib/auth";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, user } = useAuth();
-  const [username, setUsername] = useState("");
+  const { signIn } = useAuthActions();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   // Redirect if already logged in
-  if (user) {
+  if (isAuthenticated && !authLoading) {
     router.push("/");
     return null;
   }
@@ -25,10 +27,15 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      await login(username, password);
+      const formData = new FormData();
+      formData.set("email", email);
+      formData.set("password", password);
+      formData.set("flow", "signIn");
+
+      await signIn("password", formData);
       router.push("/");
     } catch (err: any) {
-      setError(err.message || "Failed to log in");
+      setError(err.message || "Failed to log in. Check your email and password.");
     } finally {
       setIsLoading(false);
     }
@@ -47,17 +54,17 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="username" className="label">
-              Username
+            <label htmlFor="email" className="label">
+              Email
             </label>
             <input
-              type="text"
-              id="username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              type="email"
+              id="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               className="input"
               required
-              autoComplete="username"
+              autoComplete="email"
             />
           </div>
 

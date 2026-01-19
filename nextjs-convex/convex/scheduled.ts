@@ -2,6 +2,9 @@
 
 import { internalAction, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
+import * as React from "react";
+import { render } from "@react-email/render";
+import { ResolutionReminderEmail } from "../emails/ResolutionReminderEmail";
 
 // Internal mutation to get predictions needing reminders
 export const getPredictionsNeedingReminders = internalMutation({
@@ -33,6 +36,17 @@ export const getPredictionsNeedingReminders = internalMutation({
       if (!resolution || resolution.resolution === "none_yet") {
         const creator = await ctx.db.get(prediction.creatorId);
         if (creator) {
+          // Calculate total staked
+          const trades = await ctx.db
+            .query("trades")
+            .withIndex("by_prediction", (q) => q.eq("predictionId", prediction._id))
+            .collect();
+          const activeTrades = trades.filter((t) => t.state === "active");
+          const totalStakedCents = activeTrades.reduce(
+            (sum, t) => sum + t.bettorStakeCents + t.creatorStakeCents,
+            0
+          );
+
           results.push({
             predictionId: prediction._id,
             predictionTextId: prediction.predictionId,
@@ -40,6 +54,7 @@ export const getPredictionsNeedingReminders = internalMutation({
             creatorEmail: creator.email,
             creatorUsername: creator.username,
             resolvesAt: prediction.resolvesAt,
+            totalStakedCents,
           });
 
           // Mark reminder as sent
@@ -63,28 +78,25 @@ export const sendResolutionReminders = internalAction({
 
     for (const prediction of predictions) {
       const predictionUrl = `${baseUrl}/p/${prediction.predictionTextId}`;
-      const resolvesDate = new Date(prediction.resolvesAt).toLocaleDateString();
+      const resolvesDate = new Date(prediction.resolvesAt).toLocaleDateString(
+        "en-US",
+        { year: "numeric", month: "long", day: "numeric" }
+      );
+      const totalStaked = `$${(prediction.totalStakedCents / 100).toFixed(2)}`;
 
-      const html = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h1 style="color: #2563eb;">Resolution Reminder</h1>
-          <p>Hi ${prediction.creatorUsername},</p>
-          <p>Your prediction is due to be resolved by <strong>${resolvesDate}</strong>:</p>
-          <div style="background: #f3f4f6; padding: 20px; margin: 20px 0; border-radius: 8px;">
-            <p style="margin: 0; font-weight: bold;">${prediction.predictionText}</p>
-          </div>
-          <p>Please resolve this prediction when you have the answer.</p>
-          <div style="margin: 30px 0;">
-            <a href="${predictionUrl}" style="background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">
-              Resolve Prediction
-            </a>
-          </div>
-        </div>
-      `;
+      const html = await render(
+        React.createElement(ResolutionReminderEmail, {
+          creatorUsername: prediction.creatorUsername || "there",
+          predictionText: prediction.predictionText,
+          predictionUrl,
+          resolvesAt: resolvesDate,
+          totalStaked,
+        })
+      );
 
       await ctx.runAction(internal.email.sendEmail, {
-        to: prediction.creatorEmail,
-        subject: `Reminder: Your prediction is due for resolution`,
+        to: prediction.creatorEmail || "",
+        subject: `Time to resolve: ${prediction.predictionText.slice(0, 50)}...`,
         html,
       });
     }

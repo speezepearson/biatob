@@ -3,6 +3,12 @@
 import { v } from "convex/values";
 import { action, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
+import * as React from "react";
+import { render } from "@react-email/render";
+import { VerificationEmail } from "../emails/VerificationEmail";
+import { InvitationEmail } from "../emails/InvitationEmail";
+import { ResolutionNotificationEmail } from "../emails/ResolutionNotificationEmail";
+import { ResolutionReminderEmail } from "../emails/ResolutionReminderEmail";
 
 // Email sending action using Resend
 // You'll need to set RESEND_API_KEY in your Convex environment
@@ -57,19 +63,9 @@ export const sendVerificationEmail = action({
     code: v.string(),
   },
   handler: async (ctx, args) => {
-    const html = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h1 style="color: #2563eb;">Welcome to BIATOB</h1>
-        <p>Your verification code is:</p>
-        <div style="background: #f3f4f6; padding: 20px; text-align: center; font-size: 32px; font-weight: bold; letter-spacing: 8px; margin: 20px 0;">
-          ${args.code}
-        </div>
-        <p>This code will expire in 24 hours.</p>
-        <p style="color: #6b7280; font-size: 14px;">
-          If you didn't request this code, you can safely ignore this email.
-        </p>
-      </div>
-    `;
+    const html = await render(
+      React.createElement(VerificationEmail, { code: args.code })
+    );
 
     await ctx.runAction(internal.email.sendEmail, {
       to: args.email,
@@ -90,21 +86,12 @@ export const sendInvitationEmail = action({
   handler: async (ctx, args) => {
     const inviteUrl = `${args.baseUrl}/invite/${args.nonce}`;
 
-    const html = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h1 style="color: #2563eb;">You've been invited to BIATOB</h1>
-        <p><strong>${args.inviterUsername}</strong> has invited you to join BIATOB, an honor-based prediction market platform.</p>
-        <p>By accepting this invitation, you'll establish mutual trust with ${args.inviterUsername}, allowing you to bet on each other's predictions.</p>
-        <div style="margin: 30px 0;">
-          <a href="${inviteUrl}" style="background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">
-            Accept Invitation
-          </a>
-        </div>
-        <p style="color: #6b7280; font-size: 14px;">
-          Or copy this link: ${inviteUrl}
-        </p>
-      </div>
-    `;
+    const html = await render(
+      React.createElement(InvitationEmail, {
+        inviterUsername: args.inviterUsername,
+        inviteUrl,
+      })
+    );
 
     await ctx.runAction(internal.email.sendEmail, {
       to: args.recipientEmail,
@@ -121,41 +108,58 @@ export const sendResolutionNotification = action({
     recipientUsername: v.string(),
     predictionText: v.string(),
     predictionId: v.string(),
-    resolution: v.string(),
+    resolution: v.union(v.literal("yes"), v.literal("no"), v.literal("invalid")),
     creatorUsername: v.string(),
     baseUrl: v.string(),
   },
   handler: async (ctx, args) => {
     const predictionUrl = `${args.baseUrl}/p/${args.predictionId}`;
-    const resolutionColor =
-      args.resolution === "yes"
-        ? "#16a34a"
-        : args.resolution === "no"
-        ? "#dc2626"
-        : "#ca8a04";
 
-    const html = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h1 style="color: #2563eb;">Prediction Resolved</h1>
-        <p>Hi ${args.recipientUsername},</p>
-        <p>A prediction you're following has been resolved by ${args.creatorUsername}:</p>
-        <div style="background: #f3f4f6; padding: 20px; margin: 20px 0; border-radius: 8px;">
-          <p style="margin: 0 0 10px 0; font-weight: bold;">${args.predictionText}</p>
-          <p style="margin: 0; font-size: 18px; color: ${resolutionColor}; font-weight: bold;">
-            Resolved: ${args.resolution.toUpperCase()}
-          </p>
-        </div>
-        <div style="margin: 30px 0;">
-          <a href="${predictionUrl}" style="background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">
-            View Prediction
-          </a>
-        </div>
-      </div>
-    `;
+    const html = await render(
+      React.createElement(ResolutionNotificationEmail, {
+        recipientUsername: args.recipientUsername,
+        predictionText: args.predictionText,
+        predictionUrl,
+        resolution: args.resolution,
+        creatorUsername: args.creatorUsername,
+      })
+    );
 
     await ctx.runAction(internal.email.sendEmail, {
       to: args.recipientEmail,
       subject: `Prediction resolved: ${args.predictionText.slice(0, 50)}...`,
+      html,
+    });
+  },
+});
+
+// Send resolution reminder
+export const sendResolutionReminder = action({
+  args: {
+    creatorEmail: v.string(),
+    creatorUsername: v.string(),
+    predictionText: v.string(),
+    predictionId: v.string(),
+    resolvesAt: v.string(),
+    totalStaked: v.string(),
+    baseUrl: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const predictionUrl = `${args.baseUrl}/p/${args.predictionId}`;
+
+    const html = await render(
+      React.createElement(ResolutionReminderEmail, {
+        creatorUsername: args.creatorUsername,
+        predictionText: args.predictionText,
+        predictionUrl,
+        resolvesAt: args.resolvesAt,
+        totalStaked: args.totalStaked,
+      })
+    );
+
+    await ctx.runAction(internal.email.sendEmail, {
+      to: args.creatorEmail,
+      subject: `Time to resolve: ${args.predictionText.slice(0, 50)}...`,
       html,
     });
   },

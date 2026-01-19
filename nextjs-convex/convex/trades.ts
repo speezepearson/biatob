@@ -1,39 +1,18 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { Id } from "./_generated/dataModel";
-
-// Helper to get user from session
-async function getUserFromSession(
-  ctx: any,
-  token: string | undefined
-): Promise<{ _id: Id<"users">; username: string; email: string } | null> {
-  if (!token) return null;
-
-  const session = await ctx.db
-    .query("sessions")
-    .withIndex("by_token", (q: any) => q.eq("token", token))
-    .first();
-
-  if (!session || session.expiresAt < Date.now()) {
-    return null;
-  }
-
-  const user = await ctx.db.get(session.userId);
-  return user;
-}
+import { auth } from "./auth";
 
 // Place a stake/bet on a prediction
 export const stake = mutation({
   args: {
-    token: v.string(),
     predictionId: v.string(),
     bettorIsSkeptic: v.boolean(),
     bettorStakeCents: v.number(),
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const user = await getUserFromSession(ctx, args.token);
-    if (!user) {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) {
       throw new Error("Not authenticated");
     }
 
@@ -66,25 +45,19 @@ export const stake = mutation({
     }
 
     // Can't bet on your own prediction
-    if (prediction.creatorId === user._id) {
+    if (prediction.creatorId === userId) {
       throw new Error("You cannot bet on your own prediction");
     }
 
     // Calculate odds and creator's stake
-    // If bettor is a skeptic (betting NO), they're betting against the creator's belief
-    // If bettor is a believer (betting YES), they're betting with the creator's belief
     const midP = (prediction.certaintyLowP + prediction.certaintyHighP) / 2;
 
     let creatorStakeCents: number;
     if (args.bettorIsSkeptic) {
-      // Bettor bets NO, creator is on YES side
-      // Bettor wins if NO, stake ratio is p/(1-p) for creator
       creatorStakeCents = Math.floor(
         (args.bettorStakeCents * midP) / (1 - midP)
       );
     } else {
-      // Bettor bets YES, creator is on NO side
-      // Bettor wins if YES, stake ratio is (1-p)/p for creator
       creatorStakeCents = Math.floor(
         (args.bettorStakeCents * (1 - midP)) / midP
       );
@@ -98,7 +71,6 @@ export const stake = mutation({
 
     const activeTrades = existingTrades.filter((t) => t.state === "active");
 
-    // Calculate current exposure for this side
     const currentExposure = activeTrades
       .filter((t) => t.bettorIsSkeptic === args.bettorIsSkeptic)
       .reduce((sum, t) => sum + t.creatorStakeCents, 0);
@@ -115,7 +87,7 @@ export const stake = mutation({
 
     await ctx.db.insert("trades", {
       predictionId: prediction._id,
-      bettorId: user._id,
+      bettorId: userId,
       transactedAt: now,
       bettorIsSkeptic: args.bettorIsSkeptic,
       bettorStakeCents: args.bettorStakeCents,
@@ -129,14 +101,14 @@ export const stake = mutation({
     const existingFollow = await ctx.db
       .query("predictionFollows")
       .withIndex("by_prediction_and_follower", (q) =>
-        q.eq("predictionId", prediction._id).eq("followerId", user._id)
+        q.eq("predictionId", prediction._id).eq("followerId", userId)
       )
       .first();
 
     if (!existingFollow) {
       await ctx.db.insert("predictionFollows", {
         predictionId: prediction._id,
-        followerId: user._id,
+        followerId: userId,
       });
     }
 
@@ -151,12 +123,11 @@ export const stake = mutation({
 // Disavow a trade (back out)
 export const disavow = mutation({
   args: {
-    token: v.string(),
     tradeId: v.id("trades"),
   },
   handler: async (ctx, args) => {
-    const user = await getUserFromSession(ctx, args.token);
-    if (!user) {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) {
       throw new Error("Not authenticated");
     }
 
@@ -165,8 +136,7 @@ export const disavow = mutation({
       throw new Error("Trade not found");
     }
 
-    // Only the bettor can disavow their own trade
-    if (trade.bettorId !== user._id) {
+    if (trade.bettorId !== userId) {
       throw new Error("You can only disavow your own trades");
     }
 
@@ -206,16 +176,16 @@ export const getForPrediction = query({
 
 // Get user's trades
 export const getMyTrades = query({
-  args: { token: v.string() },
-  handler: async (ctx, args) => {
-    const user = await getUserFromSession(ctx, args.token);
-    if (!user) {
+  args: {},
+  handler: async (ctx) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) {
       throw new Error("Not authenticated");
     }
 
     const trades = await ctx.db
       .query("trades")
-      .withIndex("by_bettor", (q) => q.eq("bettorId", user._id))
+      .withIndex("by_bettor", (q) => q.eq("bettorId", userId))
       .collect();
 
     return Promise.all(

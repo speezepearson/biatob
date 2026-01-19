@@ -1,26 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { Id } from "./_generated/dataModel";
-
-// Helper to get user from session
-async function getUserFromSession(
-  ctx: any,
-  token: string | undefined
-): Promise<{ _id: Id<"users">; username: string; email: string } | null> {
-  if (!token) return null;
-
-  const session = await ctx.db
-    .query("sessions")
-    .withIndex("by_token", (q: any) => q.eq("token", token))
-    .first();
-
-  if (!session || session.expiresAt < Date.now()) {
-    return null;
-  }
-
-  const user = await ctx.db.get(session.userId);
-  return user;
-}
+import { auth } from "./auth";
 
 // Generate a random nonce
 function generateNonce(): string {
@@ -35,14 +15,18 @@ function generateNonce(): string {
 // Set trust relationship
 export const setTrusted = mutation({
   args: {
-    token: v.string(),
     targetUsername: v.string(),
     trusted: v.boolean(),
   },
   handler: async (ctx, args) => {
-    const user = await getUserFromSession(ctx, args.token);
-    if (!user) {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) {
       throw new Error("Not authenticated");
+    }
+
+    const user = await ctx.db.get(userId);
+    if (!user) {
+      throw new Error("User not found");
     }
 
     const targetUser = await ctx.db
@@ -54,14 +38,14 @@ export const setTrusted = mutation({
       throw new Error("User not found");
     }
 
-    if (targetUser._id === user._id) {
+    if (targetUser._id === userId) {
       throw new Error("Cannot set trust relationship with yourself");
     }
 
     const existingRelationship = await ctx.db
       .query("relationships")
       .withIndex("by_subject_and_object", (q) =>
-        q.eq("subjectId", user._id).eq("objectId", targetUser._id)
+        q.eq("subjectId", userId).eq("objectId", targetUser._id)
       )
       .first();
 
@@ -69,7 +53,7 @@ export const setTrusted = mutation({
       await ctx.db.patch(existingRelationship._id, { trusted: args.trusted });
     } else {
       await ctx.db.insert("relationships", {
-        subjectId: user._id,
+        subjectId: userId,
         objectId: targetUser._id,
         trusted: args.trusted,
       });
@@ -83,7 +67,6 @@ export const setTrusted = mutation({
 export const getUser = query({
   args: {
     username: v.string(),
-    token: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const targetUser = await ctx.db
@@ -98,27 +81,25 @@ export const getUser = query({
     let isTrustedByMe = false;
     let trustsMe = false;
 
-    if (args.token) {
-      const currentUser = await getUserFromSession(ctx, args.token);
-      if (currentUser && currentUser._id !== targetUser._id) {
-        // Check if I trust them
-        const myTrust = await ctx.db
-          .query("relationships")
-          .withIndex("by_subject_and_object", (q) =>
-            q.eq("subjectId", currentUser._id).eq("objectId", targetUser._id)
-          )
-          .first();
-        isTrustedByMe = myTrust?.trusted ?? false;
+    const currentUserId = await auth.getUserId(ctx);
+    if (currentUserId && currentUserId !== targetUser._id) {
+      // Check if I trust them
+      const myTrust = await ctx.db
+        .query("relationships")
+        .withIndex("by_subject_and_object", (q) =>
+          q.eq("subjectId", currentUserId).eq("objectId", targetUser._id)
+        )
+        .first();
+      isTrustedByMe = myTrust?.trusted ?? false;
 
-        // Check if they trust me
-        const theirTrust = await ctx.db
-          .query("relationships")
-          .withIndex("by_subject_and_object", (q) =>
-            q.eq("subjectId", targetUser._id).eq("objectId", currentUser._id)
-          )
-          .first();
-        trustsMe = theirTrust?.trusted ?? false;
-      }
+      // Check if they trust me
+      const theirTrust = await ctx.db
+        .query("relationships")
+        .withIndex("by_subject_and_object", (q) =>
+          q.eq("subjectId", targetUser._id).eq("objectId", currentUserId)
+        )
+        .first();
+      trustsMe = theirTrust?.trusted ?? false;
     }
 
     // Get their predictions
@@ -142,17 +123,22 @@ export const getUser = query({
 
 // Get user settings and relationships
 export const getSettings = query({
-  args: { token: v.string() },
-  handler: async (ctx, args) => {
-    const user = await getUserFromSession(ctx, args.token);
-    if (!user) {
+  args: {},
+  handler: async (ctx) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) {
       throw new Error("Not authenticated");
+    }
+
+    const user = await ctx.db.get(userId);
+    if (!user) {
+      throw new Error("User not found");
     }
 
     // Get people I trust
     const myTrustRelations = await ctx.db
       .query("relationships")
-      .withIndex("by_subject", (q) => q.eq("subjectId", user._id))
+      .withIndex("by_subject", (q) => q.eq("subjectId", userId))
       .collect();
 
     const trustedUsers = await Promise.all(
@@ -166,7 +152,7 @@ export const getSettings = query({
           const theirTrust = await ctx.db
             .query("relationships")
             .withIndex("by_subject_and_object", (q) =>
-              q.eq("subjectId", r.objectId).eq("objectId", user._id)
+              q.eq("subjectId", r.objectId).eq("objectId", userId)
             )
             .first();
 
@@ -181,7 +167,7 @@ export const getSettings = query({
     // Get people who trust me
     const theirTrustRelations = await ctx.db
       .query("relationships")
-      .withIndex("by_object", (q) => q.eq("objectId", user._id))
+      .withIndex("by_object", (q) => q.eq("objectId", userId))
       .collect();
 
     const trustedByUsers = await Promise.all(
@@ -207,7 +193,7 @@ export const getSettings = query({
     // Get pending invitations I sent
     const sentInvitations = await ctx.db
       .query("emailInvitations")
-      .withIndex("by_inviter", (q) => q.eq("inviterId", user._id))
+      .withIndex("by_inviter", (q) => q.eq("inviterId", userId))
       .collect();
 
     return {
@@ -230,13 +216,17 @@ export const getSettings = query({
 // Send invitation
 export const sendInvitation = mutation({
   args: {
-    token: v.string(),
     recipientEmail: v.string(),
   },
   handler: async (ctx, args) => {
-    const user = await getUserFromSession(ctx, args.token);
-    if (!user) {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) {
       throw new Error("Not authenticated");
+    }
+
+    const user = await ctx.db.get(userId);
+    if (!user) {
+      throw new Error("User not found");
     }
 
     const email = args.recipientEmail.toLowerCase().trim();
@@ -244,7 +234,7 @@ export const sendInvitation = mutation({
     // Check if already invited
     const existingInvitation = await ctx.db
       .query("emailInvitations")
-      .withIndex("by_inviter", (q) => q.eq("inviterId", user._id))
+      .withIndex("by_inviter", (q) => q.eq("inviterId", userId))
       .collect();
 
     const alreadyInvited = existingInvitation.some(
@@ -258,13 +248,13 @@ export const sendInvitation = mutation({
     // Check if recipient is already a user
     const existingUser = await ctx.db
       .query("users")
-      .withIndex("by_email", (q) => q.eq("email", email))
+      .withIndex("email", (q) => q.eq("email", email))
       .first();
 
     if (existingUser) {
       // Just create mutual trust
       await ctx.db.insert("relationships", {
-        subjectId: user._id,
+        subjectId: userId,
         objectId: existingUser._id,
         trusted: true,
       });
@@ -279,7 +269,7 @@ export const sendInvitation = mutation({
     const nonce = generateNonce();
 
     await ctx.db.insert("emailInvitations", {
-      inviterId: user._id,
+      inviterId: userId,
       recipientEmail: email,
       nonce,
       createdAt: Date.now(),
@@ -325,11 +315,10 @@ export const checkInvitation = query({
 export const acceptInvitation = mutation({
   args: {
     nonce: v.string(),
-    token: v.string(),
   },
   handler: async (ctx, args) => {
-    const user = await getUserFromSession(ctx, args.token);
-    if (!user) {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) {
       throw new Error("Not authenticated");
     }
 
@@ -349,20 +338,20 @@ export const acceptInvitation = mutation({
     // Mark invitation as accepted
     await ctx.db.patch(invitation._id, {
       acceptedAt: Date.now(),
-      acceptedByUserId: user._id,
+      acceptedByUserId: userId,
     });
 
     // Create mutual trust
     // Inviter trusts recipient
     await ctx.db.insert("relationships", {
       subjectId: invitation.inviterId,
-      objectId: user._id,
+      objectId: userId,
       trusted: true,
     });
 
     // Recipient trusts inviter
     await ctx.db.insert("relationships", {
-      subjectId: user._id,
+      subjectId: userId,
       objectId: invitation.inviterId,
       trusted: true,
     });

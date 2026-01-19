@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
+import { auth } from "./auth";
 
 // Generate a random prediction ID
 function generatePredictionId(): string {
@@ -12,30 +13,9 @@ function generatePredictionId(): string {
   return result;
 }
 
-// Helper to get user from session
-async function getUserFromSession(
-  ctx: any,
-  token: string | undefined
-): Promise<{ _id: Id<"users">; username: string; email: string } | null> {
-  if (!token) return null;
-
-  const session = await ctx.db
-    .query("sessions")
-    .withIndex("by_token", (q: any) => q.eq("token", token))
-    .first();
-
-  if (!session || session.expiresAt < Date.now()) {
-    return null;
-  }
-
-  const user = await ctx.db.get(session.userId);
-  return user;
-}
-
 // Create a new prediction
 export const create = mutation({
   args: {
-    token: v.string(),
     prediction: v.string(),
     certaintyLowP: v.number(),
     certaintyHighP: v.number(),
@@ -46,8 +26,8 @@ export const create = mutation({
     viewPrivacy: v.union(v.literal("public"), v.literal("link_only")),
   },
   handler: async (ctx, args) => {
-    const user = await getUserFromSession(ctx, args.token);
-    if (!user) {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) {
       throw new Error("Not authenticated");
     }
 
@@ -81,7 +61,7 @@ export const create = mutation({
       closesAt: args.closesAt,
       resolvesAt: args.resolvesAt,
       specialRules: args.specialRules,
-      creatorId: user._id,
+      creatorId: userId,
       resolutionReminderSent: false,
       viewPrivacy: args.viewPrivacy,
     });
@@ -89,7 +69,7 @@ export const create = mutation({
     // Auto-follow the prediction
     await ctx.db.insert("predictionFollows", {
       predictionId: id,
-      followerId: user._id,
+      followerId: userId,
     });
 
     return { predictionId, id };
@@ -100,7 +80,6 @@ export const create = mutation({
 export const getByPredictionId = query({
   args: {
     predictionId: v.string(),
-    token: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const prediction = await ctx.db
@@ -141,19 +120,15 @@ export const getByPredictionId = query({
 
     // Check if current user is following
     let isFollowing = false;
-    let currentUserId: Id<"users"> | null = null;
-    if (args.token) {
-      const user = await getUserFromSession(ctx, args.token);
-      if (user) {
-        currentUserId = user._id;
-        const follow = await ctx.db
-          .query("predictionFollows")
-          .withIndex("by_prediction_and_follower", (q) =>
-            q.eq("predictionId", prediction._id).eq("followerId", user._id)
-          )
-          .first();
-        isFollowing = !!follow;
-      }
+    const currentUserId = await auth.getUserId(ctx);
+    if (currentUserId) {
+      const follow = await ctx.db
+        .query("predictionFollows")
+        .withIndex("by_prediction_and_follower", (q) =>
+          q.eq("predictionId", prediction._id).eq("followerId", currentUserId)
+        )
+        .first();
+      isFollowing = !!follow;
     }
 
     // Calculate stakes
@@ -200,7 +175,6 @@ export const get = query({
 export const listByCreator = query({
   args: {
     creatorId: v.id("users"),
-    token: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const predictions = await ctx.db
@@ -228,23 +202,23 @@ export const listByCreator = query({
 
 // List all stakes (predictions created + predictions bet on) for current user
 export const listMyStakes = query({
-  args: { token: v.string() },
-  handler: async (ctx, args) => {
-    const user = await getUserFromSession(ctx, args.token);
-    if (!user) {
+  args: {},
+  handler: async (ctx) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) {
       throw new Error("Not authenticated");
     }
 
     // Get predictions I created
     const myPredictions = await ctx.db
       .query("predictions")
-      .withIndex("by_creator", (q) => q.eq("creatorId", user._id))
+      .withIndex("by_creator", (q) => q.eq("creatorId", userId))
       .collect();
 
     // Get my trades
     const myTrades = await ctx.db
       .query("trades")
-      .withIndex("by_bettor", (q) => q.eq("bettorId", user._id))
+      .withIndex("by_bettor", (q) => q.eq("bettorId", userId))
       .collect();
 
     // Get unique prediction IDs from trades
@@ -281,14 +255,14 @@ export const listMyStakes = query({
           .collect();
 
         const myTradesForThis = trades.filter(
-          (t) => t.bettorId === user._id && t.state === "active"
+          (t) => t.bettorId === userId && t.state === "active"
         );
 
         return {
           ...p,
           creatorUsername: creator?.username || "Unknown",
           resolution: resolutions[0] || null,
-          isCreator: p.creatorId === user._id,
+          isCreator: p.creatorId === userId,
           myTrades: myTradesForThis,
         };
       })
@@ -299,7 +273,6 @@ export const listMyStakes = query({
 // Resolve a prediction
 export const resolve = mutation({
   args: {
-    token: v.string(),
     predictionId: v.string(),
     resolution: v.union(
       v.literal("yes"),
@@ -309,8 +282,8 @@ export const resolve = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const user = await getUserFromSession(ctx, args.token);
-    if (!user) {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) {
       throw new Error("Not authenticated");
     }
 
@@ -323,7 +296,7 @@ export const resolve = mutation({
       throw new Error("Prediction not found");
     }
 
-    if (prediction.creatorId !== user._id) {
+    if (prediction.creatorId !== userId) {
       throw new Error("Only the creator can resolve this prediction");
     }
 
@@ -341,13 +314,12 @@ export const resolve = mutation({
 // Follow/unfollow a prediction
 export const setFollowing = mutation({
   args: {
-    token: v.string(),
     predictionId: v.string(),
     following: v.boolean(),
   },
   handler: async (ctx, args) => {
-    const user = await getUserFromSession(ctx, args.token);
-    if (!user) {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) {
       throw new Error("Not authenticated");
     }
 
@@ -363,14 +335,14 @@ export const setFollowing = mutation({
     const existingFollow = await ctx.db
       .query("predictionFollows")
       .withIndex("by_prediction_and_follower", (q) =>
-        q.eq("predictionId", prediction._id).eq("followerId", user._id)
+        q.eq("predictionId", prediction._id).eq("followerId", userId)
       )
       .first();
 
     if (args.following && !existingFollow) {
       await ctx.db.insert("predictionFollows", {
         predictionId: prediction._id,
-        followerId: user._id,
+        followerId: userId,
       });
     } else if (!args.following && existingFollow) {
       await ctx.db.delete(existingFollow._id);
