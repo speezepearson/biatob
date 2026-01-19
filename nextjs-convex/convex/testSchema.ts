@@ -6,6 +6,16 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
+  // Legacy password hashes for migration from old system
+  legacyPasswordHashes: defineTable({
+    email: v.string(),
+    username: v.string(),
+    salt: v.string(),
+    scrypt: v.string(),
+  })
+    .index("by_email", ["email"])
+    .index("by_username", ["username"]),
+
   // Users table - simplified for testing
   users: defineTable({
     email: v.optional(v.string()),

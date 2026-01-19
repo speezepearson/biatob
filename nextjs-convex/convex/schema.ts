@@ -6,6 +6,18 @@ export default defineSchema({
   // Convex Auth tables
   ...authTables,
 
+  // Legacy password hashes for migration from old system
+  // Users with entries here haven't signed in since migration
+  // On successful sign-in, they're migrated to Convex Auth and removed from here
+  legacyPasswordHashes: defineTable({
+    email: v.string(),
+    username: v.string(), // Original username from old system
+    salt: v.string(), // base64-encoded 4-byte salt
+    scrypt: v.string(), // base64-encoded scrypt hash
+  })
+    .index("by_email", ["email"])
+    .index("by_username", ["username"]),
+
   // Users table - extended with app-specific fields
   users: defineTable({
     // Required by Convex Auth

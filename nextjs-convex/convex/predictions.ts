@@ -3,12 +3,14 @@ import { mutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 import { auth } from "./auth";
 
-// Generate a random prediction ID
+// Generate a cryptographically secure random prediction ID (lowercase alphanumeric only)
 function generatePredictionId(): string {
   const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+  const randomBytes = new Uint8Array(12);
+  crypto.getRandomValues(randomBytes);
   let result = "";
   for (let i = 0; i < 12; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
+    result += chars[randomBytes[i] % chars.length];
   }
   return result;
 }

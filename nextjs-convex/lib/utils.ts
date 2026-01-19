@@ -93,12 +93,14 @@ export function calculateExpectedValue(
   return winProbability * creatorStakeCents - (1 - winProbability) * bettorStakeCents;
 }
 
-// Generate a URL-safe ID
+// Generate a cryptographically secure URL-safe ID (lowercase alphanumeric only)
 export function generateId(length: number = 12): string {
   const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+  const randomBytes = new Uint8Array(length);
+  crypto.getRandomValues(randomBytes);
   let result = "";
   for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
+    result += chars[randomBytes[i] % chars.length];
   }
   return result;
 }

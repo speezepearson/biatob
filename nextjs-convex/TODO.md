@@ -36,13 +36,23 @@ All 91 tests passing. Auth is mocked by creating users directly in the database 
 ### GitHub Actions
 Added CI workflow (`.github/workflows/test.yml`) that runs tests on PRs and pushes to main.
 
-## Medium Priority
+### Data Migration & Legacy Auth
+Created migration infrastructure for moving users from the old MySQL/SQLite database:
 
-### Data Migration
-No migration script exists for moving data from the old MySQL/SQLite database to Convex. Need to create a one-time migration script that:
-- Exports users, predictions, trades, resolutions, relationships from old DB
-- Transforms data to match new Convex schema
-- Imports into Convex via mutation or bulk import
+**Schema additions:**
+- `legacyPasswordHashes` table - stores old scrypt hashes for lazy migration
+
+**Auth improvements:**
+- Custom `crypto` in Password provider with self-describing hash format: `scrypt$N=16384,r=8,p=1,dkLen=64$<salt>$<hash>`
+- Parameters pinned to prevent breakage on library updates
+- `signInWithLegacyMigration` action for transparent user migration on first sign-in
+- Cryptographically secure nonce/ID generation using `crypto.getRandomValues()`
+
+**Migration script:**
+- `scripts/migrate-from-mysql.ts` - exports MySQL/SQLite data to JSONL files
+- Outputs: users.jsonl, legacyPasswordHashes.jsonl, predictions.jsonl, trades.jsonl, resolutions.jsonl, predictionFollows.jsonl, relationships.jsonl, emailInvitations.jsonl
+
+## Medium Priority
 
 ### OG Image Generation
 The original app generated social media preview images using PIL/Pillow showing prediction details. This is missing from the rewrite. Options:
