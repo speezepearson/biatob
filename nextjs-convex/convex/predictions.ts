@@ -1,0 +1,418 @@
+import { v } from "convex/values";
+import { mutation, query } from "./_generated/server";
+import { Id } from "./_generated/dataModel";
+
+// Generate a random prediction ID
+function generatePredictionId(): string {
+  const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+  let result = "";
+  for (let i = 0; i < 12; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
+
+// Helper to get user from session
+async function getUserFromSession(
+  ctx: any,
+  token: string | undefined
+): Promise<{ _id: Id<"users">; username: string; email: string } | null> {
+  if (!token) return null;
+
+  const session = await ctx.db
+    .query("sessions")
+    .withIndex("by_token", (q: any) => q.eq("token", token))
+    .first();
+
+  if (!session || session.expiresAt < Date.now()) {
+    return null;
+  }
+
+  const user = await ctx.db.get(session.userId);
+  return user;
+}
+
+// Create a new prediction
+export const create = mutation({
+  args: {
+    token: v.string(),
+    prediction: v.string(),
+    certaintyLowP: v.number(),
+    certaintyHighP: v.number(),
+    maximumStakeCents: v.number(),
+    closesAt: v.number(),
+    resolvesAt: v.number(),
+    specialRules: v.optional(v.string()),
+    viewPrivacy: v.union(v.literal("public"), v.literal("link_only")),
+  },
+  handler: async (ctx, args) => {
+    const user = await getUserFromSession(ctx, args.token);
+    if (!user) {
+      throw new Error("Not authenticated");
+    }
+
+    // Validate inputs
+    if (args.certaintyLowP < 0 || args.certaintyLowP > 1) {
+      throw new Error("certaintyLowP must be between 0 and 1");
+    }
+    if (args.certaintyHighP < 0 || args.certaintyHighP > 1) {
+      throw new Error("certaintyHighP must be between 0 and 1");
+    }
+    if (args.certaintyLowP > args.certaintyHighP) {
+      throw new Error("certaintyLowP must be less than or equal to certaintyHighP");
+    }
+    if (args.maximumStakeCents < 0) {
+      throw new Error("maximumStakeCents must be non-negative");
+    }
+    if (args.prediction.length < 1 || args.prediction.length > 1024) {
+      throw new Error("Prediction must be 1-1024 characters");
+    }
+
+    const predictionId = generatePredictionId();
+    const now = Date.now();
+
+    const id = await ctx.db.insert("predictions", {
+      predictionId,
+      prediction: args.prediction,
+      certaintyLowP: args.certaintyLowP,
+      certaintyHighP: args.certaintyHighP,
+      maximumStakeCents: args.maximumStakeCents,
+      createdAt: now,
+      closesAt: args.closesAt,
+      resolvesAt: args.resolvesAt,
+      specialRules: args.specialRules,
+      creatorId: user._id,
+      resolutionReminderSent: false,
+      viewPrivacy: args.viewPrivacy,
+    });
+
+    // Auto-follow the prediction
+    await ctx.db.insert("predictionFollows", {
+      predictionId: id,
+      followerId: user._id,
+    });
+
+    return { predictionId, id };
+  },
+});
+
+// Get a prediction by its human-readable ID
+export const getByPredictionId = query({
+  args: {
+    predictionId: v.string(),
+    token: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const prediction = await ctx.db
+      .query("predictions")
+      .withIndex("by_predictionId", (q) => q.eq("predictionId", args.predictionId))
+      .first();
+
+    if (!prediction) {
+      return null;
+    }
+
+    const creator = await ctx.db.get(prediction.creatorId);
+
+    // Get the latest resolution
+    const resolutions = await ctx.db
+      .query("resolutions")
+      .withIndex("by_prediction", (q) => q.eq("predictionId", prediction._id))
+      .order("desc")
+      .take(1);
+    const resolution = resolutions[0] || null;
+
+    // Get all trades
+    const trades = await ctx.db
+      .query("trades")
+      .withIndex("by_prediction", (q) => q.eq("predictionId", prediction._id))
+      .collect();
+
+    // Enrich trades with bettor info
+    const enrichedTrades = await Promise.all(
+      trades.map(async (trade) => {
+        const bettor = await ctx.db.get(trade.bettorId);
+        return {
+          ...trade,
+          bettorUsername: bettor?.username || "Unknown",
+        };
+      })
+    );
+
+    // Check if current user is following
+    let isFollowing = false;
+    let currentUserId: Id<"users"> | null = null;
+    if (args.token) {
+      const user = await getUserFromSession(ctx, args.token);
+      if (user) {
+        currentUserId = user._id;
+        const follow = await ctx.db
+          .query("predictionFollows")
+          .withIndex("by_prediction_and_follower", (q) =>
+            q.eq("predictionId", prediction._id).eq("followerId", user._id)
+          )
+          .first();
+        isFollowing = !!follow;
+      }
+    }
+
+    // Calculate stakes
+    const activeTrades = enrichedTrades.filter((t) => t.state === "active");
+    const believerStakes = activeTrades
+      .filter((t) => !t.bettorIsSkeptic)
+      .reduce((sum, t) => sum + t.bettorStakeCents, 0);
+    const skepticStakes = activeTrades
+      .filter((t) => t.bettorIsSkeptic)
+      .reduce((sum, t) => sum + t.bettorStakeCents, 0);
+    const creatorStakesForBelievers = activeTrades
+      .filter((t) => !t.bettorIsSkeptic)
+      .reduce((sum, t) => sum + t.creatorStakeCents, 0);
+    const creatorStakesForSkeptics = activeTrades
+      .filter((t) => t.bettorIsSkeptic)
+      .reduce((sum, t) => sum + t.creatorStakeCents, 0);
+
+    return {
+      ...prediction,
+      creatorUsername: creator?.username || "Unknown",
+      resolution,
+      trades: enrichedTrades,
+      isFollowing,
+      currentUserId,
+      believerStakes,
+      skepticStakes,
+      creatorStakesForBelievers,
+      creatorStakesForSkeptics,
+      remainingBelieverStakes: prediction.maximumStakeCents - creatorStakesForBelievers,
+      remainingSkepticStakes: prediction.maximumStakeCents - creatorStakesForSkeptics,
+    };
+  },
+});
+
+// Get prediction by internal ID
+export const get = query({
+  args: { id: v.id("predictions") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.id);
+  },
+});
+
+// List predictions created by a user
+export const listByCreator = query({
+  args: {
+    creatorId: v.id("users"),
+    token: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const predictions = await ctx.db
+      .query("predictions")
+      .withIndex("by_creator", (q) => q.eq("creatorId", args.creatorId))
+      .order("desc")
+      .collect();
+
+    return Promise.all(
+      predictions.map(async (p) => {
+        const resolutions = await ctx.db
+          .query("resolutions")
+          .withIndex("by_prediction", (q) => q.eq("predictionId", p._id))
+          .order("desc")
+          .take(1);
+
+        return {
+          ...p,
+          resolution: resolutions[0] || null,
+        };
+      })
+    );
+  },
+});
+
+// List all stakes (predictions created + predictions bet on) for current user
+export const listMyStakes = query({
+  args: { token: v.string() },
+  handler: async (ctx, args) => {
+    const user = await getUserFromSession(ctx, args.token);
+    if (!user) {
+      throw new Error("Not authenticated");
+    }
+
+    // Get predictions I created
+    const myPredictions = await ctx.db
+      .query("predictions")
+      .withIndex("by_creator", (q) => q.eq("creatorId", user._id))
+      .collect();
+
+    // Get my trades
+    const myTrades = await ctx.db
+      .query("trades")
+      .withIndex("by_bettor", (q) => q.eq("bettorId", user._id))
+      .collect();
+
+    // Get unique prediction IDs from trades
+    const tradedPredictionIds = [...new Set(myTrades.map((t) => t.predictionId))];
+
+    // Get those predictions
+    const tradedPredictions = await Promise.all(
+      tradedPredictionIds
+        .filter((id) => !myPredictions.some((p) => p._id === id))
+        .map((id) => ctx.db.get(id))
+    );
+
+    // Combine and enrich
+    const allPredictions = [
+      ...myPredictions,
+      ...tradedPredictions.filter((p) => p !== null),
+    ];
+
+    return Promise.all(
+      allPredictions.map(async (p) => {
+        if (!p) return null;
+
+        const creator = await ctx.db.get(p.creatorId);
+
+        const resolutions = await ctx.db
+          .query("resolutions")
+          .withIndex("by_prediction", (q) => q.eq("predictionId", p._id))
+          .order("desc")
+          .take(1);
+
+        const trades = await ctx.db
+          .query("trades")
+          .withIndex("by_prediction", (q) => q.eq("predictionId", p._id))
+          .collect();
+
+        const myTradesForThis = trades.filter(
+          (t) => t.bettorId === user._id && t.state === "active"
+        );
+
+        return {
+          ...p,
+          creatorUsername: creator?.username || "Unknown",
+          resolution: resolutions[0] || null,
+          isCreator: p.creatorId === user._id,
+          myTrades: myTradesForThis,
+        };
+      })
+    ).then((results) => results.filter((r) => r !== null));
+  },
+});
+
+// Resolve a prediction
+export const resolve = mutation({
+  args: {
+    token: v.string(),
+    predictionId: v.string(),
+    resolution: v.union(
+      v.literal("yes"),
+      v.literal("no"),
+      v.literal("invalid")
+    ),
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await getUserFromSession(ctx, args.token);
+    if (!user) {
+      throw new Error("Not authenticated");
+    }
+
+    const prediction = await ctx.db
+      .query("predictions")
+      .withIndex("by_predictionId", (q) => q.eq("predictionId", args.predictionId))
+      .first();
+
+    if (!prediction) {
+      throw new Error("Prediction not found");
+    }
+
+    if (prediction.creatorId !== user._id) {
+      throw new Error("Only the creator can resolve this prediction");
+    }
+
+    await ctx.db.insert("resolutions", {
+      predictionId: prediction._id,
+      resolvedAt: Date.now(),
+      resolution: args.resolution,
+      notes: args.notes,
+    });
+
+    return { success: true };
+  },
+});
+
+// Follow/unfollow a prediction
+export const setFollowing = mutation({
+  args: {
+    token: v.string(),
+    predictionId: v.string(),
+    following: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getUserFromSession(ctx, args.token);
+    if (!user) {
+      throw new Error("Not authenticated");
+    }
+
+    const prediction = await ctx.db
+      .query("predictions")
+      .withIndex("by_predictionId", (q) => q.eq("predictionId", args.predictionId))
+      .first();
+
+    if (!prediction) {
+      throw new Error("Prediction not found");
+    }
+
+    const existingFollow = await ctx.db
+      .query("predictionFollows")
+      .withIndex("by_prediction_and_follower", (q) =>
+        q.eq("predictionId", prediction._id).eq("followerId", user._id)
+      )
+      .first();
+
+    if (args.following && !existingFollow) {
+      await ctx.db.insert("predictionFollows", {
+        predictionId: prediction._id,
+        followerId: user._id,
+      });
+    } else if (!args.following && existingFollow) {
+      await ctx.db.delete(existingFollow._id);
+    }
+
+    return { success: true };
+  },
+});
+
+// List public predictions (for discovery)
+export const listPublic = query({
+  args: {
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const limit = args.limit || 50;
+
+    const predictions = await ctx.db
+      .query("predictions")
+      .order("desc")
+      .take(limit * 2); // Fetch more to filter
+
+    const publicPredictions = predictions
+      .filter((p) => p.viewPrivacy === "public")
+      .slice(0, limit);
+
+    return Promise.all(
+      publicPredictions.map(async (p) => {
+        const creator = await ctx.db.get(p.creatorId);
+
+        const resolutions = await ctx.db
+          .query("resolutions")
+          .withIndex("by_prediction", (q) => q.eq("predictionId", p._id))
+          .order("desc")
+          .take(1);
+
+        return {
+          ...p,
+          creatorUsername: creator?.username || "Unknown",
+          resolution: resolutions[0] || null,
+        };
+      })
+    );
+  },
+});
