@@ -65,19 +65,12 @@ def any_servicer(clock, token_mint, emailer, sqlite_engine):
 
 
 _T = TypeVar('_T')
-def assert_oneof(pb: Message, oneof: str, case: str, typ: Type[_T]) -> _T:
-  assert pb.WhichOneof(oneof) == case, pb
-  result = getattr(pb, case)
-  assert isinstance(result, typ), result
-  return result
-
-
 @contextlib.contextmanager
 def assert_user_unchanged(servicer: Servicer, who: Username, password: str) -> Iterator[None]:
   servicer.LogInUsername(None, mvp_pb2.LogInUsernameRequest(username=who, password=password))
-  old_settings = assert_oneof(servicer.GetSettings(AuthorizingUsername(who), mvp_pb2.GetSettingsRequest()), 'get_settings_result', 'ok', mvp_pb2.GenericUserInfo)
+  old_settings = servicer.GetSettings(AuthorizingUsername(who), mvp_pb2.GetSettingsRequest())
   yield
-  new_settings = assert_oneof(servicer.GetSettings(AuthorizingUsername(who), mvp_pb2.GetSettingsRequest()), 'get_settings_result', 'ok', mvp_pb2.GenericUserInfo)
+  new_settings = servicer.GetSettings(AuthorizingUsername(who), mvp_pb2.GetSettingsRequest())
   assert old_settings == new_settings
   servicer.LogInUsername(None, mvp_pb2.LogInUsernameRequest(username=who, password=password))
 
@@ -142,17 +135,21 @@ def SignOut(servicer: Servicer, actor: Optional[AuthorizingUsername]) -> None:
 
 def SendVerificationEmailOk(servicer: Servicer, actor: Optional[AuthorizingUsername], email_address: str) -> None:
   token_mint: TokenMint = servicer._token_mint  # type: ignore
-  assert_oneof(servicer.SendVerificationEmail(actor, mvp_pb2.SendVerificationEmailRequest(email_address=email_address)), 'send_verification_email_result', 'ok', object)
-def SendVerificationEmailErr(servicer: Servicer, actor: Optional[AuthorizingUsername], email_address: str) -> mvp_pb2.SendVerificationEmailResponse.Error:
+  servicer.SendVerificationEmail(actor, mvp_pb2.SendVerificationEmailRequest(email_address=email_address))
+def SendVerificationEmailErr(servicer: Servicer, actor: Optional[AuthorizingUsername], email_address: str) -> ApiError:
   token_mint: TokenMint = servicer._token_mint  # type: ignore
-  return assert_oneof(servicer.SendVerificationEmail(actor, mvp_pb2.SendVerificationEmailRequest(email_address=email_address)), 'send_verification_email_result', 'error', mvp_pb2.SendVerificationEmailResponse.Error)
+  with pytest.raises(ApiError) as excinfo:
+    servicer.SendVerificationEmail(actor, mvp_pb2.SendVerificationEmailRequest(email_address=email_address))
+  return excinfo.value
 
 def RegisterUsernameOk(servicer: Servicer, actor: Optional[AuthorizingUsername], proof_of_email: mvp_pb2.ProofOfEmail, username: Username, password: str = 'pw') -> mvp_pb2.AuthSuccess:
   token_mint: TokenMint = servicer._token_mint  # type: ignore
-  return assert_oneof(servicer.RegisterUsername(actor, mvp_pb2.RegisterUsernameRequest(username=username, password=password, proof_of_email=proof_of_email)), 'register_username_result', 'ok', mvp_pb2.AuthSuccess)
-def RegisterUsernameErr(servicer: Servicer, actor: Optional[AuthorizingUsername], proof_of_email: mvp_pb2.ProofOfEmail, username: Username, password: str = 'pw') -> mvp_pb2.RegisterUsernameResponse.Error:
+  return servicer.RegisterUsername(actor, mvp_pb2.RegisterUsernameRequest(username=username, password=password, proof_of_email=proof_of_email))
+def RegisterUsernameErr(servicer: Servicer, actor: Optional[AuthorizingUsername], proof_of_email: mvp_pb2.ProofOfEmail, username: Username, password: str = 'pw') -> ApiError:
   token_mint: TokenMint = servicer._token_mint  # type: ignore
-  return assert_oneof(servicer.RegisterUsername(actor, mvp_pb2.RegisterUsernameRequest(username=username, password=password, proof_of_email=proof_of_email)), 'register_username_result', 'error', mvp_pb2.RegisterUsernameResponse.Error)
+  with pytest.raises(ApiError) as excinfo:
+    servicer.RegisterUsername(actor, mvp_pb2.RegisterUsernameRequest(username=username, password=password, proof_of_email=proof_of_email))
+  return excinfo.value
 
 def LogInUsernameOk(servicer: Servicer, actor: Optional[AuthorizingUsername], username: Username, password: str) -> mvp_pb2.AuthSuccess:
   return servicer.LogInUsername(actor, mvp_pb2.LogInUsernameRequest(username=username, password=password))
@@ -162,9 +159,11 @@ def LogInUsernameErr(servicer: Servicer, actor: Optional[AuthorizingUsername], u
   return excinfo.value
 
 def CreatePredictionOk(servicer: Servicer, actor: Optional[AuthorizingUsername], request_kwargs: Mapping[str, Any]) -> PredictionId:
-  return PredictionId(assert_oneof(servicer.CreatePrediction(actor, some_create_prediction_request(**request_kwargs)), 'create_prediction_result', 'new_prediction_id', str))
-def CreatePredictionErr(servicer: Servicer, actor: Optional[AuthorizingUsername], request_kwargs: Mapping[str, Any]) -> mvp_pb2.CreatePredictionResponse.Error:
-  return assert_oneof(servicer.CreatePrediction(actor, some_create_prediction_request(**request_kwargs)), 'create_prediction_result', 'error', mvp_pb2.CreatePredictionResponse.Error)
+  return PredictionId(servicer.CreatePrediction(actor, some_create_prediction_request(**request_kwargs)).new_prediction_id)
+def CreatePredictionErr(servicer: Servicer, actor: Optional[AuthorizingUsername], request_kwargs: Mapping[str, Any]) -> ApiError:
+  with pytest.raises(ApiError) as excinfo:
+    servicer.CreatePrediction(actor, some_create_prediction_request(**request_kwargs))
+  return excinfo.value
 
 def GetPredictionOk(servicer: Servicer, actor: Optional[AuthorizingUsername], prediction_id: PredictionId) -> mvp_pb2.UserPredictionView:
   return servicer.GetPrediction(actor, mvp_pb2.GetPredictionRequest(prediction_id=prediction_id))
@@ -174,61 +173,85 @@ def GetPredictionErr(servicer: Servicer, actor: Optional[AuthorizingUsername], p
   return excinfo.value
 
 def ListMyStakesOk(servicer: Servicer, actor: Optional[AuthorizingUsername]) -> mvp_pb2.PredictionsById:
-  return assert_oneof(servicer.ListMyStakes(actor, mvp_pb2.ListMyStakesRequest()), 'list_my_stakes_result', 'ok', mvp_pb2.PredictionsById)
-def ListMyStakesErr(servicer: Servicer, actor: Optional[AuthorizingUsername]) -> mvp_pb2.ListMyStakesResponse.Error:
-  return assert_oneof(servicer.ListMyStakes(actor, mvp_pb2.ListMyStakesRequest()), 'list_my_stakes_result', 'error', mvp_pb2.ListMyStakesResponse.Error)
+  return servicer.ListMyStakes(actor, mvp_pb2.ListMyStakesRequest())
+def ListMyStakesErr(servicer: Servicer, actor: Optional[AuthorizingUsername]) -> ApiError:
+  with pytest.raises(ApiError) as excinfo:
+    servicer.ListMyStakes(actor, mvp_pb2.ListMyStakesRequest())
+  return excinfo.value
 
 def ListPredictionsOk(servicer: Servicer, actor: Optional[AuthorizingUsername], creator: Username) -> mvp_pb2.PredictionsById:
-  return assert_oneof(servicer.ListPredictions(actor, mvp_pb2.ListPredictionsRequest(creator=creator)), 'list_predictions_result', 'ok', mvp_pb2.PredictionsById)
-def ListPredictionsErr(servicer: Servicer, actor: Optional[AuthorizingUsername], creator: Username) -> mvp_pb2.ListPredictionsResponse.Error:
-  return assert_oneof(servicer.ListPredictions(actor, mvp_pb2.ListPredictionsRequest(creator=creator)), 'list_predictions_result', 'error', mvp_pb2.ListPredictionsResponse.Error)
+  return servicer.ListPredictions(actor, mvp_pb2.ListPredictionsRequest(creator=creator))
+def ListPredictionsErr(servicer: Servicer, actor: Optional[AuthorizingUsername], creator: Username) -> ApiError:
+  with pytest.raises(ApiError) as excinfo:
+    servicer.ListPredictions(actor, mvp_pb2.ListPredictionsRequest(creator=creator))
+  return excinfo.value
 
 def StakeOk(servicer: Servicer, actor: Optional[AuthorizingUsername], request: mvp_pb2.StakeRequest) -> mvp_pb2.UserPredictionView:
-  return assert_oneof(servicer.Stake(actor, request), 'stake_result', 'ok', mvp_pb2.UserPredictionView)
-def StakeErr(servicer: Servicer, actor: Optional[AuthorizingUsername], request: mvp_pb2.StakeRequest) -> mvp_pb2.StakeResponse.Error:
-  return assert_oneof(servicer.Stake(actor, request), 'stake_result', 'error', mvp_pb2.StakeResponse.Error)
+  return servicer.Stake(actor, request)
+def StakeErr(servicer: Servicer, actor: Optional[AuthorizingUsername], request: mvp_pb2.StakeRequest) -> ApiError:
+  with pytest.raises(ApiError) as excinfo:
+    servicer.Stake(actor, request)
+  return excinfo.value
 
 def FollowOk(servicer: Servicer, actor: Optional[AuthorizingUsername], prediction_id: PredictionId, follow: bool) -> mvp_pb2.UserPredictionView:
-  return assert_oneof(servicer.Follow(actor, mvp_pb2.FollowRequest(prediction_id=prediction_id, follow=follow)), 'follow_result', 'ok', mvp_pb2.UserPredictionView)
-def FollowErr(servicer: Servicer, actor: Optional[AuthorizingUsername], prediction_id: PredictionId, follow: bool) -> mvp_pb2.FollowResponse.Error:
-  return assert_oneof(servicer.Follow(actor, mvp_pb2.FollowRequest(prediction_id=prediction_id, follow=follow)), 'follow_result', 'error', mvp_pb2.FollowResponse.Error)
+  return servicer.Follow(actor, mvp_pb2.FollowRequest(prediction_id=prediction_id, follow=follow))
+def FollowErr(servicer: Servicer, actor: Optional[AuthorizingUsername], prediction_id: PredictionId, follow: bool) -> ApiError:
+  with pytest.raises(ApiError) as excinfo:
+    servicer.Follow(actor, mvp_pb2.FollowRequest(prediction_id=prediction_id, follow=follow))
+  return excinfo.value
 
 def ResolveOk(servicer: Servicer, actor: Optional[AuthorizingUsername], prediction_id: PredictionId, resolution: mvp_pb2.Resolution.V, notes: str = '') -> mvp_pb2.UserPredictionView:
-  return assert_oneof(servicer.Resolve(actor, mvp_pb2.ResolveRequest(prediction_id=prediction_id, resolution=resolution, notes=notes)), 'resolve_result', 'ok', mvp_pb2.UserPredictionView)
-def ResolveErr(servicer: Servicer, actor: Optional[AuthorizingUsername], prediction_id: PredictionId, resolution: mvp_pb2.Resolution.V, notes: str = '') -> mvp_pb2.ResolveResponse.Error:
-  return assert_oneof(servicer.Resolve(actor, mvp_pb2.ResolveRequest(prediction_id=prediction_id, resolution=resolution, notes=notes)), 'resolve_result', 'error', mvp_pb2.ResolveResponse.Error)
+  return servicer.Resolve(actor, mvp_pb2.ResolveRequest(prediction_id=prediction_id, resolution=resolution, notes=notes))
+def ResolveErr(servicer: Servicer, actor: Optional[AuthorizingUsername], prediction_id: PredictionId, resolution: mvp_pb2.Resolution.V, notes: str = '') -> ApiError:
+  with pytest.raises(ApiError) as excinfo:
+    servicer.Resolve(actor, mvp_pb2.ResolveRequest(prediction_id=prediction_id, resolution=resolution, notes=notes))
+  return excinfo.value
 
 def SetTrustedOk(servicer: Servicer, actor: Optional[AuthorizingUsername], who: Username, trusted: bool) -> mvp_pb2.GenericUserInfo:
-  return assert_oneof(servicer.SetTrusted(actor, mvp_pb2.SetTrustedRequest(who=who, trusted=trusted)), 'set_trusted_result', 'ok', mvp_pb2.GenericUserInfo)
-def SetTrustedErr(servicer: Servicer, actor: Optional[AuthorizingUsername], who: Username, trusted: bool) -> mvp_pb2.SetTrustedResponse.Error:
-  return assert_oneof(servicer.SetTrusted(actor, mvp_pb2.SetTrustedRequest(who=who, trusted=trusted)), 'set_trusted_result', 'error', mvp_pb2.SetTrustedResponse.Error)
+  return servicer.SetTrusted(actor, mvp_pb2.SetTrustedRequest(who=who, trusted=trusted))
+def SetTrustedErr(servicer: Servicer, actor: Optional[AuthorizingUsername], who: Username, trusted: bool) -> ApiError:
+  with pytest.raises(ApiError) as excinfo:
+    servicer.SetTrusted(actor, mvp_pb2.SetTrustedRequest(who=who, trusted=trusted))
+  return excinfo.value
 
 def GetUserOk(servicer: Servicer, actor: Optional[AuthorizingUsername], who: Username) -> mvp_pb2.Relationship:
-  return assert_oneof(servicer.GetUser(actor, mvp_pb2.GetUserRequest(who=who)), 'get_user_result', 'ok', mvp_pb2.Relationship)
-def GetUserErr(servicer: Servicer, actor: Optional[AuthorizingUsername], who: Username) -> mvp_pb2.GetUserResponse.Error:
-  return assert_oneof(servicer.GetUser(actor, mvp_pb2.GetUserRequest(who=who)), 'get_user_result', 'error', mvp_pb2.GetUserResponse.Error)
+  return servicer.GetUser(actor, mvp_pb2.GetUserRequest(who=who))
+def GetUserErr(servicer: Servicer, actor: Optional[AuthorizingUsername], who: Username) -> ApiError:
+  with pytest.raises(ApiError) as excinfo:
+    servicer.GetUser(actor, mvp_pb2.GetUserRequest(who=who))
+  return excinfo.value
 
 def ChangePasswordOk(servicer: Servicer, actor: Optional[AuthorizingUsername], old_password: str, new_password: str) -> object:
-  return assert_oneof(servicer.ChangePassword(actor, mvp_pb2.ChangePasswordRequest(old_password=old_password, new_password=new_password)), 'change_password_result', 'ok', object)
-def ChangePasswordErr(servicer: Servicer, actor: Optional[AuthorizingUsername], old_password: str, new_password: str) -> mvp_pb2.ChangePasswordResponse.Error:
-  return assert_oneof(servicer.ChangePassword(actor, mvp_pb2.ChangePasswordRequest(old_password=old_password, new_password=new_password)), 'change_password_result', 'error', mvp_pb2.ChangePasswordResponse.Error)
+  return servicer.ChangePassword(actor, mvp_pb2.ChangePasswordRequest(old_password=old_password, new_password=new_password))
+def ChangePasswordErr(servicer: Servicer, actor: Optional[AuthorizingUsername], old_password: str, new_password: str) -> ApiError:
+  with pytest.raises(ApiError) as excinfo:
+    servicer.ChangePassword(actor, mvp_pb2.ChangePasswordRequest(old_password=old_password, new_password=new_password))
+  return excinfo.value
 
 def GetSettingsOk(servicer: Servicer, actor: Optional[AuthorizingUsername]) -> mvp_pb2.GenericUserInfo:
-  return assert_oneof(servicer.GetSettings(actor, mvp_pb2.GetSettingsRequest()), 'get_settings_result', 'ok', mvp_pb2.GenericUserInfo)
-def GetSettingsErr(servicer: Servicer, actor: Optional[AuthorizingUsername]) -> mvp_pb2.GetSettingsResponse.Error:
-  return assert_oneof(servicer.GetSettings(actor, mvp_pb2.GetSettingsRequest()), 'get_settings_result', 'error', mvp_pb2.GetSettingsResponse.Error)
+  return servicer.GetSettings(actor, mvp_pb2.GetSettingsRequest())
+def GetSettingsErr(servicer: Servicer, actor: Optional[AuthorizingUsername]) -> ApiError:
+  with pytest.raises(ApiError) as excinfo:
+    servicer.GetSettings(actor, mvp_pb2.GetSettingsRequest())
+  return excinfo.value
 
 def SendInvitationOk(servicer: Servicer, actor: Optional[AuthorizingUsername], recipient: str) -> mvp_pb2.GenericUserInfo:
-  return assert_oneof(servicer.SendInvitation(actor, mvp_pb2.SendInvitationRequest(recipient=recipient)), 'send_invitation_result', 'ok', mvp_pb2.GenericUserInfo)
-def SendInvitationErr(servicer: Servicer, actor: Optional[AuthorizingUsername], recipient: str) -> mvp_pb2.SendInvitationResponse.Error:
-  return assert_oneof(servicer.SendInvitation(actor, mvp_pb2.SendInvitationRequest(recipient=recipient)), 'send_invitation_result', 'error', mvp_pb2.SendInvitationResponse.Error)
+  return servicer.SendInvitation(actor, mvp_pb2.SendInvitationRequest(recipient=recipient))
+def SendInvitationErr(servicer: Servicer, actor: Optional[AuthorizingUsername], recipient: str) -> ApiError:
+  with pytest.raises(ApiError) as excinfo:
+    servicer.SendInvitation(actor, mvp_pb2.SendInvitationRequest(recipient=recipient))
+  return excinfo.value
 
-def CheckInvitationOk(servicer: Servicer, actor: Optional[AuthorizingUsername], nonce: str) -> mvp_pb2.CheckInvitationResponse.Result:
-  return assert_oneof(servicer.CheckInvitation(actor, mvp_pb2.CheckInvitationRequest(nonce=nonce)), 'check_invitation_result', 'ok', mvp_pb2.CheckInvitationResponse.Result)
-def CheckInvitationErr(servicer: Servicer, actor: Optional[AuthorizingUsername], nonce: str) -> mvp_pb2.CheckInvitationResponse.Error:
-  return assert_oneof(servicer.CheckInvitation(actor, mvp_pb2.CheckInvitationRequest(nonce=nonce)), 'check_invitation_result', 'error', mvp_pb2.CheckInvitationResponse.Error)
+def CheckInvitationOk(servicer: Servicer, actor: Optional[AuthorizingUsername], nonce: str) -> mvp_pb2.CheckInvitationResponse:
+  return servicer.CheckInvitation(actor, mvp_pb2.CheckInvitationRequest(nonce=nonce))
+def CheckInvitationErr(servicer: Servicer, actor: Optional[AuthorizingUsername], nonce: str) -> ApiError:
+  with pytest.raises(ApiError) as excinfo:
+    servicer.CheckInvitation(actor, mvp_pb2.CheckInvitationRequest(nonce=nonce))
+  return excinfo.value
 
 def AcceptInvitationOk(servicer: Servicer, actor: Optional[AuthorizingUsername], nonce: str) -> mvp_pb2.GenericUserInfo:
-  return assert_oneof(servicer.AcceptInvitation(actor, mvp_pb2.AcceptInvitationRequest(nonce=nonce)), 'accept_invitation_result', 'ok', mvp_pb2.GenericUserInfo)
-def AcceptInvitationErr(servicer: Servicer, actor: Optional[AuthorizingUsername], nonce: str) -> mvp_pb2.AcceptInvitationResponse.Error:
-  return assert_oneof(servicer.AcceptInvitation(actor, mvp_pb2.AcceptInvitationRequest(nonce=nonce)), 'accept_invitation_result', 'error', mvp_pb2.AcceptInvitationResponse.Error)
+  return servicer.AcceptInvitation(actor, mvp_pb2.AcceptInvitationRequest(nonce=nonce))
+def AcceptInvitationErr(servicer: Servicer, actor: Optional[AuthorizingUsername], nonce: str) -> ApiError:
+  with pytest.raises(ApiError) as excinfo:
+    servicer.AcceptInvitation(actor, mvp_pb2.AcceptInvitationRequest(nonce=nonce))
+  return excinfo.value

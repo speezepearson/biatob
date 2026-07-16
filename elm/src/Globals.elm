@@ -64,106 +64,84 @@ getTrustRelationship globals who =
     (False, True) -> TrustedByCurrentUser
     (False, False) -> NoRelation
 
-handleWhoamiResponse : Pb.WhoamiRequest -> Result Http.Error Pb.WhoamiResponse -> Globals -> Globals
+handleWhoamiResponse : Pb.WhoamiRequest -> Result API.Error Pb.WhoamiResponse -> Globals -> Globals
 handleWhoamiResponse _ _ globals = globals
-handleSignOutResponse : Pb.SignOutRequest -> Result Http.Error Pb.SignOutResponse -> Globals -> Globals
+handleSignOutResponse : Pb.SignOutRequest -> Result API.Error Pb.SignOutResponse -> Globals -> Globals
 handleSignOutResponse _ res globals =
   case res of
     Ok _ -> { globals | self = Nothing }
     Err _ -> globals
-handleSendVerificationEmailResponse : Pb.SendVerificationEmailRequest -> Result Http.Error Pb.SendVerificationEmailResponse -> Globals -> Globals
+handleSendVerificationEmailResponse : Pb.SendVerificationEmailRequest -> Result API.Error Pb.Empty -> Globals -> Globals
 handleSendVerificationEmailResponse _ _ globals = globals
-handleRegisterUsernameResponse : Pb.RegisterUsernameRequest -> Result Http.Error Pb.RegisterUsernameResponse -> Globals -> Globals
+handleRegisterUsernameResponse : Pb.RegisterUsernameRequest -> Result API.Error Pb.AuthSuccess -> Globals -> Globals
 handleRegisterUsernameResponse _ res globals =
   case res of
-    Ok {registerUsernameResult} -> case registerUsernameResult of
-      Just (Pb.RegisterUsernameResultOk authSuccess) -> { globals | self = Just {username=Utils.mustAuthSuccessToken authSuccess |> .owner, settings=Utils.mustAuthSuccessUserInfo authSuccess} }
-      _ -> globals
+    Ok authSuccess -> { globals | self = Just {username=Utils.mustAuthSuccessToken authSuccess |> .owner, settings=Utils.mustAuthSuccessUserInfo authSuccess} }
     Err _ -> globals
 handleLogInUsernameResponse : Pb.LogInUsernameRequest -> Result API.Error Pb.AuthSuccess -> Globals -> Globals
 handleLogInUsernameResponse _ res globals =
   case res of
     Ok authSuccess -> { globals | self = Just {username=Utils.mustAuthSuccessToken authSuccess |> .owner, settings=Utils.mustAuthSuccessUserInfo authSuccess} }
     Err _ -> globals
-handleCreatePredictionResponse : Pb.CreatePredictionRequest -> Result Http.Error Pb.CreatePredictionResponse -> Globals -> Globals
+handleCreatePredictionResponse : Pb.CreatePredictionRequest -> Result API.Error Pb.CreatePredictionResponse -> Globals -> Globals
 handleCreatePredictionResponse _ _ globals = globals
 handleGetPredictionResponse : Pb.GetPredictionRequest -> Result API.Error Pb.UserPredictionView -> Globals -> Globals
 handleGetPredictionResponse req res globals =
   case res of
     Ok prediction -> { globals | serverState = globals.serverState |> addPrediction req.predictionId prediction }
     Err _ -> globals
-handleListMyStakesResponse : Pb.ListMyStakesRequest -> Result Http.Error Pb.ListMyStakesResponse -> Globals -> Globals
+handleListMyStakesResponse : Pb.ListMyStakesRequest -> Result API.Error Pb.PredictionsById -> Globals -> Globals
 handleListMyStakesResponse _ res globals =
   case res of
-    Ok {listMyStakesResult} -> case listMyStakesResult of
-      Just (Pb.ListMyStakesResultOk predictions) -> { globals | serverState = globals.serverState |> addPredictions predictions }
-      _ -> globals
+    Ok predictions -> { globals | serverState = globals.serverState |> addPredictions predictions }
     Err _ -> globals
-handleListPredictionsResponse : Pb.ListPredictionsRequest -> Result Http.Error Pb.ListPredictionsResponse -> Globals -> Globals
+handleListPredictionsResponse : Pb.ListPredictionsRequest -> Result API.Error Pb.PredictionsById -> Globals -> Globals
 handleListPredictionsResponse _ res globals =
   case res of
-    Ok {listPredictionsResult} -> case listPredictionsResult of
-      Just (Pb.ListPredictionsResultOk predictions) -> { globals | serverState = globals.serverState |> addPredictions predictions }
-      _ -> globals
+    Ok predictions -> { globals | serverState = globals.serverState |> addPredictions predictions }
     Err _ -> globals
-handleStakeResponse : Pb.StakeRequest -> Result Http.Error Pb.StakeResponse -> Globals -> Globals
+handleStakeResponse : Pb.StakeRequest -> Result API.Error Pb.UserPredictionView -> Globals -> Globals
 handleStakeResponse req res globals =
   case res of
-    Ok {stakeResult} -> case Debug.log "stakeResult" stakeResult of
-      Just (Pb.StakeResultOk newPrediction) -> { globals | serverState = globals.serverState |> addPrediction req.predictionId newPrediction }
-      _ -> globals
+    Ok newPrediction -> { globals | serverState = globals.serverState |> addPrediction req.predictionId newPrediction }
     Err _ -> globals
-handleFollowResponse : Pb.FollowRequest -> Result Http.Error Pb.FollowResponse -> Globals -> Globals
+handleFollowResponse : Pb.FollowRequest -> Result API.Error Pb.UserPredictionView -> Globals -> Globals
 handleFollowResponse req res globals =
   case res of
-    Ok {followResult} -> case Debug.log "followResult" followResult of
-      Just (Pb.FollowResultOk newPrediction) -> { globals | serverState = globals.serverState |> addPrediction req.predictionId newPrediction }
-      _ -> globals
+    Ok newPrediction -> { globals | serverState = globals.serverState |> addPrediction req.predictionId newPrediction }
     Err _ -> globals
-handleResolveResponse : Pb.ResolveRequest -> Result Http.Error Pb.ResolveResponse -> Globals -> Globals
+handleResolveResponse : Pb.ResolveRequest -> Result API.Error Pb.UserPredictionView -> Globals -> Globals
 handleResolveResponse req res globals =
   case res of
-    Ok {resolveResult} -> case Debug.log "resolveResult" resolveResult of
-      Just (Pb.ResolveResultOk newPrediction) -> { globals | serverState = globals.serverState |> addPrediction req.predictionId newPrediction }
-      _ -> globals
+    Ok newPrediction -> { globals | serverState = globals.serverState |> addPrediction req.predictionId newPrediction }
     Err _ -> globals
-handleSetTrustedResponse : Pb.SetTrustedRequest -> Result Http.Error Pb.SetTrustedResponse -> Globals -> Globals
+handleSetTrustedResponse : Pb.SetTrustedRequest -> Result API.Error Pb.GenericUserInfo -> Globals -> Globals
 handleSetTrustedResponse _ res globals =
   case res of
-    Ok {setTrustedResult} -> case Debug.log "setTrustedResult" setTrustedResult of
-      Just (Pb.SetTrustedResultOk userInfo) -> Debug.log "globals before update" globals |> updateUserInfo (\_ -> userInfo) |> Debug.log "globals after update"
-      _ -> globals
+    Ok userInfo -> Debug.log "globals before update" globals |> updateUserInfo (\_ -> userInfo) |> Debug.log "globals after update"
     Err _ -> globals
-handleGetUserResponse : Pb.GetUserRequest -> Result Http.Error Pb.GetUserResponse -> Globals -> Globals
+handleGetUserResponse : Pb.GetUserRequest -> Result API.Error Pb.Relationship -> Globals -> Globals
 handleGetUserResponse req res globals =
   case res of
-    Ok {getUserResult} -> case Debug.log "getUserResult" getUserResult of
-      Just (Pb.GetUserResultOk relationship) -> globals |> addRelationship req.who relationship
-      _ -> globals
+    Ok relationship -> globals |> addRelationship req.who relationship
     Err _ -> globals
-handleChangePasswordResponse : Pb.ChangePasswordRequest -> Result Http.Error Pb.ChangePasswordResponse -> Globals -> Globals
+handleChangePasswordResponse : Pb.ChangePasswordRequest -> Result API.Error Pb.Empty -> Globals -> Globals
 handleChangePasswordResponse _ _ globals = globals
-handleGetSettingsResponse : Pb.GetSettingsRequest -> Result Http.Error Pb.GetSettingsResponse -> Globals -> Globals
+handleGetSettingsResponse : Pb.GetSettingsRequest -> Result API.Error Pb.GenericUserInfo -> Globals -> Globals
 handleGetSettingsResponse _ res globals =
   case res of
-    Ok {getSettingsResult} -> case getSettingsResult of
-      Just (Pb.GetSettingsResultOk newInfo) -> globals |> updateUserInfo (always newInfo)
-      _ -> globals
+    Ok newInfo -> globals |> updateUserInfo (always newInfo)
     Err _ -> globals
-handleSendInvitationResponse : Pb.SendInvitationRequest -> Result Http.Error Pb.SendInvitationResponse -> Globals -> Globals
+handleSendInvitationResponse : Pb.SendInvitationRequest -> Result API.Error Pb.GenericUserInfo -> Globals -> Globals
 handleSendInvitationResponse req res globals =
   case res of
-    Ok {sendInvitationResult} -> case sendInvitationResult of
-      Just (Pb.SendInvitationResultOk newInfo) -> globals |> updateUserInfo (always newInfo)
-      _ -> globals
+    Ok newInfo -> globals |> updateUserInfo (always newInfo)
     Err _ -> globals
 
-handleAcceptInvitationResponse : Pb.AcceptInvitationRequest -> Result Http.Error Pb.AcceptInvitationResponse -> Globals -> Globals
+handleAcceptInvitationResponse : Pb.AcceptInvitationRequest -> Result API.Error Pb.GenericUserInfo -> Globals -> Globals
 handleAcceptInvitationResponse _ res globals =
   case res of
-    Ok {acceptInvitationResult} -> case acceptInvitationResult of
-      Just (Pb.AcceptInvitationResultOk userInfo) -> globals |> updateUserInfo (\_ -> userInfo)
-      _ -> globals
+    Ok userInfo -> globals |> updateUserInfo (\_ -> userInfo)
     Err _ -> globals
 
 addPrediction : PredictionId -> Pb.UserPredictionView -> ServerState -> ServerState

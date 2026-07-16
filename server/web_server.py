@@ -103,11 +103,12 @@ class WebServer:
     def _get_auth_success(self, auth: Optional[mvp_pb2.AuthToken], req: mvp_pb2.GetSettingsRequest = mvp_pb2.GetSettingsRequest()) -> Optional[mvp_pb2.AuthSuccess]:
         if auth is None:
             return None
-        get_settings_response = self._servicer.GetSettings(token_owner(auth), req)
-        if get_settings_response.WhichOneof('get_settings_result') != 'ok':
-            logger.error('failed to get settings for valid-looking user', data_loss=True, auth=auth, get_settings_response=get_settings_response)
+        try:
+            user_info = self._servicer.GetSettings(token_owner(auth), req)
+        except ApiError as e:
+            logger.error('failed to get settings for valid-looking user', data_loss=True, auth=auth, error=e.catchall)
             return None
-        return mvp_pb2.AuthSuccess(token=auth, user_info=get_settings_response.ok)
+        return mvp_pb2.AuthSuccess(token=auth, user_info=user_info)
 
     async def get_static(self, req: web.Request) -> web.StreamResponse:
         filename = req.match_info['filename']
@@ -219,23 +220,25 @@ class WebServer:
         auth_success = self._get_auth_success(auth)
         if auth is None:
             return web.HTTPTemporaryRedirect('/login?dest=/my_stakes')
-        list_my_stakes_resp = self._servicer.ListMyStakes(token_owner(auth), mvp_pb2.ListMyStakesRequest())
-        if list_my_stakes_resp.WhichOneof('list_my_stakes_result') == 'error':
-            return web.Response(status=400, body=str(list_my_stakes_resp.error))
-        assert list_my_stakes_resp.WhichOneof('list_my_stakes_result') == 'ok'
+        try:
+            predictions = self._servicer.ListMyStakes(token_owner(auth), mvp_pb2.ListMyStakesRequest())
+        except ApiError as e:
+            return web.Response(status=e.http_status, body=e.catchall)
         return web.Response(
             content_type='text/html',
             body=self._jinja.get_template('MyStakesPage.html').render(
                 auth_success_pb_b64=pb_b64(auth_success),
-                predictions_pb_b64=pb_b64(list_my_stakes_resp.ok),
+                predictions_pb_b64=pb_b64(predictions),
             ))
 
     async def get_username(self, req: web.Request) -> web.Response:
         auth = self._token_glue.parse_cookie(req)
         username = Username(str(req.match_info['username']))
         auth_success = self._get_auth_success(auth, req=mvp_pb2.GetSettingsRequest(include_relationships_with_users=[username]))
-        list_predictions_resp = self._servicer.ListPredictions(token_owner(auth), mvp_pb2.ListPredictionsRequest(creator=username))
-        predictions = list_predictions_resp.ok
+        try:
+            predictions = self._servicer.ListPredictions(token_owner(auth), mvp_pb2.ListPredictionsRequest(creator=username))
+        except ApiError as e:
+            return web.Response(status=e.http_status, body=e.catchall)
         return web.Response(
             content_type='text/html',
             body=self._jinja.get_template('ViewUserPage.html').render(
@@ -268,16 +271,16 @@ class WebServer:
         auth = self._token_glue.parse_cookie(req)
         auth_success = self._get_auth_success(auth)
         nonce = str(req.match_info['nonce'])
-        check_invitation_resp = self._servicer.CheckInvitation(token_owner(auth), mvp_pb2.CheckInvitationRequest(nonce=nonce))
-        if check_invitation_resp.WhichOneof('check_invitation_result') == 'error':
-            return web.HTTPBadRequest(reason=str(check_invitation_resp.error))
-        assert check_invitation_resp.WhichOneof('check_invitation_result') == 'ok'
+        try:
+            invitation = self._servicer.CheckInvitation(token_owner(auth), mvp_pb2.CheckInvitationRequest(nonce=nonce))
+        except ApiError as e:
+            return web.Response(status=e.http_status, body=e.catchall)
         return web.Response(
             content_type='text/html',
             body=self._jinja.get_template('AcceptInvitationPage.html').render(
                 auth_success_pb_b64=pb_b64(auth_success),
-                recipient=check_invitation_resp.ok.recipient,
-                inviter=check_invitation_resp.ok.inviter,
+                recipient=invitation.recipient,
+                inviter=invitation.inviter,
                 nonce=nonce,
             ))
 

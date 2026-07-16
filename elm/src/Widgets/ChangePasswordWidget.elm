@@ -27,7 +27,7 @@ type Msg
   = SetOldPasswordField Password
   | SetNewPasswordField Password
   | ChangePassword
-  | ChangePasswordFinished (Result Http.Error Pb.ChangePasswordResponse)
+  | ChangePasswordFinished (Result API.Error Pb.Empty)
 
 init : State
 init =
@@ -37,7 +37,7 @@ init =
   , requestStatus = Unstarted
   }
 
-handleChangePasswordResponse : Result Http.Error Pb.ChangePasswordResponse -> State -> State
+handleChangePasswordResponse : Result API.Error Pb.Empty -> State -> State
 handleChangePasswordResponse res state =
   case API.simplifyChangePasswordResponse res of
     Ok _ ->

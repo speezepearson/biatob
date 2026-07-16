@@ -32,7 +32,7 @@ init =
   { setTrustedRequestStatuses = D.empty
   }
 
-handleSetTrustedResponse : Username -> Result Http.Error Pb.SetTrustedResponse -> State -> State
+handleSetTrustedResponse : Username -> Result API.Error Pb.GenericUserInfo -> State -> State
 handleSetTrustedResponse who res state =
     { state | setTrustedRequestStatuses = state.setTrustedRequestStatuses |> D.update who (Maybe.map (always <| case API.simplifySetTrustedResponse res of
                 Ok _ -> Succeeded

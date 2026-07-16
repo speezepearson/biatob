@@ -31,7 +31,7 @@ type Msg
   | LogInUsername AuthWidgetLoc AuthWidget.State Pb.LogInUsernameRequest
   | LogInUsernameFinished AuthWidgetLoc Pb.LogInUsernameRequest (Result API.Error Pb.AuthSuccess)
   | SignOut AuthWidgetLoc AuthWidget.State Pb.SignOutRequest
-  | SignOutFinished AuthWidgetLoc Pb.SignOutRequest (Result Http.Error Pb.SignOutResponse)
+  | SignOutFinished AuthWidgetLoc Pb.SignOutRequest (Result API.Error Pb.SignOutResponse)
   | Copy String
   | Tick Time.Posix
   | AuthWidgetExternallyModified AuthWidget.DomModification

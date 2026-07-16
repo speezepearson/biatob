@@ -151,19 +151,19 @@ type AuthWidgetLoc = Navbar | Inline
 type Msg
   = SetAuthWidget AuthWidgetLoc AuthWidget.State
   | SendInvitation
-  | SendInvitationFinished Pb.SendInvitationRequest (Result Http.Error Pb.SendInvitationResponse)
+  | SendInvitationFinished Pb.SendInvitationRequest (Result API.Error Pb.GenericUserInfo)
   | LogInUsername AuthWidgetLoc AuthWidget.State Pb.LogInUsernameRequest
   | LogInUsernameFinished AuthWidgetLoc Pb.LogInUsernameRequest (Result API.Error Pb.AuthSuccess)
   | Resolve Pb.Resolution
-  | ResolveFinished Pb.ResolveRequest (Result Http.Error Pb.ResolveResponse)
+  | ResolveFinished Pb.ResolveRequest (Result API.Error Pb.UserPredictionView)
   | SetCreatorTrusted
-  | SetCreatorTrustedFinished Pb.SetTrustedRequest (Result Http.Error Pb.SetTrustedResponse)
+  | SetCreatorTrustedFinished Pb.SetTrustedRequest (Result API.Error Pb.GenericUserInfo)
   | SignOut AuthWidgetLoc AuthWidget.State Pb.SignOutRequest
-  | SignOutFinished AuthWidgetLoc Pb.SignOutRequest (Result Http.Error Pb.SignOutResponse)
+  | SignOutFinished AuthWidgetLoc Pb.SignOutRequest (Result API.Error Pb.SignOutResponse)
   | Stake Cents
-  | StakeFinished Pb.StakeRequest (Result Http.Error Pb.StakeResponse)
+  | StakeFinished Pb.StakeRequest (Result API.Error Pb.UserPredictionView)
   | Follow Bool
-  | FollowFinished Pb.FollowRequest (Result Http.Error Pb.FollowResponse)
+  | FollowFinished Pb.FollowRequest (Result API.Error Pb.UserPredictionView)
   | SetBettorSide Utils.BetSide
   | SetStakeField String
   | SetEmbeddingFormat EmbeddingFormat

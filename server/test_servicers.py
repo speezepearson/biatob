@@ -446,7 +446,7 @@ class TestStake:
     create_user(any_servicer, BOB)
     SetTrustedOk(any_servicer, ALICE, BOB, True)
     with assert_prediction_unchanged(any_servicer, prediction_id=prediction_id):
-      assert "you don\\'t trust the creator" in str(StakeErr(any_servicer, BOB, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_stake_cents=10)))
+      assert "you don't trust the creator" in str(StakeErr(any_servicer, BOB, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_stake_cents=10)))
 
   class TestQueueing:
 

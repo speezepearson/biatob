@@ -34,9 +34,9 @@ type Msg
   | LogInUsername AuthWidget.State Pb.LogInUsernameRequest
   | LogInUsernameFinished Pb.LogInUsernameRequest (Result API.Error Pb.AuthSuccess)
   | RegisterUsername
-  | RegisterUsernameFinished Pb.RegisterUsernameRequest (Result Http.Error Pb.RegisterUsernameResponse)
+  | RegisterUsernameFinished Pb.RegisterUsernameRequest (Result API.Error Pb.AuthSuccess)
   | SignOut AuthWidget.State Pb.SignOutRequest
-  | SignOutFinished Pb.SignOutRequest (Result Http.Error Pb.SignOutResponse)
+  | SignOutFinished Pb.SignOutRequest (Result API.Error Pb.SignOutResponse)
   | SetUsernameField String
   | SetPasswordField String
   | SetConfirmPasswordField String

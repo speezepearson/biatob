@@ -51,11 +51,11 @@ type Msg
   | SetSpecialRulesField String
   | SetAuthWidget AuthWidget.State
   | Create
-  | CreateFinished Pb.CreatePredictionRequest (Result Http.Error Pb.CreatePredictionResponse)
+  | CreateFinished Pb.CreatePredictionRequest (Result API.Error Pb.CreatePredictionResponse)
   | LogInUsername AuthWidget.State Pb.LogInUsernameRequest
   | LogInUsernameFinished Pb.LogInUsernameRequest (Result API.Error Pb.AuthSuccess)
   | SignOut AuthWidget.State Pb.SignOutRequest
-  | SignOutFinished Pb.SignOutRequest (Result Http.Error Pb.SignOutResponse)
+  | SignOutFinished Pb.SignOutRequest (Result API.Error Pb.SignOutResponse)
   | SaveFormState
   | Tick Time.Posix
   | AuthWidgetExternallyModified AuthWidget.DomModification

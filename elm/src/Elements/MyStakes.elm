@@ -44,7 +44,7 @@ type Msg
   | LogInUsername AuthWidget.State Pb.LogInUsernameRequest
   | LogInUsernameFinished Pb.LogInUsernameRequest (Result API.Error Pb.AuthSuccess)
   | SignOut AuthWidget.State Pb.SignOutRequest
-  | SignOutFinished Pb.SignOutRequest (Result Http.Error Pb.SignOutResponse)
+  | SignOutFinished Pb.SignOutRequest (Result API.Error Pb.SignOutResponse)
   | AuthWidgetExternallyModified AuthWidget.DomModification
   | SetFilterOwn (Maybe Bool)
   | SetFilterPhase (Maybe LifecyclePhase)

@@ -21,23 +21,25 @@ MAX_LEGAL_STAKE_CENTS = 5_000_00
 
 
 class UsernameAlreadyRegisteredError(Exception): pass
-class NoSuchUserError(Exception): pass
-class BadPasswordError(Exception): pass
 class ForgottenTokenError(RuntimeError): pass
 
 
+# --- servicer failure modes --------------------------------------------------
+#
+# Servicers raise these instead of returning the `error` arm of a
+# `oneof foo_result`. They name the *failure mode*, not the HTTP status: the
+# status is a presentation detail that happens to hang off the class.
+#
+# Deliberately no HTTP library import here. Servicers must stay
+# transport-agnostic, because web_server.py calls them directly to render pages
+# -- they are not only reached over HTTP. Each transport translates: api_server
+# into a status code plus an ErrorResponse body, web_server into an error page.
+
 class ApiError(Exception):
-    """An expected, client-facing failure. Servicers raise these instead of
-    returning an `error` arm of a `oneof foo_result`.
+    """Base class for expected, client-facing failures.
 
-    Deliberately carries an HTTP status but imports no HTTP library. The
-    Servicer must stay transport-agnostic, because web_server.py calls it
-    directly to render pages server-side -- it is not only reached over HTTP.
-    Each transport decides how to present these: api_server turns them into a
-    status code plus an ErrorResponse body, web_server into an error page.
-
-    `catchall` is shown to the user, so it must not leak internals. Anything
-    that isn't an ApiError is a bug, and becomes an opaque 500.
+    `catchall` is shown to the user verbatim, so it must never leak internals.
+    Anything that is *not* an ApiError is a bug, and becomes an opaque 500.
     """
     http_status = 400
 
@@ -45,17 +47,82 @@ class ApiError(Exception):
         super().__init__(catchall)
         self.catchall = catchall
 
-class AuthenticationError(ApiError):
-    """The actor isn't who they claim, or isn't in the right auth state."""
+
+class InvalidRequestError(ApiError):
+    """The request is malformed or self-contradictory: bad password format,
+    unrecognized resolution, betting zero cents, trusting yourself."""
+    http_status = 400
+
+
+# --- who you are -------------------------------------------------------------
+
+class NotLoggedInError(ApiError):
+    """This endpoint needs an actor and didn't get one."""
     http_status = 401
 
-class NoSuchPredictionError(ApiError):
-    """No such prediction -- or the actor isn't allowed to know it exists.
+class BadCredentialsError(ApiError):
+    """Credentials didn't check out: wrong password, or (on login) no such user.
+
+    NOTE: on login this is currently raised with a message that distinguishes
+    'no such user' from 'bad password', which lets an attacker enumerate
+    usernames. Pre-existing behaviour, preserved deliberately; worth closing
+    separately.
+    """
+    http_status = 401
+
+class AlreadyLoggedInError(ApiError):
+    """Actor is authenticated but the endpoint requires anonymity (log in,
+    register, verify email). A client mistake, not an auth failure -- hence
+    400 rather than 401."""
+    http_status = 400
+
+class ForbiddenError(ApiError):
+    """Actor is authenticated, and simply isn't allowed: resolving someone
+    else's prediction, betting against a creator you don't trust."""
+    http_status = 403
+
+
+# --- what you asked for --------------------------------------------------
+
+class NotFoundError(ApiError):
+    http_status = 404
+
+class NoSuchPredictionError(NotFoundError):
+    """No such prediction -- or the actor may not know it exists.
 
     Deliberately conflates 'absent' and 'forbidden': telling a stranger that a
-    prediction exists but is private is itself a leak, so both become a 404.
+    private prediction exists is itself a leak, so both are a 404.
     """
-    http_status = 404
+
+class NoSuchUserError(NotFoundError): pass
+class NoSuchInvitationError(NotFoundError): pass
+
+
+# --- the world is not in the right state -------------------------------------
+
+class ConflictError(ApiError):
+    """The request is well-formed and permitted, but conflicts with current
+    state. Retrying unchanged won't help until something else changes."""
+    http_status = 409
+
+class AlreadyRegisteredError(ConflictError):
+    """Username taken, or email already registered."""
+
+class PredictionClosedError(ConflictError):
+    """Betting window has closed, or the prediction already resolved."""
+
+class StakeCapExceededError(ConflictError):
+    """The bet would exceed the creator's tolerance, or the per-prediction cap."""
+
+class InvitationAlreadySentError(ConflictError): pass
+
+
+# --- our fault ---------------------------------------------------------------
+
+class InternalError(ApiError):
+    """A 'this should never happen' that we nonetheless handle. Distinct from an
+    unhandled exception only in that we have a message worth showing."""
+    http_status = 500
 
 
 @overload
@@ -173,25 +240,40 @@ def describe_AcceptInvitationRequest_problems(request: mvp_pb2.AcceptInvitationR
 class Servicer(abc.ABC):
     def Whoami(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.WhoamiRequest) -> mvp_pb2.WhoamiResponse: pass
     def SignOut(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.SignOutRequest) -> mvp_pb2.SignOutResponse: pass
-    def SendVerificationEmail(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.SendVerificationEmailRequest) -> mvp_pb2.SendVerificationEmailResponse: pass
-    def RegisterUsername(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.RegisterUsernameRequest) -> mvp_pb2.RegisterUsernameResponse: pass
+    def SendVerificationEmail(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.SendVerificationEmailRequest) -> mvp_pb2.Empty:
+        """Raises AlreadyLoggedInError, AlreadyRegisteredError."""
+    def RegisterUsername(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.RegisterUsernameRequest) -> mvp_pb2.AuthSuccess:
+        """Raises AlreadyLoggedInError, InvalidRequestError, AlreadyRegisteredError."""
     def LogInUsername(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.LogInUsernameRequest) -> mvp_pb2.AuthSuccess:
-        """Raises AuthenticationError on bad credentials, ApiError if already logged in."""
-    def CreatePrediction(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.CreatePredictionRequest) -> mvp_pb2.CreatePredictionResponse: pass
+        """Raises BadCredentialsError, AlreadyLoggedInError."""
+    def CreatePrediction(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.CreatePredictionRequest) -> mvp_pb2.CreatePredictionResponse:
+        """Raises NotLoggedInError, InvalidRequestError."""
     def GetPrediction(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.GetPredictionRequest) -> mvp_pb2.UserPredictionView:
         """Raises NoSuchPredictionError if absent or not visible to the actor."""
-    def ListMyStakes(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.ListMyStakesRequest) -> mvp_pb2.ListMyStakesResponse: pass
-    def ListPredictions(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.ListPredictionsRequest) -> mvp_pb2.ListPredictionsResponse: pass
-    def Stake(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.StakeRequest) -> mvp_pb2.StakeResponse: pass
-    def Follow(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.FollowRequest) -> mvp_pb2.FollowResponse: pass
-    def Resolve(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.ResolveRequest) -> mvp_pb2.ResolveResponse: pass
-    def SetTrusted(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.SetTrustedRequest) -> mvp_pb2.SetTrustedResponse: pass
-    def GetUser(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.GetUserRequest) -> mvp_pb2.GetUserResponse: pass
-    def ChangePassword(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.ChangePasswordRequest) -> mvp_pb2.ChangePasswordResponse: pass
-    def GetSettings(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.GetSettingsRequest) -> mvp_pb2.GetSettingsResponse: pass
-    def SendInvitation(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.SendInvitationRequest) -> mvp_pb2.SendInvitationResponse: pass
-    def CheckInvitation(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.CheckInvitationRequest) -> mvp_pb2.CheckInvitationResponse: pass
-    def AcceptInvitation(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.AcceptInvitationRequest) -> mvp_pb2.AcceptInvitationResponse: pass
+    def ListMyStakes(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.ListMyStakesRequest) -> mvp_pb2.PredictionsById:
+        """Raises NotLoggedInError."""
+    def ListPredictions(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.ListPredictionsRequest) -> mvp_pb2.PredictionsById:
+        """Raises NotLoggedInError."""
+    def Stake(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.StakeRequest) -> mvp_pb2.UserPredictionView:
+        """Raises NotLoggedInError, NoSuchPredictionError, ForbiddenError, PredictionClosedError, StakeCapExceededError, InvalidRequestError."""
+    def Follow(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.FollowRequest) -> mvp_pb2.UserPredictionView:
+        """Raises NotLoggedInError, NoSuchPredictionError."""
+    def Resolve(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.ResolveRequest) -> mvp_pb2.UserPredictionView:
+        """Raises NotLoggedInError, NoSuchPredictionError, ForbiddenError, InvalidRequestError."""
+    def SetTrusted(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.SetTrustedRequest) -> mvp_pb2.GenericUserInfo:
+        """Raises NotLoggedInError, NoSuchUserError, InvalidRequestError."""
+    def GetUser(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.GetUserRequest) -> mvp_pb2.Relationship:
+        """Raises NoSuchUserError."""
+    def ChangePassword(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.ChangePasswordRequest) -> mvp_pb2.Empty:
+        """Raises NotLoggedInError, BadCredentialsError, InvalidRequestError."""
+    def GetSettings(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.GetSettingsRequest) -> mvp_pb2.GenericUserInfo:
+        """Raises NotLoggedInError."""
+    def SendInvitation(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.SendInvitationRequest) -> mvp_pb2.GenericUserInfo:
+        """Raises NotLoggedInError, NoSuchUserError, InvitationAlreadySentError."""
+    def CheckInvitation(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.CheckInvitationRequest) -> mvp_pb2.CheckInvitationResponse:
+        """Raises NoSuchInvitationError."""
+    def AcceptInvitation(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.AcceptInvitationRequest) -> mvp_pb2.GenericUserInfo:
+        """Raises NoSuchInvitationError."""
 
 
 class TokenMint:

@@ -56,19 +56,24 @@ class ApiServer:
         self._token_glue = token_glue
         self._servicer = servicer
 
+    @translates_api_errors
     async def Whoami(self, http_req: web.Request) -> web.Response:
         return proto_response(self._servicer.Whoami(actor=self._token_glue.get_authorizing_user(http_req), request=await parse_proto(http_req, mvp_pb2.WhoamiRequest)))
+    @translates_api_errors
     async def SignOut(self, http_req: web.Request) -> web.Response:
         http_resp = proto_response(self._servicer.SignOut(actor=self._token_glue.get_authorizing_user(http_req), request=await parse_proto(http_req, mvp_pb2.SignOutRequest)))
         self._token_glue.del_cookie(http_req, http_resp)
         return http_resp
+    @translates_api_errors
     async def SendVerificationEmail(self, http_req: web.Request) -> web.Response:
         return proto_response(self._servicer.SendVerificationEmail(actor=self._token_glue.get_authorizing_user(http_req), request=await parse_proto(http_req, mvp_pb2.SendVerificationEmailRequest)))
+    @translates_api_errors
     async def RegisterUsername(self, http_req: web.Request) -> web.Response:
-        pb_resp = self._servicer.RegisterUsername(actor=self._token_glue.get_authorizing_user(http_req), request=await parse_proto(http_req, mvp_pb2.RegisterUsernameRequest))
-        http_resp = proto_response(pb_resp)
-        if pb_resp.WhichOneof('register_username_result') == 'ok':
-            self._token_glue.set_cookie(pb_resp.ok.token, http_resp)
+        auth_success = self._servicer.RegisterUsername(actor=self._token_glue.get_authorizing_user(http_req), request=await parse_proto(http_req, mvp_pb2.RegisterUsernameRequest))
+        # Same shape as LogInUsername: failure left via an exception, so the
+        # cookie can't be attached to a response that reports an error.
+        http_resp = proto_response(auth_success)
+        self._token_glue.set_cookie(auth_success.token, http_resp)
         return http_resp
     @translates_api_errors
     async def LogInUsername(self, http_req: web.Request) -> web.Response:
@@ -78,27 +83,37 @@ class ApiServer:
         http_resp = proto_response(auth_success)
         self._token_glue.set_cookie(auth_success.token, http_resp)
         return http_resp
+    @translates_api_errors
     async def CreatePrediction(self, http_req: web.Request) -> web.Response:
         return proto_response(self._servicer.CreatePrediction(actor=self._token_glue.get_authorizing_user(http_req), request=await parse_proto(http_req, mvp_pb2.CreatePredictionRequest)))
     @translates_api_errors
     async def GetPrediction(self, http_req: web.Request) -> web.Response:
         return proto_response(self._servicer.GetPrediction(actor=self._token_glue.get_authorizing_user(http_req), request=await parse_proto(http_req, mvp_pb2.GetPredictionRequest)))
+    @translates_api_errors
     async def Stake(self, http_req: web.Request) -> web.Response:
         return proto_response(self._servicer.Stake(actor=self._token_glue.get_authorizing_user(http_req), request=await parse_proto(http_req, mvp_pb2.StakeRequest)))
+    @translates_api_errors
     async def Follow(self, http_req: web.Request) -> web.Response:
         return proto_response(self._servicer.Follow(actor=self._token_glue.get_authorizing_user(http_req), request=await parse_proto(http_req, mvp_pb2.FollowRequest)))
+    @translates_api_errors
     async def Resolve(self, http_req: web.Request) -> web.Response:
         return proto_response(self._servicer.Resolve(actor=self._token_glue.get_authorizing_user(http_req), request=await parse_proto(http_req, mvp_pb2.ResolveRequest)))
+    @translates_api_errors
     async def SetTrusted(self, http_req: web.Request) -> web.Response:
         return proto_response(self._servicer.SetTrusted(actor=self._token_glue.get_authorizing_user(http_req), request=await parse_proto(http_req, mvp_pb2.SetTrustedRequest)))
+    @translates_api_errors
     async def GetUser(self, http_req: web.Request) -> web.Response:
         return proto_response(self._servicer.GetUser(actor=self._token_glue.get_authorizing_user(http_req), request=await parse_proto(http_req, mvp_pb2.GetUserRequest)))
+    @translates_api_errors
     async def ChangePassword(self, http_req: web.Request) -> web.Response:
         return proto_response(self._servicer.ChangePassword(actor=self._token_glue.get_authorizing_user(http_req), request=await parse_proto(http_req, mvp_pb2.ChangePasswordRequest)))
+    @translates_api_errors
     async def GetSettings(self, http_req: web.Request) -> web.Response:
         return proto_response(self._servicer.GetSettings(actor=self._token_glue.get_authorizing_user(http_req), request=await parse_proto(http_req, mvp_pb2.GetSettingsRequest)))
+    @translates_api_errors
     async def SendInvitation(self, http_req: web.Request) -> web.Response:
         return proto_response(self._servicer.SendInvitation(actor=self._token_glue.get_authorizing_user(http_req), request=await parse_proto(http_req, mvp_pb2.SendInvitationRequest)))
+    @translates_api_errors
     async def AcceptInvitation(self, http_req: web.Request) -> web.Response:
         return proto_response(self._servicer.AcceptInvitation(actor=self._token_glue.get_authorizing_user(http_req), request=await parse_proto(http_req, mvp_pb2.AcceptInvitationRequest)))
 

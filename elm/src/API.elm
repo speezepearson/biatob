@@ -12,19 +12,6 @@ type alias Endpoint req resp =
   , url : String
   }
 
-{-| For endpoints still using the `oneof foo_result {Ok ok; Error error;}`
-pattern, where every answer is a 200 and you inspect the body to find out
-whether it worked.
--}
-hit : Endpoint req resp -> (Result Http.Error resp -> msg) -> req -> Cmd msg
-hit endpoint toMsg req =
-  Http.post
-    { url = endpoint.url
-    , body = Http.bytesBody "application/octet-stream" <| PE.encode <| endpoint.encoder req
-    , expect = PD.expectBytes toMsg endpoint.decoder
-    }
-
-
 {-| A failed call to an endpoint that reports failure via HTTP status.
 
 `ApiError` is a failure the server *chose* to report: a non-2xx carrying an
@@ -41,9 +28,8 @@ errorToString e =
     ApiError {catchall} -> catchall
     TransportError httpError -> httpErrorToString httpError
 
-{-| Like `hit`, but for endpoints migrated to HTTP-status error propagation:
-the 200 body is the payload itself, and failures arrive as a non-2xx with an
-ErrorResponse body.
+{-| Make an API call. The 200 body is the payload itself; failures arrive as a
+non-2xx carrying an ErrorResponse.
 
 This can't use `PD.expectBytes`. On a non-2xx, elm/http's `expectBytes`
 discards the body and hands back only `BadStatus statusCode` -- see the
@@ -76,42 +62,42 @@ expectProtoOrError decoder toMsg =
           Just value -> Ok value
           Nothing -> Err (TransportError (Http.BadBody "unintelligible response"))
 
-postWhoami : (Result Http.Error Pb.WhoamiResponse -> msg) -> Pb.WhoamiRequest -> Cmd msg
-postWhoami = hit {url="/api/Whoami", encoder=Pb.toWhoamiRequestEncoder, decoder=Pb.whoamiResponseDecoder}
-postSignOut : (Result Http.Error Pb.SignOutResponse -> msg) -> Pb.SignOutRequest -> Cmd msg
-postSignOut = hit {url="/api/SignOut", encoder=Pb.toSignOutRequestEncoder, decoder=Pb.signOutResponseDecoder}
-postSendVerificationEmail : (Result Http.Error Pb.SendVerificationEmailResponse -> msg) -> Pb.SendVerificationEmailRequest -> Cmd msg
-postSendVerificationEmail = hit {url="/api/SendVerificationEmail", encoder=Pb.toSendVerificationEmailRequestEncoder, decoder=Pb.sendVerificationEmailResponseDecoder}
-postRegisterUsername : (Result Http.Error Pb.RegisterUsernameResponse -> msg) -> Pb.RegisterUsernameRequest -> Cmd msg
-postRegisterUsername = hit {url="/api/RegisterUsername", encoder=Pb.toRegisterUsernameRequestEncoder, decoder=Pb.registerUsernameResponseDecoder}
+postWhoami : (Result Error Pb.WhoamiResponse -> msg) -> Pb.WhoamiRequest -> Cmd msg
+postWhoami = call {url="/api/Whoami", encoder=Pb.toWhoamiRequestEncoder, decoder=Pb.whoamiResponseDecoder}
+postSignOut : (Result Error Pb.SignOutResponse -> msg) -> Pb.SignOutRequest -> Cmd msg
+postSignOut = call {url="/api/SignOut", encoder=Pb.toSignOutRequestEncoder, decoder=Pb.signOutResponseDecoder}
+postSendVerificationEmail : (Result Error Pb.Empty -> msg) -> Pb.SendVerificationEmailRequest -> Cmd msg
+postSendVerificationEmail = call {url="/api/SendVerificationEmail", encoder=Pb.toSendVerificationEmailRequestEncoder, decoder=Pb.emptyDecoder}
+postRegisterUsername : (Result Error Pb.AuthSuccess -> msg) -> Pb.RegisterUsernameRequest -> Cmd msg
+postRegisterUsername = call {url="/api/RegisterUsername", encoder=Pb.toRegisterUsernameRequestEncoder, decoder=Pb.authSuccessDecoder}
 postLogInUsername : (Result Error Pb.AuthSuccess -> msg) -> Pb.LogInUsernameRequest -> Cmd msg
 postLogInUsername = call {url="/api/LogInUsername", encoder=Pb.toLogInUsernameRequestEncoder, decoder=Pb.authSuccessDecoder}
-postCreatePrediction : (Result Http.Error Pb.CreatePredictionResponse -> msg) -> Pb.CreatePredictionRequest -> Cmd msg
-postCreatePrediction = hit {url="/api/CreatePrediction", encoder=Pb.toCreatePredictionRequestEncoder, decoder=Pb.createPredictionResponseDecoder}
+postCreatePrediction : (Result Error Pb.CreatePredictionResponse -> msg) -> Pb.CreatePredictionRequest -> Cmd msg
+postCreatePrediction = call {url="/api/CreatePrediction", encoder=Pb.toCreatePredictionRequestEncoder, decoder=Pb.createPredictionResponseDecoder}
 postGetPrediction : (Result Error Pb.UserPredictionView -> msg) -> Pb.GetPredictionRequest -> Cmd msg
 postGetPrediction = call {url="/api/GetPrediction", encoder=Pb.toGetPredictionRequestEncoder, decoder=Pb.userPredictionViewDecoder}
-postListMyStakes : (Result Http.Error Pb.ListMyStakesResponse -> msg) -> Pb.ListMyStakesRequest -> Cmd msg
-postListMyStakes = hit {url="/api/ListMyStakes", encoder=Pb.toListMyStakesRequestEncoder, decoder=Pb.listMyStakesResponseDecoder}
-postListPredictions : (Result Http.Error Pb.ListPredictionsResponse -> msg) -> Pb.ListPredictionsRequest -> Cmd msg
-postListPredictions = hit {url="/api/ListPredictions", encoder=Pb.toListPredictionsRequestEncoder, decoder=Pb.listPredictionsResponseDecoder}
-postStake : (Result Http.Error Pb.StakeResponse -> msg) -> Pb.StakeRequest -> Cmd msg
-postStake = hit {url="/api/Stake", encoder=Pb.toStakeRequestEncoder, decoder=Pb.stakeResponseDecoder}
-postFollow : (Result Http.Error Pb.FollowResponse -> msg) -> Pb.FollowRequest -> Cmd msg
-postFollow = hit {url="/api/Follow", encoder=Pb.toFollowRequestEncoder, decoder=Pb.followResponseDecoder}
-postResolve : (Result Http.Error Pb.ResolveResponse -> msg) -> Pb.ResolveRequest -> Cmd msg
-postResolve = hit {url="/api/Resolve", encoder=Pb.toResolveRequestEncoder, decoder=Pb.resolveResponseDecoder}
-postSetTrusted : (Result Http.Error Pb.SetTrustedResponse -> msg) -> Pb.SetTrustedRequest -> Cmd msg
-postSetTrusted = hit {url="/api/SetTrusted", encoder=Pb.toSetTrustedRequestEncoder, decoder=Pb.setTrustedResponseDecoder}
-postGetUser : (Result Http.Error Pb.GetUserResponse -> msg) -> Pb.GetUserRequest -> Cmd msg
-postGetUser = hit {url="/api/GetUser", encoder=Pb.toGetUserRequestEncoder, decoder=Pb.getUserResponseDecoder}
-postChangePassword : (Result Http.Error Pb.ChangePasswordResponse -> msg) -> Pb.ChangePasswordRequest -> Cmd msg
-postChangePassword = hit {url="/api/ChangePassword", encoder=Pb.toChangePasswordRequestEncoder, decoder=Pb.changePasswordResponseDecoder}
-postGetSettings : (Result Http.Error Pb.GetSettingsResponse -> msg) -> Pb.GetSettingsRequest -> Cmd msg
-postGetSettings = hit {url="/api/GetSettings", encoder=Pb.toGetSettingsRequestEncoder, decoder=Pb.getSettingsResponseDecoder}
-postSendInvitation : (Result Http.Error Pb.SendInvitationResponse -> msg) -> Pb.SendInvitationRequest -> Cmd msg
-postSendInvitation = hit {url="/api/SendInvitation", encoder=Pb.toSendInvitationRequestEncoder, decoder=Pb.sendInvitationResponseDecoder}
-postAcceptInvitation : (Result Http.Error Pb.AcceptInvitationResponse -> msg) -> Pb.AcceptInvitationRequest -> Cmd msg
-postAcceptInvitation = hit {url="/api/AcceptInvitation", encoder=Pb.toAcceptInvitationRequestEncoder, decoder=Pb.acceptInvitationResponseDecoder}
+postListMyStakes : (Result Error Pb.PredictionsById -> msg) -> Pb.ListMyStakesRequest -> Cmd msg
+postListMyStakes = call {url="/api/ListMyStakes", encoder=Pb.toListMyStakesRequestEncoder, decoder=Pb.predictionsByIdDecoder}
+postListPredictions : (Result Error Pb.PredictionsById -> msg) -> Pb.ListPredictionsRequest -> Cmd msg
+postListPredictions = call {url="/api/ListPredictions", encoder=Pb.toListPredictionsRequestEncoder, decoder=Pb.predictionsByIdDecoder}
+postStake : (Result Error Pb.UserPredictionView -> msg) -> Pb.StakeRequest -> Cmd msg
+postStake = call {url="/api/Stake", encoder=Pb.toStakeRequestEncoder, decoder=Pb.userPredictionViewDecoder}
+postFollow : (Result Error Pb.UserPredictionView -> msg) -> Pb.FollowRequest -> Cmd msg
+postFollow = call {url="/api/Follow", encoder=Pb.toFollowRequestEncoder, decoder=Pb.userPredictionViewDecoder}
+postResolve : (Result Error Pb.UserPredictionView -> msg) -> Pb.ResolveRequest -> Cmd msg
+postResolve = call {url="/api/Resolve", encoder=Pb.toResolveRequestEncoder, decoder=Pb.userPredictionViewDecoder}
+postSetTrusted : (Result Error Pb.GenericUserInfo -> msg) -> Pb.SetTrustedRequest -> Cmd msg
+postSetTrusted = call {url="/api/SetTrusted", encoder=Pb.toSetTrustedRequestEncoder, decoder=Pb.genericUserInfoDecoder}
+postGetUser : (Result Error Pb.Relationship -> msg) -> Pb.GetUserRequest -> Cmd msg
+postGetUser = call {url="/api/GetUser", encoder=Pb.toGetUserRequestEncoder, decoder=Pb.relationshipDecoder}
+postChangePassword : (Result Error Pb.Empty -> msg) -> Pb.ChangePasswordRequest -> Cmd msg
+postChangePassword = call {url="/api/ChangePassword", encoder=Pb.toChangePasswordRequestEncoder, decoder=Pb.emptyDecoder}
+postGetSettings : (Result Error Pb.GenericUserInfo -> msg) -> Pb.GetSettingsRequest -> Cmd msg
+postGetSettings = call {url="/api/GetSettings", encoder=Pb.toGetSettingsRequestEncoder, decoder=Pb.genericUserInfoDecoder}
+postSendInvitation : (Result Error Pb.GenericUserInfo -> msg) -> Pb.SendInvitationRequest -> Cmd msg
+postSendInvitation = call {url="/api/SendInvitation", encoder=Pb.toSendInvitationRequestEncoder, decoder=Pb.genericUserInfoDecoder}
+postAcceptInvitation : (Result Error Pb.GenericUserInfo -> msg) -> Pb.AcceptInvitationRequest -> Cmd msg
+postAcceptInvitation = call {url="/api/AcceptInvitation", encoder=Pb.toAcceptInvitationRequestEncoder, decoder=Pb.genericUserInfoDecoder}
 
 httpErrorToString : Http.Error -> String
 httpErrorToString e =
@@ -122,145 +108,46 @@ httpErrorToString e =
     Http.BadStatus code -> "HTTP error code " ++ String.fromInt code
     Http.BadBody _ -> "unintelligible response"
 
-{-| Kept so the ten call sites don't change shape. Note what disappeared: the
-`Nothing -> Err "neither Ok nor Error"` arm. That state was unrepresentable in
-HTTP terms, but the protobuf `oneof` forced us to have an opinion about it.
+{-| Adapters kept so call sites keep their `Result String payload` shape.
+
+Every one of these used to be a twelve-line `case` unwrapping a `oneof`, with a
+dead third arm for "neither Ok nor Error" -- a state the protobuf forced us to
+have an opinion about, and which HTTP simply cannot express. Now that failure
+is carried by the status code, they're all one-liners, and the impossible arm
+is gone from all of them.
 -}
 simplifyLogInUsernameResponse : Result Error Pb.AuthSuccess -> Result String Pb.AuthSuccess
 simplifyLogInUsernameResponse = Result.mapError errorToString
 
-simplifySendVerificationEmailResponse : Result Http.Error Pb.SendVerificationEmailResponse -> Result String Pb.Void
-simplifySendVerificationEmailResponse res =
-  case res of
-    Err e -> Err (httpErrorToString e)
-    Ok resp ->
-      case resp.sendVerificationEmailResult of
-        Just (Pb.SendVerificationEmailResultOk success) ->
-          Ok success
-        Just (Pb.SendVerificationEmailResultError e) ->
-          Err e.catchall
-        Nothing ->
-          Err "Invalid server response (neither Ok nor Error in protobuf)"
+simplifySendVerificationEmailResponse : Result Error Pb.Empty -> Result String Pb.Empty
+simplifySendVerificationEmailResponse = Result.mapError errorToString
 
-simplifyRegisterUsernameResponse : Result Http.Error Pb.RegisterUsernameResponse -> Result String Pb.AuthSuccess
-simplifyRegisterUsernameResponse res =
-  case res of
-    Err e -> Err (httpErrorToString e)
-    Ok resp ->
-      case resp.registerUsernameResult of
-        Just (Pb.RegisterUsernameResultOk success) ->
-          Ok success
-        Just (Pb.RegisterUsernameResultError e) ->
-          Err e.catchall
-        Nothing ->
-          Err "Invalid server response (neither Ok nor Error in protobuf)"
+simplifyRegisterUsernameResponse : Result Error Pb.AuthSuccess -> Result String Pb.AuthSuccess
+simplifyRegisterUsernameResponse = Result.mapError errorToString
 
-simplifySignOutResponse : Result Http.Error Pb.SignOutResponse -> Result String ()
-simplifySignOutResponse res =
-  case res of
-    Err e -> Err (httpErrorToString e)
-    Ok {} -> Ok ()
+simplifySignOutResponse : Result Error Pb.SignOutResponse -> Result String ()
+simplifySignOutResponse = Result.mapError errorToString >> Result.map (always ())
 
-simplifySendInvitationResponse : Result Http.Error Pb.SendInvitationResponse -> Result String ()
-simplifySendInvitationResponse res =
-  case res of
-    Err e -> Err (httpErrorToString e)
-    Ok resp ->
-      case resp.sendInvitationResult of
-        Just (Pb.SendInvitationResultOk _) ->
-          Ok ()
-        Just (Pb.SendInvitationResultError e) ->
-          Err e.catchall
-        Nothing ->
-          Err "Invalid server response (neither Ok nor Error in protobuf)"
+simplifySendInvitationResponse : Result Error Pb.GenericUserInfo -> Result String ()
+simplifySendInvitationResponse = Result.mapError errorToString >> Result.map (always ())
 
-simplifyAcceptInvitationResponse : Result Http.Error Pb.AcceptInvitationResponse -> Result String Pb.GenericUserInfo
-simplifyAcceptInvitationResponse res =
-  case res of
-    Err e -> Err (httpErrorToString e)
-    Ok resp ->
-      case resp.acceptInvitationResult of
-        Just (Pb.AcceptInvitationResultOk result) ->
-          Ok result
-        Just (Pb.AcceptInvitationResultError e) ->
-          Err e.catchall
-        Nothing ->
-          Err "Invalid server response (neither Ok nor Error in protobuf)"
+simplifyAcceptInvitationResponse : Result Error Pb.GenericUserInfo -> Result String Pb.GenericUserInfo
+simplifyAcceptInvitationResponse = Result.mapError errorToString
 
-simplifyCreatePredictionResponse : Result Http.Error Pb.CreatePredictionResponse -> Result String PredictionId
-simplifyCreatePredictionResponse res =
-  case res of
-    Err e -> Err (httpErrorToString e)
-    Ok resp ->
-      case resp.createPredictionResult of
-        Just (Pb.CreatePredictionResultNewPredictionId result) ->
-          Ok result
-        Just (Pb.CreatePredictionResultError e) ->
-          Err e.catchall
-        Nothing ->
-          Err "Invalid server response (neither Ok nor Error in protobuf)"
+simplifyCreatePredictionResponse : Result Error Pb.CreatePredictionResponse -> Result String PredictionId
+simplifyCreatePredictionResponse = Result.mapError errorToString >> Result.map .newPredictionId
 
-simplifyStakeResponse : Result Http.Error Pb.StakeResponse -> Result String Pb.UserPredictionView
-simplifyStakeResponse res =
-  case res of
-    Err e -> Err (httpErrorToString e)
-    Ok resp ->
-      case resp.stakeResult of
-        Just (Pb.StakeResultOk result) ->
-          Ok result
-        Just (Pb.StakeResultError e) ->
-          Err e.catchall
-        Nothing ->
-          Err "Invalid server response (neither Ok nor Error in protobuf)"
+simplifyStakeResponse : Result Error Pb.UserPredictionView -> Result String Pb.UserPredictionView
+simplifyStakeResponse = Result.mapError errorToString
 
-simplifyFollowResponse : Result Http.Error Pb.FollowResponse -> Result String Pb.UserPredictionView
-simplifyFollowResponse res =
-  case res of
-    Err e -> Err (httpErrorToString e)
-    Ok resp ->
-      case resp.followResult of
-        Just (Pb.FollowResultOk result) ->
-          Ok result
-        Just (Pb.FollowResultError e) ->
-          Err e.catchall
-        Nothing ->
-          Err "Invalid server response (neither Ok nor Error in protobuf)"
+simplifyFollowResponse : Result Error Pb.UserPredictionView -> Result String Pb.UserPredictionView
+simplifyFollowResponse = Result.mapError errorToString
 
-simplifyResolveResponse : Result Http.Error Pb.ResolveResponse -> Result String Pb.UserPredictionView
-simplifyResolveResponse res =
-  case res of
-    Err e -> Err (httpErrorToString e)
-    Ok resp ->
-      case resp.resolveResult of
-        Just (Pb.ResolveResultOk result) ->
-          Ok result
-        Just (Pb.ResolveResultError e) ->
-          Err e.catchall
-        Nothing ->
-          Err "Invalid server response (neither Ok nor Error in protobuf)"
+simplifyResolveResponse : Result Error Pb.UserPredictionView -> Result String Pb.UserPredictionView
+simplifyResolveResponse = Result.mapError errorToString
 
-simplifyChangePasswordResponse : Result Http.Error Pb.ChangePasswordResponse -> Result String Pb.Void
-simplifyChangePasswordResponse res =
-  case res of
-    Err e -> Err (httpErrorToString e)
-    Ok resp ->
-      case resp.changePasswordResult of
-        Just (Pb.ChangePasswordResultOk result) ->
-          Ok result
-        Just (Pb.ChangePasswordResultError e) ->
-          Err e.catchall
-        Nothing ->
-          Err "Invalid server response (neither Ok nor Error in protobuf)"
+simplifyChangePasswordResponse : Result Error Pb.Empty -> Result String Pb.Empty
+simplifyChangePasswordResponse = Result.mapError errorToString
 
-simplifySetTrustedResponse : Result Http.Error Pb.SetTrustedResponse -> Result String Pb.GenericUserInfo
-simplifySetTrustedResponse res =
-  case res of
-    Err e -> Err (httpErrorToString e)
-    Ok resp ->
-      case resp.setTrustedResult of
-        Just (Pb.SetTrustedResultOk result) ->
-          Ok result
-        Just (Pb.SetTrustedResultError e) ->
-          Err e.catchall
-        Nothing ->
-          Err "Invalid server response (neither Ok nor Error in protobuf)"
+simplifySetTrustedResponse : Result Error Pb.GenericUserInfo -> Result String Pb.GenericUserInfo
+simplifySetTrustedResponse = Result.mapError errorToString
