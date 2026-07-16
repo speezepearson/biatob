@@ -34,7 +34,7 @@ type Msg
   | ChangePassword ChangePasswordWidget.State Pb.ChangePasswordRequest
   | ChangePasswordFinished Pb.ChangePasswordRequest (Result Http.Error Pb.ChangePasswordResponse)
   | LogInUsername AuthWidget.State Pb.LogInUsernameRequest
-  | LogInUsernameFinished Pb.LogInUsernameRequest (Result Http.Error Pb.LogInUsernameResponse)
+  | LogInUsernameFinished Pb.LogInUsernameRequest (Result API.Error Pb.AuthSuccess)
   | SetTrusted TrustedUsersWidget.State Pb.SetTrustedRequest
   | SetTrustedFinished Pb.SetTrustedRequest (Result Http.Error Pb.SetTrustedResponse)
   | SignOut AuthWidget.State Pb.SignOutRequest

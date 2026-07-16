@@ -752,35 +752,46 @@ class SqlServicer(Servicer):
         password_id=password_id,
       )
 
-      login_response = self.LogInUsername(None, mvp_pb2.LogInUsernameRequest(username=request.username, password=request.password))
-      if login_response.WhichOneof('log_in_username_result') != 'ok':
-        logging.error('unable to log in as freshly-created user', username=request.username, response=login_response)
+      # RegisterUsername still returns a `oneof register_username_result`, but
+      # LogInUsername now raises. Until RegisterUsername is migrated too, the
+      # boundary between the two conventions needs this shim.
+      try:
+        auth_success = self.LogInUsername(None, mvp_pb2.LogInUsernameRequest(username=request.username, password=request.password))
+      except ApiError as e:
+        # `logging.error` (stdlib) here would TypeError on these kwargs; the
+        # rest of this file uses structlog's `logger`. Pre-existing latent bug,
+        # fixed in passing because this line was already being rewritten.
+        logger.error('unable to log in as freshly-created user', username=request.username, error=e.catchall)
         return mvp_pb2.RegisterUsernameResponse(error=mvp_pb2.RegisterUsernameResponse.Error(catchall='somehow failed to log you into your fresh account'))
-      return mvp_pb2.RegisterUsernameResponse(ok=login_response.ok)
+      return mvp_pb2.RegisterUsernameResponse(ok=auth_success)
 
     @transactional
     @ensure_actor_exists
     @log_actor
     @log_action
-    def LogInUsername(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.LogInUsernameRequest) -> mvp_pb2.LogInUsernameResponse:
+    def LogInUsername(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.LogInUsernameRequest) -> mvp_pb2.AuthSuccess:
         if actor is not None:
             logger.warn('logged-in user trying to log in again', new_username=request.username)
-            return mvp_pb2.LogInUsernameResponse(error=mvp_pb2.LogInUsernameResponse.Error(catchall='already authenticated; first, log out'))
+            # Not an auth failure -- the caller is authenticated, just confused.
+            raise ApiError('already authenticated; first, log out')
 
         hashed_password = self._conn.get_username_password_info(Username(request.username))
         if hashed_password is None:
             logger.debug('login attempt for nonexistent user', username=request.username)
-            return mvp_pb2.LogInUsernameResponse(error=mvp_pb2.LogInUsernameResponse.Error(catchall='no such user; maybe you want to sign up?'))
+            # NOTE: this reveals whether a username exists, as it did before this
+            # refactor. Preserved verbatim to keep the change behavior-preserving;
+            # worth closing separately.
+            raise AuthenticationError('no such user; maybe you want to sign up?')
         if not check_password(request.password, hashed_password):
             logger.info('login attempt has bad password', possible_malice=True)
-            return mvp_pb2.LogInUsernameResponse(error=mvp_pb2.LogInUsernameResponse.Error(catchall='bad password'))
+            raise AuthenticationError('bad password')
 
         logger.debug('username logged in', username=request.username)
         token = self._token_mint.mint_token(owner=Username(request.username), ttl_seconds=60*60*24*365)
-        return mvp_pb2.LogInUsernameResponse(ok=mvp_pb2.AuthSuccess(
+        return mvp_pb2.AuthSuccess(
           token=token,
           user_info=self._conn.get_settings(AuthorizingUsername(Username(request.username))),
-        ))
+        )
 
     @transactional
     @ensure_actor_exists
@@ -812,12 +823,12 @@ class SqlServicer(Servicer):
     @ensure_actor_exists
     @log_actor
     @log_action
-    def GetPrediction(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.GetPredictionRequest) -> mvp_pb2.GetPredictionResponse:
+    def GetPrediction(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.GetPredictionRequest) -> mvp_pb2.UserPredictionView:
       view = self._conn.view_prediction(actor, PredictionId(request.prediction_id))
       if view is None:
         logger.info('trying to get nonexistent prediction', prediction_id=request.prediction_id)
-        return mvp_pb2.GetPredictionResponse(error=mvp_pb2.GetPredictionResponse.Error(catchall='no such prediction'))
-      return mvp_pb2.GetPredictionResponse(prediction=view)
+        raise NoSuchPredictionError('no such prediction')
+      return view
 
 
     @transactional

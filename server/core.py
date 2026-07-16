@@ -26,6 +26,38 @@ class BadPasswordError(Exception): pass
 class ForgottenTokenError(RuntimeError): pass
 
 
+class ApiError(Exception):
+    """An expected, client-facing failure. Servicers raise these instead of
+    returning an `error` arm of a `oneof foo_result`.
+
+    Deliberately carries an HTTP status but imports no HTTP library. The
+    Servicer must stay transport-agnostic, because web_server.py calls it
+    directly to render pages server-side -- it is not only reached over HTTP.
+    Each transport decides how to present these: api_server turns them into a
+    status code plus an ErrorResponse body, web_server into an error page.
+
+    `catchall` is shown to the user, so it must not leak internals. Anything
+    that isn't an ApiError is a bug, and becomes an opaque 500.
+    """
+    http_status = 400
+
+    def __init__(self, catchall: str) -> None:
+        super().__init__(catchall)
+        self.catchall = catchall
+
+class AuthenticationError(ApiError):
+    """The actor isn't who they claim, or isn't in the right auth state."""
+    http_status = 401
+
+class NoSuchPredictionError(ApiError):
+    """No such prediction -- or the actor isn't allowed to know it exists.
+
+    Deliberately conflates 'absent' and 'forbidden': telling a stranger that a
+    prediction exists but is private is itself a leak, so both become a 404.
+    """
+    http_status = 404
+
+
 @overload
 def token_owner(token: None) -> None: pass
 @overload
@@ -143,9 +175,11 @@ class Servicer(abc.ABC):
     def SignOut(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.SignOutRequest) -> mvp_pb2.SignOutResponse: pass
     def SendVerificationEmail(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.SendVerificationEmailRequest) -> mvp_pb2.SendVerificationEmailResponse: pass
     def RegisterUsername(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.RegisterUsernameRequest) -> mvp_pb2.RegisterUsernameResponse: pass
-    def LogInUsername(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.LogInUsernameRequest) -> mvp_pb2.LogInUsernameResponse: pass
+    def LogInUsername(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.LogInUsernameRequest) -> mvp_pb2.AuthSuccess:
+        """Raises AuthenticationError on bad credentials, ApiError if already logged in."""
     def CreatePrediction(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.CreatePredictionRequest) -> mvp_pb2.CreatePredictionResponse: pass
-    def GetPrediction(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.GetPredictionRequest) -> mvp_pb2.GetPredictionResponse: pass
+    def GetPrediction(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.GetPredictionRequest) -> mvp_pb2.UserPredictionView:
+        """Raises NoSuchPredictionError if absent or not visible to the actor."""
     def ListMyStakes(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.ListMyStakesRequest) -> mvp_pb2.ListMyStakesResponse: pass
     def ListPredictions(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.ListPredictionsRequest) -> mvp_pb2.ListPredictionsResponse: pass
     def Stake(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.StakeRequest) -> mvp_pb2.StakeResponse: pass

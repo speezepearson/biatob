@@ -29,13 +29,13 @@ def app(loop, api_server):
   return app
 
 
-async def post_proto(client, url: str, request_pb: _Req, response_pb_cls: Type[_Resp], **kwargs) -> Tuple[web.Response, _Resp]:
+async def post_proto(client, url: str, request_pb: _Req, response_pb_cls: Type[_Resp], expected_status: int = 200, **kwargs) -> Tuple[web.Response, _Resp]:
   http_resp = await client.post(
     url,
     headers={'Content-Type': 'application/octet-stream'},
     data=request_pb.SerializeToString(),
   )
-  assert http_resp.status == 200
+  assert http_resp.status == expected_status
   pb_resp = response_pb_cls()
   pb_resp.ParseFromString(await http_resp.content.read())
   return (http_resp, pb_resp)
@@ -72,8 +72,7 @@ async def test_CreatePrediction_and_GetPrediction(aiohttp_client, app, clock: Mo
   (http_resp, create_pb_resp) = await post_proto(cli, '/api/CreatePrediction', create_pb_req, mvp_pb2.CreatePredictionResponse)
   assert create_pb_resp.new_prediction_id, create_pb_resp
 
-  (http_resp, get_pb_resp) = await post_proto(cli, '/api/GetPrediction', mvp_pb2.GetPredictionRequest(prediction_id=create_pb_resp.new_prediction_id), mvp_pb2.GetPredictionResponse)
-  returned_prediction = get_pb_resp.prediction
+  (http_resp, returned_prediction) = await post_proto(cli, '/api/GetPrediction', mvp_pb2.GetPredictionRequest(prediction_id=create_pb_resp.new_prediction_id), mvp_pb2.UserPredictionView)
   assert returned_prediction.prediction == create_pb_req.prediction
   assert returned_prediction.certainty == create_pb_req.certainty
   assert returned_prediction.maximum_stake_cents == create_pb_req.maximum_stake_cents
@@ -120,28 +119,86 @@ async def test_forgotten_token_recovery(aiohttp_client, app, any_servicer: Servi
 
 
 @pytest.mark.parametrize('logged_in', [True, False])
-@pytest.mark.parametrize('endpoint,request_pb,response_pb_cls', [
-  ('/api/Whoami', mvp_pb2.WhoamiRequest(), mvp_pb2.WhoamiResponse),
-  ('/api/SignOut', mvp_pb2.SignOutRequest(), mvp_pb2.SignOutResponse),
-  ('/api/RegisterUsername', mvp_pb2.RegisterUsernameRequest(), mvp_pb2.RegisterUsernameResponse),
-  ('/api/LogInUsername', mvp_pb2.LogInUsernameRequest(), mvp_pb2.LogInUsernameResponse),
-  ('/api/CreatePrediction', mvp_pb2.CreatePredictionRequest(), mvp_pb2.CreatePredictionResponse),
-  ('/api/GetPrediction', mvp_pb2.GetPredictionRequest(), mvp_pb2.GetPredictionResponse),
-  ('/api/Stake', mvp_pb2.StakeRequest(), mvp_pb2.StakeResponse),
-  ('/api/Follow', mvp_pb2.FollowRequest(), mvp_pb2.FollowResponse),
-  ('/api/Resolve', mvp_pb2.ResolveRequest(), mvp_pb2.ResolveResponse),
-  ('/api/SetTrusted', mvp_pb2.SetTrustedRequest(), mvp_pb2.SetTrustedResponse),
-  ('/api/GetUser', mvp_pb2.GetUserRequest(), mvp_pb2.GetUserResponse),
-  ('/api/ChangePassword', mvp_pb2.ChangePasswordRequest(), mvp_pb2.ChangePasswordResponse),
-  ('/api/GetSettings', mvp_pb2.GetSettingsRequest(), mvp_pb2.GetSettingsResponse),
-  ('/api/SendInvitation', mvp_pb2.SendInvitationRequest(), mvp_pb2.SendInvitationResponse),
-  ('/api/AcceptInvitation', mvp_pb2.AcceptInvitationRequest(), mvp_pb2.AcceptInvitationResponse),
+@pytest.mark.parametrize('endpoint,request_pb,response_pb_cls,expected_status', [
+  ('/api/Whoami', mvp_pb2.WhoamiRequest(), mvp_pb2.WhoamiResponse, 200),
+  ('/api/SignOut', mvp_pb2.SignOutRequest(), mvp_pb2.SignOutResponse, 200),
+  ('/api/RegisterUsername', mvp_pb2.RegisterUsernameRequest(), mvp_pb2.RegisterUsernameResponse, 200),
+  # Migrated off the oneof pattern: a blank request is a *failure*, so these
+  # answer non-2xx with an ErrorResponse instead of 200 with an error arm.
+  ('/api/LogInUsername', mvp_pb2.LogInUsernameRequest(), mvp_pb2.ErrorResponse, 401),
+  ('/api/CreatePrediction', mvp_pb2.CreatePredictionRequest(), mvp_pb2.CreatePredictionResponse, 200),
+  ('/api/GetPrediction', mvp_pb2.GetPredictionRequest(), mvp_pb2.ErrorResponse, 404),
+  ('/api/Stake', mvp_pb2.StakeRequest(), mvp_pb2.StakeResponse, 200),
+  ('/api/Follow', mvp_pb2.FollowRequest(), mvp_pb2.FollowResponse, 200),
+  ('/api/Resolve', mvp_pb2.ResolveRequest(), mvp_pb2.ResolveResponse, 200),
+  ('/api/SetTrusted', mvp_pb2.SetTrustedRequest(), mvp_pb2.SetTrustedResponse, 200),
+  ('/api/GetUser', mvp_pb2.GetUserRequest(), mvp_pb2.GetUserResponse, 200),
+  ('/api/ChangePassword', mvp_pb2.ChangePasswordRequest(), mvp_pb2.ChangePasswordResponse, 200),
+  ('/api/GetSettings', mvp_pb2.GetSettingsRequest(), mvp_pb2.GetSettingsResponse, 200),
+  ('/api/SendInvitation', mvp_pb2.SendInvitationRequest(), mvp_pb2.SendInvitationResponse, 200),
+  ('/api/AcceptInvitation', mvp_pb2.AcceptInvitationRequest(), mvp_pb2.AcceptInvitationResponse, 200),
 ])
-async def test_smoke(aiohttp_client, app, any_servicer: Servicer, logged_in: bool, endpoint: str, request_pb: Message, response_pb_cls: Type[Message]):
+async def test_smoke(aiohttp_client, app, any_servicer: Servicer, logged_in: bool, endpoint: str, request_pb: Message, response_pb_cls: Type[Message], expected_status: int):
   cli = await aiohttp_client(app)
 
   if logged_in:
     create_user(any_servicer, u('rando'), password='pw')
-    await post_proto(cli, '/api/LogInUsername', mvp_pb2.LogInUsernameRequest(username='rando', password='pw'), mvp_pb2.LogInUsernameResponse)
+    await post_proto(cli, '/api/LogInUsername', mvp_pb2.LogInUsernameRequest(username='rando', password='pw'), mvp_pb2.AuthSuccess)
 
-  await post_proto(cli, endpoint, request_pb, response_pb_cls)
+  if endpoint == '/api/LogInUsername' and logged_in:
+    # Logging in while already logged in is a client mistake (400), not an auth
+    # failure (401) -- unlike the logged-out case with a blank username.
+    expected_status = 400
+
+  await post_proto(cli, endpoint, request_pb, response_pb_cls, expected_status=expected_status)
+
+
+# --- HTTP-status error propagation -------------------------------------------
+# These pin the behaviour this refactor is validating: failures leave via an
+# exception, arrive as a non-2xx status, and carry an ErrorResponse body the
+# client can actually read.
+
+async def test_GetPrediction_nonexistent_is_404_with_readable_body(aiohttp_client, app):
+  cli = await aiohttp_client(app)
+  (http_resp, err) = await post_proto(
+    cli, '/api/GetPrediction', mvp_pb2.GetPredictionRequest(prediction_id='nope'),
+    mvp_pb2.ErrorResponse, expected_status=404)
+  assert err.catchall == 'no such prediction', err
+
+
+async def test_LogInUsername_bad_password_is_401_with_readable_body(aiohttp_client, app, any_servicer: Servicer):
+  create_user(any_servicer, u('rando'), password='pw')
+  cli = await aiohttp_client(app)
+  (http_resp, err) = await post_proto(
+    cli, '/api/LogInUsername', mvp_pb2.LogInUsernameRequest(username='rando', password='wrong'),
+    mvp_pb2.ErrorResponse, expected_status=401)
+  assert err.catchall == 'bad password', err
+
+
+async def test_LogInUsername_nonexistent_user_is_401(aiohttp_client, app):
+  cli = await aiohttp_client(app)
+  (http_resp, err) = await post_proto(
+    cli, '/api/LogInUsername', mvp_pb2.LogInUsernameRequest(username='ghost', password='pw'),
+    mvp_pb2.ErrorResponse, expected_status=401)
+  assert 'no such user' in err.catchall, err
+
+
+async def test_LogInUsername_failure_does_not_set_auth_cookie(aiohttp_client, app, any_servicer: Servicer):
+  """The old code set the cookie inside `if WhichOneof(...) == 'ok'`; now the
+  cookie line is simply unreachable on failure. Pin it so it stays that way."""
+  create_user(any_servicer, u('rando'), password='pw')
+  cli = await aiohttp_client(app)
+  await post_proto(
+    cli, '/api/LogInUsername', mvp_pb2.LogInUsernameRequest(username='rando', password='wrong'),
+    mvp_pb2.ErrorResponse, expected_status=401)
+  assert 'auth' not in cli.session.cookie_jar.filter_cookies('http://127.0.0.1')
+
+
+async def test_LogInUsername_success_is_200_and_sets_auth_cookie(aiohttp_client, app, any_servicer: Servicer):
+  create_user(any_servicer, u('rando'), password='pw')
+  cli = await aiohttp_client(app)
+  (http_resp, auth_success) = await post_proto(
+    cli, '/api/LogInUsername', mvp_pb2.LogInUsernameRequest(username='rando', password='pw'),
+    mvp_pb2.AuthSuccess, expected_status=200)
+  assert auth_success.token.owner == 'rando', auth_success
+  assert 'auth' in cli.session.cookie_jar.filter_cookies('http://127.0.0.1')

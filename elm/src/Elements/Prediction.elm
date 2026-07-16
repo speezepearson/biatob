@@ -153,7 +153,7 @@ type Msg
   | SendInvitation
   | SendInvitationFinished Pb.SendInvitationRequest (Result Http.Error Pb.SendInvitationResponse)
   | LogInUsername AuthWidgetLoc AuthWidget.State Pb.LogInUsernameRequest
-  | LogInUsernameFinished AuthWidgetLoc Pb.LogInUsernameRequest (Result Http.Error Pb.LogInUsernameResponse)
+  | LogInUsernameFinished AuthWidgetLoc Pb.LogInUsernameRequest (Result API.Error Pb.AuthSuccess)
   | Resolve Pb.Resolution
   | ResolveFinished Pb.ResolveRequest (Result Http.Error Pb.ResolveResponse)
   | SetCreatorTrusted
@@ -262,9 +262,9 @@ viewBodyMockup globals prediction =
 
     newGlobals =
       globals
-      |> Globals.handleGetPredictionResponse {predictionId="my-predid"} (Ok {getPredictionResult=Just <| Pb.GetPredictionResultPrediction prediction})
+      |> Globals.handleGetPredictionResponse {predictionId="my-predid"} (Ok prediction)
       |> Globals.handleSignOutResponse {} (Ok {})
-      |> Globals.handleLogInUsernameResponse {username="__previewer__", password=""} (Ok {logInUsernameResult=Just <| Pb.LogInUsernameResultOk {token=Just mockToken, userInfo=Just mockSettings}})
+      |> Globals.handleLogInUsernameResponse {username="__previewer__", password=""} (Ok {token=Just mockToken, userInfo=Just mockSettings})
   in
   initInternal newGlobals "my-predid"
   |> viewBody

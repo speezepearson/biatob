@@ -114,6 +114,15 @@ enum Resolution {
   RESOLUTION_INVALID = 3;
 }
 
+// The body of any non-2xx API response.
+//
+// Endpoints that have been migrated off the `oneof foo_result {Ok ok; Error
+// error;}` pattern return their payload directly with a 200, and signal failure
+// with an HTTP status code plus this body. See docs/error-handling.md.
+message ErrorResponse {
+  string catchall = 1;
+}
+
 message WhoamiRequest {}
 message WhoamiResponse {
   string username = 1;
@@ -169,15 +178,8 @@ message LogInUsernameRequest {
   string username = 1;
   string password = 2;
 }
-message LogInUsernameResponse {
-  oneof log_in_username_result {
-    AuthSuccess ok = 1;
-    Error error = 2;
-  }
-  message Error {
-    string catchall = 1;
-  }
-}
+// Returns AuthSuccess on 200; 401 + ErrorResponse on bad credentials,
+// 400 + ErrorResponse if already logged in. (Migrated off the oneof pattern.)
 
 message CertaintyRange {
   float low = 1;
@@ -209,16 +211,13 @@ message CreatePredictionResponse {
 message GetPredictionRequest {
   string prediction_id = 2;
 }
-message GetPredictionResponse {
-  oneof get_prediction_result {
-    UserPredictionView prediction = 1;
-    Error error = 2;
-  }
-  message Error {
-    string catchall = 1;
-    Void no_such_prediction = 2;
-  }
-}
+// Returns UserPredictionView on 200; 404 + ErrorResponse if there's no such
+// prediction (or the viewer may not see it). (Migrated off the oneof pattern.)
+//
+// The old GetPredictionResponse.Error carried a `Void no_such_prediction = 2`
+// variant to distinguish that case from `catchall`. Nothing in the Elm app ever
+// read it -- the 404 now carries that same information, in the place HTTP
+// already puts it.
 
 enum PredictionFollowingStatus {
   PREDICTION_FOLLOWING_NOT_FOLLOWING = 0;
