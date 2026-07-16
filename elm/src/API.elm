@@ -12,6 +12,10 @@ type alias Endpoint req resp =
   , url : String
   }
 
+{-| For endpoints still using the `oneof foo_result {Ok ok; Error error;}`
+pattern, where every answer is a 200 and you inspect the body to find out
+whether it worked.
+-}
 hit : Endpoint req resp -> (Result Http.Error resp -> msg) -> req -> Cmd msg
 hit endpoint toMsg req =
   Http.post
@@ -19,6 +23,58 @@ hit endpoint toMsg req =
     , body = Http.bytesBody "application/octet-stream" <| PE.encode <| endpoint.encoder req
     , expect = PD.expectBytes toMsg endpoint.decoder
     }
+
+
+{-| A failed call to an endpoint that reports failure via HTTP status.
+
+`ApiError` is a failure the server *chose* to report: a non-2xx carrying an
+ErrorResponse that explains itself. `TransportError` is everything else -- the
+request never reached a considered answer, so there's nobody to quote.
+-}
+type Error
+  = ApiError { status : Int, catchall : String }
+  | TransportError Http.Error
+
+errorToString : Error -> String
+errorToString e =
+  case e of
+    ApiError {catchall} -> catchall
+    TransportError httpError -> httpErrorToString httpError
+
+{-| Like `hit`, but for endpoints migrated to HTTP-status error propagation:
+the 200 body is the payload itself, and failures arrive as a non-2xx with an
+ErrorResponse body.
+
+This can't use `PD.expectBytes`. On a non-2xx, elm/http's `expectBytes`
+discards the body and hands back only `BadStatus statusCode` -- see the
+`BadStatus_ metadata _ -> Err (BadStatus metadata.statusCode)` branch in
+Http.elm. The body is exactly where the server explains itself, so we go
+through `expectBytesResponse` and handle that branch ourselves.
+-}
+call : Endpoint req resp -> (Result Error resp -> msg) -> req -> Cmd msg
+call endpoint toMsg req =
+  Http.post
+    { url = endpoint.url
+    , body = Http.bytesBody "application/octet-stream" <| PE.encode <| endpoint.encoder req
+    , expect = expectProtoOrError endpoint.decoder toMsg
+    }
+
+expectProtoOrError : PD.Decoder resp -> (Result Error resp -> msg) -> Http.Expect msg
+expectProtoOrError decoder toMsg =
+  Http.expectBytesResponse toMsg <| \response ->
+    case response of
+      Http.BadUrl_ url -> Err (TransportError (Http.BadUrl url))
+      Http.Timeout_ -> Err (TransportError Http.Timeout)
+      Http.NetworkError_ -> Err (TransportError Http.NetworkError)
+      Http.BadStatus_ metadata body ->
+        case PD.decode Pb.errorResponseDecoder body of
+          Just err -> Err (ApiError {status = metadata.statusCode, catchall = err.catchall})
+          -- A non-2xx that isn't one of ours (a proxy's 502 page, say).
+          Nothing -> Err (TransportError (Http.BadStatus metadata.statusCode))
+      Http.GoodStatus_ _ body ->
+        case PD.decode decoder body of
+          Just value -> Ok value
+          Nothing -> Err (TransportError (Http.BadBody "unintelligible response"))
 
 postWhoami : (Result Http.Error Pb.WhoamiResponse -> msg) -> Pb.WhoamiRequest -> Cmd msg
 postWhoami = hit {url="/api/Whoami", encoder=Pb.toWhoamiRequestEncoder, decoder=Pb.whoamiResponseDecoder}
@@ -28,12 +84,12 @@ postSendVerificationEmail : (Result Http.Error Pb.SendVerificationEmailResponse 
 postSendVerificationEmail = hit {url="/api/SendVerificationEmail", encoder=Pb.toSendVerificationEmailRequestEncoder, decoder=Pb.sendVerificationEmailResponseDecoder}
 postRegisterUsername : (Result Http.Error Pb.RegisterUsernameResponse -> msg) -> Pb.RegisterUsernameRequest -> Cmd msg
 postRegisterUsername = hit {url="/api/RegisterUsername", encoder=Pb.toRegisterUsernameRequestEncoder, decoder=Pb.registerUsernameResponseDecoder}
-postLogInUsername : (Result Http.Error Pb.LogInUsernameResponse -> msg) -> Pb.LogInUsernameRequest -> Cmd msg
-postLogInUsername = hit {url="/api/LogInUsername", encoder=Pb.toLogInUsernameRequestEncoder, decoder=Pb.logInUsernameResponseDecoder}
+postLogInUsername : (Result Error Pb.AuthSuccess -> msg) -> Pb.LogInUsernameRequest -> Cmd msg
+postLogInUsername = call {url="/api/LogInUsername", encoder=Pb.toLogInUsernameRequestEncoder, decoder=Pb.authSuccessDecoder}
 postCreatePrediction : (Result Http.Error Pb.CreatePredictionResponse -> msg) -> Pb.CreatePredictionRequest -> Cmd msg
 postCreatePrediction = hit {url="/api/CreatePrediction", encoder=Pb.toCreatePredictionRequestEncoder, decoder=Pb.createPredictionResponseDecoder}
-postGetPrediction : (Result Http.Error Pb.GetPredictionResponse -> msg) -> Pb.GetPredictionRequest -> Cmd msg
-postGetPrediction = hit {url="/api/GetPrediction", encoder=Pb.toGetPredictionRequestEncoder, decoder=Pb.getPredictionResponseDecoder}
+postGetPrediction : (Result Error Pb.UserPredictionView -> msg) -> Pb.GetPredictionRequest -> Cmd msg
+postGetPrediction = call {url="/api/GetPrediction", encoder=Pb.toGetPredictionRequestEncoder, decoder=Pb.userPredictionViewDecoder}
 postListMyStakes : (Result Http.Error Pb.ListMyStakesResponse -> msg) -> Pb.ListMyStakesRequest -> Cmd msg
 postListMyStakes = hit {url="/api/ListMyStakes", encoder=Pb.toListMyStakesRequestEncoder, decoder=Pb.listMyStakesResponseDecoder}
 postListPredictions : (Result Http.Error Pb.ListPredictionsResponse -> msg) -> Pb.ListPredictionsRequest -> Cmd msg
@@ -66,18 +122,12 @@ httpErrorToString e =
     Http.BadStatus code -> "HTTP error code " ++ String.fromInt code
     Http.BadBody _ -> "unintelligible response"
 
-simplifyLogInUsernameResponse : Result Http.Error Pb.LogInUsernameResponse -> Result String Pb.AuthSuccess
-simplifyLogInUsernameResponse res =
-  case res of
-    Err e -> Err (httpErrorToString e)
-    Ok resp ->
-      case resp.logInUsernameResult of
-        Just (Pb.LogInUsernameResultOk success) ->
-          Ok success
-        Just (Pb.LogInUsernameResultError e) ->
-          Err e.catchall
-        Nothing ->
-          Err "Invalid server response (neither Ok nor Error in protobuf)"
+{-| Kept so the ten call sites don't change shape. Note what disappeared: the
+`Nothing -> Err "neither Ok nor Error"` arm. That state was unrepresentable in
+HTTP terms, but the protobuf `oneof` forced us to have an opinion about it.
+-}
+simplifyLogInUsernameResponse : Result Error Pb.AuthSuccess -> Result String Pb.AuthSuccess
+simplifyLogInUsernameResponse = Result.mapError errorToString
 
 simplifySendVerificationEmailResponse : Result Http.Error Pb.SendVerificationEmailResponse -> Result String Pb.Void
 simplifySendVerificationEmailResponse res =

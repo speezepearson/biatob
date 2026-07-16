@@ -11,7 +11,7 @@ from typing import Any, Callable, Mapping, Optional, Sequence, Tuple, Type, Type
 from google.protobuf.message import Message
 import sqlalchemy
 
-from .core import AuthorizingUsername, PredictionId, Servicer, TokenMint, Username
+from .core import ApiError, AuthorizingUsername, PredictionId, Servicer, TokenMint, Username
 from .emailer import Emailer
 from .protobuf import mvp_pb2
 from .sql_servicer import SqlServicer, SqlConn
@@ -74,20 +74,20 @@ def assert_oneof(pb: Message, oneof: str, case: str, typ: Type[_T]) -> _T:
 
 @contextlib.contextmanager
 def assert_user_unchanged(servicer: Servicer, who: Username, password: str) -> Iterator[None]:
-  assert_oneof(servicer.LogInUsername(None, mvp_pb2.LogInUsernameRequest(username=who, password=password)), 'log_in_username_result', 'ok', mvp_pb2.AuthSuccess)
+  servicer.LogInUsername(None, mvp_pb2.LogInUsernameRequest(username=who, password=password))
   old_settings = assert_oneof(servicer.GetSettings(AuthorizingUsername(who), mvp_pb2.GetSettingsRequest()), 'get_settings_result', 'ok', mvp_pb2.GenericUserInfo)
   yield
   new_settings = assert_oneof(servicer.GetSettings(AuthorizingUsername(who), mvp_pb2.GetSettingsRequest()), 'get_settings_result', 'ok', mvp_pb2.GenericUserInfo)
   assert old_settings == new_settings
-  assert_oneof(servicer.LogInUsername(None, mvp_pb2.LogInUsernameRequest(username=who, password=password)), 'log_in_username_result', 'ok', mvp_pb2.AuthSuccess)
+  servicer.LogInUsername(None, mvp_pb2.LogInUsernameRequest(username=who, password=password))
 
 
 @contextlib.contextmanager
 def assert_prediction_unchanged(servicer: Servicer, prediction_id: PredictionId) -> Iterator[None]:
-  creator = Username(assert_oneof(servicer.GetPrediction(None, mvp_pb2.GetPredictionRequest(prediction_id=prediction_id)), 'get_prediction_result', 'prediction', mvp_pb2.UserPredictionView).creator)
-  old = assert_oneof(servicer.GetPrediction(AuthorizingUsername(creator), mvp_pb2.GetPredictionRequest(prediction_id=prediction_id)), 'get_prediction_result', 'prediction', mvp_pb2.UserPredictionView)
+  creator = Username(servicer.GetPrediction(None, mvp_pb2.GetPredictionRequest(prediction_id=prediction_id)).creator)
+  old = servicer.GetPrediction(AuthorizingUsername(creator), mvp_pb2.GetPredictionRequest(prediction_id=prediction_id))
   yield
-  new = assert_oneof(servicer.GetPrediction(AuthorizingUsername(creator), mvp_pb2.GetPredictionRequest(prediction_id=prediction_id)), 'get_prediction_result', 'prediction', mvp_pb2.UserPredictionView)
+  new = servicer.GetPrediction(AuthorizingUsername(creator), mvp_pb2.GetPredictionRequest(prediction_id=prediction_id))
   assert old == new
 
 
@@ -155,9 +155,11 @@ def RegisterUsernameErr(servicer: Servicer, actor: Optional[AuthorizingUsername]
   return assert_oneof(servicer.RegisterUsername(actor, mvp_pb2.RegisterUsernameRequest(username=username, password=password, proof_of_email=proof_of_email)), 'register_username_result', 'error', mvp_pb2.RegisterUsernameResponse.Error)
 
 def LogInUsernameOk(servicer: Servicer, actor: Optional[AuthorizingUsername], username: Username, password: str) -> mvp_pb2.AuthSuccess:
-  return assert_oneof(servicer.LogInUsername(actor, mvp_pb2.LogInUsernameRequest(username=username, password=password)), 'log_in_username_result', 'ok', mvp_pb2.AuthSuccess)
-def LogInUsernameErr(servicer: Servicer, actor: Optional[AuthorizingUsername], username: Username, password: str) -> mvp_pb2.LogInUsernameResponse.Error:
-  return assert_oneof(servicer.LogInUsername(actor, mvp_pb2.LogInUsernameRequest(username=username, password=password)), 'log_in_username_result', 'error', mvp_pb2.LogInUsernameResponse.Error)
+  return servicer.LogInUsername(actor, mvp_pb2.LogInUsernameRequest(username=username, password=password))
+def LogInUsernameErr(servicer: Servicer, actor: Optional[AuthorizingUsername], username: Username, password: str) -> ApiError:
+  with pytest.raises(ApiError) as excinfo:
+    servicer.LogInUsername(actor, mvp_pb2.LogInUsernameRequest(username=username, password=password))
+  return excinfo.value
 
 def CreatePredictionOk(servicer: Servicer, actor: Optional[AuthorizingUsername], request_kwargs: Mapping[str, Any]) -> PredictionId:
   return PredictionId(assert_oneof(servicer.CreatePrediction(actor, some_create_prediction_request(**request_kwargs)), 'create_prediction_result', 'new_prediction_id', str))
@@ -165,9 +167,11 @@ def CreatePredictionErr(servicer: Servicer, actor: Optional[AuthorizingUsername]
   return assert_oneof(servicer.CreatePrediction(actor, some_create_prediction_request(**request_kwargs)), 'create_prediction_result', 'error', mvp_pb2.CreatePredictionResponse.Error)
 
 def GetPredictionOk(servicer: Servicer, actor: Optional[AuthorizingUsername], prediction_id: PredictionId) -> mvp_pb2.UserPredictionView:
-  return assert_oneof(servicer.GetPrediction(actor, mvp_pb2.GetPredictionRequest(prediction_id=prediction_id)), 'get_prediction_result', 'prediction', mvp_pb2.UserPredictionView)
-def GetPredictionErr(servicer: Servicer, actor: Optional[AuthorizingUsername], prediction_id: PredictionId) -> mvp_pb2.GetPredictionResponse.Error:
-  return assert_oneof(servicer.GetPrediction(actor, mvp_pb2.GetPredictionRequest(prediction_id=prediction_id)), 'get_prediction_result', 'error', mvp_pb2.GetPredictionResponse.Error)
+  return servicer.GetPrediction(actor, mvp_pb2.GetPredictionRequest(prediction_id=prediction_id))
+def GetPredictionErr(servicer: Servicer, actor: Optional[AuthorizingUsername], prediction_id: PredictionId) -> ApiError:
+  with pytest.raises(ApiError) as excinfo:
+    servicer.GetPrediction(actor, mvp_pb2.GetPredictionRequest(prediction_id=prediction_id))
+  return excinfo.value
 
 def ListMyStakesOk(servicer: Servicer, actor: Optional[AuthorizingUsername]) -> mvp_pb2.PredictionsById:
   return assert_oneof(servicer.ListMyStakes(actor, mvp_pb2.ListMyStakesRequest()), 'list_my_stakes_result', 'ok', mvp_pb2.PredictionsById)

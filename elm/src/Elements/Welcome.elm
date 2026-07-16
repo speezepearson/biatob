@@ -29,7 +29,7 @@ type AuthWidgetLoc = Navbar | Inline
 type Msg
   = SetAuthWidget AuthWidgetLoc AuthWidget.State
   | LogInUsername AuthWidgetLoc AuthWidget.State Pb.LogInUsernameRequest
-  | LogInUsernameFinished AuthWidgetLoc Pb.LogInUsernameRequest (Result Http.Error Pb.LogInUsernameResponse)
+  | LogInUsernameFinished AuthWidgetLoc Pb.LogInUsernameRequest (Result API.Error Pb.AuthSuccess)
   | SignOut AuthWidgetLoc AuthWidget.State Pb.SignOutRequest
   | SignOutFinished AuthWidgetLoc Pb.SignOutRequest (Result Http.Error Pb.SignOutResponse)
   | Copy String

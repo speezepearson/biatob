@@ -38,7 +38,7 @@ handleDomModification mod state =
      "password" -> { state | passwordField = mod.newValue }
      _ -> Debug.todo <| "invalid DomModification event; expected 'field' = 'username' or 'password', got '" ++ mod.field ++ "'"
 
-handleLogInUsernameResponse : Result Http.Error Pb.LogInUsernameResponse -> State -> State
+handleLogInUsernameResponse : Result API.Error Pb.AuthSuccess -> State -> State
 handleLogInUsernameResponse res state =
   { state | requestStatus = case API.simplifyLogInUsernameResponse res of
               Ok _ -> Succeeded

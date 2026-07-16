@@ -35,6 +35,7 @@ import Json.Decode as JD
 import Time
 import Http
 
+import API
 import Biatob.Proto.Mvp as Pb
 import Utils exposing (Username, PredictionId)
 
@@ -79,21 +80,17 @@ handleRegisterUsernameResponse _ res globals =
       Just (Pb.RegisterUsernameResultOk authSuccess) -> { globals | self = Just {username=Utils.mustAuthSuccessToken authSuccess |> .owner, settings=Utils.mustAuthSuccessUserInfo authSuccess} }
       _ -> globals
     Err _ -> globals
-handleLogInUsernameResponse : Pb.LogInUsernameRequest -> Result Http.Error Pb.LogInUsernameResponse -> Globals -> Globals
+handleLogInUsernameResponse : Pb.LogInUsernameRequest -> Result API.Error Pb.AuthSuccess -> Globals -> Globals
 handleLogInUsernameResponse _ res globals =
   case res of
-    Ok {logInUsernameResult} -> case logInUsernameResult of
-      Just (Pb.LogInUsernameResultOk authSuccess) -> { globals | self = Just {username=Utils.mustAuthSuccessToken authSuccess |> .owner, settings=Utils.mustAuthSuccessUserInfo authSuccess} }
-      _ -> globals
+    Ok authSuccess -> { globals | self = Just {username=Utils.mustAuthSuccessToken authSuccess |> .owner, settings=Utils.mustAuthSuccessUserInfo authSuccess} }
     Err _ -> globals
 handleCreatePredictionResponse : Pb.CreatePredictionRequest -> Result Http.Error Pb.CreatePredictionResponse -> Globals -> Globals
 handleCreatePredictionResponse _ _ globals = globals
-handleGetPredictionResponse : Pb.GetPredictionRequest -> Result Http.Error Pb.GetPredictionResponse -> Globals -> Globals
+handleGetPredictionResponse : Pb.GetPredictionRequest -> Result API.Error Pb.UserPredictionView -> Globals -> Globals
 handleGetPredictionResponse req res globals =
   case res of
-    Ok {getPredictionResult} -> case getPredictionResult of
-      Just (Pb.GetPredictionResultPrediction prediction) -> { globals | serverState = globals.serverState |> addPrediction req.predictionId prediction }
-      _ -> globals
+    Ok prediction -> { globals | serverState = globals.serverState |> addPrediction req.predictionId prediction }
     Err _ -> globals
 handleListMyStakesResponse : Pb.ListMyStakesRequest -> Result Http.Error Pb.ListMyStakesResponse -> Globals -> Globals
 handleListMyStakesResponse _ res globals =

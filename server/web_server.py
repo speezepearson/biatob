@@ -13,7 +13,7 @@ import jinja2
 from PIL import Image, ImageDraw, ImageFont  # type: ignore
 import structlog
 
-from .core import AuthorizingUsername, Servicer, TokenMint, Username, token_owner
+from .core import ApiError, AuthorizingUsername, Servicer, TokenMint, Username, token_owner
 from .http_glue import HttpTokenGlue
 from .protobuf import mvp_pb2
 
@@ -161,12 +161,11 @@ class WebServer:
     async def get_view_prediction_page(self, req: web.Request) -> web.Response:
         auth = self._token_glue.parse_cookie(req)
         prediction_id = str(req.match_info['prediction_id'])
-        get_prediction_resp = self._servicer.GetPrediction(token_owner(auth), mvp_pb2.GetPredictionRequest(prediction_id=prediction_id))
-        if get_prediction_resp.WhichOneof('get_prediction_result') == 'error':
-            return web.Response(status=404, body=str(get_prediction_resp.error))
+        try:
+            prediction = self._servicer.GetPrediction(token_owner(auth), mvp_pb2.GetPredictionRequest(prediction_id=prediction_id))
+        except ApiError as e:
+            return web.Response(status=e.http_status, body=e.catchall)
 
-        assert get_prediction_resp.WhichOneof('get_prediction_result') == 'prediction'
-        prediction = get_prediction_resp.prediction
         auth_success = self._get_auth_success(auth, mvp_pb2.GetSettingsRequest(include_relationships_with_users=[prediction.creator]))
         return web.Response(
             content_type='text/html',
@@ -180,14 +179,13 @@ class WebServer:
     async def get_prediction_img_embed(self, req: web.Request) -> web.Response:
         auth = self._token_glue.parse_cookie(req)
         prediction_id = str(req.match_info['prediction_id'])
-        get_prediction_resp = self._servicer.GetPrediction(token_owner(auth), mvp_pb2.GetPredictionRequest(prediction_id=prediction_id))
-        if get_prediction_resp.WhichOneof('get_prediction_result') == 'error':
-            return web.Response(status=404, body=str(get_prediction_resp.error))
+        try:
+            prediction = self._servicer.GetPrediction(token_owner(auth), mvp_pb2.GetPredictionRequest(prediction_id=prediction_id))
+        except ApiError as e:
+            return web.Response(status=e.http_status, body=e.catchall)
 
-        assert get_prediction_resp.WhichOneof('get_prediction_result') == 'prediction'
         def format_stake_concisely(n_cents: int) -> str:
             return f'${n_cents//100}'
-        prediction = get_prediction_resp.prediction
         stake_text = format_stake_concisely(prediction.maximum_stake_cents)
 
         if prediction.certainty.high == 1:
