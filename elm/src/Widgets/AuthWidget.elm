@@ -44,7 +44,7 @@ handleLogInUsernameResponse res state =
               Ok _ -> Succeeded
               Err e -> Failed e
   }
-handleSignOutResponse : Result Http.Error Pb.SignOutResponse -> State -> State
+handleSignOutResponse : Result API.Error Pb.SignOutResponse -> State -> State
 handleSignOutResponse res state =
   { state | requestStatus = case API.simplifySignOutResponse res of
               Ok _ -> Succeeded

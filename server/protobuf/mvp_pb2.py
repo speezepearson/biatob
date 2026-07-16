@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto3',
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x12protobuf/mvp.proto\x12\x10\x62iatob.proto.mvp\"c\n\tAuthToken\x12\x14\n\x0chmac_of_rest\x18\x01 \x01(\x0c\x12\r\n\x05owner\x18\x07 \x01(\t\x12\x17\n\x0fminted_unixtime\x18\x05 \x01(\x01\x12\x18\n\x10\x65xpires_unixtime\x18\x06 \x01(\x01\"\xd1\x01\n\x0c\x44\x61tabaseInfo\x12\x10\n\x06sqlite\x18\x01 \x01(\tH\x00\x12\x42\n\x05mysql\x18\x02 \x01(\x0b\x32\x31.biatob.proto.mvp.DatabaseInfo.MysqlDbCredentialsH\x00\x1aZ\n\x12MysqlDbCredentials\x12\x10\n\x08hostname\x18\x01 \x01(\t\x12\x10\n\x08username\x18\x02 \x01(\t\x12\x10\n\x08password\x18\x03 \x01(\t\x12\x0e\n\x06\x64\x62name\x18\x04 \x01(\tB\x0f\n\rdatabase_kind\"\x95\x02\n\x11\x43redentialsConfig\x12\x41\n\x04smtp\x18\x01 \x01(\x0b\x32\x33.biatob.proto.mvp.CredentialsConfig.SmtpCredentials\x12\x1c\n\x14token_signing_secret\x18\x02 \x01(\x0c\x12\x35\n\rdatabase_info\x18\x03 \x01(\x0b\x32\x1e.biatob.proto.mvp.DatabaseInfo\x1ah\n\x0fSmtpCredentials\x12\x10\n\x08hostname\x18\x01 \x01(\t\x12\x0c\n\x04port\x18\x02 \x01(\r\x12\x10\n\x08username\x18\x03 \x01(\t\x12\x10\n\x08password\x18\x04 \x01(\t\x12\x11\n\tfrom_addr\x18\x05 \x01(\t\"\xf5\x01\n\x0e\x45mailFlowState\x12+\n\tunstarted\x18\x01 \x01(\x0e\x32\x16.biatob.proto.mvp.VoidH\x00\x12>\n\tcode_sent\x18\x02 \x01(\x0b\x32).biatob.proto.mvp.EmailFlowState.CodeSentH\x00\x12\x12\n\x08verified\x18\x03 \x01(\tH\x00\x1aI\n\x08\x43odeSent\x12\r\n\x05\x65mail\x18\x01 \x01(\t\x12.\n\x04\x63ode\x18\x02 \x01(\x0b\x32 .biatob.proto.mvp.HashedPasswordB\x17\n\x15\x65mail_flow_state_kind\".\n\x0eHashedPassword\x12\x0c\n\x04salt\x18\x01 \x01(\x0c\x12\x0e\n\x06scrypt\x18\x02 \x01(\x0c\"\xce\x03\n\x0fGenericUserInfo\x12\x15\n\remail_address\x18\n \x01(\t\x12G\n\x0binvitations\x18\x05 \x03(\x0b\x32\x32.biatob.proto.mvp.GenericUserInfo.InvitationsEntry\x12K\n\rrelationships\x18\x06 \x03(\x0b\x32\x34.biatob.proto.mvp.GenericUserInfo.RelationshipsEntry\x12:\n\x0elogin_password\x18\x07 \x01(\x0b\x32 .biatob.proto.mvp.HashedPasswordH\x00\x1a`\n\x10InvitationsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12;\n\x05value\x18\x02 \x01(\x0b\x32,.biatob.proto.mvp.GenericUserInfo.Invitation:\x02\x38\x01\x1aT\n\x12RelationshipsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12-\n\x05value\x18\x02 \x01(\x0b\x32\x1e.biatob.proto.mvp.Relationship:\x02\x38\x01\x1a\x0c\n\nInvitationB\x0c\n\nlogin_type\":\n\x0cRelationship\x12\x12\n\ntrusts_you\x18\x01 \x01(\x08\x12\x16\n\x0etrusted_by_you\x18\x02 \x01(\x08\"s\n\x0cUsernameInfo\x12/\n\x04info\x18\x01 \x01(\x0b\x32!.biatob.proto.mvp.GenericUserInfo\x12\x32\n\x08password\x18\x02 \x01(\x0b\x32 .biatob.proto.mvp.HashedPassword\"3\n\x0c\x45mailAttempt\x12\x10\n\x08unixtime\x18\x01 \x01(\x01\x12\x11\n\tsucceeded\x18\x02 \x01(\x08\"\x9f\x01\n\x0fResolutionEvent\x12\x10\n\x08unixtime\x18\x04 \x01(\x01\x12\x30\n\nresolution\x18\x02 \x01(\x0e\x32\x1c.biatob.proto.mvp.Resolution\x12\r\n\x05notes\x18\x03 \x01(\t\x12\x39\n\x0eprior_revision\x18\x05 \x01(\x0b\x32!.biatob.proto.mvp.ResolutionEvent\"\xe0\x01\n\x05Trade\x12\x0e\n\x06\x62\x65ttor\x18\x07 \x01(\t\x12\x1b\n\x13\x62\x65ttor_is_a_skeptic\x18\x02 \x01(\x08\x12\x1a\n\x12\x62\x65ttor_stake_cents\x18\x03 \x01(\r\x12\x1b\n\x13\x63reator_stake_cents\x18\x04 \x01(\r\x12\x1b\n\x13transacted_unixtime\x18\x06 \x01(\x01\x12\x18\n\x10updated_unixtime\x18\x08 \x01(\x01\x12\r\n\x05notes\x18\t \x01(\t\x12+\n\x05state\x18\n \x01(\x0e\x32\x1c.biatob.proto.mvp.TradeState\"!\n\rErrorResponse\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\t\"\x0f\n\rWhoamiRequest\"\"\n\x0eWhoamiResponse\x12\x10\n\x08username\x18\x01 \x01(\t\"\x10\n\x0eSignOutRequest\"\x11\n\x0fSignOutResponse\"o\n\x0b\x41uthSuccess\x12*\n\x05token\x18\x01 \x01(\x0b\x32\x1b.biatob.proto.mvp.AuthToken\x12\x34\n\tuser_info\x18\x02 \x01(\x0b\x32!.biatob.proto.mvp.GenericUserInfo\"5\n\x1cSendVerificationEmailRequest\x12\x15\n\remail_address\x18\x01 \x01(\t\"\xca\x01\n\x1dSendVerificationEmailResponse\x12$\n\x02ok\x18\x01 \x01(\x0e\x32\x16.biatob.proto.mvp.VoidH\x00\x12\x46\n\x05\x65rror\x18\x02 \x01(\x0b\x32\x35.biatob.proto.mvp.SendVerificationEmailResponse.ErrorH\x00\x1a\x19\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\tB \n\x1esend_verification_email_result\"\x85\x01\n\x0cProofOfEmail\x12\x37\n\x07payload\x18\x01 \x01(\x0b\x32&.biatob.proto.mvp.ProofOfEmail.Payload\x12\x0c\n\x04salt\x18\x02 \x01(\x0c\x12\x0c\n\x04hmac\x18\x03 \x01(\x0c\x1a \n\x07Payload\x12\x15\n\remail_address\x18\x01 \x01(\t\"u\n\x17RegisterUsernameRequest\x12\x10\n\x08username\x18\x01 \x01(\t\x12\x10\n\x08password\x18\x02 \x01(\t\x12\x36\n\x0eproof_of_email\x18\x03 \x01(\x0b\x32\x1e.biatob.proto.mvp.ProofOfEmail\"\xf1\x01\n\x18RegisterUsernameResponse\x12+\n\x02ok\x18\x01 \x01(\x0b\x32\x1d.biatob.proto.mvp.AuthSuccessH\x00\x12\x41\n\x05\x65rror\x18\x02 \x01(\x0b\x32\x30.biatob.proto.mvp.RegisterUsernameResponse.ErrorH\x00\x1aI\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\t\x12.\n\x0eusername_taken\x18\x02 \x01(\x0e\x32\x16.biatob.proto.mvp.VoidB\x1a\n\x18register_username_result\":\n\x14LogInUsernameRequest\x12\x10\n\x08username\x18\x01 \x01(\t\x12\x10\n\x08password\x18\x02 \x01(\t\"+\n\x0e\x43\x65rtaintyRange\x12\x0b\n\x03low\x18\x01 \x01(\x02\x12\x0c\n\x04high\x18\x02 \x01(\x02\"\x89\x02\n\x17\x43reatePredictionRequest\x12\x12\n\nprediction\x18\x02 \x01(\t\x12=\n\x0cview_privacy\x18\x03 \x01(\x0e\x32\'.biatob.proto.mvp.PredictionViewPrivacy\x12\x33\n\tcertainty\x18\x04 \x01(\x0b\x32 .biatob.proto.mvp.CertaintyRange\x12\x1b\n\x13maximum_stake_cents\x18\x05 \x01(\r\x12\x14\n\x0copen_seconds\x18\x06 \x01(\r\x12\x15\n\rspecial_rules\x18\x07 \x01(\t\x12\x1c\n\x14resolves_at_unixtime\x18\t \x01(\x01\"\xb1\x01\n\x18\x43reatePredictionResponse\x12\x1b\n\x11new_prediction_id\x18\x01 \x01(\tH\x00\x12\x41\n\x05\x65rror\x18\x02 \x01(\x0b\x32\x30.biatob.proto.mvp.CreatePredictionResponse.ErrorH\x00\x1a\x19\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\tB\x1a\n\x18\x63reate_prediction_result\"-\n\x14GetPredictionRequest\x12\x15\n\rprediction_id\x18\x02 \x01(\t\"\xfb\x03\n\x12UserPredictionView\x12\x12\n\nprediction\x18\x01 \x01(\t\x12\x33\n\tcertainty\x18\x02 \x01(\x0b\x32 .biatob.proto.mvp.CertaintyRange\x12\x1b\n\x13maximum_stake_cents\x18\x03 \x01(\r\x12*\n\"remaining_stake_cents_vs_believers\x18\x04 \x01(\r\x12)\n!remaining_stake_cents_vs_skeptics\x18\x05 \x01(\r\x12\x18\n\x10\x63reated_unixtime\x18\r \x01(\x01\x12\x17\n\x0f\x63loses_unixtime\x18\x0e \x01(\x01\x12\x15\n\rspecial_rules\x18\x08 \x01(\t\x12\x0f\n\x07\x63reator\x18\t \x01(\t\x12\x35\n\nresolution\x18\x11 \x01(\x0b\x32!.biatob.proto.mvp.ResolutionEvent\x12,\n\x0byour_trades\x18\x0b \x03(\x0b\x32\x17.biatob.proto.mvp.Trade\x12\x1c\n\x14resolves_at_unixtime\x18\x0f \x01(\x01\x12J\n\x15your_following_status\x18\x12 \x01(\x0e\x32+.biatob.proto.mvp.PredictionFollowingStatus\"\x15\n\x13ListMyStakesRequest\"\xba\x01\n\x14ListMyStakesResponse\x12/\n\x02ok\x18\x01 \x01(\x0b\x32!.biatob.proto.mvp.PredictionsByIdH\x00\x12=\n\x05\x65rror\x18\x02 \x01(\x0b\x32,.biatob.proto.mvp.ListMyStakesResponse.ErrorH\x00\x1a\x19\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\tB\x17\n\x15list_my_stakes_result\"\xb4\x01\n\x0fPredictionsById\x12G\n\x0bpredictions\x18\x01 \x03(\x0b\x32\x32.biatob.proto.mvp.PredictionsById.PredictionsEntry\x1aX\n\x10PredictionsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x33\n\x05value\x18\x02 \x01(\x0b\x32$.biatob.proto.mvp.UserPredictionView:\x02\x38\x01\")\n\x16ListPredictionsRequest\x12\x0f\n\x07\x63reator\x18\x02 \x01(\t\"\xc2\x01\n\x17ListPredictionsResponse\x12/\n\x02ok\x18\x01 \x01(\x0b\x32!.biatob.proto.mvp.PredictionsByIdH\x00\x12@\n\x05\x65rror\x18\x02 \x01(\x0b\x32/.biatob.proto.mvp.ListPredictionsResponse.ErrorH\x00\x1a\x19\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\tB\x19\n\x17list_predictions_result\"6\n\rFollowRequest\x12\x15\n\rprediction_id\x18\x01 \x01(\t\x12\x0e\n\x06\x66ollow\x18\x02 \x01(\x08\"\xa9\x01\n\x0e\x46ollowResponse\x12\x32\n\x02ok\x18\x01 \x01(\x0b\x32$.biatob.proto.mvp.UserPredictionViewH\x00\x12\x37\n\x05\x65rror\x18\x02 \x01(\x0b\x32&.biatob.proto.mvp.FollowResponse.ErrorH\x00\x1a\x19\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\tB\x0f\n\rfollow_result\"^\n\x0cStakeRequest\x12\x15\n\rprediction_id\x18\x02 \x01(\t\x12\x1b\n\x13\x62\x65ttor_is_a_skeptic\x18\x03 \x01(\x08\x12\x1a\n\x12\x62\x65ttor_stake_cents\x18\x04 \x01(\r\"\xa6\x01\n\rStakeResponse\x12\x32\n\x02ok\x18\x01 \x01(\x0b\x32$.biatob.proto.mvp.UserPredictionViewH\x00\x12\x36\n\x05\x65rror\x18\x02 \x01(\x0b\x32%.biatob.proto.mvp.StakeResponse.ErrorH\x00\x1a\x19\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\tB\x0e\n\x0cstake_result\"h\n\x0eResolveRequest\x12\x15\n\rprediction_id\x18\x01 \x01(\t\x12\x30\n\nresolution\x18\x02 \x01(\x0e\x32\x1c.biatob.proto.mvp.Resolution\x12\r\n\x05notes\x18\x03 \x01(\t\"\xac\x01\n\x0fResolveResponse\x12\x32\n\x02ok\x18\x01 \x01(\x0b\x32$.biatob.proto.mvp.UserPredictionViewH\x00\x12\x38\n\x05\x65rror\x18\x02 \x01(\x0b\x32\'.biatob.proto.mvp.ResolveResponse.ErrorH\x00\x1a\x19\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\tB\x10\n\x0eresolve_result\"1\n\x11SetTrustedRequest\x12\x0b\n\x03who\x18\x03 \x01(\t\x12\x0f\n\x07trusted\x18\x02 \x01(\x08\"\xb3\x01\n\x12SetTrustedResponse\x12/\n\x02ok\x18\x01 \x01(\x0b\x32!.biatob.proto.mvp.GenericUserInfoH\x00\x12;\n\x05\x65rror\x18\x02 \x01(\x0b\x32*.biatob.proto.mvp.SetTrustedResponse.ErrorH\x00\x1a\x19\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\tB\x14\n\x12set_trusted_result\"\x1d\n\x0eGetUserRequest\x12\x0b\n\x03who\x18\x02 \x01(\t\"\xa7\x01\n\x0fGetUserResponse\x12,\n\x02ok\x18\x01 \x01(\x0b\x32\x1e.biatob.proto.mvp.RelationshipH\x00\x12\x38\n\x05\x65rror\x18\x02 \x01(\x0b\x32\'.biatob.proto.mvp.GetUserResponse.ErrorH\x00\x1a\x19\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\tB\x11\n\x0fget_user_result\"C\n\x15\x43hangePasswordRequest\x12\x14\n\x0cold_password\x18\x01 \x01(\t\x12\x14\n\x0cnew_password\x18\x02 \x01(\t\"\xb4\x01\n\x16\x43hangePasswordResponse\x12$\n\x02ok\x18\x01 \x01(\x0e\x32\x16.biatob.proto.mvp.VoidH\x00\x12?\n\x05\x65rror\x18\x02 \x01(\x0b\x32..biatob.proto.mvp.ChangePasswordResponse.ErrorH\x00\x1a\x19\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\tB\x18\n\x16\x63hange_password_result\">\n\x12GetSettingsRequest\x12(\n include_relationships_with_users\x18\x01 \x03(\t\"\xb6\x01\n\x13GetSettingsResponse\x12/\n\x02ok\x18\x01 \x01(\x0b\x32!.biatob.proto.mvp.GenericUserInfoH\x00\x12<\n\x05\x65rror\x18\x02 \x01(\x0b\x32+.biatob.proto.mvp.GetSettingsResponse.ErrorH\x00\x1a\x19\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\tB\x15\n\x13get_settings_result\"*\n\x15SendInvitationRequest\x12\x11\n\trecipient\x18\x01 \x01(\t\"\xbf\x01\n\x16SendInvitationResponse\x12/\n\x02ok\x18\x01 \x01(\x0b\x32!.biatob.proto.mvp.GenericUserInfoH\x00\x12?\n\x05\x65rror\x18\x02 \x01(\x0b\x32..biatob.proto.mvp.SendInvitationResponse.ErrorH\x00\x1a\x19\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\tB\x18\n\x16send_invitation_result\"\'\n\x16\x43heckInvitationRequest\x12\r\n\x05nonce\x18\x01 \x01(\t\"\xff\x01\n\x17\x43heckInvitationResponse\x12>\n\x02ok\x18\x01 \x01(\x0b\x32\x30.biatob.proto.mvp.CheckInvitationResponse.ResultH\x00\x12@\n\x05\x65rror\x18\x02 \x01(\x0b\x32/.biatob.proto.mvp.CheckInvitationResponse.ErrorH\x00\x1a,\n\x06Result\x12\x0f\n\x07inviter\x18\x01 \x01(\t\x12\x11\n\trecipient\x18\x02 \x01(\t\x1a\x19\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\tB\x19\n\x17\x63heck_invitation_result\"(\n\x17\x41\x63\x63\x65ptInvitationRequest\x12\r\n\x05nonce\x18\x01 \x01(\t\"\xc5\x01\n\x18\x41\x63\x63\x65ptInvitationResponse\x12/\n\x02ok\x18\x01 \x01(\x0b\x32!.biatob.proto.mvp.GenericUserInfoH\x00\x12\x41\n\x05\x65rror\x18\x02 \x01(\x0b\x32\x30.biatob.proto.mvp.AcceptInvitationResponse.ErrorH\x00\x1a\x19\n\x05\x45rror\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\tB\x1a\n\x18\x61\x63\x63\x65pt_invitation_result\"\x8c\x02\n\x1fSavedCreatedPredictionFormState\x12\x18\n\x10prediction_field\x18\x01 \x01(\t\x12\x19\n\x11resolves_at_field\x18\x02 \x01(\t\x12\x13\n\x0bstake_field\x18\x03 \x01(\t\x12\x13\n\x0blow_p_field\x18\x04 \x01(\t\x12\x14\n\x0chigh_p_field\x18\x05 \x01(\t\x12\x1b\n\x13open_for_unit_field\x18\x06 \x01(\t\x12\x1e\n\x16open_for_seconds_field\x18\x07 \x01(\t\x12\x1a\n\x12view_privacy_field\x18\t \x01(\t\x12\x1b\n\x13special_rules_field\x18\x08 \x01(\t*w\n\nTradeState\x12\x16\n\x12TRADE_STATE_ACTIVE\x10\x00\x12\x16\n\x12TRADE_STATE_QUEUED\x10\x01\x12\x19\n\x15TRADE_STATE_DISAVOWED\x10\x02\x12\x1e\n\x1aTRADE_STATE_DEQUEUE_FAILED\x10\x03*\x10\n\x04Void\x12\x08\n\x04VOID\x10\x00*d\n\nResolution\x12\x17\n\x13RESOLUTION_NONE_YET\x10\x00\x12\x12\n\x0eRESOLUTION_YES\x10\x01\x12\x11\n\rRESOLUTION_NO\x10\x02\x12\x16\n\x12RESOLUTION_INVALID\x10\x03*o\n\x15PredictionViewPrivacy\x12#\n\x1fPREDICTION_VIEW_PRIVACY_ANYBODY\x10\x00\x12\x31\n-PREDICTION_VIEW_PRIVACY_ANYBODY_WITH_THE_LINK\x10\x01*\x9a\x01\n\x19PredictionFollowingStatus\x12&\n\"PREDICTION_FOLLOWING_NOT_FOLLOWING\x10\x00\x12\"\n\x1ePREDICTION_FOLLOWING_FOLLOWING\x10\x01\x12\x31\n-PREDICTION_FOLLOWING_MANDATORY_BECAUSE_STAKED\x10\x02\x62\x06proto3'
+  serialized_pb=b'\n\x12protobuf/mvp.proto\x12\x10\x62iatob.proto.mvp\"c\n\tAuthToken\x12\x14\n\x0chmac_of_rest\x18\x01 \x01(\x0c\x12\r\n\x05owner\x18\x07 \x01(\t\x12\x17\n\x0fminted_unixtime\x18\x05 \x01(\x01\x12\x18\n\x10\x65xpires_unixtime\x18\x06 \x01(\x01\"\xd1\x01\n\x0c\x44\x61tabaseInfo\x12\x10\n\x06sqlite\x18\x01 \x01(\tH\x00\x12\x42\n\x05mysql\x18\x02 \x01(\x0b\x32\x31.biatob.proto.mvp.DatabaseInfo.MysqlDbCredentialsH\x00\x1aZ\n\x12MysqlDbCredentials\x12\x10\n\x08hostname\x18\x01 \x01(\t\x12\x10\n\x08username\x18\x02 \x01(\t\x12\x10\n\x08password\x18\x03 \x01(\t\x12\x0e\n\x06\x64\x62name\x18\x04 \x01(\tB\x0f\n\rdatabase_kind\"\x95\x02\n\x11\x43redentialsConfig\x12\x41\n\x04smtp\x18\x01 \x01(\x0b\x32\x33.biatob.proto.mvp.CredentialsConfig.SmtpCredentials\x12\x1c\n\x14token_signing_secret\x18\x02 \x01(\x0c\x12\x35\n\rdatabase_info\x18\x03 \x01(\x0b\x32\x1e.biatob.proto.mvp.DatabaseInfo\x1ah\n\x0fSmtpCredentials\x12\x10\n\x08hostname\x18\x01 \x01(\t\x12\x0c\n\x04port\x18\x02 \x01(\r\x12\x10\n\x08username\x18\x03 \x01(\t\x12\x10\n\x08password\x18\x04 \x01(\t\x12\x11\n\tfrom_addr\x18\x05 \x01(\t\"\xf5\x01\n\x0e\x45mailFlowState\x12+\n\tunstarted\x18\x01 \x01(\x0e\x32\x16.biatob.proto.mvp.VoidH\x00\x12>\n\tcode_sent\x18\x02 \x01(\x0b\x32).biatob.proto.mvp.EmailFlowState.CodeSentH\x00\x12\x12\n\x08verified\x18\x03 \x01(\tH\x00\x1aI\n\x08\x43odeSent\x12\r\n\x05\x65mail\x18\x01 \x01(\t\x12.\n\x04\x63ode\x18\x02 \x01(\x0b\x32 .biatob.proto.mvp.HashedPasswordB\x17\n\x15\x65mail_flow_state_kind\".\n\x0eHashedPassword\x12\x0c\n\x04salt\x18\x01 \x01(\x0c\x12\x0e\n\x06scrypt\x18\x02 \x01(\x0c\"\xce\x03\n\x0fGenericUserInfo\x12\x15\n\remail_address\x18\n \x01(\t\x12G\n\x0binvitations\x18\x05 \x03(\x0b\x32\x32.biatob.proto.mvp.GenericUserInfo.InvitationsEntry\x12K\n\rrelationships\x18\x06 \x03(\x0b\x32\x34.biatob.proto.mvp.GenericUserInfo.RelationshipsEntry\x12:\n\x0elogin_password\x18\x07 \x01(\x0b\x32 .biatob.proto.mvp.HashedPasswordH\x00\x1a`\n\x10InvitationsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12;\n\x05value\x18\x02 \x01(\x0b\x32,.biatob.proto.mvp.GenericUserInfo.Invitation:\x02\x38\x01\x1aT\n\x12RelationshipsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12-\n\x05value\x18\x02 \x01(\x0b\x32\x1e.biatob.proto.mvp.Relationship:\x02\x38\x01\x1a\x0c\n\nInvitationB\x0c\n\nlogin_type\":\n\x0cRelationship\x12\x12\n\ntrusts_you\x18\x01 \x01(\x08\x12\x16\n\x0etrusted_by_you\x18\x02 \x01(\x08\"s\n\x0cUsernameInfo\x12/\n\x04info\x18\x01 \x01(\x0b\x32!.biatob.proto.mvp.GenericUserInfo\x12\x32\n\x08password\x18\x02 \x01(\x0b\x32 .biatob.proto.mvp.HashedPassword\"3\n\x0c\x45mailAttempt\x12\x10\n\x08unixtime\x18\x01 \x01(\x01\x12\x11\n\tsucceeded\x18\x02 \x01(\x08\"\x9f\x01\n\x0fResolutionEvent\x12\x10\n\x08unixtime\x18\x04 \x01(\x01\x12\x30\n\nresolution\x18\x02 \x01(\x0e\x32\x1c.biatob.proto.mvp.Resolution\x12\r\n\x05notes\x18\x03 \x01(\t\x12\x39\n\x0eprior_revision\x18\x05 \x01(\x0b\x32!.biatob.proto.mvp.ResolutionEvent\"\xe0\x01\n\x05Trade\x12\x0e\n\x06\x62\x65ttor\x18\x07 \x01(\t\x12\x1b\n\x13\x62\x65ttor_is_a_skeptic\x18\x02 \x01(\x08\x12\x1a\n\x12\x62\x65ttor_stake_cents\x18\x03 \x01(\r\x12\x1b\n\x13\x63reator_stake_cents\x18\x04 \x01(\r\x12\x1b\n\x13transacted_unixtime\x18\x06 \x01(\x01\x12\x18\n\x10updated_unixtime\x18\x08 \x01(\x01\x12\r\n\x05notes\x18\t \x01(\t\x12+\n\x05state\x18\n \x01(\x0e\x32\x1c.biatob.proto.mvp.TradeState\"\x07\n\x05\x45mpty\"!\n\rErrorResponse\x12\x10\n\x08\x63\x61tchall\x18\x01 \x01(\t\"\x0f\n\rWhoamiRequest\"\"\n\x0eWhoamiResponse\x12\x10\n\x08username\x18\x01 \x01(\t\"\x10\n\x0eSignOutRequest\"\x11\n\x0fSignOutResponse\"o\n\x0b\x41uthSuccess\x12*\n\x05token\x18\x01 \x01(\x0b\x32\x1b.biatob.proto.mvp.AuthToken\x12\x34\n\tuser_info\x18\x02 \x01(\x0b\x32!.biatob.proto.mvp.GenericUserInfo\"5\n\x1cSendVerificationEmailRequest\x12\x15\n\remail_address\x18\x01 \x01(\t\"\x85\x01\n\x0cProofOfEmail\x12\x37\n\x07payload\x18\x01 \x01(\x0b\x32&.biatob.proto.mvp.ProofOfEmail.Payload\x12\x0c\n\x04salt\x18\x02 \x01(\x0c\x12\x0c\n\x04hmac\x18\x03 \x01(\x0c\x1a \n\x07Payload\x12\x15\n\remail_address\x18\x01 \x01(\t\"u\n\x17RegisterUsernameRequest\x12\x10\n\x08username\x18\x01 \x01(\t\x12\x10\n\x08password\x18\x02 \x01(\t\x12\x36\n\x0eproof_of_email\x18\x03 \x01(\x0b\x32\x1e.biatob.proto.mvp.ProofOfEmail\":\n\x14LogInUsernameRequest\x12\x10\n\x08username\x18\x01 \x01(\t\x12\x10\n\x08password\x18\x02 \x01(\t\"+\n\x0e\x43\x65rtaintyRange\x12\x0b\n\x03low\x18\x01 \x01(\x02\x12\x0c\n\x04high\x18\x02 \x01(\x02\"\x89\x02\n\x17\x43reatePredictionRequest\x12\x12\n\nprediction\x18\x02 \x01(\t\x12=\n\x0cview_privacy\x18\x03 \x01(\x0e\x32\'.biatob.proto.mvp.PredictionViewPrivacy\x12\x33\n\tcertainty\x18\x04 \x01(\x0b\x32 .biatob.proto.mvp.CertaintyRange\x12\x1b\n\x13maximum_stake_cents\x18\x05 \x01(\r\x12\x14\n\x0copen_seconds\x18\x06 \x01(\r\x12\x15\n\rspecial_rules\x18\x07 \x01(\t\x12\x1c\n\x14resolves_at_unixtime\x18\t \x01(\x01\"5\n\x18\x43reatePredictionResponse\x12\x19\n\x11new_prediction_id\x18\x01 \x01(\t\"-\n\x14GetPredictionRequest\x12\x15\n\rprediction_id\x18\x02 \x01(\t\"\xfb\x03\n\x12UserPredictionView\x12\x12\n\nprediction\x18\x01 \x01(\t\x12\x33\n\tcertainty\x18\x02 \x01(\x0b\x32 .biatob.proto.mvp.CertaintyRange\x12\x1b\n\x13maximum_stake_cents\x18\x03 \x01(\r\x12*\n\"remaining_stake_cents_vs_believers\x18\x04 \x01(\r\x12)\n!remaining_stake_cents_vs_skeptics\x18\x05 \x01(\r\x12\x18\n\x10\x63reated_unixtime\x18\r \x01(\x01\x12\x17\n\x0f\x63loses_unixtime\x18\x0e \x01(\x01\x12\x15\n\rspecial_rules\x18\x08 \x01(\t\x12\x0f\n\x07\x63reator\x18\t \x01(\t\x12\x35\n\nresolution\x18\x11 \x01(\x0b\x32!.biatob.proto.mvp.ResolutionEvent\x12,\n\x0byour_trades\x18\x0b \x03(\x0b\x32\x17.biatob.proto.mvp.Trade\x12\x1c\n\x14resolves_at_unixtime\x18\x0f \x01(\x01\x12J\n\x15your_following_status\x18\x12 \x01(\x0e\x32+.biatob.proto.mvp.PredictionFollowingStatus\"\x15\n\x13ListMyStakesRequest\"\xb4\x01\n\x0fPredictionsById\x12G\n\x0bpredictions\x18\x01 \x03(\x0b\x32\x32.biatob.proto.mvp.PredictionsById.PredictionsEntry\x1aX\n\x10PredictionsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x33\n\x05value\x18\x02 \x01(\x0b\x32$.biatob.proto.mvp.UserPredictionView:\x02\x38\x01\")\n\x16ListPredictionsRequest\x12\x0f\n\x07\x63reator\x18\x02 \x01(\t\"6\n\rFollowRequest\x12\x15\n\rprediction_id\x18\x01 \x01(\t\x12\x0e\n\x06\x66ollow\x18\x02 \x01(\x08\"^\n\x0cStakeRequest\x12\x15\n\rprediction_id\x18\x02 \x01(\t\x12\x1b\n\x13\x62\x65ttor_is_a_skeptic\x18\x03 \x01(\x08\x12\x1a\n\x12\x62\x65ttor_stake_cents\x18\x04 \x01(\r\"h\n\x0eResolveRequest\x12\x15\n\rprediction_id\x18\x01 \x01(\t\x12\x30\n\nresolution\x18\x02 \x01(\x0e\x32\x1c.biatob.proto.mvp.Resolution\x12\r\n\x05notes\x18\x03 \x01(\t\"1\n\x11SetTrustedRequest\x12\x0b\n\x03who\x18\x03 \x01(\t\x12\x0f\n\x07trusted\x18\x02 \x01(\x08\"\x1d\n\x0eGetUserRequest\x12\x0b\n\x03who\x18\x02 \x01(\t\"C\n\x15\x43hangePasswordRequest\x12\x14\n\x0cold_password\x18\x01 \x01(\t\x12\x14\n\x0cnew_password\x18\x02 \x01(\t\">\n\x12GetSettingsRequest\x12(\n include_relationships_with_users\x18\x01 \x03(\t\"*\n\x15SendInvitationRequest\x12\x11\n\trecipient\x18\x01 \x01(\t\"\'\n\x16\x43heckInvitationRequest\x12\r\n\x05nonce\x18\x01 \x01(\t\"=\n\x17\x43heckInvitationResponse\x12\x0f\n\x07inviter\x18\x01 \x01(\t\x12\x11\n\trecipient\x18\x02 \x01(\t\"(\n\x17\x41\x63\x63\x65ptInvitationRequest\x12\r\n\x05nonce\x18\x01 \x01(\t\"\x8c\x02\n\x1fSavedCreatedPredictionFormState\x12\x18\n\x10prediction_field\x18\x01 \x01(\t\x12\x19\n\x11resolves_at_field\x18\x02 \x01(\t\x12\x13\n\x0bstake_field\x18\x03 \x01(\t\x12\x13\n\x0blow_p_field\x18\x04 \x01(\t\x12\x14\n\x0chigh_p_field\x18\x05 \x01(\t\x12\x1b\n\x13open_for_unit_field\x18\x06 \x01(\t\x12\x1e\n\x16open_for_seconds_field\x18\x07 \x01(\t\x12\x1a\n\x12view_privacy_field\x18\t \x01(\t\x12\x1b\n\x13special_rules_field\x18\x08 \x01(\t*w\n\nTradeState\x12\x16\n\x12TRADE_STATE_ACTIVE\x10\x00\x12\x16\n\x12TRADE_STATE_QUEUED\x10\x01\x12\x19\n\x15TRADE_STATE_DISAVOWED\x10\x02\x12\x1e\n\x1aTRADE_STATE_DEQUEUE_FAILED\x10\x03*\x10\n\x04Void\x12\x08\n\x04VOID\x10\x00*d\n\nResolution\x12\x17\n\x13RESOLUTION_NONE_YET\x10\x00\x12\x12\n\x0eRESOLUTION_YES\x10\x01\x12\x11\n\rRESOLUTION_NO\x10\x02\x12\x16\n\x12RESOLUTION_INVALID\x10\x03*o\n\x15PredictionViewPrivacy\x12#\n\x1fPREDICTION_VIEW_PRIVACY_ANYBODY\x10\x00\x12\x31\n-PREDICTION_VIEW_PRIVACY_ANYBODY_WITH_THE_LINK\x10\x01*\x9a\x01\n\x19PredictionFollowingStatus\x12&\n\"PREDICTION_FOLLOWING_NOT_FOLLOWING\x10\x00\x12\"\n\x1ePREDICTION_FOLLOWING_FOLLOWING\x10\x01\x12\x31\n-PREDICTION_FOLLOWING_MANDATORY_BECAUSE_STAKED\x10\x02\x62\x06proto3'
 )
 
 _TRADESTATE = _descriptor.EnumDescriptor(
@@ -53,8 +53,8 @@ _TRADESTATE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=7514,
-  serialized_end=7633,
+  serialized_start=4738,
+  serialized_end=4857,
 )
 _sym_db.RegisterEnumDescriptor(_TRADESTATE)
 
@@ -74,8 +74,8 @@ _VOID = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=7635,
-  serialized_end=7651,
+  serialized_start=4859,
+  serialized_end=4875,
 )
 _sym_db.RegisterEnumDescriptor(_VOID)
 
@@ -110,8 +110,8 @@ _RESOLUTION = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=7653,
-  serialized_end=7753,
+  serialized_start=4877,
+  serialized_end=4977,
 )
 _sym_db.RegisterEnumDescriptor(_RESOLUTION)
 
@@ -136,8 +136,8 @@ _PREDICTIONVIEWPRIVACY = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=7755,
-  serialized_end=7866,
+  serialized_start=4979,
+  serialized_end=5090,
 )
 _sym_db.RegisterEnumDescriptor(_PREDICTIONVIEWPRIVACY)
 
@@ -167,8 +167,8 @@ _PREDICTIONFOLLOWINGSTATUS = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=7869,
-  serialized_end=8023,
+  serialized_start=5093,
+  serialized_end=5247,
 )
 _sym_db.RegisterEnumDescriptor(_PREDICTIONFOLLOWINGSTATUS)
 
@@ -981,6 +981,31 @@ _TRADE = _descriptor.Descriptor(
 )
 
 
+_EMPTY = _descriptor.Descriptor(
+  name='Empty',
+  full_name='biatob.proto.mvp.Empty',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=2013,
+  serialized_end=2020,
+)
+
+
 _ERRORRESPONSE = _descriptor.Descriptor(
   name='ErrorResponse',
   full_name='biatob.proto.mvp.ErrorResponse',
@@ -1008,8 +1033,8 @@ _ERRORRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2013,
-  serialized_end=2046,
+  serialized_start=2022,
+  serialized_end=2055,
 )
 
 
@@ -1033,8 +1058,8 @@ _WHOAMIREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2048,
-  serialized_end=2063,
+  serialized_start=2057,
+  serialized_end=2072,
 )
 
 
@@ -1065,8 +1090,8 @@ _WHOAMIRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2065,
-  serialized_end=2099,
+  serialized_start=2074,
+  serialized_end=2108,
 )
 
 
@@ -1090,8 +1115,8 @@ _SIGNOUTREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2101,
-  serialized_end=2117,
+  serialized_start=2110,
+  serialized_end=2126,
 )
 
 
@@ -1115,8 +1140,8 @@ _SIGNOUTRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2119,
-  serialized_end=2136,
+  serialized_start=2128,
+  serialized_end=2145,
 )
 
 
@@ -1154,8 +1179,8 @@ _AUTHSUCCESS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2138,
-  serialized_end=2249,
+  serialized_start=2147,
+  serialized_end=2258,
 )
 
 
@@ -1186,83 +1211,8 @@ _SENDVERIFICATIONEMAILREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2251,
-  serialized_end=2304,
-)
-
-
-_SENDVERIFICATIONEMAILRESPONSE_ERROR = _descriptor.Descriptor(
-  name='Error',
-  full_name='biatob.proto.mvp.SendVerificationEmailResponse.Error',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  create_key=_descriptor._internal_create_key,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='catchall', full_name='biatob.proto.mvp.SendVerificationEmailResponse.Error.catchall', index=0,
-      number=1, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=b"".decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  serialized_options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=2450,
-  serialized_end=2475,
-)
-
-_SENDVERIFICATIONEMAILRESPONSE = _descriptor.Descriptor(
-  name='SendVerificationEmailResponse',
-  full_name='biatob.proto.mvp.SendVerificationEmailResponse',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  create_key=_descriptor._internal_create_key,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='ok', full_name='biatob.proto.mvp.SendVerificationEmailResponse.ok', index=0,
-      number=1, type=14, cpp_type=8, label=1,
-      has_default_value=False, default_value=0,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='error', full_name='biatob.proto.mvp.SendVerificationEmailResponse.error', index=1,
-      number=2, type=11, cpp_type=10, label=1,
-      has_default_value=False, default_value=None,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-  ],
-  extensions=[
-  ],
-  nested_types=[_SENDVERIFICATIONEMAILRESPONSE_ERROR, ],
-  enum_types=[
-  ],
-  serialized_options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-    _descriptor.OneofDescriptor(
-      name='send_verification_email_result', full_name='biatob.proto.mvp.SendVerificationEmailResponse.send_verification_email_result',
-      index=0, containing_type=None,
-      create_key=_descriptor._internal_create_key,
-    fields=[]),
-  ],
-  serialized_start=2307,
-  serialized_end=2509,
+  serialized_start=2260,
+  serialized_end=2313,
 )
 
 
@@ -1293,8 +1243,8 @@ _PROOFOFEMAIL_PAYLOAD = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2613,
-  serialized_end=2645,
+  serialized_start=2417,
+  serialized_end=2449,
 )
 
 _PROOFOFEMAIL = _descriptor.Descriptor(
@@ -1338,8 +1288,8 @@ _PROOFOFEMAIL = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2512,
-  serialized_end=2645,
+  serialized_start=2316,
+  serialized_end=2449,
 )
 
 
@@ -1384,90 +1334,8 @@ _REGISTERUSERNAMEREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2647,
-  serialized_end=2764,
-)
-
-
-_REGISTERUSERNAMERESPONSE_ERROR = _descriptor.Descriptor(
-  name='Error',
-  full_name='biatob.proto.mvp.RegisterUsernameResponse.Error',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  create_key=_descriptor._internal_create_key,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='catchall', full_name='biatob.proto.mvp.RegisterUsernameResponse.Error.catchall', index=0,
-      number=1, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=b"".decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='username_taken', full_name='biatob.proto.mvp.RegisterUsernameResponse.Error.username_taken', index=1,
-      number=2, type=14, cpp_type=8, label=1,
-      has_default_value=False, default_value=0,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  serialized_options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=2907,
-  serialized_end=2980,
-)
-
-_REGISTERUSERNAMERESPONSE = _descriptor.Descriptor(
-  name='RegisterUsernameResponse',
-  full_name='biatob.proto.mvp.RegisterUsernameResponse',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  create_key=_descriptor._internal_create_key,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='ok', full_name='biatob.proto.mvp.RegisterUsernameResponse.ok', index=0,
-      number=1, type=11, cpp_type=10, label=1,
-      has_default_value=False, default_value=None,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='error', full_name='biatob.proto.mvp.RegisterUsernameResponse.error', index=1,
-      number=2, type=11, cpp_type=10, label=1,
-      has_default_value=False, default_value=None,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-  ],
-  extensions=[
-  ],
-  nested_types=[_REGISTERUSERNAMERESPONSE_ERROR, ],
-  enum_types=[
-  ],
-  serialized_options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-    _descriptor.OneofDescriptor(
-      name='register_username_result', full_name='biatob.proto.mvp.RegisterUsernameResponse.register_username_result',
-      index=0, containing_type=None,
-      create_key=_descriptor._internal_create_key,
-    fields=[]),
-  ],
-  serialized_start=2767,
-  serialized_end=3008,
+  serialized_start=2451,
+  serialized_end=2568,
 )
 
 
@@ -1505,8 +1373,8 @@ _LOGINUSERNAMEREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3010,
-  serialized_end=3068,
+  serialized_start=2570,
+  serialized_end=2628,
 )
 
 
@@ -1544,8 +1412,8 @@ _CERTAINTYRANGE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3070,
-  serialized_end=3113,
+  serialized_start=2630,
+  serialized_end=2673,
 )
 
 
@@ -1618,21 +1486,21 @@ _CREATEPREDICTIONREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3116,
-  serialized_end=3381,
+  serialized_start=2676,
+  serialized_end=2941,
 )
 
 
-_CREATEPREDICTIONRESPONSE_ERROR = _descriptor.Descriptor(
-  name='Error',
-  full_name='biatob.proto.mvp.CreatePredictionResponse.Error',
+_CREATEPREDICTIONRESPONSE = _descriptor.Descriptor(
+  name='CreatePredictionResponse',
+  full_name='biatob.proto.mvp.CreatePredictionResponse',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   create_key=_descriptor._internal_create_key,
   fields=[
     _descriptor.FieldDescriptor(
-      name='catchall', full_name='biatob.proto.mvp.CreatePredictionResponse.Error.catchall', index=0,
+      name='new_prediction_id', full_name='biatob.proto.mvp.CreatePredictionResponse.new_prediction_id', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=b"".decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
@@ -1650,51 +1518,8 @@ _CREATEPREDICTIONRESPONSE_ERROR = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2450,
-  serialized_end=2475,
-)
-
-_CREATEPREDICTIONRESPONSE = _descriptor.Descriptor(
-  name='CreatePredictionResponse',
-  full_name='biatob.proto.mvp.CreatePredictionResponse',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  create_key=_descriptor._internal_create_key,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='new_prediction_id', full_name='biatob.proto.mvp.CreatePredictionResponse.new_prediction_id', index=0,
-      number=1, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=b"".decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='error', full_name='biatob.proto.mvp.CreatePredictionResponse.error', index=1,
-      number=2, type=11, cpp_type=10, label=1,
-      has_default_value=False, default_value=None,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-  ],
-  extensions=[
-  ],
-  nested_types=[_CREATEPREDICTIONRESPONSE_ERROR, ],
-  enum_types=[
-  ],
-  serialized_options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-    _descriptor.OneofDescriptor(
-      name='create_prediction_result', full_name='biatob.proto.mvp.CreatePredictionResponse.create_prediction_result',
-      index=0, containing_type=None,
-      create_key=_descriptor._internal_create_key,
-    fields=[]),
-  ],
-  serialized_start=3384,
-  serialized_end=3561,
+  serialized_start=2943,
+  serialized_end=2996,
 )
 
 
@@ -1725,8 +1550,8 @@ _GETPREDICTIONREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3563,
-  serialized_end=3608,
+  serialized_start=2998,
+  serialized_end=3043,
 )
 
 
@@ -1841,8 +1666,8 @@ _USERPREDICTIONVIEW = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3611,
-  serialized_end=4118,
+  serialized_start=3046,
+  serialized_end=3553,
 )
 
 
@@ -1866,83 +1691,8 @@ _LISTMYSTAKESREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=4120,
-  serialized_end=4141,
-)
-
-
-_LISTMYSTAKESRESPONSE_ERROR = _descriptor.Descriptor(
-  name='Error',
-  full_name='biatob.proto.mvp.ListMyStakesResponse.Error',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  create_key=_descriptor._internal_create_key,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='catchall', full_name='biatob.proto.mvp.ListMyStakesResponse.Error.catchall', index=0,
-      number=1, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=b"".decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  serialized_options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=2450,
-  serialized_end=2475,
-)
-
-_LISTMYSTAKESRESPONSE = _descriptor.Descriptor(
-  name='ListMyStakesResponse',
-  full_name='biatob.proto.mvp.ListMyStakesResponse',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  create_key=_descriptor._internal_create_key,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='ok', full_name='biatob.proto.mvp.ListMyStakesResponse.ok', index=0,
-      number=1, type=11, cpp_type=10, label=1,
-      has_default_value=False, default_value=None,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='error', full_name='biatob.proto.mvp.ListMyStakesResponse.error', index=1,
-      number=2, type=11, cpp_type=10, label=1,
-      has_default_value=False, default_value=None,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-  ],
-  extensions=[
-  ],
-  nested_types=[_LISTMYSTAKESRESPONSE_ERROR, ],
-  enum_types=[
-  ],
-  serialized_options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-    _descriptor.OneofDescriptor(
-      name='list_my_stakes_result', full_name='biatob.proto.mvp.ListMyStakesResponse.list_my_stakes_result',
-      index=0, containing_type=None,
-      create_key=_descriptor._internal_create_key,
-    fields=[]),
-  ],
-  serialized_start=4144,
-  serialized_end=4330,
+  serialized_start=3555,
+  serialized_end=3576,
 )
 
 
@@ -1980,8 +1730,8 @@ _PREDICTIONSBYID_PREDICTIONSENTRY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=4425,
-  serialized_end=4513,
+  serialized_start=3671,
+  serialized_end=3759,
 )
 
 _PREDICTIONSBYID = _descriptor.Descriptor(
@@ -2011,8 +1761,8 @@ _PREDICTIONSBYID = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=4333,
-  serialized_end=4513,
+  serialized_start=3579,
+  serialized_end=3759,
 )
 
 
@@ -2043,83 +1793,8 @@ _LISTPREDICTIONSREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=4515,
-  serialized_end=4556,
-)
-
-
-_LISTPREDICTIONSRESPONSE_ERROR = _descriptor.Descriptor(
-  name='Error',
-  full_name='biatob.proto.mvp.ListPredictionsResponse.Error',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  create_key=_descriptor._internal_create_key,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='catchall', full_name='biatob.proto.mvp.ListPredictionsResponse.Error.catchall', index=0,
-      number=1, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=b"".decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  serialized_options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=2450,
-  serialized_end=2475,
-)
-
-_LISTPREDICTIONSRESPONSE = _descriptor.Descriptor(
-  name='ListPredictionsResponse',
-  full_name='biatob.proto.mvp.ListPredictionsResponse',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  create_key=_descriptor._internal_create_key,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='ok', full_name='biatob.proto.mvp.ListPredictionsResponse.ok', index=0,
-      number=1, type=11, cpp_type=10, label=1,
-      has_default_value=False, default_value=None,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='error', full_name='biatob.proto.mvp.ListPredictionsResponse.error', index=1,
-      number=2, type=11, cpp_type=10, label=1,
-      has_default_value=False, default_value=None,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-  ],
-  extensions=[
-  ],
-  nested_types=[_LISTPREDICTIONSRESPONSE_ERROR, ],
-  enum_types=[
-  ],
-  serialized_options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-    _descriptor.OneofDescriptor(
-      name='list_predictions_result', full_name='biatob.proto.mvp.ListPredictionsResponse.list_predictions_result',
-      index=0, containing_type=None,
-      create_key=_descriptor._internal_create_key,
-    fields=[]),
-  ],
-  serialized_start=4559,
-  serialized_end=4753,
+  serialized_start=3761,
+  serialized_end=3802,
 )
 
 
@@ -2157,83 +1832,8 @@ _FOLLOWREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=4755,
-  serialized_end=4809,
-)
-
-
-_FOLLOWRESPONSE_ERROR = _descriptor.Descriptor(
-  name='Error',
-  full_name='biatob.proto.mvp.FollowResponse.Error',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  create_key=_descriptor._internal_create_key,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='catchall', full_name='biatob.proto.mvp.FollowResponse.Error.catchall', index=0,
-      number=1, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=b"".decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  serialized_options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=2450,
-  serialized_end=2475,
-)
-
-_FOLLOWRESPONSE = _descriptor.Descriptor(
-  name='FollowResponse',
-  full_name='biatob.proto.mvp.FollowResponse',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  create_key=_descriptor._internal_create_key,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='ok', full_name='biatob.proto.mvp.FollowResponse.ok', index=0,
-      number=1, type=11, cpp_type=10, label=1,
-      has_default_value=False, default_value=None,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='error', full_name='biatob.proto.mvp.FollowResponse.error', index=1,
-      number=2, type=11, cpp_type=10, label=1,
-      has_default_value=False, default_value=None,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-  ],
-  extensions=[
-  ],
-  nested_types=[_FOLLOWRESPONSE_ERROR, ],
-  enum_types=[
-  ],
-  serialized_options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-    _descriptor.OneofDescriptor(
-      name='follow_result', full_name='biatob.proto.mvp.FollowResponse.follow_result',
-      index=0, containing_type=None,
-      create_key=_descriptor._internal_create_key,
-    fields=[]),
-  ],
-  serialized_start=4812,
-  serialized_end=4981,
+  serialized_start=3804,
+  serialized_end=3858,
 )
 
 
@@ -2278,83 +1878,8 @@ _STAKEREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=4983,
-  serialized_end=5077,
-)
-
-
-_STAKERESPONSE_ERROR = _descriptor.Descriptor(
-  name='Error',
-  full_name='biatob.proto.mvp.StakeResponse.Error',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  create_key=_descriptor._internal_create_key,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='catchall', full_name='biatob.proto.mvp.StakeResponse.Error.catchall', index=0,
-      number=1, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=b"".decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  serialized_options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=2450,
-  serialized_end=2475,
-)
-
-_STAKERESPONSE = _descriptor.Descriptor(
-  name='StakeResponse',
-  full_name='biatob.proto.mvp.StakeResponse',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  create_key=_descriptor._internal_create_key,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='ok', full_name='biatob.proto.mvp.StakeResponse.ok', index=0,
-      number=1, type=11, cpp_type=10, label=1,
-      has_default_value=False, default_value=None,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='error', full_name='biatob.proto.mvp.StakeResponse.error', index=1,
-      number=2, type=11, cpp_type=10, label=1,
-      has_default_value=False, default_value=None,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-  ],
-  extensions=[
-  ],
-  nested_types=[_STAKERESPONSE_ERROR, ],
-  enum_types=[
-  ],
-  serialized_options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-    _descriptor.OneofDescriptor(
-      name='stake_result', full_name='biatob.proto.mvp.StakeResponse.stake_result',
-      index=0, containing_type=None,
-      create_key=_descriptor._internal_create_key,
-    fields=[]),
-  ],
-  serialized_start=5080,
-  serialized_end=5246,
+  serialized_start=3860,
+  serialized_end=3954,
 )
 
 
@@ -2399,83 +1924,8 @@ _RESOLVEREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=5248,
-  serialized_end=5352,
-)
-
-
-_RESOLVERESPONSE_ERROR = _descriptor.Descriptor(
-  name='Error',
-  full_name='biatob.proto.mvp.ResolveResponse.Error',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  create_key=_descriptor._internal_create_key,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='catchall', full_name='biatob.proto.mvp.ResolveResponse.Error.catchall', index=0,
-      number=1, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=b"".decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  serialized_options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=2450,
-  serialized_end=2475,
-)
-
-_RESOLVERESPONSE = _descriptor.Descriptor(
-  name='ResolveResponse',
-  full_name='biatob.proto.mvp.ResolveResponse',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  create_key=_descriptor._internal_create_key,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='ok', full_name='biatob.proto.mvp.ResolveResponse.ok', index=0,
-      number=1, type=11, cpp_type=10, label=1,
-      has_default_value=False, default_value=None,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='error', full_name='biatob.proto.mvp.ResolveResponse.error', index=1,
-      number=2, type=11, cpp_type=10, label=1,
-      has_default_value=False, default_value=None,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-  ],
-  extensions=[
-  ],
-  nested_types=[_RESOLVERESPONSE_ERROR, ],
-  enum_types=[
-  ],
-  serialized_options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-    _descriptor.OneofDescriptor(
-      name='resolve_result', full_name='biatob.proto.mvp.ResolveResponse.resolve_result',
-      index=0, containing_type=None,
-      create_key=_descriptor._internal_create_key,
-    fields=[]),
-  ],
-  serialized_start=5355,
-  serialized_end=5527,
+  serialized_start=3956,
+  serialized_end=4060,
 )
 
 
@@ -2513,83 +1963,8 @@ _SETTRUSTEDREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=5529,
-  serialized_end=5578,
-)
-
-
-_SETTRUSTEDRESPONSE_ERROR = _descriptor.Descriptor(
-  name='Error',
-  full_name='biatob.proto.mvp.SetTrustedResponse.Error',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  create_key=_descriptor._internal_create_key,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='catchall', full_name='biatob.proto.mvp.SetTrustedResponse.Error.catchall', index=0,
-      number=1, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=b"".decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  serialized_options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=2450,
-  serialized_end=2475,
-)
-
-_SETTRUSTEDRESPONSE = _descriptor.Descriptor(
-  name='SetTrustedResponse',
-  full_name='biatob.proto.mvp.SetTrustedResponse',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  create_key=_descriptor._internal_create_key,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='ok', full_name='biatob.proto.mvp.SetTrustedResponse.ok', index=0,
-      number=1, type=11, cpp_type=10, label=1,
-      has_default_value=False, default_value=None,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='error', full_name='biatob.proto.mvp.SetTrustedResponse.error', index=1,
-      number=2, type=11, cpp_type=10, label=1,
-      has_default_value=False, default_value=None,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-  ],
-  extensions=[
-  ],
-  nested_types=[_SETTRUSTEDRESPONSE_ERROR, ],
-  enum_types=[
-  ],
-  serialized_options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-    _descriptor.OneofDescriptor(
-      name='set_trusted_result', full_name='biatob.proto.mvp.SetTrustedResponse.set_trusted_result',
-      index=0, containing_type=None,
-      create_key=_descriptor._internal_create_key,
-    fields=[]),
-  ],
-  serialized_start=5581,
-  serialized_end=5760,
+  serialized_start=4062,
+  serialized_end=4111,
 )
 
 
@@ -2620,83 +1995,8 @@ _GETUSERREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=5762,
-  serialized_end=5791,
-)
-
-
-_GETUSERRESPONSE_ERROR = _descriptor.Descriptor(
-  name='Error',
-  full_name='biatob.proto.mvp.GetUserResponse.Error',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  create_key=_descriptor._internal_create_key,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='catchall', full_name='biatob.proto.mvp.GetUserResponse.Error.catchall', index=0,
-      number=1, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=b"".decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  serialized_options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=2450,
-  serialized_end=2475,
-)
-
-_GETUSERRESPONSE = _descriptor.Descriptor(
-  name='GetUserResponse',
-  full_name='biatob.proto.mvp.GetUserResponse',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  create_key=_descriptor._internal_create_key,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='ok', full_name='biatob.proto.mvp.GetUserResponse.ok', index=0,
-      number=1, type=11, cpp_type=10, label=1,
-      has_default_value=False, default_value=None,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='error', full_name='biatob.proto.mvp.GetUserResponse.error', index=1,
-      number=2, type=11, cpp_type=10, label=1,
-      has_default_value=False, default_value=None,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-  ],
-  extensions=[
-  ],
-  nested_types=[_GETUSERRESPONSE_ERROR, ],
-  enum_types=[
-  ],
-  serialized_options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-    _descriptor.OneofDescriptor(
-      name='get_user_result', full_name='biatob.proto.mvp.GetUserResponse.get_user_result',
-      index=0, containing_type=None,
-      create_key=_descriptor._internal_create_key,
-    fields=[]),
-  ],
-  serialized_start=5794,
-  serialized_end=5961,
+  serialized_start=4113,
+  serialized_end=4142,
 )
 
 
@@ -2734,83 +2034,8 @@ _CHANGEPASSWORDREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=5963,
-  serialized_end=6030,
-)
-
-
-_CHANGEPASSWORDRESPONSE_ERROR = _descriptor.Descriptor(
-  name='Error',
-  full_name='biatob.proto.mvp.ChangePasswordResponse.Error',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  create_key=_descriptor._internal_create_key,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='catchall', full_name='biatob.proto.mvp.ChangePasswordResponse.Error.catchall', index=0,
-      number=1, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=b"".decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  serialized_options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=2450,
-  serialized_end=2475,
-)
-
-_CHANGEPASSWORDRESPONSE = _descriptor.Descriptor(
-  name='ChangePasswordResponse',
-  full_name='biatob.proto.mvp.ChangePasswordResponse',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  create_key=_descriptor._internal_create_key,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='ok', full_name='biatob.proto.mvp.ChangePasswordResponse.ok', index=0,
-      number=1, type=14, cpp_type=8, label=1,
-      has_default_value=False, default_value=0,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='error', full_name='biatob.proto.mvp.ChangePasswordResponse.error', index=1,
-      number=2, type=11, cpp_type=10, label=1,
-      has_default_value=False, default_value=None,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-  ],
-  extensions=[
-  ],
-  nested_types=[_CHANGEPASSWORDRESPONSE_ERROR, ],
-  enum_types=[
-  ],
-  serialized_options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-    _descriptor.OneofDescriptor(
-      name='change_password_result', full_name='biatob.proto.mvp.ChangePasswordResponse.change_password_result',
-      index=0, containing_type=None,
-      create_key=_descriptor._internal_create_key,
-    fields=[]),
-  ],
-  serialized_start=6033,
-  serialized_end=6213,
+  serialized_start=4144,
+  serialized_end=4211,
 )
 
 
@@ -2841,83 +2066,8 @@ _GETSETTINGSREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=6215,
-  serialized_end=6277,
-)
-
-
-_GETSETTINGSRESPONSE_ERROR = _descriptor.Descriptor(
-  name='Error',
-  full_name='biatob.proto.mvp.GetSettingsResponse.Error',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  create_key=_descriptor._internal_create_key,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='catchall', full_name='biatob.proto.mvp.GetSettingsResponse.Error.catchall', index=0,
-      number=1, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=b"".decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  serialized_options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=2450,
-  serialized_end=2475,
-)
-
-_GETSETTINGSRESPONSE = _descriptor.Descriptor(
-  name='GetSettingsResponse',
-  full_name='biatob.proto.mvp.GetSettingsResponse',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  create_key=_descriptor._internal_create_key,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='ok', full_name='biatob.proto.mvp.GetSettingsResponse.ok', index=0,
-      number=1, type=11, cpp_type=10, label=1,
-      has_default_value=False, default_value=None,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='error', full_name='biatob.proto.mvp.GetSettingsResponse.error', index=1,
-      number=2, type=11, cpp_type=10, label=1,
-      has_default_value=False, default_value=None,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-  ],
-  extensions=[
-  ],
-  nested_types=[_GETSETTINGSRESPONSE_ERROR, ],
-  enum_types=[
-  ],
-  serialized_options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-    _descriptor.OneofDescriptor(
-      name='get_settings_result', full_name='biatob.proto.mvp.GetSettingsResponse.get_settings_result',
-      index=0, containing_type=None,
-      create_key=_descriptor._internal_create_key,
-    fields=[]),
-  ],
-  serialized_start=6280,
-  serialized_end=6462,
+  serialized_start=4213,
+  serialized_end=4275,
 )
 
 
@@ -2948,83 +2098,8 @@ _SENDINVITATIONREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=6464,
-  serialized_end=6506,
-)
-
-
-_SENDINVITATIONRESPONSE_ERROR = _descriptor.Descriptor(
-  name='Error',
-  full_name='biatob.proto.mvp.SendInvitationResponse.Error',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  create_key=_descriptor._internal_create_key,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='catchall', full_name='biatob.proto.mvp.SendInvitationResponse.Error.catchall', index=0,
-      number=1, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=b"".decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  serialized_options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=2450,
-  serialized_end=2475,
-)
-
-_SENDINVITATIONRESPONSE = _descriptor.Descriptor(
-  name='SendInvitationResponse',
-  full_name='biatob.proto.mvp.SendInvitationResponse',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  create_key=_descriptor._internal_create_key,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='ok', full_name='biatob.proto.mvp.SendInvitationResponse.ok', index=0,
-      number=1, type=11, cpp_type=10, label=1,
-      has_default_value=False, default_value=None,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='error', full_name='biatob.proto.mvp.SendInvitationResponse.error', index=1,
-      number=2, type=11, cpp_type=10, label=1,
-      has_default_value=False, default_value=None,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-  ],
-  extensions=[
-  ],
-  nested_types=[_SENDINVITATIONRESPONSE_ERROR, ],
-  enum_types=[
-  ],
-  serialized_options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-    _descriptor.OneofDescriptor(
-      name='send_invitation_result', full_name='biatob.proto.mvp.SendInvitationResponse.send_invitation_result',
-      index=0, containing_type=None,
-      create_key=_descriptor._internal_create_key,
-    fields=[]),
-  ],
-  serialized_start=6509,
-  serialized_end=6700,
+  serialized_start=4277,
+  serialized_end=4319,
 )
 
 
@@ -3055,28 +2130,28 @@ _CHECKINVITATIONREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=6702,
-  serialized_end=6741,
+  serialized_start=4321,
+  serialized_end=4360,
 )
 
 
-_CHECKINVITATIONRESPONSE_RESULT = _descriptor.Descriptor(
-  name='Result',
-  full_name='biatob.proto.mvp.CheckInvitationResponse.Result',
+_CHECKINVITATIONRESPONSE = _descriptor.Descriptor(
+  name='CheckInvitationResponse',
+  full_name='biatob.proto.mvp.CheckInvitationResponse',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   create_key=_descriptor._internal_create_key,
   fields=[
     _descriptor.FieldDescriptor(
-      name='inviter', full_name='biatob.proto.mvp.CheckInvitationResponse.Result.inviter', index=0,
+      name='inviter', full_name='biatob.proto.mvp.CheckInvitationResponse.inviter', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=b"".decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='recipient', full_name='biatob.proto.mvp.CheckInvitationResponse.Result.recipient', index=1,
+      name='recipient', full_name='biatob.proto.mvp.CheckInvitationResponse.recipient', index=1,
       number=2, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=b"".decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
@@ -3094,82 +2169,8 @@ _CHECKINVITATIONRESPONSE_RESULT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=6901,
-  serialized_end=6945,
-)
-
-_CHECKINVITATIONRESPONSE_ERROR = _descriptor.Descriptor(
-  name='Error',
-  full_name='biatob.proto.mvp.CheckInvitationResponse.Error',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  create_key=_descriptor._internal_create_key,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='catchall', full_name='biatob.proto.mvp.CheckInvitationResponse.Error.catchall', index=0,
-      number=1, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=b"".decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  serialized_options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=2450,
-  serialized_end=2475,
-)
-
-_CHECKINVITATIONRESPONSE = _descriptor.Descriptor(
-  name='CheckInvitationResponse',
-  full_name='biatob.proto.mvp.CheckInvitationResponse',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  create_key=_descriptor._internal_create_key,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='ok', full_name='biatob.proto.mvp.CheckInvitationResponse.ok', index=0,
-      number=1, type=11, cpp_type=10, label=1,
-      has_default_value=False, default_value=None,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='error', full_name='biatob.proto.mvp.CheckInvitationResponse.error', index=1,
-      number=2, type=11, cpp_type=10, label=1,
-      has_default_value=False, default_value=None,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-  ],
-  extensions=[
-  ],
-  nested_types=[_CHECKINVITATIONRESPONSE_RESULT, _CHECKINVITATIONRESPONSE_ERROR, ],
-  enum_types=[
-  ],
-  serialized_options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-    _descriptor.OneofDescriptor(
-      name='check_invitation_result', full_name='biatob.proto.mvp.CheckInvitationResponse.check_invitation_result',
-      index=0, containing_type=None,
-      create_key=_descriptor._internal_create_key,
-    fields=[]),
-  ],
-  serialized_start=6744,
-  serialized_end=6999,
+  serialized_start=4362,
+  serialized_end=4423,
 )
 
 
@@ -3200,83 +2201,8 @@ _ACCEPTINVITATIONREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=7001,
-  serialized_end=7041,
-)
-
-
-_ACCEPTINVITATIONRESPONSE_ERROR = _descriptor.Descriptor(
-  name='Error',
-  full_name='biatob.proto.mvp.AcceptInvitationResponse.Error',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  create_key=_descriptor._internal_create_key,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='catchall', full_name='biatob.proto.mvp.AcceptInvitationResponse.Error.catchall', index=0,
-      number=1, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=b"".decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  serialized_options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=2450,
-  serialized_end=2475,
-)
-
-_ACCEPTINVITATIONRESPONSE = _descriptor.Descriptor(
-  name='AcceptInvitationResponse',
-  full_name='biatob.proto.mvp.AcceptInvitationResponse',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  create_key=_descriptor._internal_create_key,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='ok', full_name='biatob.proto.mvp.AcceptInvitationResponse.ok', index=0,
-      number=1, type=11, cpp_type=10, label=1,
-      has_default_value=False, default_value=None,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-    _descriptor.FieldDescriptor(
-      name='error', full_name='biatob.proto.mvp.AcceptInvitationResponse.error', index=1,
-      number=2, type=11, cpp_type=10, label=1,
-      has_default_value=False, default_value=None,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
-  ],
-  extensions=[
-  ],
-  nested_types=[_ACCEPTINVITATIONRESPONSE_ERROR, ],
-  enum_types=[
-  ],
-  serialized_options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-    _descriptor.OneofDescriptor(
-      name='accept_invitation_result', full_name='biatob.proto.mvp.AcceptInvitationResponse.accept_invitation_result',
-      index=0, containing_type=None,
-      create_key=_descriptor._internal_create_key,
-    fields=[]),
-  ],
-  serialized_start=7044,
-  serialized_end=7241,
+  serialized_start=4425,
+  serialized_end=4465,
 )
 
 
@@ -3363,8 +2289,8 @@ _SAVEDCREATEDPREDICTIONFORMSTATE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=7244,
-  serialized_end=7512,
+  serialized_start=4468,
+  serialized_end=4736,
 )
 
 _DATABASEINFO_MYSQLDBCREDENTIALS.containing_type = _DATABASEINFO
@@ -3409,155 +2335,19 @@ _RESOLUTIONEVENT.fields_by_name['prior_revision'].message_type = _RESOLUTIONEVEN
 _TRADE.fields_by_name['state'].enum_type = _TRADESTATE
 _AUTHSUCCESS.fields_by_name['token'].message_type = _AUTHTOKEN
 _AUTHSUCCESS.fields_by_name['user_info'].message_type = _GENERICUSERINFO
-_SENDVERIFICATIONEMAILRESPONSE_ERROR.containing_type = _SENDVERIFICATIONEMAILRESPONSE
-_SENDVERIFICATIONEMAILRESPONSE.fields_by_name['ok'].enum_type = _VOID
-_SENDVERIFICATIONEMAILRESPONSE.fields_by_name['error'].message_type = _SENDVERIFICATIONEMAILRESPONSE_ERROR
-_SENDVERIFICATIONEMAILRESPONSE.oneofs_by_name['send_verification_email_result'].fields.append(
-  _SENDVERIFICATIONEMAILRESPONSE.fields_by_name['ok'])
-_SENDVERIFICATIONEMAILRESPONSE.fields_by_name['ok'].containing_oneof = _SENDVERIFICATIONEMAILRESPONSE.oneofs_by_name['send_verification_email_result']
-_SENDVERIFICATIONEMAILRESPONSE.oneofs_by_name['send_verification_email_result'].fields.append(
-  _SENDVERIFICATIONEMAILRESPONSE.fields_by_name['error'])
-_SENDVERIFICATIONEMAILRESPONSE.fields_by_name['error'].containing_oneof = _SENDVERIFICATIONEMAILRESPONSE.oneofs_by_name['send_verification_email_result']
 _PROOFOFEMAIL_PAYLOAD.containing_type = _PROOFOFEMAIL
 _PROOFOFEMAIL.fields_by_name['payload'].message_type = _PROOFOFEMAIL_PAYLOAD
 _REGISTERUSERNAMEREQUEST.fields_by_name['proof_of_email'].message_type = _PROOFOFEMAIL
-_REGISTERUSERNAMERESPONSE_ERROR.fields_by_name['username_taken'].enum_type = _VOID
-_REGISTERUSERNAMERESPONSE_ERROR.containing_type = _REGISTERUSERNAMERESPONSE
-_REGISTERUSERNAMERESPONSE.fields_by_name['ok'].message_type = _AUTHSUCCESS
-_REGISTERUSERNAMERESPONSE.fields_by_name['error'].message_type = _REGISTERUSERNAMERESPONSE_ERROR
-_REGISTERUSERNAMERESPONSE.oneofs_by_name['register_username_result'].fields.append(
-  _REGISTERUSERNAMERESPONSE.fields_by_name['ok'])
-_REGISTERUSERNAMERESPONSE.fields_by_name['ok'].containing_oneof = _REGISTERUSERNAMERESPONSE.oneofs_by_name['register_username_result']
-_REGISTERUSERNAMERESPONSE.oneofs_by_name['register_username_result'].fields.append(
-  _REGISTERUSERNAMERESPONSE.fields_by_name['error'])
-_REGISTERUSERNAMERESPONSE.fields_by_name['error'].containing_oneof = _REGISTERUSERNAMERESPONSE.oneofs_by_name['register_username_result']
 _CREATEPREDICTIONREQUEST.fields_by_name['view_privacy'].enum_type = _PREDICTIONVIEWPRIVACY
 _CREATEPREDICTIONREQUEST.fields_by_name['certainty'].message_type = _CERTAINTYRANGE
-_CREATEPREDICTIONRESPONSE_ERROR.containing_type = _CREATEPREDICTIONRESPONSE
-_CREATEPREDICTIONRESPONSE.fields_by_name['error'].message_type = _CREATEPREDICTIONRESPONSE_ERROR
-_CREATEPREDICTIONRESPONSE.oneofs_by_name['create_prediction_result'].fields.append(
-  _CREATEPREDICTIONRESPONSE.fields_by_name['new_prediction_id'])
-_CREATEPREDICTIONRESPONSE.fields_by_name['new_prediction_id'].containing_oneof = _CREATEPREDICTIONRESPONSE.oneofs_by_name['create_prediction_result']
-_CREATEPREDICTIONRESPONSE.oneofs_by_name['create_prediction_result'].fields.append(
-  _CREATEPREDICTIONRESPONSE.fields_by_name['error'])
-_CREATEPREDICTIONRESPONSE.fields_by_name['error'].containing_oneof = _CREATEPREDICTIONRESPONSE.oneofs_by_name['create_prediction_result']
 _USERPREDICTIONVIEW.fields_by_name['certainty'].message_type = _CERTAINTYRANGE
 _USERPREDICTIONVIEW.fields_by_name['resolution'].message_type = _RESOLUTIONEVENT
 _USERPREDICTIONVIEW.fields_by_name['your_trades'].message_type = _TRADE
 _USERPREDICTIONVIEW.fields_by_name['your_following_status'].enum_type = _PREDICTIONFOLLOWINGSTATUS
-_LISTMYSTAKESRESPONSE_ERROR.containing_type = _LISTMYSTAKESRESPONSE
-_LISTMYSTAKESRESPONSE.fields_by_name['ok'].message_type = _PREDICTIONSBYID
-_LISTMYSTAKESRESPONSE.fields_by_name['error'].message_type = _LISTMYSTAKESRESPONSE_ERROR
-_LISTMYSTAKESRESPONSE.oneofs_by_name['list_my_stakes_result'].fields.append(
-  _LISTMYSTAKESRESPONSE.fields_by_name['ok'])
-_LISTMYSTAKESRESPONSE.fields_by_name['ok'].containing_oneof = _LISTMYSTAKESRESPONSE.oneofs_by_name['list_my_stakes_result']
-_LISTMYSTAKESRESPONSE.oneofs_by_name['list_my_stakes_result'].fields.append(
-  _LISTMYSTAKESRESPONSE.fields_by_name['error'])
-_LISTMYSTAKESRESPONSE.fields_by_name['error'].containing_oneof = _LISTMYSTAKESRESPONSE.oneofs_by_name['list_my_stakes_result']
 _PREDICTIONSBYID_PREDICTIONSENTRY.fields_by_name['value'].message_type = _USERPREDICTIONVIEW
 _PREDICTIONSBYID_PREDICTIONSENTRY.containing_type = _PREDICTIONSBYID
 _PREDICTIONSBYID.fields_by_name['predictions'].message_type = _PREDICTIONSBYID_PREDICTIONSENTRY
-_LISTPREDICTIONSRESPONSE_ERROR.containing_type = _LISTPREDICTIONSRESPONSE
-_LISTPREDICTIONSRESPONSE.fields_by_name['ok'].message_type = _PREDICTIONSBYID
-_LISTPREDICTIONSRESPONSE.fields_by_name['error'].message_type = _LISTPREDICTIONSRESPONSE_ERROR
-_LISTPREDICTIONSRESPONSE.oneofs_by_name['list_predictions_result'].fields.append(
-  _LISTPREDICTIONSRESPONSE.fields_by_name['ok'])
-_LISTPREDICTIONSRESPONSE.fields_by_name['ok'].containing_oneof = _LISTPREDICTIONSRESPONSE.oneofs_by_name['list_predictions_result']
-_LISTPREDICTIONSRESPONSE.oneofs_by_name['list_predictions_result'].fields.append(
-  _LISTPREDICTIONSRESPONSE.fields_by_name['error'])
-_LISTPREDICTIONSRESPONSE.fields_by_name['error'].containing_oneof = _LISTPREDICTIONSRESPONSE.oneofs_by_name['list_predictions_result']
-_FOLLOWRESPONSE_ERROR.containing_type = _FOLLOWRESPONSE
-_FOLLOWRESPONSE.fields_by_name['ok'].message_type = _USERPREDICTIONVIEW
-_FOLLOWRESPONSE.fields_by_name['error'].message_type = _FOLLOWRESPONSE_ERROR
-_FOLLOWRESPONSE.oneofs_by_name['follow_result'].fields.append(
-  _FOLLOWRESPONSE.fields_by_name['ok'])
-_FOLLOWRESPONSE.fields_by_name['ok'].containing_oneof = _FOLLOWRESPONSE.oneofs_by_name['follow_result']
-_FOLLOWRESPONSE.oneofs_by_name['follow_result'].fields.append(
-  _FOLLOWRESPONSE.fields_by_name['error'])
-_FOLLOWRESPONSE.fields_by_name['error'].containing_oneof = _FOLLOWRESPONSE.oneofs_by_name['follow_result']
-_STAKERESPONSE_ERROR.containing_type = _STAKERESPONSE
-_STAKERESPONSE.fields_by_name['ok'].message_type = _USERPREDICTIONVIEW
-_STAKERESPONSE.fields_by_name['error'].message_type = _STAKERESPONSE_ERROR
-_STAKERESPONSE.oneofs_by_name['stake_result'].fields.append(
-  _STAKERESPONSE.fields_by_name['ok'])
-_STAKERESPONSE.fields_by_name['ok'].containing_oneof = _STAKERESPONSE.oneofs_by_name['stake_result']
-_STAKERESPONSE.oneofs_by_name['stake_result'].fields.append(
-  _STAKERESPONSE.fields_by_name['error'])
-_STAKERESPONSE.fields_by_name['error'].containing_oneof = _STAKERESPONSE.oneofs_by_name['stake_result']
 _RESOLVEREQUEST.fields_by_name['resolution'].enum_type = _RESOLUTION
-_RESOLVERESPONSE_ERROR.containing_type = _RESOLVERESPONSE
-_RESOLVERESPONSE.fields_by_name['ok'].message_type = _USERPREDICTIONVIEW
-_RESOLVERESPONSE.fields_by_name['error'].message_type = _RESOLVERESPONSE_ERROR
-_RESOLVERESPONSE.oneofs_by_name['resolve_result'].fields.append(
-  _RESOLVERESPONSE.fields_by_name['ok'])
-_RESOLVERESPONSE.fields_by_name['ok'].containing_oneof = _RESOLVERESPONSE.oneofs_by_name['resolve_result']
-_RESOLVERESPONSE.oneofs_by_name['resolve_result'].fields.append(
-  _RESOLVERESPONSE.fields_by_name['error'])
-_RESOLVERESPONSE.fields_by_name['error'].containing_oneof = _RESOLVERESPONSE.oneofs_by_name['resolve_result']
-_SETTRUSTEDRESPONSE_ERROR.containing_type = _SETTRUSTEDRESPONSE
-_SETTRUSTEDRESPONSE.fields_by_name['ok'].message_type = _GENERICUSERINFO
-_SETTRUSTEDRESPONSE.fields_by_name['error'].message_type = _SETTRUSTEDRESPONSE_ERROR
-_SETTRUSTEDRESPONSE.oneofs_by_name['set_trusted_result'].fields.append(
-  _SETTRUSTEDRESPONSE.fields_by_name['ok'])
-_SETTRUSTEDRESPONSE.fields_by_name['ok'].containing_oneof = _SETTRUSTEDRESPONSE.oneofs_by_name['set_trusted_result']
-_SETTRUSTEDRESPONSE.oneofs_by_name['set_trusted_result'].fields.append(
-  _SETTRUSTEDRESPONSE.fields_by_name['error'])
-_SETTRUSTEDRESPONSE.fields_by_name['error'].containing_oneof = _SETTRUSTEDRESPONSE.oneofs_by_name['set_trusted_result']
-_GETUSERRESPONSE_ERROR.containing_type = _GETUSERRESPONSE
-_GETUSERRESPONSE.fields_by_name['ok'].message_type = _RELATIONSHIP
-_GETUSERRESPONSE.fields_by_name['error'].message_type = _GETUSERRESPONSE_ERROR
-_GETUSERRESPONSE.oneofs_by_name['get_user_result'].fields.append(
-  _GETUSERRESPONSE.fields_by_name['ok'])
-_GETUSERRESPONSE.fields_by_name['ok'].containing_oneof = _GETUSERRESPONSE.oneofs_by_name['get_user_result']
-_GETUSERRESPONSE.oneofs_by_name['get_user_result'].fields.append(
-  _GETUSERRESPONSE.fields_by_name['error'])
-_GETUSERRESPONSE.fields_by_name['error'].containing_oneof = _GETUSERRESPONSE.oneofs_by_name['get_user_result']
-_CHANGEPASSWORDRESPONSE_ERROR.containing_type = _CHANGEPASSWORDRESPONSE
-_CHANGEPASSWORDRESPONSE.fields_by_name['ok'].enum_type = _VOID
-_CHANGEPASSWORDRESPONSE.fields_by_name['error'].message_type = _CHANGEPASSWORDRESPONSE_ERROR
-_CHANGEPASSWORDRESPONSE.oneofs_by_name['change_password_result'].fields.append(
-  _CHANGEPASSWORDRESPONSE.fields_by_name['ok'])
-_CHANGEPASSWORDRESPONSE.fields_by_name['ok'].containing_oneof = _CHANGEPASSWORDRESPONSE.oneofs_by_name['change_password_result']
-_CHANGEPASSWORDRESPONSE.oneofs_by_name['change_password_result'].fields.append(
-  _CHANGEPASSWORDRESPONSE.fields_by_name['error'])
-_CHANGEPASSWORDRESPONSE.fields_by_name['error'].containing_oneof = _CHANGEPASSWORDRESPONSE.oneofs_by_name['change_password_result']
-_GETSETTINGSRESPONSE_ERROR.containing_type = _GETSETTINGSRESPONSE
-_GETSETTINGSRESPONSE.fields_by_name['ok'].message_type = _GENERICUSERINFO
-_GETSETTINGSRESPONSE.fields_by_name['error'].message_type = _GETSETTINGSRESPONSE_ERROR
-_GETSETTINGSRESPONSE.oneofs_by_name['get_settings_result'].fields.append(
-  _GETSETTINGSRESPONSE.fields_by_name['ok'])
-_GETSETTINGSRESPONSE.fields_by_name['ok'].containing_oneof = _GETSETTINGSRESPONSE.oneofs_by_name['get_settings_result']
-_GETSETTINGSRESPONSE.oneofs_by_name['get_settings_result'].fields.append(
-  _GETSETTINGSRESPONSE.fields_by_name['error'])
-_GETSETTINGSRESPONSE.fields_by_name['error'].containing_oneof = _GETSETTINGSRESPONSE.oneofs_by_name['get_settings_result']
-_SENDINVITATIONRESPONSE_ERROR.containing_type = _SENDINVITATIONRESPONSE
-_SENDINVITATIONRESPONSE.fields_by_name['ok'].message_type = _GENERICUSERINFO
-_SENDINVITATIONRESPONSE.fields_by_name['error'].message_type = _SENDINVITATIONRESPONSE_ERROR
-_SENDINVITATIONRESPONSE.oneofs_by_name['send_invitation_result'].fields.append(
-  _SENDINVITATIONRESPONSE.fields_by_name['ok'])
-_SENDINVITATIONRESPONSE.fields_by_name['ok'].containing_oneof = _SENDINVITATIONRESPONSE.oneofs_by_name['send_invitation_result']
-_SENDINVITATIONRESPONSE.oneofs_by_name['send_invitation_result'].fields.append(
-  _SENDINVITATIONRESPONSE.fields_by_name['error'])
-_SENDINVITATIONRESPONSE.fields_by_name['error'].containing_oneof = _SENDINVITATIONRESPONSE.oneofs_by_name['send_invitation_result']
-_CHECKINVITATIONRESPONSE_RESULT.containing_type = _CHECKINVITATIONRESPONSE
-_CHECKINVITATIONRESPONSE_ERROR.containing_type = _CHECKINVITATIONRESPONSE
-_CHECKINVITATIONRESPONSE.fields_by_name['ok'].message_type = _CHECKINVITATIONRESPONSE_RESULT
-_CHECKINVITATIONRESPONSE.fields_by_name['error'].message_type = _CHECKINVITATIONRESPONSE_ERROR
-_CHECKINVITATIONRESPONSE.oneofs_by_name['check_invitation_result'].fields.append(
-  _CHECKINVITATIONRESPONSE.fields_by_name['ok'])
-_CHECKINVITATIONRESPONSE.fields_by_name['ok'].containing_oneof = _CHECKINVITATIONRESPONSE.oneofs_by_name['check_invitation_result']
-_CHECKINVITATIONRESPONSE.oneofs_by_name['check_invitation_result'].fields.append(
-  _CHECKINVITATIONRESPONSE.fields_by_name['error'])
-_CHECKINVITATIONRESPONSE.fields_by_name['error'].containing_oneof = _CHECKINVITATIONRESPONSE.oneofs_by_name['check_invitation_result']
-_ACCEPTINVITATIONRESPONSE_ERROR.containing_type = _ACCEPTINVITATIONRESPONSE
-_ACCEPTINVITATIONRESPONSE.fields_by_name['ok'].message_type = _GENERICUSERINFO
-_ACCEPTINVITATIONRESPONSE.fields_by_name['error'].message_type = _ACCEPTINVITATIONRESPONSE_ERROR
-_ACCEPTINVITATIONRESPONSE.oneofs_by_name['accept_invitation_result'].fields.append(
-  _ACCEPTINVITATIONRESPONSE.fields_by_name['ok'])
-_ACCEPTINVITATIONRESPONSE.fields_by_name['ok'].containing_oneof = _ACCEPTINVITATIONRESPONSE.oneofs_by_name['accept_invitation_result']
-_ACCEPTINVITATIONRESPONSE.oneofs_by_name['accept_invitation_result'].fields.append(
-  _ACCEPTINVITATIONRESPONSE.fields_by_name['error'])
-_ACCEPTINVITATIONRESPONSE.fields_by_name['error'].containing_oneof = _ACCEPTINVITATIONRESPONSE.oneofs_by_name['accept_invitation_result']
 DESCRIPTOR.message_types_by_name['AuthToken'] = _AUTHTOKEN
 DESCRIPTOR.message_types_by_name['DatabaseInfo'] = _DATABASEINFO
 DESCRIPTOR.message_types_by_name['CredentialsConfig'] = _CREDENTIALSCONFIG
@@ -3569,6 +2359,7 @@ DESCRIPTOR.message_types_by_name['UsernameInfo'] = _USERNAMEINFO
 DESCRIPTOR.message_types_by_name['EmailAttempt'] = _EMAILATTEMPT
 DESCRIPTOR.message_types_by_name['ResolutionEvent'] = _RESOLUTIONEVENT
 DESCRIPTOR.message_types_by_name['Trade'] = _TRADE
+DESCRIPTOR.message_types_by_name['Empty'] = _EMPTY
 DESCRIPTOR.message_types_by_name['ErrorResponse'] = _ERRORRESPONSE
 DESCRIPTOR.message_types_by_name['WhoamiRequest'] = _WHOAMIREQUEST
 DESCRIPTOR.message_types_by_name['WhoamiResponse'] = _WHOAMIRESPONSE
@@ -3576,10 +2367,8 @@ DESCRIPTOR.message_types_by_name['SignOutRequest'] = _SIGNOUTREQUEST
 DESCRIPTOR.message_types_by_name['SignOutResponse'] = _SIGNOUTRESPONSE
 DESCRIPTOR.message_types_by_name['AuthSuccess'] = _AUTHSUCCESS
 DESCRIPTOR.message_types_by_name['SendVerificationEmailRequest'] = _SENDVERIFICATIONEMAILREQUEST
-DESCRIPTOR.message_types_by_name['SendVerificationEmailResponse'] = _SENDVERIFICATIONEMAILRESPONSE
 DESCRIPTOR.message_types_by_name['ProofOfEmail'] = _PROOFOFEMAIL
 DESCRIPTOR.message_types_by_name['RegisterUsernameRequest'] = _REGISTERUSERNAMEREQUEST
-DESCRIPTOR.message_types_by_name['RegisterUsernameResponse'] = _REGISTERUSERNAMERESPONSE
 DESCRIPTOR.message_types_by_name['LogInUsernameRequest'] = _LOGINUSERNAMEREQUEST
 DESCRIPTOR.message_types_by_name['CertaintyRange'] = _CERTAINTYRANGE
 DESCRIPTOR.message_types_by_name['CreatePredictionRequest'] = _CREATEPREDICTIONREQUEST
@@ -3587,30 +2376,19 @@ DESCRIPTOR.message_types_by_name['CreatePredictionResponse'] = _CREATEPREDICTION
 DESCRIPTOR.message_types_by_name['GetPredictionRequest'] = _GETPREDICTIONREQUEST
 DESCRIPTOR.message_types_by_name['UserPredictionView'] = _USERPREDICTIONVIEW
 DESCRIPTOR.message_types_by_name['ListMyStakesRequest'] = _LISTMYSTAKESREQUEST
-DESCRIPTOR.message_types_by_name['ListMyStakesResponse'] = _LISTMYSTAKESRESPONSE
 DESCRIPTOR.message_types_by_name['PredictionsById'] = _PREDICTIONSBYID
 DESCRIPTOR.message_types_by_name['ListPredictionsRequest'] = _LISTPREDICTIONSREQUEST
-DESCRIPTOR.message_types_by_name['ListPredictionsResponse'] = _LISTPREDICTIONSRESPONSE
 DESCRIPTOR.message_types_by_name['FollowRequest'] = _FOLLOWREQUEST
-DESCRIPTOR.message_types_by_name['FollowResponse'] = _FOLLOWRESPONSE
 DESCRIPTOR.message_types_by_name['StakeRequest'] = _STAKEREQUEST
-DESCRIPTOR.message_types_by_name['StakeResponse'] = _STAKERESPONSE
 DESCRIPTOR.message_types_by_name['ResolveRequest'] = _RESOLVEREQUEST
-DESCRIPTOR.message_types_by_name['ResolveResponse'] = _RESOLVERESPONSE
 DESCRIPTOR.message_types_by_name['SetTrustedRequest'] = _SETTRUSTEDREQUEST
-DESCRIPTOR.message_types_by_name['SetTrustedResponse'] = _SETTRUSTEDRESPONSE
 DESCRIPTOR.message_types_by_name['GetUserRequest'] = _GETUSERREQUEST
-DESCRIPTOR.message_types_by_name['GetUserResponse'] = _GETUSERRESPONSE
 DESCRIPTOR.message_types_by_name['ChangePasswordRequest'] = _CHANGEPASSWORDREQUEST
-DESCRIPTOR.message_types_by_name['ChangePasswordResponse'] = _CHANGEPASSWORDRESPONSE
 DESCRIPTOR.message_types_by_name['GetSettingsRequest'] = _GETSETTINGSREQUEST
-DESCRIPTOR.message_types_by_name['GetSettingsResponse'] = _GETSETTINGSRESPONSE
 DESCRIPTOR.message_types_by_name['SendInvitationRequest'] = _SENDINVITATIONREQUEST
-DESCRIPTOR.message_types_by_name['SendInvitationResponse'] = _SENDINVITATIONRESPONSE
 DESCRIPTOR.message_types_by_name['CheckInvitationRequest'] = _CHECKINVITATIONREQUEST
 DESCRIPTOR.message_types_by_name['CheckInvitationResponse'] = _CHECKINVITATIONRESPONSE
 DESCRIPTOR.message_types_by_name['AcceptInvitationRequest'] = _ACCEPTINVITATIONREQUEST
-DESCRIPTOR.message_types_by_name['AcceptInvitationResponse'] = _ACCEPTINVITATIONRESPONSE
 DESCRIPTOR.message_types_by_name['SavedCreatedPredictionFormState'] = _SAVEDCREATEDPREDICTIONFORMSTATE
 DESCRIPTOR.enum_types_by_name['TradeState'] = _TRADESTATE
 DESCRIPTOR.enum_types_by_name['Void'] = _VOID
@@ -3744,6 +2522,13 @@ Trade = _reflection.GeneratedProtocolMessageType('Trade', (_message.Message,), {
   })
 _sym_db.RegisterMessage(Trade)
 
+Empty = _reflection.GeneratedProtocolMessageType('Empty', (_message.Message,), {
+  'DESCRIPTOR' : _EMPTY,
+  '__module__' : 'protobuf.mvp_pb2'
+  # @@protoc_insertion_point(class_scope:biatob.proto.mvp.Empty)
+  })
+_sym_db.RegisterMessage(Empty)
+
 ErrorResponse = _reflection.GeneratedProtocolMessageType('ErrorResponse', (_message.Message,), {
   'DESCRIPTOR' : _ERRORRESPONSE,
   '__module__' : 'protobuf.mvp_pb2'
@@ -3793,21 +2578,6 @@ SendVerificationEmailRequest = _reflection.GeneratedProtocolMessageType('SendVer
   })
 _sym_db.RegisterMessage(SendVerificationEmailRequest)
 
-SendVerificationEmailResponse = _reflection.GeneratedProtocolMessageType('SendVerificationEmailResponse', (_message.Message,), {
-
-  'Error' : _reflection.GeneratedProtocolMessageType('Error', (_message.Message,), {
-    'DESCRIPTOR' : _SENDVERIFICATIONEMAILRESPONSE_ERROR,
-    '__module__' : 'protobuf.mvp_pb2'
-    # @@protoc_insertion_point(class_scope:biatob.proto.mvp.SendVerificationEmailResponse.Error)
-    })
-  ,
-  'DESCRIPTOR' : _SENDVERIFICATIONEMAILRESPONSE,
-  '__module__' : 'protobuf.mvp_pb2'
-  # @@protoc_insertion_point(class_scope:biatob.proto.mvp.SendVerificationEmailResponse)
-  })
-_sym_db.RegisterMessage(SendVerificationEmailResponse)
-_sym_db.RegisterMessage(SendVerificationEmailResponse.Error)
-
 ProofOfEmail = _reflection.GeneratedProtocolMessageType('ProofOfEmail', (_message.Message,), {
 
   'Payload' : _reflection.GeneratedProtocolMessageType('Payload', (_message.Message,), {
@@ -3829,21 +2599,6 @@ RegisterUsernameRequest = _reflection.GeneratedProtocolMessageType('RegisterUser
   # @@protoc_insertion_point(class_scope:biatob.proto.mvp.RegisterUsernameRequest)
   })
 _sym_db.RegisterMessage(RegisterUsernameRequest)
-
-RegisterUsernameResponse = _reflection.GeneratedProtocolMessageType('RegisterUsernameResponse', (_message.Message,), {
-
-  'Error' : _reflection.GeneratedProtocolMessageType('Error', (_message.Message,), {
-    'DESCRIPTOR' : _REGISTERUSERNAMERESPONSE_ERROR,
-    '__module__' : 'protobuf.mvp_pb2'
-    # @@protoc_insertion_point(class_scope:biatob.proto.mvp.RegisterUsernameResponse.Error)
-    })
-  ,
-  'DESCRIPTOR' : _REGISTERUSERNAMERESPONSE,
-  '__module__' : 'protobuf.mvp_pb2'
-  # @@protoc_insertion_point(class_scope:biatob.proto.mvp.RegisterUsernameResponse)
-  })
-_sym_db.RegisterMessage(RegisterUsernameResponse)
-_sym_db.RegisterMessage(RegisterUsernameResponse.Error)
 
 LogInUsernameRequest = _reflection.GeneratedProtocolMessageType('LogInUsernameRequest', (_message.Message,), {
   'DESCRIPTOR' : _LOGINUSERNAMEREQUEST,
@@ -3867,19 +2622,11 @@ CreatePredictionRequest = _reflection.GeneratedProtocolMessageType('CreatePredic
 _sym_db.RegisterMessage(CreatePredictionRequest)
 
 CreatePredictionResponse = _reflection.GeneratedProtocolMessageType('CreatePredictionResponse', (_message.Message,), {
-
-  'Error' : _reflection.GeneratedProtocolMessageType('Error', (_message.Message,), {
-    'DESCRIPTOR' : _CREATEPREDICTIONRESPONSE_ERROR,
-    '__module__' : 'protobuf.mvp_pb2'
-    # @@protoc_insertion_point(class_scope:biatob.proto.mvp.CreatePredictionResponse.Error)
-    })
-  ,
   'DESCRIPTOR' : _CREATEPREDICTIONRESPONSE,
   '__module__' : 'protobuf.mvp_pb2'
   # @@protoc_insertion_point(class_scope:biatob.proto.mvp.CreatePredictionResponse)
   })
 _sym_db.RegisterMessage(CreatePredictionResponse)
-_sym_db.RegisterMessage(CreatePredictionResponse.Error)
 
 GetPredictionRequest = _reflection.GeneratedProtocolMessageType('GetPredictionRequest', (_message.Message,), {
   'DESCRIPTOR' : _GETPREDICTIONREQUEST,
@@ -3901,21 +2648,6 @@ ListMyStakesRequest = _reflection.GeneratedProtocolMessageType('ListMyStakesRequ
   # @@protoc_insertion_point(class_scope:biatob.proto.mvp.ListMyStakesRequest)
   })
 _sym_db.RegisterMessage(ListMyStakesRequest)
-
-ListMyStakesResponse = _reflection.GeneratedProtocolMessageType('ListMyStakesResponse', (_message.Message,), {
-
-  'Error' : _reflection.GeneratedProtocolMessageType('Error', (_message.Message,), {
-    'DESCRIPTOR' : _LISTMYSTAKESRESPONSE_ERROR,
-    '__module__' : 'protobuf.mvp_pb2'
-    # @@protoc_insertion_point(class_scope:biatob.proto.mvp.ListMyStakesResponse.Error)
-    })
-  ,
-  'DESCRIPTOR' : _LISTMYSTAKESRESPONSE,
-  '__module__' : 'protobuf.mvp_pb2'
-  # @@protoc_insertion_point(class_scope:biatob.proto.mvp.ListMyStakesResponse)
-  })
-_sym_db.RegisterMessage(ListMyStakesResponse)
-_sym_db.RegisterMessage(ListMyStakesResponse.Error)
 
 PredictionsById = _reflection.GeneratedProtocolMessageType('PredictionsById', (_message.Message,), {
 
@@ -3939,42 +2671,12 @@ ListPredictionsRequest = _reflection.GeneratedProtocolMessageType('ListPredictio
   })
 _sym_db.RegisterMessage(ListPredictionsRequest)
 
-ListPredictionsResponse = _reflection.GeneratedProtocolMessageType('ListPredictionsResponse', (_message.Message,), {
-
-  'Error' : _reflection.GeneratedProtocolMessageType('Error', (_message.Message,), {
-    'DESCRIPTOR' : _LISTPREDICTIONSRESPONSE_ERROR,
-    '__module__' : 'protobuf.mvp_pb2'
-    # @@protoc_insertion_point(class_scope:biatob.proto.mvp.ListPredictionsResponse.Error)
-    })
-  ,
-  'DESCRIPTOR' : _LISTPREDICTIONSRESPONSE,
-  '__module__' : 'protobuf.mvp_pb2'
-  # @@protoc_insertion_point(class_scope:biatob.proto.mvp.ListPredictionsResponse)
-  })
-_sym_db.RegisterMessage(ListPredictionsResponse)
-_sym_db.RegisterMessage(ListPredictionsResponse.Error)
-
 FollowRequest = _reflection.GeneratedProtocolMessageType('FollowRequest', (_message.Message,), {
   'DESCRIPTOR' : _FOLLOWREQUEST,
   '__module__' : 'protobuf.mvp_pb2'
   # @@protoc_insertion_point(class_scope:biatob.proto.mvp.FollowRequest)
   })
 _sym_db.RegisterMessage(FollowRequest)
-
-FollowResponse = _reflection.GeneratedProtocolMessageType('FollowResponse', (_message.Message,), {
-
-  'Error' : _reflection.GeneratedProtocolMessageType('Error', (_message.Message,), {
-    'DESCRIPTOR' : _FOLLOWRESPONSE_ERROR,
-    '__module__' : 'protobuf.mvp_pb2'
-    # @@protoc_insertion_point(class_scope:biatob.proto.mvp.FollowResponse.Error)
-    })
-  ,
-  'DESCRIPTOR' : _FOLLOWRESPONSE,
-  '__module__' : 'protobuf.mvp_pb2'
-  # @@protoc_insertion_point(class_scope:biatob.proto.mvp.FollowResponse)
-  })
-_sym_db.RegisterMessage(FollowResponse)
-_sym_db.RegisterMessage(FollowResponse.Error)
 
 StakeRequest = _reflection.GeneratedProtocolMessageType('StakeRequest', (_message.Message,), {
   'DESCRIPTOR' : _STAKEREQUEST,
@@ -3983,42 +2685,12 @@ StakeRequest = _reflection.GeneratedProtocolMessageType('StakeRequest', (_messag
   })
 _sym_db.RegisterMessage(StakeRequest)
 
-StakeResponse = _reflection.GeneratedProtocolMessageType('StakeResponse', (_message.Message,), {
-
-  'Error' : _reflection.GeneratedProtocolMessageType('Error', (_message.Message,), {
-    'DESCRIPTOR' : _STAKERESPONSE_ERROR,
-    '__module__' : 'protobuf.mvp_pb2'
-    # @@protoc_insertion_point(class_scope:biatob.proto.mvp.StakeResponse.Error)
-    })
-  ,
-  'DESCRIPTOR' : _STAKERESPONSE,
-  '__module__' : 'protobuf.mvp_pb2'
-  # @@protoc_insertion_point(class_scope:biatob.proto.mvp.StakeResponse)
-  })
-_sym_db.RegisterMessage(StakeResponse)
-_sym_db.RegisterMessage(StakeResponse.Error)
-
 ResolveRequest = _reflection.GeneratedProtocolMessageType('ResolveRequest', (_message.Message,), {
   'DESCRIPTOR' : _RESOLVEREQUEST,
   '__module__' : 'protobuf.mvp_pb2'
   # @@protoc_insertion_point(class_scope:biatob.proto.mvp.ResolveRequest)
   })
 _sym_db.RegisterMessage(ResolveRequest)
-
-ResolveResponse = _reflection.GeneratedProtocolMessageType('ResolveResponse', (_message.Message,), {
-
-  'Error' : _reflection.GeneratedProtocolMessageType('Error', (_message.Message,), {
-    'DESCRIPTOR' : _RESOLVERESPONSE_ERROR,
-    '__module__' : 'protobuf.mvp_pb2'
-    # @@protoc_insertion_point(class_scope:biatob.proto.mvp.ResolveResponse.Error)
-    })
-  ,
-  'DESCRIPTOR' : _RESOLVERESPONSE,
-  '__module__' : 'protobuf.mvp_pb2'
-  # @@protoc_insertion_point(class_scope:biatob.proto.mvp.ResolveResponse)
-  })
-_sym_db.RegisterMessage(ResolveResponse)
-_sym_db.RegisterMessage(ResolveResponse.Error)
 
 SetTrustedRequest = _reflection.GeneratedProtocolMessageType('SetTrustedRequest', (_message.Message,), {
   'DESCRIPTOR' : _SETTRUSTEDREQUEST,
@@ -4027,42 +2699,12 @@ SetTrustedRequest = _reflection.GeneratedProtocolMessageType('SetTrustedRequest'
   })
 _sym_db.RegisterMessage(SetTrustedRequest)
 
-SetTrustedResponse = _reflection.GeneratedProtocolMessageType('SetTrustedResponse', (_message.Message,), {
-
-  'Error' : _reflection.GeneratedProtocolMessageType('Error', (_message.Message,), {
-    'DESCRIPTOR' : _SETTRUSTEDRESPONSE_ERROR,
-    '__module__' : 'protobuf.mvp_pb2'
-    # @@protoc_insertion_point(class_scope:biatob.proto.mvp.SetTrustedResponse.Error)
-    })
-  ,
-  'DESCRIPTOR' : _SETTRUSTEDRESPONSE,
-  '__module__' : 'protobuf.mvp_pb2'
-  # @@protoc_insertion_point(class_scope:biatob.proto.mvp.SetTrustedResponse)
-  })
-_sym_db.RegisterMessage(SetTrustedResponse)
-_sym_db.RegisterMessage(SetTrustedResponse.Error)
-
 GetUserRequest = _reflection.GeneratedProtocolMessageType('GetUserRequest', (_message.Message,), {
   'DESCRIPTOR' : _GETUSERREQUEST,
   '__module__' : 'protobuf.mvp_pb2'
   # @@protoc_insertion_point(class_scope:biatob.proto.mvp.GetUserRequest)
   })
 _sym_db.RegisterMessage(GetUserRequest)
-
-GetUserResponse = _reflection.GeneratedProtocolMessageType('GetUserResponse', (_message.Message,), {
-
-  'Error' : _reflection.GeneratedProtocolMessageType('Error', (_message.Message,), {
-    'DESCRIPTOR' : _GETUSERRESPONSE_ERROR,
-    '__module__' : 'protobuf.mvp_pb2'
-    # @@protoc_insertion_point(class_scope:biatob.proto.mvp.GetUserResponse.Error)
-    })
-  ,
-  'DESCRIPTOR' : _GETUSERRESPONSE,
-  '__module__' : 'protobuf.mvp_pb2'
-  # @@protoc_insertion_point(class_scope:biatob.proto.mvp.GetUserResponse)
-  })
-_sym_db.RegisterMessage(GetUserResponse)
-_sym_db.RegisterMessage(GetUserResponse.Error)
 
 ChangePasswordRequest = _reflection.GeneratedProtocolMessageType('ChangePasswordRequest', (_message.Message,), {
   'DESCRIPTOR' : _CHANGEPASSWORDREQUEST,
@@ -4071,21 +2713,6 @@ ChangePasswordRequest = _reflection.GeneratedProtocolMessageType('ChangePassword
   })
 _sym_db.RegisterMessage(ChangePasswordRequest)
 
-ChangePasswordResponse = _reflection.GeneratedProtocolMessageType('ChangePasswordResponse', (_message.Message,), {
-
-  'Error' : _reflection.GeneratedProtocolMessageType('Error', (_message.Message,), {
-    'DESCRIPTOR' : _CHANGEPASSWORDRESPONSE_ERROR,
-    '__module__' : 'protobuf.mvp_pb2'
-    # @@protoc_insertion_point(class_scope:biatob.proto.mvp.ChangePasswordResponse.Error)
-    })
-  ,
-  'DESCRIPTOR' : _CHANGEPASSWORDRESPONSE,
-  '__module__' : 'protobuf.mvp_pb2'
-  # @@protoc_insertion_point(class_scope:biatob.proto.mvp.ChangePasswordResponse)
-  })
-_sym_db.RegisterMessage(ChangePasswordResponse)
-_sym_db.RegisterMessage(ChangePasswordResponse.Error)
-
 GetSettingsRequest = _reflection.GeneratedProtocolMessageType('GetSettingsRequest', (_message.Message,), {
   'DESCRIPTOR' : _GETSETTINGSREQUEST,
   '__module__' : 'protobuf.mvp_pb2'
@@ -4093,42 +2720,12 @@ GetSettingsRequest = _reflection.GeneratedProtocolMessageType('GetSettingsReques
   })
 _sym_db.RegisterMessage(GetSettingsRequest)
 
-GetSettingsResponse = _reflection.GeneratedProtocolMessageType('GetSettingsResponse', (_message.Message,), {
-
-  'Error' : _reflection.GeneratedProtocolMessageType('Error', (_message.Message,), {
-    'DESCRIPTOR' : _GETSETTINGSRESPONSE_ERROR,
-    '__module__' : 'protobuf.mvp_pb2'
-    # @@protoc_insertion_point(class_scope:biatob.proto.mvp.GetSettingsResponse.Error)
-    })
-  ,
-  'DESCRIPTOR' : _GETSETTINGSRESPONSE,
-  '__module__' : 'protobuf.mvp_pb2'
-  # @@protoc_insertion_point(class_scope:biatob.proto.mvp.GetSettingsResponse)
-  })
-_sym_db.RegisterMessage(GetSettingsResponse)
-_sym_db.RegisterMessage(GetSettingsResponse.Error)
-
 SendInvitationRequest = _reflection.GeneratedProtocolMessageType('SendInvitationRequest', (_message.Message,), {
   'DESCRIPTOR' : _SENDINVITATIONREQUEST,
   '__module__' : 'protobuf.mvp_pb2'
   # @@protoc_insertion_point(class_scope:biatob.proto.mvp.SendInvitationRequest)
   })
 _sym_db.RegisterMessage(SendInvitationRequest)
-
-SendInvitationResponse = _reflection.GeneratedProtocolMessageType('SendInvitationResponse', (_message.Message,), {
-
-  'Error' : _reflection.GeneratedProtocolMessageType('Error', (_message.Message,), {
-    'DESCRIPTOR' : _SENDINVITATIONRESPONSE_ERROR,
-    '__module__' : 'protobuf.mvp_pb2'
-    # @@protoc_insertion_point(class_scope:biatob.proto.mvp.SendInvitationResponse.Error)
-    })
-  ,
-  'DESCRIPTOR' : _SENDINVITATIONRESPONSE,
-  '__module__' : 'protobuf.mvp_pb2'
-  # @@protoc_insertion_point(class_scope:biatob.proto.mvp.SendInvitationResponse)
-  })
-_sym_db.RegisterMessage(SendInvitationResponse)
-_sym_db.RegisterMessage(SendInvitationResponse.Error)
 
 CheckInvitationRequest = _reflection.GeneratedProtocolMessageType('CheckInvitationRequest', (_message.Message,), {
   'DESCRIPTOR' : _CHECKINVITATIONREQUEST,
@@ -4138,27 +2735,11 @@ CheckInvitationRequest = _reflection.GeneratedProtocolMessageType('CheckInvitati
 _sym_db.RegisterMessage(CheckInvitationRequest)
 
 CheckInvitationResponse = _reflection.GeneratedProtocolMessageType('CheckInvitationResponse', (_message.Message,), {
-
-  'Result' : _reflection.GeneratedProtocolMessageType('Result', (_message.Message,), {
-    'DESCRIPTOR' : _CHECKINVITATIONRESPONSE_RESULT,
-    '__module__' : 'protobuf.mvp_pb2'
-    # @@protoc_insertion_point(class_scope:biatob.proto.mvp.CheckInvitationResponse.Result)
-    })
-  ,
-
-  'Error' : _reflection.GeneratedProtocolMessageType('Error', (_message.Message,), {
-    'DESCRIPTOR' : _CHECKINVITATIONRESPONSE_ERROR,
-    '__module__' : 'protobuf.mvp_pb2'
-    # @@protoc_insertion_point(class_scope:biatob.proto.mvp.CheckInvitationResponse.Error)
-    })
-  ,
   'DESCRIPTOR' : _CHECKINVITATIONRESPONSE,
   '__module__' : 'protobuf.mvp_pb2'
   # @@protoc_insertion_point(class_scope:biatob.proto.mvp.CheckInvitationResponse)
   })
 _sym_db.RegisterMessage(CheckInvitationResponse)
-_sym_db.RegisterMessage(CheckInvitationResponse.Result)
-_sym_db.RegisterMessage(CheckInvitationResponse.Error)
 
 AcceptInvitationRequest = _reflection.GeneratedProtocolMessageType('AcceptInvitationRequest', (_message.Message,), {
   'DESCRIPTOR' : _ACCEPTINVITATIONREQUEST,
@@ -4166,21 +2747,6 @@ AcceptInvitationRequest = _reflection.GeneratedProtocolMessageType('AcceptInvita
   # @@protoc_insertion_point(class_scope:biatob.proto.mvp.AcceptInvitationRequest)
   })
 _sym_db.RegisterMessage(AcceptInvitationRequest)
-
-AcceptInvitationResponse = _reflection.GeneratedProtocolMessageType('AcceptInvitationResponse', (_message.Message,), {
-
-  'Error' : _reflection.GeneratedProtocolMessageType('Error', (_message.Message,), {
-    'DESCRIPTOR' : _ACCEPTINVITATIONRESPONSE_ERROR,
-    '__module__' : 'protobuf.mvp_pb2'
-    # @@protoc_insertion_point(class_scope:biatob.proto.mvp.AcceptInvitationResponse.Error)
-    })
-  ,
-  'DESCRIPTOR' : _ACCEPTINVITATIONRESPONSE,
-  '__module__' : 'protobuf.mvp_pb2'
-  # @@protoc_insertion_point(class_scope:biatob.proto.mvp.AcceptInvitationResponse)
-  })
-_sym_db.RegisterMessage(AcceptInvitationResponse)
-_sym_db.RegisterMessage(AcceptInvitationResponse.Error)
 
 SavedCreatedPredictionFormState = _reflection.GeneratedProtocolMessageType('SavedCreatedPredictionFormState', (_message.Message,), {
   'DESCRIPTOR' : _SAVEDCREATEDPREDICTIONFORMSTATE,

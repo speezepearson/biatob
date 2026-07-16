@@ -114,11 +114,14 @@ enum Resolution {
   RESOLUTION_INVALID = 3;
 }
 
+// A success payload that carries no information -- the analogue of the old
+// `oneof foo_result { Void ok = 1; ... }`.
+message Empty {}
+
 // The body of any non-2xx API response.
 //
-// Endpoints that have been migrated off the `oneof foo_result {Ok ok; Error
-// error;}` pattern return their payload directly with a 200, and signal failure
-// with an HTTP status code plus this body. See docs/error-handling.md.
+// Endpoints return their payload directly with a 200, and signal failure with
+// an HTTP status code plus this body. See docs/error-handling.md.
 message ErrorResponse {
   string catchall = 1;
 }
@@ -139,15 +142,8 @@ message AuthSuccess {
 message SendVerificationEmailRequest {
   string email_address = 1;
 }
-message SendVerificationEmailResponse {
-  oneof send_verification_email_result {
-    Void ok = 1;
-    Error error = 2;
-  }
-  message Error {
-    string catchall = 1;
-  }
-}
+// Returns Empty on 200; 400 if already logged in, 409 if the email is already
+// registered.
 
 message ProofOfEmail {
   Payload payload = 1;
@@ -163,23 +159,17 @@ message RegisterUsernameRequest {
   string password = 2;
   ProofOfEmail proof_of_email = 3;
 }
-message RegisterUsernameResponse {
-  oneof register_username_result {
-    AuthSuccess ok = 1;
-    Error error = 2;
-  }
-  message Error {
-    string catchall = 1;
-    Void username_taken = 2;
-  }
-}
+// Returns AuthSuccess on 200; 409 if the username is taken, 400 on invalid
+// username/password/proof-of-email.
+//
+// The old Error carried a `Void username_taken = 2` variant alongside
+// `catchall`; 409 now carries that distinction.
 
 message LogInUsernameRequest {
   string username = 1;
   string password = 2;
 }
-// Returns AuthSuccess on 200; 401 + ErrorResponse on bad credentials,
-// 400 + ErrorResponse if already logged in. (Migrated off the oneof pattern.)
+// Returns AuthSuccess on 200; 401 on bad credentials, 400 if already logged in.
 
 message CertaintyRange {
   float low = 1;
@@ -198,26 +188,22 @@ message CreatePredictionRequest {
   string special_rules = 7;
   double resolves_at_unixtime = 9;
 }
+// Returns CreatePredictionResponse on 200; 401 if logged out, 400 if invalid.
+// Kept as a message (rather than returning a bare string) because a top-level
+// protobuf response body has to be a message.
 message CreatePredictionResponse {
-  oneof create_prediction_result {
-    string new_prediction_id = 1;
-    Error error = 2;
-  }
-  message Error {
-    string catchall = 1;
-  }
+  string new_prediction_id = 1;
 }
 
 message GetPredictionRequest {
   string prediction_id = 2;
 }
-// Returns UserPredictionView on 200; 404 + ErrorResponse if there's no such
-// prediction (or the viewer may not see it). (Migrated off the oneof pattern.)
+// Returns UserPredictionView on 200; 404 if there's no such prediction (or the
+// viewer may not see it).
 //
-// The old GetPredictionResponse.Error carried a `Void no_such_prediction = 2`
-// variant to distinguish that case from `catchall`. Nothing in the Elm app ever
-// read it -- the 404 now carries that same information, in the place HTTP
-// already puts it.
+// The old Error carried a `Void no_such_prediction = 2` variant to distinguish
+// that case from `catchall`. Nothing in the Elm app ever read it -- the 404
+// carries that information now, where HTTP already puts it.
 
 enum PredictionFollowingStatus {
   PREDICTION_FOLLOWING_NOT_FOLLOWING = 0;
@@ -242,15 +228,7 @@ message UserPredictionView {
 
 message ListMyStakesRequest {
 }
-message ListMyStakesResponse {
-  oneof list_my_stakes_result {
-    PredictionsById ok = 1;
-    Error error = 2;
-  }
-  message Error {
-    string catchall = 1;
-  }
-}
+// Returns PredictionsById on 200; 401 if logged out.
 message PredictionsById {
   map<string, UserPredictionView> predictions = 1;
 }
@@ -258,156 +236,72 @@ message PredictionsById {
 message ListPredictionsRequest {
   string creator = 2;
 }
-message ListPredictionsResponse {
-  oneof list_predictions_result {
-    PredictionsById ok = 1;
-    Error error = 2;
-  }
-  message Error {
-    string catchall = 1;
-  }
-}
+// Returns PredictionsById on 200; 401 if logged out.
 
 message FollowRequest {
   string prediction_id = 1;
   bool follow = 2;
 }
-message FollowResponse {
-  oneof follow_result {
-    UserPredictionView ok = 1;
-    Error error = 2;
-  }
-  message Error {
-    string catchall = 1;
-  }
-}
+// Returns UserPredictionView on 200; 401 if logged out, 404 if no such prediction.
 
 message StakeRequest {
   string prediction_id = 2;
   bool bettor_is_a_skeptic = 3;
   uint32 bettor_stake_cents = 4;
 }
-message StakeResponse {
-  oneof stake_result {
-    UserPredictionView ok = 1;
-    Error error = 2;
-  }
-  message Error {
-    string catchall = 1;
-  }
-}
+// Returns UserPredictionView on 200; 401 logged out, 404 no such prediction,
+// 403 if you don't trust the creator, 409 if closed/resolved or over a stake cap.
 
 message ResolveRequest {
   string prediction_id = 1;
   Resolution resolution = 2;
   string notes = 3;
 }
-message ResolveResponse {
-  oneof resolve_result {
-    UserPredictionView ok = 1;
-    Error error = 2;
-  }
-  message Error {
-    string catchall = 1;
-  }
-}
+// Returns UserPredictionView on 200; 401 logged out, 404 no such prediction,
+// 403 if you're not the creator, 400 if the resolution/notes are invalid.
 
 message SetTrustedRequest {
   string who = 3;
   bool trusted = 2;
 }
-message SetTrustedResponse {
-  oneof set_trusted_result {
-    GenericUserInfo ok = 1;
-    Error error = 2;
-  }
-  message Error {
-    string catchall = 1;
-  }
-}
+// Returns GenericUserInfo on 200; 401 logged out, 404 no such user, 400 for self.
 
 message GetUserRequest {
   string who = 2;
 }
-message GetUserResponse {
-  oneof get_user_result {
-    Relationship ok = 1;
-    Error error = 2;
-  }
-  message Error {
-    string catchall = 1;
-  }
-}
+// Returns Relationship on 200; 404 if no such user.
 
 message ChangePasswordRequest {
   string old_password = 1;
   string new_password = 2;
 }
-message ChangePasswordResponse {
-  oneof change_password_result {
-    Void ok = 1;
-    Error error = 2;
-  }
-  message Error {
-    string catchall = 1;
-  }
-}
+// Returns Empty on 200; 401 logged out or wrong old password, 400 if invalid.
 
 message GetSettingsRequest {
   repeated string include_relationships_with_users = 1;
 }
-message GetSettingsResponse {
-  oneof get_settings_result {
-    GenericUserInfo ok = 1;
-    Error error = 2;
-  }
-  message Error {
-    string catchall = 1;
-  }
-}
+// Returns GenericUserInfo on 200; 401 if logged out.
 
 message SendInvitationRequest {
   string recipient = 1;
 }
-message SendInvitationResponse {
-  oneof send_invitation_result {
-    GenericUserInfo ok = 1;
-    Error error = 2;
-  }
-  message Error {
-    string catchall = 1;
-  }
-}
+// Returns GenericUserInfo on 200; 401 logged out, 404 no such recipient,
+// 409 if already invited.
 
 message CheckInvitationRequest {
   string nonce = 1;
 }
+// Returns CheckInvitationResponse on 200; 404 if no such invitation.
+// The old nested `Result` message is flattened up into the response itself.
 message CheckInvitationResponse {
-  oneof check_invitation_result {
-    Result ok = 1;
-    Error error = 2;
-  }
-  message Result {
-    string inviter = 1;
-    string recipient = 2;
-  }
-  message Error {
-    string catchall = 1;
-  }
+  string inviter = 1;
+  string recipient = 2;
 }
 
 message AcceptInvitationRequest {
   string nonce = 1;
 }
-message AcceptInvitationResponse {
-  oneof accept_invitation_result {
-    GenericUserInfo ok = 1;
-    Error error = 2;
-  }
-  message Error {
-    string catchall = 1;
-  }
-}
+// Returns GenericUserInfo on 200; 404 if no such invitation.
 
 
 message SavedCreatedPredictionFormState {

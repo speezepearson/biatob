@@ -544,19 +544,19 @@ class SqlConn:
       )
     )
 
-  def check_invitation(self, nonce: str) -> Optional[mvp_pb2.CheckInvitationResponse.Result]:
+  def check_invitation(self, nonce: str) -> Optional[mvp_pb2.CheckInvitationResponse]:
     row = self._conn.execute(
       sqlalchemy.select(schema.email_invitations.c)
       .where(schema.email_invitations.c.nonce == nonce)
     ).fetchone()
     if row is None:
       return None
-    return mvp_pb2.CheckInvitationResponse.Result(
+    return mvp_pb2.CheckInvitationResponse(
       inviter=row['inviter'],
       recipient=row['recipient'],
     )
 
-  def accept_invitation(self, nonce: str, now: datetime.datetime) -> Optional[mvp_pb2.CheckInvitationResponse.Result]:
+  def accept_invitation(self, nonce: str, now: datetime.datetime) -> Optional[mvp_pb2.CheckInvitationResponse]:
     check_resp = self.check_invitation(nonce)
     if check_resp is None:
       return None
@@ -699,15 +699,15 @@ class SqlServicer(Servicer):
     @transactional
     @log_actor
     @log_action
-    def SendVerificationEmail(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.SendVerificationEmailRequest) -> mvp_pb2.SendVerificationEmailResponse:
+    def SendVerificationEmail(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.SendVerificationEmailRequest) -> mvp_pb2.Empty:
       logger.debug('API call', email_address=request.email_address)
       if actor is not None:
         logger.warn('logged-in user trying to send a verification email', email_address=request.email_address)
-        return mvp_pb2.SendVerificationEmailResponse(error=mvp_pb2.SendVerificationEmailResponse.Error(catchall='already authenticated; first, log out'))
+        raise AlreadyLoggedInError('already authenticated; first, log out')
 
       if self._conn.email_is_registered(request.email_address):
         logger.info('email is already registered', email_address=request.email_address)
-        return mvp_pb2.SendVerificationEmailResponse(error=mvp_pb2.SendVerificationEmailResponse.Error(catchall='email is already registered'))
+        raise AlreadyRegisteredError('email is already registered')
 
       logger.info('sending verification email', email_address=request.email_address)
       asyncio.create_task(self._emailer.send_email_verification(
@@ -715,34 +715,34 @@ class SqlServicer(Servicer):
         proof_of_email=self._token_mint.sign_proof_of_email(email_address=request.email_address),
       ))
 
-      return mvp_pb2.SendVerificationEmailResponse(ok=mvp_pb2.VOID)
+      return mvp_pb2.Empty()
 
     @transactional
     @ensure_actor_exists
     @log_actor
     @log_action
-    def RegisterUsername(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.RegisterUsernameRequest) -> mvp_pb2.RegisterUsernameResponse:
+    def RegisterUsername(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.RegisterUsernameRequest) -> mvp_pb2.AuthSuccess:
       logger.debug('API call', username=request.username)
       if actor is not None:
         logger.warn('logged-in user trying to register a username', new_username=request.username)
-        return mvp_pb2.RegisterUsernameResponse(error=mvp_pb2.RegisterUsernameResponse.Error(catchall='already authenticated; first, log out'))
+        raise AlreadyLoggedInError('already authenticated; first, log out')
       username_problems = describe_username_problems(request.username)
       if username_problems is not None:
         logger.debug('trying to register bad username', username=request.username)
-        return mvp_pb2.RegisterUsernameResponse(error=mvp_pb2.RegisterUsernameResponse.Error(catchall=username_problems))
+        raise InvalidRequestError(username_problems)
       password_problems = describe_password_problems(request.password)
       if password_problems is not None:
         logger.debug('trying to register with a bad password', username=request.username)
-        return mvp_pb2.RegisterUsernameResponse(error=mvp_pb2.RegisterUsernameResponse.Error(catchall=password_problems))
+        raise InvalidRequestError(password_problems)
 
       if self._conn.user_exists(Username(request.username)):
         logger.info('username taken', username=request.username)
-        return mvp_pb2.RegisterUsernameResponse(error=mvp_pb2.RegisterUsernameResponse.Error(catchall='username taken'))
+        raise AlreadyRegisteredError('username taken')
 
       email_address = self._token_mint.check_proof_of_email(request.proof_of_email)
       if email_address is None:
         logger.warn('invalid HMAC for proof-of-email', request=request)
-        return mvp_pb2.RegisterUsernameResponse(error=mvp_pb2.RegisterUsernameResponse.Error(catchall='invalid signature'))
+        raise InvalidRequestError('invalid signature')
       logger.info('registering username', username=request.username)
       password_id = ''.join(self._rng.choices('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234567879_', k=16))
       self._conn.register_username(
@@ -752,18 +752,15 @@ class SqlServicer(Servicer):
         password_id=password_id,
       )
 
-      # RegisterUsername still returns a `oneof register_username_result`, but
-      # LogInUsername now raises. Until RegisterUsername is migrated too, the
-      # boundary between the two conventions needs this shim.
+      # Both endpoints raise now, so the convention-boundary shim this used to
+      # need is gone: an ApiError from LogInUsername would propagate as-is. It's
+      # still caught, because "can't log in as the user we just made" is our bug,
+      # not the caller's, and shouldn't surface as (say) a 401.
       try:
-        auth_success = self.LogInUsername(None, mvp_pb2.LogInUsernameRequest(username=request.username, password=request.password))
+        return self.LogInUsername(None, mvp_pb2.LogInUsernameRequest(username=request.username, password=request.password))
       except ApiError as e:
-        # `logging.error` (stdlib) here would TypeError on these kwargs; the
-        # rest of this file uses structlog's `logger`. Pre-existing latent bug,
-        # fixed in passing because this line was already being rewritten.
         logger.error('unable to log in as freshly-created user', username=request.username, error=e.catchall)
-        return mvp_pb2.RegisterUsernameResponse(error=mvp_pb2.RegisterUsernameResponse.Error(catchall='somehow failed to log you into your fresh account'))
-      return mvp_pb2.RegisterUsernameResponse(ok=auth_success)
+        raise InternalError('somehow failed to log you into your fresh account')
 
     @transactional
     @ensure_actor_exists
@@ -781,10 +778,10 @@ class SqlServicer(Servicer):
             # NOTE: this reveals whether a username exists, as it did before this
             # refactor. Preserved verbatim to keep the change behavior-preserving;
             # worth closing separately.
-            raise AuthenticationError('no such user; maybe you want to sign up?')
+            raise BadCredentialsError('no such user; maybe you want to sign up?')
         if not check_password(request.password, hashed_password):
             logger.info('login attempt has bad password', possible_malice=True)
-            raise AuthenticationError('bad password')
+            raise BadCredentialsError('bad password')
 
         logger.debug('username logged in', username=request.username)
         token = self._token_mint.mint_token(owner=Username(request.username), ttl_seconds=60*60*24*365)
@@ -801,13 +798,13 @@ class SqlServicer(Servicer):
       logger.debug('API call', request=request)
       if actor is None:
         logger.warn('not logged in')
-        return mvp_pb2.CreatePredictionResponse(error=mvp_pb2.CreatePredictionResponse.Error(catchall='must log in to create predictions'))
+        raise NotLoggedInError('must log in to create predictions')
 
       now = self._clock()
 
       problems = describe_CreatePredictionRequest_problems(request, now=now.timestamp())
       if problems is not None:
-        return mvp_pb2.CreatePredictionResponse(error=mvp_pb2.CreatePredictionResponse.Error(catchall=problems))
+        raise InvalidRequestError(problems)
 
       prediction_id = PredictionId(str(self._rng.randrange(2**64)))
       logger.debug('creating prediction', prediction_id=prediction_id, request=request)
@@ -835,10 +832,10 @@ class SqlServicer(Servicer):
     @ensure_actor_exists
     @log_actor
     @log_action
-    def ListMyStakes(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.ListMyStakesRequest) -> mvp_pb2.ListMyStakesResponse:
+    def ListMyStakes(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.ListMyStakesRequest) -> mvp_pb2.PredictionsById:
       if actor is None:
         logger.info('logged-out user trying to list their predictions')
-        return mvp_pb2.ListMyStakesResponse(ok=mvp_pb2.PredictionsById(predictions={}))
+        return mvp_pb2.PredictionsById(predictions={})
 
       prediction_ids = self._conn.list_stakes(actor)
 
@@ -847,13 +844,13 @@ class SqlServicer(Servicer):
         view = self._conn.view_prediction(actor, prediction_id)
         assert view is not None
         predictions_by_id[prediction_id] = view
-      return mvp_pb2.ListMyStakesResponse(ok=mvp_pb2.PredictionsById(predictions=predictions_by_id))
+      return mvp_pb2.PredictionsById(predictions=predictions_by_id)
 
     @transactional
     @ensure_actor_exists
     @log_actor
     @log_action
-    def ListPredictions(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.ListPredictionsRequest) -> mvp_pb2.ListPredictionsResponse:
+    def ListPredictions(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.ListPredictionsRequest) -> mvp_pb2.PredictionsById:
       creator = Username(request.creator)
 
       prediction_ids = self._conn.list_predictions_created(
@@ -866,41 +863,41 @@ class SqlServicer(Servicer):
         view = self._conn.view_prediction(actor, prediction_id)
         assert view is not None
         predictions_by_id[prediction_id] = view
-      return mvp_pb2.ListPredictionsResponse(ok=mvp_pb2.PredictionsById(predictions=predictions_by_id))
+      return mvp_pb2.PredictionsById(predictions=predictions_by_id)
 
     @transactional
     @ensure_actor_exists
     @log_actor
     @log_action
-    def Stake(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.StakeRequest) -> mvp_pb2.StakeResponse:
+    def Stake(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.StakeRequest) -> mvp_pb2.UserPredictionView:
       logger.debug('API call', request=request)
       if actor is None:
         logger.warn('not logged in')
-        return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall='must log in to bet'))
+        raise NotLoggedInError('must log in to bet')
       assert request.bettor_stake_cents >= 0, 'protobuf should enforce this being a uint, but just in case...'
 
       if request.bettor_stake_cents == 0:
         logger.warn('trying to stake 0 cents', prediction_id=request.prediction_id)
-        return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall='betting 0 cents doesn\'t make sense'))
+        raise InvalidRequestError('betting 0 cents doesn\'t make sense')
 
       predinfo = self._conn.get_prediction_info(PredictionId(request.prediction_id))
       if predinfo is None:
         logger.warn('trying to bet on nonexistent prediction', prediction_id=request.prediction_id)
-        return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall='no such prediction'))
+        raise NoSuchPredictionError('no such prediction')
       if predinfo['creator'] == actor:
         logger.warn('trying to bet against self', prediction_id=request.prediction_id)
-        return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall="can't bet against yourself"))
+        raise InvalidRequestError("can't bet against yourself")
       if not self._conn.trusts(actor, Username(predinfo['creator'])):
         logger.warn('trying to bet against untrusted creator', prediction_id=request.prediction_id)
-        return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall="you don't trust the creator"))
+        raise ForbiddenError("you don't trust the creator")
       now = self._clock()
       if not (predinfo['created_at_unixtime'] <= now.timestamp() <= predinfo['closes_at_unixtime']):
-        return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall="prediction is no longer open for betting"))
+        raise PredictionClosedError("prediction is no longer open for betting")
 
       resolution = self._conn.get_resolution(PredictionId(request.prediction_id))
       if resolution and resolution.resolution != mvp_pb2.RESOLUTION_NONE_YET:
         logger.warn('trying to bet on a resolved prediction', prediction_id=request.prediction_id)
-        return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall="prediction has already resolved"))
+        raise PredictionClosedError("prediction has already resolved")
 
       if request.bettor_is_a_skeptic:
         lowP = predinfo['certainty_low_p']
@@ -911,17 +908,17 @@ class SqlServicer(Servicer):
 
       if creator_stake_cents == 0:
         logger.warn('trying to make a bet that results in the creator staking 0 cents', prediction_id=request.prediction_id, request=request)
-        return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall='creator would bet 0 cents against you'))
+        raise StakeCapExceededError('creator would bet 0 cents against you')
 
       existing_creator_exposure = self._conn.get_creator_exposure_cents(PredictionId(request.prediction_id), against_skeptics=request.bettor_is_a_skeptic)
       if existing_creator_exposure + creator_stake_cents > predinfo['maximum_stake_cents']:
           logger.warn('trying to make a bet that would exceed creator tolerance', request=request)
-          return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall=f'bet would exceed creator tolerance ({existing_creator_exposure} existing + {creator_stake_cents} new stake > {predinfo["maximum_stake_cents"]} max)'))
+          raise StakeCapExceededError(f'bet would exceed creator tolerance ({existing_creator_exposure} existing + {creator_stake_cents} new stake > {predinfo["maximum_stake_cents"]} max)')
 
       existing_bettor_exposure = self._conn.get_bettor_exposure_cents(PredictionId(request.prediction_id), actor, bettor_is_a_skeptic=request.bettor_is_a_skeptic)
       if existing_bettor_exposure + request.bettor_stake_cents > MAX_LEGAL_STAKE_CENTS:
         logger.warn('trying to make a bet that would exceed per-market stake limit', request=request)
-        return mvp_pb2.StakeResponse(error=mvp_pb2.StakeResponse.Error(catchall=f'your existing stake of ~${existing_bettor_exposure//100} plus your new stake of ~${request.bettor_stake_cents//100} would put you over the limit of ${MAX_LEGAL_STAKE_CENTS//100} staked in a single prediction; sorry, I hate to be paternalistic, but this site is not yet ready for Big Bets.'))
+        raise StakeCapExceededError(f'your existing stake of ~${existing_bettor_exposure//100} plus your new stake of ~${request.bettor_stake_cents//100} would put you over the limit of ${MAX_LEGAL_STAKE_CENTS//100} staked in a single prediction; sorry, I hate to be paternalistic, but this site is not yet ready for Big Bets.')
 
       self._conn.stake(
         prediction_id=PredictionId(request.prediction_id),
@@ -936,22 +933,24 @@ class SqlServicer(Servicer):
         now=now,
       )
       logger.info('trade executed', prediction_id=request.prediction_id, request=request)
-      return mvp_pb2.StakeResponse(ok=self._conn.view_prediction(actor, PredictionId(request.prediction_id)))
+      view = self._conn.view_prediction(actor, PredictionId(request.prediction_id))
+      assert view is not None  # else the prediction we just wrote to vanished
+      return view
 
     @transactional
     @ensure_actor_exists
     @log_actor
     @log_action
-    def Follow(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.FollowRequest) -> mvp_pb2.FollowResponse:
+    def Follow(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.FollowRequest) -> mvp_pb2.UserPredictionView:
       logger.debug('API call', request=request)
       if actor is None:
         logger.warn('not logged in')
-        return mvp_pb2.FollowResponse(error=mvp_pb2.FollowResponse.Error(catchall='must log in to follow'))
+        raise NotLoggedInError('must log in to follow')
 
       predinfo = self._conn.get_prediction_info(PredictionId(request.prediction_id))
       if predinfo is None:
         logger.warn('trying to follow nonexistent prediction', prediction_id=request.prediction_id)
-        return mvp_pb2.FollowResponse(error=mvp_pb2.FollowResponse.Error(catchall='no such prediction'))
+        raise NoSuchPredictionError('no such prediction')
 
       self._conn.set_following(
         prediction_id=PredictionId(request.prediction_id),
@@ -959,32 +958,34 @@ class SqlServicer(Servicer):
         follow=request.follow,
       )
       logger.info('trade executed', prediction_id=request.prediction_id, request=request)
-      return mvp_pb2.FollowResponse(ok=self._conn.view_prediction(actor, PredictionId(request.prediction_id)))
+      view = self._conn.view_prediction(actor, PredictionId(request.prediction_id))
+      assert view is not None  # else the prediction we just wrote to vanished
+      return view
 
     @transactional
     @ensure_actor_exists
     @log_actor
     @log_action
-    def Resolve(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.ResolveRequest) -> mvp_pb2.ResolveResponse:
+    def Resolve(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.ResolveRequest) -> mvp_pb2.UserPredictionView:
       logger.debug('API call', request=request)
       if actor is None:
         logger.warn('not logged in')
-        return mvp_pb2.ResolveResponse(error=mvp_pb2.ResolveResponse.Error(catchall='must log in to resolve a prediction'))
+        raise NotLoggedInError('must log in to resolve a prediction')
       if request.resolution not in {mvp_pb2.RESOLUTION_YES, mvp_pb2.RESOLUTION_NO, mvp_pb2.RESOLUTION_INVALID, mvp_pb2.RESOLUTION_NONE_YET}:
         logger.warn('user sent unrecognized resolution', resolution=request.resolution)
-        return mvp_pb2.ResolveResponse(error=mvp_pb2.ResolveResponse.Error(catchall='unrecognized resolution'))
+        raise InvalidRequestError('unrecognized resolution')
       if len(request.notes) > 1024:
         logger.warn('unreasonably long notes', snipped_notes=request.notes[:256] + '  <snip>  ' + request.notes[-256:])
-        return mvp_pb2.ResolveResponse(error=mvp_pb2.ResolveResponse.Error(catchall='unreasonably long notes'))
+        raise InvalidRequestError('unreasonably long notes')
 
       predid = PredictionId(request.prediction_id)
       predinfo = self._conn.get_prediction_info(predid)
       if predinfo is None:
         logger.info('attempt to resolve nonexistent prediction', prediction_id=request.prediction_id)
-        return mvp_pb2.ResolveResponse(error=mvp_pb2.ResolveResponse.Error(catchall='no such prediction'))
+        raise NoSuchPredictionError('no such prediction')
       if actor != predinfo['creator']:
         logger.warn('non-creator trying to resolve prediction', prediction_id=request.prediction_id, creator=predinfo['creator'], possible_malice=True)
-        return mvp_pb2.ResolveResponse(error=mvp_pb2.ResolveResponse.Error(catchall="you are not the creator"))
+        raise ForbiddenError("you are not the creator")
       self._conn.resolve(request, now=self._clock())
 
       email_addrs = set(self._conn.get_resolution_notification_addrs(predid))
@@ -996,97 +997,101 @@ class SqlServicer(Servicer):
             prediction_text=predinfo['prediction'],
             resolution=request.resolution,
         ))
-      return mvp_pb2.ResolveResponse(ok=self._conn.view_prediction(actor, predid))
+      view = self._conn.view_prediction(actor, predid)
+      assert view is not None  # else the prediction we just resolved vanished
+      return view
 
     @transactional
     @ensure_actor_exists
     @log_actor
     @log_action
-    def SetTrusted(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.SetTrustedRequest) -> mvp_pb2.SetTrustedResponse:
+    def SetTrusted(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.SetTrustedRequest) -> mvp_pb2.GenericUserInfo:
       logger.debug('API call', request=request)
       if actor is None:
         logger.warn('not logged in')
-        return mvp_pb2.SetTrustedResponse(error=mvp_pb2.SetTrustedResponse.Error(catchall='must log in to trust folks'))
+        raise NotLoggedInError('must log in to trust folks')
 
       if request.who == actor:
         logger.warn('attempting to set trust for self')
-        return mvp_pb2.SetTrustedResponse(error=mvp_pb2.SetTrustedResponse.Error(catchall='cannot set trust for self'))
+        raise InvalidRequestError('cannot set trust for self')
 
       if not self._conn.user_exists(Username(request.who)):
         logger.warn('attempting to set trust for nonexistent user')
-        return mvp_pb2.SetTrustedResponse(error=mvp_pb2.SetTrustedResponse.Error(catchall='no such user'))
+        raise NoSuchUserError('no such user')
 
       self._conn.set_trusted(actor, Username(request.who), request.trusted, now=self._clock())
       if not request.trusted:
         self._conn.delete_invitation(inviter=actor, recipient=Username(request.who))
 
-      return mvp_pb2.SetTrustedResponse(ok=self._conn.get_settings(actor))
+      info = self._conn.get_settings(actor)
+      assert info is not None  # actor is authenticated, so they have settings
+      return info
 
     @transactional
     @ensure_actor_exists
     @log_actor
     @log_action
-    def GetUser(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.GetUserRequest) -> mvp_pb2.GetUserResponse:
+    def GetUser(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.GetUserRequest) -> mvp_pb2.Relationship:
       if not self._conn.user_exists(Username(request.who)):
         logger.info('attempting to view nonexistent user', who=request.who)
-        return mvp_pb2.GetUserResponse(error=mvp_pb2.GetUserResponse.Error(catchall='no such user'))
+        raise NoSuchUserError('no such user')
 
-      return mvp_pb2.GetUserResponse(ok=mvp_pb2.Relationship(
+      return mvp_pb2.Relationship(
         trusted_by_you=self._conn.trusts(actor, Username(request.who)) if (actor is not None) else False,
         trusts_you=self._conn.trusts(Username(request.who), actor) if (actor is not None) else False,
-      ))
+      )
 
     @transactional
     @ensure_actor_exists
     @log_actor
     @log_action
-    def ChangePassword(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.ChangePasswordRequest) -> mvp_pb2.ChangePasswordResponse:
+    def ChangePassword(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.ChangePasswordRequest) -> mvp_pb2.Empty:
       logger.debug('API call')
       if actor is None:
         logger.warn('not logged in')
-        return mvp_pb2.ChangePasswordResponse(error=mvp_pb2.ChangePasswordResponse.Error(catchall='must log in to change your password'))
+        raise NotLoggedInError('must log in to change your password')
       password_problems = describe_password_problems(request.new_password)
       if password_problems is not None:
         logger.warn('attempting to set bad password')
-        return mvp_pb2.ChangePasswordResponse(error=mvp_pb2.ChangePasswordResponse.Error(catchall=password_problems))
+        raise InvalidRequestError(password_problems)
 
       old_hashed_password = self._conn.get_username_password_info(actor)
       if old_hashed_password is None:
         logger.warn('password-change request for non-password user', possible_malice=True)
-        return mvp_pb2.ChangePasswordResponse(error=mvp_pb2.ChangePasswordResponse.Error(catchall="you don't use a password to log in"))
+        raise InvalidRequestError("you don't use a password to log in")
 
       if not check_password(request.old_password, old_hashed_password):
         logger.warn('password-change request has wrong password', possible_malice=True)
-        return mvp_pb2.ChangePasswordResponse(error=mvp_pb2.ChangePasswordResponse.Error(catchall='wrong old password'))
+        raise BadCredentialsError('wrong old password')
 
       logger.info('changing password', who=actor)
       self._conn.change_password(actor, request.new_password)
 
-      return mvp_pb2.ChangePasswordResponse(ok=mvp_pb2.VOID)
+      return mvp_pb2.Empty()
 
     @transactional
     @ensure_actor_exists
     @log_actor
     @log_action
-    def GetSettings(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.GetSettingsRequest) -> mvp_pb2.GetSettingsResponse:
+    def GetSettings(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.GetSettingsRequest) -> mvp_pb2.GenericUserInfo:
       if actor is None:
         logger.info('not logged in')
-        return mvp_pb2.GetSettingsResponse(error=mvp_pb2.GetSettingsResponse.Error(catchall='must log in to see your settings'))
+        raise NotLoggedInError('must log in to see your settings')
 
       info = self._conn.get_settings(actor, include_relationships_with_users=[Username(u) for u in request.include_relationships_with_users])
       if info is None:
         raise ForgottenTokenError(actor)
-      return mvp_pb2.GetSettingsResponse(ok=info)
+      return info
 
     @transactional
     @ensure_actor_exists
     @log_actor
     @log_action
-    def SendInvitation(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.SendInvitationRequest) -> mvp_pb2.SendInvitationResponse:
+    def SendInvitation(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.SendInvitationRequest) -> mvp_pb2.GenericUserInfo:
       logger.debug('API call', request=request)
       if actor is None:
         logger.warn('not logged in')
-        return mvp_pb2.SendInvitationResponse(error=mvp_pb2.SendInvitationResponse.Error(catchall='must log in to create an invitation'))
+        raise NotLoggedInError('must log in to create an invitation')
 
       inviter_email = self._conn.get_email(actor)
       assert inviter_email is not None  # the user _must_ exist: they authenticated successfully!
@@ -1095,11 +1100,11 @@ class SqlServicer(Servicer):
       recipient_settings = self._conn.get_settings(AuthorizingUsername(recipient))
       if recipient_settings is None:
         logger.warn('trying to send email invitation to nonexistent user')
-        return mvp_pb2.SendInvitationResponse(error=mvp_pb2.SendInvitationResponse.Error(catchall='recipient user does not exist'))
+        raise NoSuchUserError('recipient user does not exist')
 
       if self._conn.is_invitation_outstanding(inviter=actor, recipient=recipient):
         logger.warn('trying to send duplicate email invitation', request=request)
-        return mvp_pb2.SendInvitationResponse(error=mvp_pb2.SendInvitationResponse.Error(catchall="I've already asked this user if they trust you"))
+        raise InvitationAlreadySentError("I've already asked this user if they trust you")
 
       self._conn.set_trusted(actor, recipient, True, now=self._clock())
 
@@ -1117,7 +1122,9 @@ class SqlServicer(Servicer):
         recipient_email=recipient_settings.email_address,
         nonce=nonce,
       ))
-      return mvp_pb2.SendInvitationResponse(ok=self._conn.get_settings(actor, include_relationships_with_users=[recipient]))
+      info = self._conn.get_settings(actor, include_relationships_with_users=[recipient])
+      assert info is not None  # actor is authenticated, so they have settings
+      return info
 
     @transactional
     @ensure_actor_exists
@@ -1129,14 +1136,14 @@ class SqlServicer(Servicer):
       )
       if result is None:
         logger.warn('asking about nonexistent (or completed) invitation')
-        return mvp_pb2.CheckInvitationResponse(error=mvp_pb2.CheckInvitationResponse.Error(catchall='no such invitation'))
-      return mvp_pb2.CheckInvitationResponse(ok=result)
+        raise NoSuchInvitationError('no such invitation')
+      return result
 
     @transactional
     @ensure_actor_exists
     @log_actor
     @log_action
-    def AcceptInvitation(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.AcceptInvitationRequest) -> mvp_pb2.AcceptInvitationResponse:
+    def AcceptInvitation(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.AcceptInvitationRequest) -> mvp_pb2.GenericUserInfo:
       logger.debug('API call', request=request)  # okay to log the nonce because it's one-time-use
       result = self._conn.accept_invitation(
         nonce=request.nonce,
@@ -1144,14 +1151,18 @@ class SqlServicer(Servicer):
       )
       if result is None:
         logger.warn('trying to accept nonexistent (or completed) invitation')
-        return mvp_pb2.AcceptInvitationResponse(error=mvp_pb2.AcceptInvitationResponse.Error(catchall='no such invitation'))
+        raise NoSuchInvitationError('no such invitation')
       inviter_email = self._conn.get_email(Username(result.inviter))
       assert inviter_email is not None  # inviter must have existed in order to issue the invitation
       asyncio.create_task(self._emailer.send_invitation_acceptance_notification(
         inviter_email=inviter_email,
         recipient_username=Username(result.recipient),
       ))
-      return mvp_pb2.AcceptInvitationResponse(ok=mvp_pb2.GenericUserInfo() if (actor is None) else self._conn.get_settings(actor))
+      if actor is None:
+        return mvp_pb2.GenericUserInfo()
+      info = self._conn.get_settings(actor)
+      assert info is not None  # actor is authenticated, so they have settings
+      return info
 
 
 

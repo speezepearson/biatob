@@ -138,7 +138,7 @@ class TestInvitations:
     conn.register_username(username=ALICE, password='password', password_id='alicepwid', email_address='ALICE@example.com')
     conn.register_username(username=BOB, password='password', password_id='bobpwid', email_address='BOB@example.com')
     conn.create_invitation('mynonce', inviter=ALICE, recipient=BOB)
-    assert conn.accept_invitation('mynonce', now=T0) == mvp_pb2.CheckInvitationResponse.Result(inviter=ALICE, recipient=BOB)
+    assert conn.accept_invitation('mynonce', now=T0) == mvp_pb2.CheckInvitationResponse(inviter=ALICE, recipient=BOB)
 
   def test_returns_none_if_no_such_invitation(self, conn: SqlConn):
     conn.register_username(username=ALICE, password='password', password_id='alicepwid', email_address='ALICE@example.com')

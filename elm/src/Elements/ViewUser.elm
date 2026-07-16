@@ -45,13 +45,13 @@ type LifecyclePhase
 type Msg
   = SetAuthWidget AuthWidget.State
   | SendInvitation
-  | SendInvitationFinished Pb.SendInvitationRequest (Result Http.Error Pb.SendInvitationResponse)
+  | SendInvitationFinished Pb.SendInvitationRequest (Result API.Error Pb.GenericUserInfo)
   | LogInUsername AuthWidget.State Pb.LogInUsernameRequest
   | LogInUsernameFinished Pb.LogInUsernameRequest (Result API.Error Pb.AuthSuccess)
   | SetTrusted Bool
-  | SetTrustedFinished Pb.SetTrustedRequest (Result Http.Error Pb.SetTrustedResponse)
+  | SetTrustedFinished Pb.SetTrustedRequest (Result API.Error Pb.GenericUserInfo)
   | SignOut AuthWidget.State Pb.SignOutRequest
-  | SignOutFinished Pb.SignOutRequest (Result Http.Error Pb.SignOutResponse)
+  | SignOutFinished Pb.SignOutRequest (Result API.Error Pb.SignOutResponse)
   | SetPredictionFilterPhase (Maybe LifecyclePhase)
   | SetPredictionSortOrder SortOrder
   | Copy String

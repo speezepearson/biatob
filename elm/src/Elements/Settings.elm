@@ -32,13 +32,13 @@ type Msg
   | SetChangePasswordWidget ChangePasswordWidget.State
   | SetTrustedUsersWidget TrustedUsersWidget.State
   | ChangePassword ChangePasswordWidget.State Pb.ChangePasswordRequest
-  | ChangePasswordFinished Pb.ChangePasswordRequest (Result Http.Error Pb.ChangePasswordResponse)
+  | ChangePasswordFinished Pb.ChangePasswordRequest (Result API.Error Pb.Empty)
   | LogInUsername AuthWidget.State Pb.LogInUsernameRequest
   | LogInUsernameFinished Pb.LogInUsernameRequest (Result API.Error Pb.AuthSuccess)
   | SetTrusted TrustedUsersWidget.State Pb.SetTrustedRequest
-  | SetTrustedFinished Pb.SetTrustedRequest (Result Http.Error Pb.SetTrustedResponse)
+  | SetTrustedFinished Pb.SetTrustedRequest (Result API.Error Pb.GenericUserInfo)
   | SignOut AuthWidget.State Pb.SignOutRequest
-  | SignOutFinished Pb.SignOutRequest (Result Http.Error Pb.SignOutResponse)
+  | SignOutFinished Pb.SignOutRequest (Result API.Error Pb.SignOutResponse)
   | Copy String
   | Tick Time.Posix
   | AuthWidgetExternallyModified AuthWidget.DomModification
