@@ -1,0 +1,6 @@
+{
+  "log_in_username_result": "error",
+  "error": {
+    "catchall": "bad password"
+  }
+}
