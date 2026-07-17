@@ -40,8 +40,12 @@ def _int_field(text: str, key: str) -> int:
 
 
 def _block(text: str, name: str) -> str:
-    """Return the body between the braces of `name { ... }`."""
-    m = re.search(rf'\b{re.escape(name)}\s*\{{', text)
+    """Return the body between the braces of `name { ... }`.
+
+    Protobuf text-format writes a message field as either `name { ... }` or
+    `name: { ... }`; accept both.
+    """
+    m = re.search(rf'\b{re.escape(name)}\s*:?\s*\{{', text)
     if m is None:
         raise ValueError(f'could not find block {name!r}')
     i = m.end()
@@ -59,7 +63,7 @@ def convert(text: str) -> Dict[str, Any]:
     smtp = _block(text, 'smtp')
     db = _block(text, 'database_info')
 
-    if re.search(r'\bmysql\s*\{', db):
+    if re.search(r'\bmysql\s*:?\s*\{', db):
         mysql = _block(db, 'mysql')
         database: Dict[str, Any] = {
             'kind': 'mysql',

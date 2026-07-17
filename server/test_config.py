@@ -106,3 +106,36 @@ def test_converter_mysql_roundtrips_and_validates():
     assert isinstance(c.database, MysqlDatabase)
     assert c.database.hostname == 'db.internal'
     assert c.database.dbname == 'biatob'
+
+
+# Protobuf's text-format serializer writes message fields with a colon before
+# the brace (`smtp: {`), whereas a hand-written file may omit it (`smtp {`).
+# Real credentials files use the colon form, so the converter must accept both.
+OLD_COLON_FORM = '''
+token_signing_secret: "sekrit"
+
+smtp: {
+  hostname: "smtp.example.com"
+  port: 465
+  username: "u"
+  password: "p"
+  from_addr: "f@example.com"
+}
+
+database_info: {
+  mysql: {
+    hostname: "db"
+    username: "mu"
+    password: "mp"
+    dbname: "biatob"
+  }
+}
+'''
+
+
+def test_converter_accepts_colon_before_brace():
+    c = CredentialsConfig.model_validate(convert(OLD_COLON_FORM))
+    assert isinstance(c.database, MysqlDatabase)
+    assert c.database.dbname == 'biatob'
+    assert c.smtp.port == 465
+    assert c.token_signing_secret == 'sekrit'
