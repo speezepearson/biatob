@@ -1,0 +1,343 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "biatob (LogInUsername spike)",
+    "version": "0.0.1"
+  },
+  "paths": {
+    "/api/LogInUsername": {
+      "post": {
+        "summary": "Log In Username",
+        "operationId": "logInUsername",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LogInUsernameRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/LogInUsernameResultOk"
+                    },
+                    {
+                      "$ref": "#/components/schemas/LogInUsernameResultError"
+                    }
+                  ],
+                  "title": "Response Loginusername",
+                  "discriminator": {
+                    "propertyName": "log_in_username_result",
+                    "mapping": {
+                      "ok": "#/components/schemas/LogInUsernameResultOk",
+                      "error": "#/components/schemas/LogInUsernameResultError"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AuthSuccess": {
+        "properties": {
+          "token": {
+            "$ref": "#/components/schemas/AuthToken"
+          },
+          "user_info": {
+            "$ref": "#/components/schemas/GenericUserInfo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "token",
+          "user_info"
+        ],
+        "title": "AuthSuccess"
+      },
+      "AuthToken": {
+        "properties": {
+          "hmac_of_rest": {
+            "type": "string",
+            "format": "byte",
+            "title": "Hmac Of Rest"
+          },
+          "owner": {
+            "type": "string",
+            "title": "Owner"
+          },
+          "minted_unixtime": {
+            "type": "number",
+            "title": "Minted Unixtime"
+          },
+          "expires_unixtime": {
+            "type": "number",
+            "title": "Expires Unixtime"
+          }
+        },
+        "type": "object",
+        "required": [
+          "hmac_of_rest",
+          "owner",
+          "minted_unixtime",
+          "expires_unixtime"
+        ],
+        "title": "AuthToken"
+      },
+      "GenericUserInfo": {
+        "properties": {
+          "email_address": {
+            "type": "string",
+            "title": "Email Address"
+          },
+          "invitations": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Invitation"
+            },
+            "type": "object",
+            "title": "Invitations"
+          },
+          "relationships": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Relationship"
+            },
+            "type": "object",
+            "title": "Relationships"
+          },
+          "login_type": {
+            "anyOf": [
+              {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/LoginTypePassword"
+                  }
+                ],
+                "discriminator": {
+                  "propertyName": "login_type_kind",
+                  "mapping": {
+                    "login_password": "#/components/schemas/LoginTypePassword"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Login Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email_address",
+          "invitations",
+          "relationships",
+          "login_type"
+        ],
+        "title": "GenericUserInfo"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HashedPassword": {
+        "properties": {
+          "salt": {
+            "type": "string",
+            "format": "byte",
+            "title": "Salt"
+          },
+          "scrypt": {
+            "type": "string",
+            "format": "byte",
+            "title": "Scrypt"
+          }
+        },
+        "type": "object",
+        "required": [
+          "salt",
+          "scrypt"
+        ],
+        "title": "HashedPassword"
+      },
+      "Invitation": {
+        "properties": {},
+        "type": "object",
+        "title": "Invitation"
+      },
+      "LogInUsernameError": {
+        "properties": {
+          "catchall": {
+            "type": "string",
+            "title": "Catchall"
+          }
+        },
+        "type": "object",
+        "required": [
+          "catchall"
+        ],
+        "title": "LogInUsernameError"
+      },
+      "LogInUsernameRequest": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "password": {
+            "type": "string",
+            "title": "Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "username",
+          "password"
+        ],
+        "title": "LogInUsernameRequest"
+      },
+      "LogInUsernameResultError": {
+        "properties": {
+          "log_in_username_result": {
+            "type": "string",
+            "const": "error",
+            "title": "Log In Username Result",
+            "default": "error"
+          },
+          "error": {
+            "$ref": "#/components/schemas/LogInUsernameError"
+          }
+        },
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "title": "LogInUsernameResultError"
+      },
+      "LogInUsernameResultOk": {
+        "properties": {
+          "log_in_username_result": {
+            "type": "string",
+            "const": "ok",
+            "title": "Log In Username Result",
+            "default": "ok"
+          },
+          "ok": {
+            "$ref": "#/components/schemas/AuthSuccess"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ok"
+        ],
+        "title": "LogInUsernameResultOk"
+      },
+      "LoginTypePassword": {
+        "properties": {
+          "login_type_kind": {
+            "type": "string",
+            "const": "login_password",
+            "title": "Login Type Kind",
+            "default": "login_password"
+          },
+          "login_password": {
+            "$ref": "#/components/schemas/HashedPassword"
+          }
+        },
+        "type": "object",
+        "required": [
+          "login_password"
+        ],
+        "title": "LoginTypePassword"
+      },
+      "Relationship": {
+        "properties": {
+          "trusts_you": {
+            "type": "boolean",
+            "title": "Trusts You"
+          },
+          "trusted_by_you": {
+            "type": "boolean",
+            "title": "Trusted By You"
+          }
+        },
+        "type": "object",
+        "required": [
+          "trusts_you",
+          "trusted_by_you"
+        ],
+        "title": "Relationship"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

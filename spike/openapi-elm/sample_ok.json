@@ -1,0 +1,30 @@
+{
+  "log_in_username_result": "ok",
+  "ok": {
+    "token": {
+      "hmac_of_rest": "AAH+/4A=",
+      "owner": "spike",
+      "minted_unixtime": 1600000000.0,
+      "expires_unixtime": 1600086400.0
+    },
+    "user_info": {
+      "email_address": "spike@example.com",
+      "invitations": {
+        "some-nonce": {}
+      },
+      "relationships": {
+        "alice": {
+          "trusts_you": true,
+          "trusted_by_you": false
+        }
+      },
+      "login_type": {
+        "login_type_kind": "login_password",
+        "login_password": {
+          "salt": "3q2+7w==",
+          "scrypt": "AQID"
+        }
+      }
+    }
+  }
+}
