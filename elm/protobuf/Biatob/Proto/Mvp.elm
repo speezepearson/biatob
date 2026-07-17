@@ -2,9 +2,9 @@
 
 
 module Biatob.Proto.Mvp exposing
-    ( TradeState(..), Void(..), Resolution(..), PredictionViewPrivacy(..), PredictionFollowingStatus(..), AuthToken, EmailFlowStateKind(..), EmailFlowState, EmailFlowStateCodeSent, HashedPassword, LoginType(..), GenericUserInfo, GenericUserInfoInvitation, Relationship, UsernameInfo, EmailAttempt, ResolutionEventPriorRevision(..), ResolutionEvent, Trade, Empty, ErrorResponse, WhoamiRequest, WhoamiResponse, SignOutRequest, SignOutResponse, AuthSuccess, SendVerificationEmailRequest, RegisterUsernameRequest, LogInUsernameRequest, CertaintyRange, CreatePredictionRequest, CreatePredictionResponse, GetPredictionRequest, UserPredictionView, ListMyStakesRequest, PredictionsById, ListPredictionsRequest, FollowRequest, StakeRequest, ResolveRequest, SetTrustedRequest, GetUserRequest, ChangePasswordRequest, GetSettingsRequest, SendInvitationRequest, CheckInvitationRequest, CheckInvitationResponse, AcceptInvitationRequest, SavedCreatedPredictionFormState
-    , authTokenDecoder, emailFlowStateDecoder, hashedPasswordDecoder, genericUserInfoDecoder, relationshipDecoder, usernameInfoDecoder, emailAttemptDecoder, resolutionEventDecoder, tradeDecoder, emptyDecoder, errorResponseDecoder, whoamiRequestDecoder, whoamiResponseDecoder, signOutRequestDecoder, signOutResponseDecoder, authSuccessDecoder, sendVerificationEmailRequestDecoder, registerUsernameRequestDecoder, logInUsernameRequestDecoder, certaintyRangeDecoder, createPredictionRequestDecoder, createPredictionResponseDecoder, getPredictionRequestDecoder, userPredictionViewDecoder, listMyStakesRequestDecoder, predictionsByIdDecoder, listPredictionsRequestDecoder, followRequestDecoder, stakeRequestDecoder, resolveRequestDecoder, setTrustedRequestDecoder, getUserRequestDecoder, changePasswordRequestDecoder, getSettingsRequestDecoder, sendInvitationRequestDecoder, checkInvitationRequestDecoder, checkInvitationResponseDecoder, acceptInvitationRequestDecoder, savedCreatedPredictionFormStateDecoder
-    , toAuthTokenEncoder, toEmailFlowStateEncoder, toHashedPasswordEncoder, toGenericUserInfoEncoder, toRelationshipEncoder, toUsernameInfoEncoder, toEmailAttemptEncoder, toResolutionEventEncoder, toTradeEncoder, toEmptyEncoder, toErrorResponseEncoder, toWhoamiRequestEncoder, toWhoamiResponseEncoder, toSignOutRequestEncoder, toSignOutResponseEncoder, toAuthSuccessEncoder, toSendVerificationEmailRequestEncoder, toRegisterUsernameRequestEncoder, toLogInUsernameRequestEncoder, toCertaintyRangeEncoder, toCreatePredictionRequestEncoder, toCreatePredictionResponseEncoder, toGetPredictionRequestEncoder, toUserPredictionViewEncoder, toListMyStakesRequestEncoder, toPredictionsByIdEncoder, toListPredictionsRequestEncoder, toFollowRequestEncoder, toStakeRequestEncoder, toResolveRequestEncoder, toSetTrustedRequestEncoder, toGetUserRequestEncoder, toChangePasswordRequestEncoder, toGetSettingsRequestEncoder, toSendInvitationRequestEncoder, toCheckInvitationRequestEncoder, toCheckInvitationResponseEncoder, toAcceptInvitationRequestEncoder, toSavedCreatedPredictionFormStateEncoder
+    ( TradeState(..), Void(..), Resolution(..), PredictionViewPrivacy(..), PredictionFollowingStatus(..), AuthToken, HashedPassword, LoginType(..), GenericUserInfo, GenericUserInfoInvitation, Relationship, ResolutionEventPriorRevision(..), ResolutionEvent, Trade, Empty, ErrorResponse, WhoamiRequest, WhoamiResponse, SignOutRequest, SignOutResponse, AuthSuccess, SendVerificationEmailRequest, RegisterUsernameRequest, LogInUsernameRequest, CertaintyRange, CreatePredictionRequest, CreatePredictionResponse, GetPredictionRequest, UserPredictionView, ListMyStakesRequest, PredictionsById, ListPredictionsRequest, FollowRequest, StakeRequest, ResolveRequest, SetTrustedRequest, GetUserRequest, ChangePasswordRequest, GetSettingsRequest, SendInvitationRequest, CheckInvitationRequest, CheckInvitationResponse, AcceptInvitationRequest, SavedCreatedPredictionFormState
+    , authTokenDecoder, hashedPasswordDecoder, genericUserInfoDecoder, relationshipDecoder, resolutionEventDecoder, tradeDecoder, emptyDecoder, errorResponseDecoder, whoamiRequestDecoder, whoamiResponseDecoder, signOutRequestDecoder, signOutResponseDecoder, authSuccessDecoder, sendVerificationEmailRequestDecoder, registerUsernameRequestDecoder, logInUsernameRequestDecoder, certaintyRangeDecoder, createPredictionRequestDecoder, createPredictionResponseDecoder, getPredictionRequestDecoder, userPredictionViewDecoder, listMyStakesRequestDecoder, predictionsByIdDecoder, listPredictionsRequestDecoder, followRequestDecoder, stakeRequestDecoder, resolveRequestDecoder, setTrustedRequestDecoder, getUserRequestDecoder, changePasswordRequestDecoder, getSettingsRequestDecoder, sendInvitationRequestDecoder, checkInvitationRequestDecoder, checkInvitationResponseDecoder, acceptInvitationRequestDecoder, savedCreatedPredictionFormStateDecoder
+    , toAuthTokenEncoder, toHashedPasswordEncoder, toGenericUserInfoEncoder, toRelationshipEncoder, toResolutionEventEncoder, toTradeEncoder, toEmptyEncoder, toErrorResponseEncoder, toWhoamiRequestEncoder, toWhoamiResponseEncoder, toSignOutRequestEncoder, toSignOutResponseEncoder, toAuthSuccessEncoder, toSendVerificationEmailRequestEncoder, toRegisterUsernameRequestEncoder, toLogInUsernameRequestEncoder, toCertaintyRangeEncoder, toCreatePredictionRequestEncoder, toCreatePredictionResponseEncoder, toGetPredictionRequestEncoder, toUserPredictionViewEncoder, toListMyStakesRequestEncoder, toPredictionsByIdEncoder, toListPredictionsRequestEncoder, toFollowRequestEncoder, toStakeRequestEncoder, toResolveRequestEncoder, toSetTrustedRequestEncoder, toGetUserRequestEncoder, toChangePasswordRequestEncoder, toGetSettingsRequestEncoder, toSendInvitationRequestEncoder, toCheckInvitationRequestEncoder, toCheckInvitationResponseEncoder, toAcceptInvitationRequestEncoder, toSavedCreatedPredictionFormStateEncoder
     )
 
 {-| ProtoBuf module: `Biatob.Proto.Mvp`
@@ -20,17 +20,17 @@ To run it use [`elm-protocol-buffers`](https://package.elm-lang.org/packages/eri
 
 # Model
 
-@docs TradeState, Void, Resolution, PredictionViewPrivacy, PredictionFollowingStatus, AuthToken, EmailFlowStateKind, EmailFlowState, EmailFlowStateCodeSent, HashedPassword, LoginType, GenericUserInfo, GenericUserInfoInvitation, Relationship, UsernameInfo, EmailAttempt, ResolutionEventPriorRevision, ResolutionEvent, Trade, Empty, ErrorResponse, WhoamiRequest, WhoamiResponse, SignOutRequest, SignOutResponse, AuthSuccess, SendVerificationEmailRequest, RegisterUsernameRequest, LogInUsernameRequest, CertaintyRange, CreatePredictionRequest, CreatePredictionResponse, GetPredictionRequest, UserPredictionView, ListMyStakesRequest, PredictionsById, ListPredictionsRequest, FollowRequest, StakeRequest, ResolveRequest, SetTrustedRequest, GetUserRequest, ChangePasswordRequest, GetSettingsRequest, SendInvitationRequest, CheckInvitationRequest, CheckInvitationResponse, AcceptInvitationRequest, SavedCreatedPredictionFormState
+@docs TradeState, Void, Resolution, PredictionViewPrivacy, PredictionFollowingStatus, AuthToken, HashedPassword, LoginType, GenericUserInfo, GenericUserInfoInvitation, Relationship, ResolutionEventPriorRevision, ResolutionEvent, Trade, Empty, ErrorResponse, WhoamiRequest, WhoamiResponse, SignOutRequest, SignOutResponse, AuthSuccess, SendVerificationEmailRequest, RegisterUsernameRequest, LogInUsernameRequest, CertaintyRange, CreatePredictionRequest, CreatePredictionResponse, GetPredictionRequest, UserPredictionView, ListMyStakesRequest, PredictionsById, ListPredictionsRequest, FollowRequest, StakeRequest, ResolveRequest, SetTrustedRequest, GetUserRequest, ChangePasswordRequest, GetSettingsRequest, SendInvitationRequest, CheckInvitationRequest, CheckInvitationResponse, AcceptInvitationRequest, SavedCreatedPredictionFormState
 
 
 # Decoder
 
-@docs authTokenDecoder, emailFlowStateDecoder, hashedPasswordDecoder, genericUserInfoDecoder, relationshipDecoder, usernameInfoDecoder, emailAttemptDecoder, resolutionEventDecoder, tradeDecoder, emptyDecoder, errorResponseDecoder, whoamiRequestDecoder, whoamiResponseDecoder, signOutRequestDecoder, signOutResponseDecoder, authSuccessDecoder, sendVerificationEmailRequestDecoder, registerUsernameRequestDecoder, logInUsernameRequestDecoder, certaintyRangeDecoder, createPredictionRequestDecoder, createPredictionResponseDecoder, getPredictionRequestDecoder, userPredictionViewDecoder, listMyStakesRequestDecoder, predictionsByIdDecoder, listPredictionsRequestDecoder, followRequestDecoder, stakeRequestDecoder, resolveRequestDecoder, setTrustedRequestDecoder, getUserRequestDecoder, changePasswordRequestDecoder, getSettingsRequestDecoder, sendInvitationRequestDecoder, checkInvitationRequestDecoder, checkInvitationResponseDecoder, acceptInvitationRequestDecoder, savedCreatedPredictionFormStateDecoder
+@docs authTokenDecoder, hashedPasswordDecoder, genericUserInfoDecoder, relationshipDecoder, resolutionEventDecoder, tradeDecoder, emptyDecoder, errorResponseDecoder, whoamiRequestDecoder, whoamiResponseDecoder, signOutRequestDecoder, signOutResponseDecoder, authSuccessDecoder, sendVerificationEmailRequestDecoder, registerUsernameRequestDecoder, logInUsernameRequestDecoder, certaintyRangeDecoder, createPredictionRequestDecoder, createPredictionResponseDecoder, getPredictionRequestDecoder, userPredictionViewDecoder, listMyStakesRequestDecoder, predictionsByIdDecoder, listPredictionsRequestDecoder, followRequestDecoder, stakeRequestDecoder, resolveRequestDecoder, setTrustedRequestDecoder, getUserRequestDecoder, changePasswordRequestDecoder, getSettingsRequestDecoder, sendInvitationRequestDecoder, checkInvitationRequestDecoder, checkInvitationResponseDecoder, acceptInvitationRequestDecoder, savedCreatedPredictionFormStateDecoder
 
 
 # Encoder
 
-@docs toAuthTokenEncoder, toEmailFlowStateEncoder, toHashedPasswordEncoder, toGenericUserInfoEncoder, toRelationshipEncoder, toUsernameInfoEncoder, toEmailAttemptEncoder, toResolutionEventEncoder, toTradeEncoder, toEmptyEncoder, toErrorResponseEncoder, toWhoamiRequestEncoder, toWhoamiResponseEncoder, toSignOutRequestEncoder, toSignOutResponseEncoder, toAuthSuccessEncoder, toSendVerificationEmailRequestEncoder, toRegisterUsernameRequestEncoder, toLogInUsernameRequestEncoder, toCertaintyRangeEncoder, toCreatePredictionRequestEncoder, toCreatePredictionResponseEncoder, toGetPredictionRequestEncoder, toUserPredictionViewEncoder, toListMyStakesRequestEncoder, toPredictionsByIdEncoder, toListPredictionsRequestEncoder, toFollowRequestEncoder, toStakeRequestEncoder, toResolveRequestEncoder, toSetTrustedRequestEncoder, toGetUserRequestEncoder, toChangePasswordRequestEncoder, toGetSettingsRequestEncoder, toSendInvitationRequestEncoder, toCheckInvitationRequestEncoder, toCheckInvitationResponseEncoder, toAcceptInvitationRequestEncoder, toSavedCreatedPredictionFormStateEncoder
+@docs toAuthTokenEncoder, toHashedPasswordEncoder, toGenericUserInfoEncoder, toRelationshipEncoder, toResolutionEventEncoder, toTradeEncoder, toEmptyEncoder, toErrorResponseEncoder, toWhoamiRequestEncoder, toWhoamiResponseEncoder, toSignOutRequestEncoder, toSignOutResponseEncoder, toAuthSuccessEncoder, toSendVerificationEmailRequestEncoder, toRegisterUsernameRequestEncoder, toLogInUsernameRequestEncoder, toCertaintyRangeEncoder, toCreatePredictionRequestEncoder, toCreatePredictionResponseEncoder, toGetPredictionRequestEncoder, toUserPredictionViewEncoder, toListMyStakesRequestEncoder, toPredictionsByIdEncoder, toListPredictionsRequestEncoder, toFollowRequestEncoder, toStakeRequestEncoder, toResolveRequestEncoder, toSetTrustedRequestEncoder, toGetUserRequestEncoder, toChangePasswordRequestEncoder, toGetSettingsRequestEncoder, toSendInvitationRequestEncoder, toCheckInvitationRequestEncoder, toCheckInvitationResponseEncoder, toAcceptInvitationRequestEncoder, toSavedCreatedPredictionFormStateEncoder
 
 -}
 
@@ -98,29 +98,6 @@ type alias AuthToken =
     }
 
 
-{-| EmailFlowStateKind
--}
-type EmailFlowStateKind
-    = EmailFlowStateKindUnstarted Void
-    | EmailFlowStateKindCodeSent EmailFlowStateCodeSent
-    | EmailFlowStateKindVerified String
-
-
-{-| `EmailFlowState` message
--}
-type alias EmailFlowState =
-    { emailFlowStateKind : Maybe EmailFlowStateKind
-    }
-
-
-{-| `EmailFlowStateCodeSent` message
--}
-type alias EmailFlowStateCodeSent =
-    { email : String
-    , code : Maybe HashedPassword
-    }
-
-
 {-| `HashedPassword` message
 -}
 type alias HashedPassword =
@@ -156,22 +133,6 @@ type alias GenericUserInfoInvitation =
 type alias Relationship =
     { trustsYou : Bool
     , trustedByYou : Bool
-    }
-
-
-{-| `UsernameInfo` message
--}
-type alias UsernameInfo =
-    { info : Maybe GenericUserInfo
-    , password : Maybe HashedPassword
-    }
-
-
-{-| `EmailAttempt` message
--}
-type alias EmailAttempt =
-    { unixtime : Float
-    , succeeded : Bool
     }
 
 
@@ -562,28 +523,6 @@ authTokenDecoder =
         ]
 
 
-{-| `EmailFlowState` decoder
--}
-emailFlowStateDecoder : Decode.Decoder EmailFlowState
-emailFlowStateDecoder =
-    Decode.message (EmailFlowState Nothing)
-        [ Decode.oneOf
-            [ ( 1, Decode.map EmailFlowStateKindUnstarted voidDecoder )
-            , ( 2, Decode.map EmailFlowStateKindCodeSent emailFlowStateCodeSentDecoder )
-            , ( 3, Decode.map EmailFlowStateKindVerified Decode.string )
-            ]
-            setEmailFlowStateKind
-        ]
-
-
-emailFlowStateCodeSentDecoder : Decode.Decoder EmailFlowStateCodeSent
-emailFlowStateCodeSentDecoder =
-    Decode.message (EmailFlowStateCodeSent "" Nothing)
-        [ Decode.optional 1 Decode.string setEmail
-        , Decode.optional 2 (Decode.map Just hashedPasswordDecoder) setCode
-        ]
-
-
 {-| `HashedPassword` decoder
 -}
 hashedPasswordDecoder : Decode.Decoder HashedPassword
@@ -622,26 +561,6 @@ relationshipDecoder =
     Decode.message (Relationship False False)
         [ Decode.optional 1 Decode.bool setTrustsYou
         , Decode.optional 2 Decode.bool setTrustedByYou
-        ]
-
-
-{-| `UsernameInfo` decoder
--}
-usernameInfoDecoder : Decode.Decoder UsernameInfo
-usernameInfoDecoder =
-    Decode.message (UsernameInfo Nothing Nothing)
-        [ Decode.optional 1 (Decode.map Just genericUserInfoDecoder) setInfo
-        , Decode.optional 2 (Decode.map Just hashedPasswordDecoder) setPassword
-        ]
-
-
-{-| `EmailAttempt` decoder
--}
-emailAttemptDecoder : Decode.Decoder EmailAttempt
-emailAttemptDecoder =
-    Decode.message (EmailAttempt 0 False)
-        [ Decode.optional 1 Decode.double setUnixtime
-        , Decode.optional 2 Decode.bool setSucceeded
         ]
 
 
@@ -1080,36 +999,6 @@ toAuthTokenEncoder model =
         ]
 
 
-toEmailFlowStateKindEncoder : EmailFlowStateKind -> ( Int, Encode.Encoder )
-toEmailFlowStateKindEncoder model =
-    case model of
-        EmailFlowStateKindUnstarted value ->
-            ( 1, toVoidEncoder value )
-
-        EmailFlowStateKindCodeSent value ->
-            ( 2, toEmailFlowStateCodeSentEncoder value )
-
-        EmailFlowStateKindVerified value ->
-            ( 3, Encode.string value )
-
-
-{-| `EmailFlowState` encoder
--}
-toEmailFlowStateEncoder : EmailFlowState -> Encode.Encoder
-toEmailFlowStateEncoder model =
-    Encode.message
-        [ Maybe.withDefault ( 0, Encode.none ) <| Maybe.map toEmailFlowStateKindEncoder model.emailFlowStateKind
-        ]
-
-
-toEmailFlowStateCodeSentEncoder : EmailFlowStateCodeSent -> Encode.Encoder
-toEmailFlowStateCodeSentEncoder model =
-    Encode.message
-        [ ( 1, Encode.string model.email )
-        , ( 2, (Maybe.withDefault Encode.none << Maybe.map toHashedPasswordEncoder) model.code )
-        ]
-
-
 {-| `HashedPassword` encoder
 -}
 toHashedPasswordEncoder : HashedPassword -> Encode.Encoder
@@ -1152,26 +1041,6 @@ toRelationshipEncoder model =
     Encode.message
         [ ( 1, Encode.bool model.trustsYou )
         , ( 2, Encode.bool model.trustedByYou )
-        ]
-
-
-{-| `UsernameInfo` encoder
--}
-toUsernameInfoEncoder : UsernameInfo -> Encode.Encoder
-toUsernameInfoEncoder model =
-    Encode.message
-        [ ( 1, (Maybe.withDefault Encode.none << Maybe.map toGenericUserInfoEncoder) model.info )
-        , ( 2, (Maybe.withDefault Encode.none << Maybe.map toHashedPasswordEncoder) model.password )
-        ]
-
-
-{-| `EmailAttempt` encoder
--}
-toEmailAttemptEncoder : EmailAttempt -> Encode.Encoder
-toEmailAttemptEncoder model =
-    Encode.message
-        [ ( 1, Encode.double model.unixtime )
-        , ( 2, Encode.bool model.succeeded )
         ]
 
 
@@ -1531,21 +1400,6 @@ setExpiresUnixtime value model =
     { model | expiresUnixtime = value }
 
 
-setEmailFlowStateKind : a -> { b | emailFlowStateKind : a } -> { b | emailFlowStateKind : a }
-setEmailFlowStateKind value model =
-    { model | emailFlowStateKind = value }
-
-
-setEmail : a -> { b | email : a } -> { b | email : a }
-setEmail value model =
-    { model | email = value }
-
-
-setCode : a -> { b | code : a } -> { b | code : a }
-setCode value model =
-    { model | code = value }
-
-
 setSalt : a -> { b | salt : a } -> { b | salt : a }
 setSalt value model =
     { model | salt = value }
@@ -1586,24 +1440,9 @@ setTrustedByYou value model =
     { model | trustedByYou = value }
 
 
-setInfo : a -> { b | info : a } -> { b | info : a }
-setInfo value model =
-    { model | info = value }
-
-
-setPassword : a -> { b | password : a } -> { b | password : a }
-setPassword value model =
-    { model | password = value }
-
-
 setUnixtime : a -> { b | unixtime : a } -> { b | unixtime : a }
 setUnixtime value model =
     { model | unixtime = value }
-
-
-setSucceeded : a -> { b | succeeded : a } -> { b | succeeded : a }
-setSucceeded value model =
-    { model | succeeded = value }
 
 
 setResolution : a -> { b | resolution : a } -> { b | resolution : a }
@@ -1674,6 +1513,11 @@ setToken value model =
 setUserInfo : a -> { b | userInfo : a } -> { b | userInfo : a }
 setUserInfo value model =
     { model | userInfo = value }
+
+
+setPassword : a -> { b | password : a } -> { b | password : a }
+setPassword value model =
+    { model | password = value }
 
 
 setProofOfEmailToken : a -> { b | proofOfEmailToken : a } -> { b | proofOfEmailToken : a }
