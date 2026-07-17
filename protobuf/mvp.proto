@@ -114,8 +114,9 @@ enum Resolution {
   RESOLUTION_INVALID = 3;
 }
 
-// A success payload that carries no information -- the analogue of the old
-// `oneof foo_result { Void ok = 1; ... }`.
+// A success payload that carries no information, for endpoints whose only
+// output is "it worked". (proto3's `Void` is an enum, so it can't be a
+// top-level response body; this can.)
 message Empty {}
 
 // The body of any non-2xx API response.
@@ -161,9 +162,6 @@ message RegisterUsernameRequest {
 }
 // Returns AuthSuccess on 200; 409 if the username is taken, 400 on invalid
 // username/password/proof-of-email.
-//
-// The old Error carried a `Void username_taken = 2` variant alongside
-// `catchall`; 409 now carries that distinction.
 
 message LogInUsernameRequest {
   string username = 1;
@@ -189,7 +187,7 @@ message CreatePredictionRequest {
   double resolves_at_unixtime = 9;
 }
 // Returns CreatePredictionResponse on 200; 401 if logged out, 400 if invalid.
-// Kept as a message (rather than returning a bare string) because a top-level
+// A message wrapping the id, rather than a bare string, because a top-level
 // protobuf response body has to be a message.
 message CreatePredictionResponse {
   string new_prediction_id = 1;
@@ -200,10 +198,6 @@ message GetPredictionRequest {
 }
 // Returns UserPredictionView on 200; 404 if there's no such prediction (or the
 // viewer may not see it).
-//
-// The old Error carried a `Void no_such_prediction = 2` variant to distinguish
-// that case from `catchall`. Nothing in the Elm app ever read it -- the 404
-// carries that information now, where HTTP already puts it.
 
 enum PredictionFollowingStatus {
   PREDICTION_FOLLOWING_NOT_FOLLOWING = 0;
@@ -292,7 +286,6 @@ message CheckInvitationRequest {
   string nonce = 1;
 }
 // Returns CheckInvitationResponse on 200; 404 if no such invitation.
-// The old nested `Result` message is flattened up into the response itself.
 message CheckInvitationResponse {
   string inviter = 1;
   string recipient = 2;

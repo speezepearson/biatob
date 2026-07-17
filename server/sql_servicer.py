@@ -752,10 +752,9 @@ class SqlServicer(Servicer):
         password_id=password_id,
       )
 
-      # Both endpoints raise now, so the convention-boundary shim this used to
-      # need is gone: an ApiError from LogInUsername would propagate as-is. It's
-      # still caught, because "can't log in as the user we just made" is our bug,
-      # not the caller's, and shouldn't surface as (say) a 401.
+      # Catch LogInUsername's ApiError rather than letting it propagate: failing
+      # to log in as the user we just created is our bug, not the caller's, and
+      # shouldn't surface as (say) a 401.
       try:
         return self.LogInUsername(None, mvp_pb2.LogInUsernameRequest(username=request.username, password=request.password))
       except ApiError as e:
