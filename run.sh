@@ -19,6 +19,6 @@ pip install -r server/requirements.txt
 python -m server.main \
   --host=0.0.0.0 \
   --port=8080 \
-  --credentials-path='/home/protected/server.CredentialsConfig.textproto' \
+  --credentials-path='/home/protected/credentials.json' \
   "$@"
 # e.g. --email-daily-backups-to=somebody@example.com

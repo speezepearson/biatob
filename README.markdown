@@ -15,6 +15,30 @@ This project uses the `doit` build system: https://pydoit.org/tutorial_1.html
 - `doit nfsdeploy` deploys the current state (checked-in or not) to the NearlyFreeSpeech host (though you have to kick the server daemon yourself).
 - `doit list` lists all the targets.
 
+### Credentials file
+
+`server.main --credentials-path` points at a JSON file (schema:
+`server/config.py`). Example:
+
+```json
+{
+  "smtp": {
+    "hostname": "smtp.example.com",
+    "port": 587,
+    "username": "mailer@example.com",
+    "password": "...",
+    "from_addr": "biatob@example.com"
+  },
+  "token_signing_secret": "some long random string",
+  "database": { "kind": "sqlite", "path": "/home/protected/server.WorldState.db" }
+}
+```
+
+`database` is either `{"kind": "sqlite", "path": "..."}` or `{"kind": "mysql",
+"hostname": ..., "username": ..., "password": ..., "dbname": ...}`. To migrate an
+old protobuf-text-format credentials file, run
+`python -m server.scripts.convert_credentials old.textproto > credentials.json`.
+
 
 Dreamed-of enhancements
 -----------------------
