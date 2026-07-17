@@ -14,6 +14,7 @@ from PIL import Image, ImageDraw, ImageFont  # type: ignore
 import structlog
 
 from .core import ApiError, AuthorizingUsername, Servicer, TokenMint, Username, token_owner
+from .tokens import AuthToken
 from .http_glue import HttpTokenGlue
 from .protobuf import mvp_pb2
 
@@ -100,7 +101,7 @@ class WebServer:
         )
         self._jinja.undefined = jinja2.StrictUndefined  # raise exception if a template uses an undefined variable; adapted from https://stackoverflow.com/a/39127941/8877656
 
-    def _get_auth_success(self, auth: Optional[mvp_pb2.AuthToken], req: mvp_pb2.GetSettingsRequest = mvp_pb2.GetSettingsRequest()) -> Optional[mvp_pb2.AuthSuccess]:
+    def _get_auth_success(self, auth: Optional[AuthToken], req: mvp_pb2.GetSettingsRequest = mvp_pb2.GetSettingsRequest()) -> Optional[mvp_pb2.AuthSuccess]:
         if auth is None:
             return None
         try:
@@ -108,7 +109,7 @@ class WebServer:
         except ApiError as e:
             logger.error('failed to get settings for valid-looking user', data_loss=True, auth=auth, error=e.catchall)
             return None
-        return mvp_pb2.AuthSuccess(token=auth, user_info=user_info)
+        return mvp_pb2.AuthSuccess(token=mvp_pb2.AuthToken(owner=auth.owner), user_info=user_info)
 
     async def get_static(self, req: web.Request) -> web.StreamResponse:
         filename = req.match_info['filename']

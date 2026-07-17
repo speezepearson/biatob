@@ -1,20 +1,12 @@
-import base64
 from typing import Optional
 
 from aiohttp import web
 import structlog
 
 from .core import AuthorizingUsername, TokenMint, ForgottenTokenError, Username
-from .protobuf import mvp_pb2
+from .tokens import AuthToken
 
 logger = structlog.get_logger()
-
-def _encode_token_for_cookie(token: mvp_pb2.AuthToken) -> str:
-    return base64.b64encode(token.SerializeToString()).decode('ascii')
-def _decode_token_from_cookie(cookie: str) -> mvp_pb2.AuthToken:
-    res = mvp_pb2.AuthToken()
-    res.ParseFromString(base64.b64decode(cookie))
-    return res
 
 class HttpTokenGlue:
 
@@ -37,9 +29,12 @@ class HttpTokenGlue:
             self.del_cookie(request, response)
             return response
 
-    def set_cookie(self, token: mvp_pb2.AuthToken, response: web.Response) -> mvp_pb2.AuthToken:
-        response.set_cookie(self._AUTH_COOKIE_NAME, _encode_token_for_cookie(token))
+    def set_cookie(self, token: AuthToken, response: web.Response) -> AuthToken:
+        response.set_cookie(self._AUTH_COOKIE_NAME, self._mint.seal_token(token))
         return token
+
+    def set_cookie_for_owner(self, owner: Username, response: web.Response) -> AuthToken:
+        return self.set_cookie(self._mint.mint_token(owner), response)
 
     def del_cookie(self, req: web.Request, resp: web.Response) -> None:
         token = self.parse_cookie(req)
@@ -47,15 +42,11 @@ class HttpTokenGlue:
             self._mint.revoke_token(token)
         resp.del_cookie(self._AUTH_COOKIE_NAME)
 
-    def parse_cookie(self, req: web.Request) -> Optional[mvp_pb2.AuthToken]:
+    def parse_cookie(self, req: web.Request) -> Optional[AuthToken]:
         cookie = req.cookies.get(self._AUTH_COOKIE_NAME)
         if cookie is None:
             return None
-        try:
-            token = _decode_token_from_cookie(cookie)
-        except ValueError:
-            return None
-
+        token = self._mint.unseal_token(cookie)
         return None if (self._mint.check_token(token) is None) else token
 
     def get_authorizing_user(self, req: web.Request) -> Optional[AuthorizingUsername]:
