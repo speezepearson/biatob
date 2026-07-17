@@ -149,8 +149,6 @@ mustDecodeFromFlags dec field val =
 mustPredictionCertainty : Pb.UserPredictionView -> Pb.CertaintyRange
 mustPredictionCertainty {certainty} = must "all predictions must have certainties" certainty
 
-mustProofOfEmailPayload : Pb.ProofOfEmail -> Pb.ProofOfEmailPayload
-mustProofOfEmailPayload {payload} = must "all `ProofOfEmail`s must have `payload`s" payload
 
 mustUsernameGenericInfo : Pb.UsernameInfo -> Pb.GenericUserInfo
 mustUsernameGenericInfo {info} = must "all UserInfos must have GenericUserInfos" info

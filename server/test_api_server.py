@@ -46,7 +46,7 @@ async def test_Whoami_and_RegisterUsername(aiohttp_client, app, token_mint: Toke
   (http_resp, pb_resp) = await post_proto(cli, '/api/Whoami', mvp_pb2.WhoamiRequest(), mvp_pb2.WhoamiResponse)
   assert not pb_resp.username, pb_resp
 
-  (http_resp, reg_pb_resp) = await post_proto(cli, '/api/RegisterUsername', mvp_pb2.RegisterUsernameRequest(username='potato', password='secret', proof_of_email=token_mint.sign_proof_of_email('potato@example.com')), mvp_pb2.AuthSuccess)
+  (http_resp, reg_pb_resp) = await post_proto(cli, '/api/RegisterUsername', mvp_pb2.RegisterUsernameRequest(username='potato', password='secret', proof_of_email_token=token_mint.sign_proof_of_email('potato@example.com')), mvp_pb2.AuthSuccess)
   assert reg_pb_resp.token.owner == 'potato', reg_pb_resp
 
   (http_resp, pb_resp) = await post_proto(cli, '/api/Whoami', mvp_pb2.WhoamiRequest(), mvp_pb2.WhoamiResponse)
@@ -67,7 +67,7 @@ async def test_CreatePrediction_and_GetPrediction(aiohttp_client, app, clock: Mo
   (http_resp, err) = await post_proto(cli, '/api/CreatePrediction', create_pb_req, mvp_pb2.ErrorResponse, expected_status=401)
   assert err.catchall == 'must log in to create predictions', err
 
-  (http_resp, register_resp) = await post_proto(cli, '/api/RegisterUsername', mvp_pb2.RegisterUsernameRequest(username='potato', password='secret', proof_of_email=token_mint.sign_proof_of_email('potato@example.com')), mvp_pb2.AuthSuccess)
+  (http_resp, register_resp) = await post_proto(cli, '/api/RegisterUsername', mvp_pb2.RegisterUsernameRequest(username='potato', password='secret', proof_of_email_token=token_mint.sign_proof_of_email('potato@example.com')), mvp_pb2.AuthSuccess)
 
   (http_resp, create_pb_resp) = await post_proto(cli, '/api/CreatePrediction', create_pb_req, mvp_pb2.CreatePredictionResponse)
   assert create_pb_resp.new_prediction_id, create_pb_resp
@@ -94,7 +94,7 @@ async def test_CreatePrediction_enforces_future_resolution(aiohttp_client, app, 
   )
 
   cli = await aiohttp_client(app)
-  (http_resp, register_resp) = await post_proto(cli, '/api/RegisterUsername', mvp_pb2.RegisterUsernameRequest(username='potato', password='secret', proof_of_email=token_mint.sign_proof_of_email('potato@example.com')), mvp_pb2.AuthSuccess)
+  (http_resp, register_resp) = await post_proto(cli, '/api/RegisterUsername', mvp_pb2.RegisterUsernameRequest(username='potato', password='secret', proof_of_email_token=token_mint.sign_proof_of_email('potato@example.com')), mvp_pb2.AuthSuccess)
 
   (http_resp, err) = await post_proto(cli, '/api/CreatePrediction', create_pb_req, mvp_pb2.ErrorResponse, expected_status=400)
   assert 'must resolve after betting closes' in err.catchall, err
@@ -274,7 +274,7 @@ async def test_AlreadyRegisteredError_is_409(aiohttp_client, app, any_servicer: 
   create_user(any_servicer, u('taken'), password='pw')
   cli = await aiohttp_client(app)
   (_, err) = await post_proto(cli, '/api/RegisterUsername', mvp_pb2.RegisterUsernameRequest(
-      username='taken', password='secret', proof_of_email=token_mint.sign_proof_of_email('other@example.com')),
+      username='taken', password='secret', proof_of_email_token=token_mint.sign_proof_of_email('other@example.com')),
       mvp_pb2.ErrorResponse, expected_status=409)
   assert err.catchall == 'username taken', err
 

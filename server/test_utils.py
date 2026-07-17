@@ -124,8 +124,8 @@ def create_user(servicer: Servicer, username: Username, password: str = 'pw', em
   if email_address is None:
     email_address = f'{username}@example.com'
   SendVerificationEmailOk(servicer, None, email_address)
-  proof_of_email = servicer._emailer.send_email_verification.call_args[1]['proof_of_email']  # type: ignore
-  RegisterUsernameOk(servicer, actor=None, username=username, proof_of_email=proof_of_email, password=password)
+  proof_token = servicer._emailer.send_email_verification.call_args[1]['proof_token']  # type: ignore
+  RegisterUsernameOk(servicer, actor=None, username=username, proof_token=proof_token, password=password)
 
 def Whoami(servicer: Servicer, actor: Optional[AuthorizingUsername]) -> Optional[Username]:
   return Username(servicer.Whoami(actor, mvp_pb2.WhoamiRequest()).username)
@@ -142,13 +142,13 @@ def SendVerificationEmailErr(servicer: Servicer, actor: Optional[AuthorizingUser
     servicer.SendVerificationEmail(actor, mvp_pb2.SendVerificationEmailRequest(email_address=email_address))
   return excinfo.value
 
-def RegisterUsernameOk(servicer: Servicer, actor: Optional[AuthorizingUsername], proof_of_email: mvp_pb2.ProofOfEmail, username: Username, password: str = 'pw') -> mvp_pb2.AuthSuccess:
+def RegisterUsernameOk(servicer: Servicer, actor: Optional[AuthorizingUsername], proof_token: str, username: Username, password: str = 'pw') -> mvp_pb2.AuthSuccess:
   token_mint: TokenMint = servicer._token_mint  # type: ignore
-  return servicer.RegisterUsername(actor, mvp_pb2.RegisterUsernameRequest(username=username, password=password, proof_of_email=proof_of_email))
-def RegisterUsernameErr(servicer: Servicer, actor: Optional[AuthorizingUsername], proof_of_email: mvp_pb2.ProofOfEmail, username: Username, password: str = 'pw') -> ApiError:
+  return servicer.RegisterUsername(actor, mvp_pb2.RegisterUsernameRequest(username=username, password=password, proof_of_email_token=proof_token))
+def RegisterUsernameErr(servicer: Servicer, actor: Optional[AuthorizingUsername], proof_token: str, username: Username, password: str = 'pw') -> ApiError:
   token_mint: TokenMint = servicer._token_mint  # type: ignore
   with pytest.raises(ApiError) as excinfo:
-    servicer.RegisterUsername(actor, mvp_pb2.RegisterUsernameRequest(username=username, password=password, proof_of_email=proof_of_email))
+    servicer.RegisterUsername(actor, mvp_pb2.RegisterUsernameRequest(username=username, password=password, proof_of_email_token=proof_token))
   return excinfo.value
 
 def LogInUsernameOk(servicer: Servicer, actor: Optional[AuthorizingUsername], username: Username, password: str) -> mvp_pb2.AuthSuccess:

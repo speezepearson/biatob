@@ -712,7 +712,7 @@ class SqlServicer(Servicer):
       logger.info('sending verification email', email_address=request.email_address)
       asyncio.create_task(self._emailer.send_email_verification(
         to=request.email_address,
-        proof_of_email=self._token_mint.sign_proof_of_email(email_address=request.email_address),
+        proof_token=self._token_mint.sign_proof_of_email(email_address=request.email_address),
       ))
 
       return mvp_pb2.Empty()
@@ -739,7 +739,7 @@ class SqlServicer(Servicer):
         logger.info('username taken', username=request.username)
         raise AlreadyRegisteredError('username taken')
 
-      email_address = self._token_mint.check_proof_of_email(request.proof_of_email)
+      email_address = self._token_mint.check_proof_of_email(request.proof_of_email_token)
       if email_address is None:
         logger.warn('invalid HMAC for proof-of-email', request=request)
         raise InvalidRequestError('invalid signature')
