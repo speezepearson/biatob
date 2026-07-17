@@ -1,5 +1,5 @@
 from sqlalchemy.sql.sqltypes import VARBINARY
-from server.protobuf import mvp_pb2
+from server.config import DatabaseInfo, SqliteDatabase
 from sqlalchemy import event
 from sqlalchemy import MetaData, Table, Column, Integer, String, BOOLEAN, ForeignKey, BINARY, Index, REAL, CheckConstraint, VARBINARY, BLOB, TEXT
 import sqlalchemy
@@ -105,15 +105,14 @@ def set_sqlite_pragma(dbapi_connection, connection_record):
   cursor.close()
 
 
-def create_engine(dbinfo: mvp_pb2.DatabaseInfo) -> sqlalchemy.engine.Engine:
+def create_engine(dbinfo: DatabaseInfo) -> sqlalchemy.engine.Engine:
   engine = sqlalchemy.create_engine(get_db_url(dbinfo))
-  if dbinfo.WhichOneof('database_kind') == 'sqlite':
+  if isinstance(dbinfo, SqliteDatabase):
     event.listen(engine, "connect", set_sqlite_pragma)
   return engine
 
 
-def get_db_url(dbinfo: mvp_pb2.DatabaseInfo) -> str:
-  if dbinfo.WhichOneof('database_kind') == 'sqlite':
-    return f'sqlite+pysqlite:///{dbinfo.sqlite}'
-  assert dbinfo.WhichOneof('database_kind') == 'mysql'
-  return f'mysql+pymysql://{dbinfo.mysql.username}:{dbinfo.mysql.password}@{dbinfo.mysql.hostname}/{dbinfo.mysql.dbname}'
+def get_db_url(dbinfo: DatabaseInfo) -> str:
+  if isinstance(dbinfo, SqliteDatabase):
+    return f'sqlite+pysqlite:///{dbinfo.path}'
+  return f'mysql+pymysql://{dbinfo.username}:{dbinfo.password}@{dbinfo.hostname}/{dbinfo.dbname}'

@@ -9,7 +9,6 @@ import logging
 from email.message import EmailMessage
 
 from aiohttp import web
-import google.protobuf.text_format  # type: ignore
 
 from .api_server import *
 from .core import *
@@ -19,6 +18,7 @@ from .web_server import *
 from .protobuf import mvp_pb2
 from .sql_servicer import *
 from .sql_schema import create_engine
+from .config import CredentialsConfig
 
 # adapted from https://www.structlog.org/en/stable/examples.html?highlight=json#processors
 # and https://www.structlog.org/en/stable/contextvars.html
@@ -53,7 +53,7 @@ async def main(args: argparse.Namespace):
         logging.getLogger('aiohttp.access').setLevel(logging.WARN)
     app = web.Application()
 
-    credentials = google.protobuf.text_format.Parse(args.credentials_path.read_text(), mvp_pb2.CredentialsConfig())
+    credentials = CredentialsConfig.from_json(args.credentials_path.read_text())
 
     if args.mock_out_emails:
         from unittest.mock import Mock
@@ -72,9 +72,9 @@ async def main(args: argparse.Namespace):
         from_addr=credentials.smtp.from_addr,
         **testing_overrides,
     )
-    token_mint = TokenMint(secret_key=credentials.token_signing_secret)
+    token_mint = TokenMint(secret_key=credentials.token_signing_secret_bytes)
     token_glue = HttpTokenGlue(token_mint=token_mint)
-    raw_conn = create_engine(credentials.database_info).connect()
+    raw_conn = create_engine(credentials.database).connect()
     conn = SqlConn(raw_conn)
     servicer = SqlServicer(conn=conn, token_mint=token_mint, emailer=emailer)
 
