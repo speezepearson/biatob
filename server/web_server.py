@@ -89,10 +89,11 @@ def stupid_file_response(path: Path) -> web.Response:
 
 
 class WebServer:
-    def __init__(self, servicer: Servicer, elm_dist: Path, token_glue: HttpTokenGlue, clock: Callable[[], datetime.datetime] = datetime.datetime.now) -> None:
+    def __init__(self, servicer: Servicer, elm_dist: Path, token_glue: HttpTokenGlue, token_mint: TokenMint, clock: Callable[[], datetime.datetime] = datetime.datetime.now) -> None:
         self._servicer = servicer
         self._elm_dist = elm_dist
         self._token_glue = token_glue
+        self._token_mint = token_mint
         self._clock = clock
 
         self._jinja = jinja2.Environment( # adapted from https://jinja.palletsprojects.com/en/2.11.x/api/#basics
@@ -297,12 +298,16 @@ class WebServer:
     async def init_user(self, req: web.Request) -> web.Response:
         auth = self._token_glue.parse_cookie(req)
         auth_success = self._get_auth_success(auth)
-        code = str(req.match_info['code'])
+        proof_token = str(req.match_info['code'])
+        email = self._token_mint.check_proof_of_email(proof_token)
+        if email is None:
+            return web.Response(status=400, body='This email-verification link is invalid or has expired.')
         return web.Response(
             content_type='text/html',
             body=self._jinja.get_template('InitUserPage.html').render(
                 auth_success_pb_b64=pb_b64(auth_success),
-                proof_of_email_pb_b64=pb_b64(mvp_pb2.ProofOfEmail.FromString(base64.urlsafe_b64decode(code))),
+                email=email,
+                proof_of_email_token=proof_token,
             ))
 
     def add_to_app(self, app: web.Application) -> None:
@@ -329,7 +334,7 @@ class WebServer:
         app.router.add_get('/{username:[a-zA-Z0-9_-]+}', self.get_username)
 
 def _reserved_toplevel_path_segments() -> AbstractSet[str]:
-    server = WebServer(servicer=None, elm_dist=None, token_glue=HttpTokenGlue(token_mint=TokenMint(secret_key=b'')))  # type: ignore
+    server = WebServer(servicer=None, elm_dist=None, token_glue=HttpTokenGlue(token_mint=TokenMint(secret_key=b'')), token_mint=TokenMint(secret_key=b''))  # type: ignore
     app = web.Application()
     server.add_to_app(app)
     return {

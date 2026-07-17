@@ -26,7 +26,8 @@ type alias Model =
   , usernameField : String
   , passwordField : String
   , confirmPasswordField : String
-  , proofOfEmail : Pb.ProofOfEmail
+  , email : String
+  , proofOfEmailToken : String
   , registerStatus : RequestStatus
   }
 type Msg
@@ -47,18 +48,19 @@ type Msg
 init : JD.Value -> ( Model , Cmd Msg )
 init flags =
   let
-    proofOfEmail = Utils.mustDecodePbFromFlags Pb.proofOfEmailDecoder "proofOfEmailPbB64" flags
+    email = Utils.mustDecodeFromFlags JD.string "email" flags
     model =
       { globals = JD.decodeValue Globals.globalsDecoder flags |> Utils.mustResult "flags"
       , navbarAuth = AuthWidget.init
       , usernameField =
-          let suggestion = emailToSuggestedUsername (Utils.mustProofOfEmailPayload proofOfEmail).emailAddress in
+          let suggestion = emailToSuggestedUsername email in
           case Utils.parseUsername suggestion of
             Ok s -> s
             Err _ -> ""
       , passwordField = ""
       , confirmPasswordField = ""
-      , proofOfEmail = proofOfEmail
+      , email = email
+      , proofOfEmailToken = Utils.mustDecodeFromFlags JD.string "proofOfEmailToken" flags
       , registerStatus = Unstarted
       }
   in
@@ -85,7 +87,7 @@ update msg model =
       )
     RegisterUsername ->
       ( { model | registerStatus = AwaitingResponse }
-      , let req = {username=model.usernameField, password=model.passwordField, proofOfEmail=Just model.proofOfEmail} in API.postRegisterUsername (RegisterUsernameFinished req) req
+      , let req = {username=model.usernameField, password=model.passwordField, proofOfEmailToken=model.proofOfEmailToken} in API.postRegisterUsername (RegisterUsernameFinished req) req
       )
     RegisterUsernameFinished req res ->
       ( { model | globals = model.globals |> Globals.handleRegisterUsernameResponse req res }
@@ -176,7 +178,7 @@ view model =
             [ H.label [HA.class "form-label"] [H.text "Your email address:"]
             , H.input
               [ HA.readonly True
-              , HA.value (Utils.mustProofOfEmailPayload model.proofOfEmail).emailAddress
+              , HA.value model.email
               , HA.class "form-control"
               ] []
             , H.div [HA.class "form-text"] [H.text "I'll send you notifications at this address when something needs your attention."]

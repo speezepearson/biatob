@@ -53,9 +53,9 @@ class TestSendBackup:
 
 class TestEmailVerification:
   async def test_smoke(self, aiosmtplib, emailer: Emailer):
-    proof = mvp_pb2.ProofOfEmail(hmac=b'some signature')
-    await emailer.send_email_verification(to='a@a', proof_of_email=proof)
-    assert base64.urlsafe_b64encode(proof.SerializeToString()).decode().rstrip('=') in message_to_string(aiosmtplib.send.call_args[1]['message']).replace('=\n', '')
+    await emailer.send_email_verification(to='a@a', proof_token='some-sealed-proof-token')
+    # `=\n` undoes quoted-printable soft line-wraps, in case the token spans one
+    assert 'some-sealed-proof-token' in message_to_string(aiosmtplib.send.call_args[1]['message']).replace('=\n', '')
 
 class TestResolutionNotification:
   async def test_smoke(self, aiosmtplib, emailer: Emailer):

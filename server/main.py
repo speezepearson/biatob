@@ -81,6 +81,7 @@ async def main(args: argparse.Namespace):
     token_glue.add_to_app(app)
     WebServer(
         token_glue=token_glue,
+        token_mint=token_mint,
         elm_dist=args.elm_dist,
         servicer=servicer,
     ).add_to_app(app)

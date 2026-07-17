@@ -1,14 +1,12 @@
 import abc
 import datetime
 import hashlib
-import hmac
 import random
 import re
 import secrets
 from typing import overload, Optional, Container, NewType, Callable
 
 from aiohttp import web
-from google.protobuf.message import Message
 
 from . import tokens
 from .protobuf import mvp_pb2
@@ -285,9 +283,6 @@ class TokenMint:
         self._secret_key = secret_key
         self._clock = clock
 
-    def _signature(self, message: Message) -> bytes:
-        return hmac.digest(key=self._secret_key, msg=message.SerializeToString(), digest='sha256')
-
     # --- auth tokens: sealed Pydantic JSON ---
 
     def mint_token(self, owner: Username, ttl_seconds: int = AUTH_TOKEN_TTL_SECONDS) -> tokens.AuthToken:
@@ -316,16 +311,12 @@ class TokenMint:
     def revoke_token(self, token: tokens.AuthToken) -> None:
         pass  # TODO
 
-    def sign_proof_of_email(self, email_address: str) -> mvp_pb2.ProofOfEmail:
-        payload = mvp_pb2.ProofOfEmail.Payload(email_address=email_address)
-        salt = secrets.token_bytes(8)
-        return mvp_pb2.ProofOfEmail(
-            payload=payload,
-            salt=salt,
-            hmac=hmac.digest(key=self._secret_key, msg=payload.SerializeToString(), digest='sha256'),
-        )
+    # --- email-verification proofs: sealed Pydantic JSON ---
 
-    def check_proof_of_email(self, proof: mvp_pb2.ProofOfEmail) -> Optional[str]:
-        if hmac.compare_digest(proof.hmac, self._signature(proof.payload)):
-            return proof.payload.email_address
-        return None
+    def sign_proof_of_email(self, email_address: str) -> str:
+        proof = tokens.ProofOfEmail(email_address=email_address, salt=secrets.token_hex(8))
+        return tokens.seal(self._secret_key, proof)
+
+    def check_proof_of_email(self, sealed: str) -> Optional[str]:
+        proof = tokens.unseal(self._secret_key, sealed, tokens.ProofOfEmail)
+        return proof.email_address if proof is not None else None

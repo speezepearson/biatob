@@ -93,9 +93,9 @@ class TestSendVerificationEmail:
 class TestRegisterUsername:
 
   @staticmethod
-  def get_proof_of_email(any_servicer: Servicer, emailer: Emailer, email_address: str) -> mvp_pb2.ProofOfEmail:
+  def get_proof_of_email(any_servicer: Servicer, emailer: Emailer, email_address: str) -> str:
     SendVerificationEmailOk(any_servicer, None, email_address)
-    return emailer.send_email_verification.call_args[1]['proof_of_email']  # type: ignore
+    return emailer.send_email_verification.call_args[1]['proof_token']  # type: ignore
 
   async def test_success_if_good_signature(self, any_servicer: Servicer, emailer: Emailer):
     proof_of_email = self.get_proof_of_email(any_servicer, emailer, 'alice@example.com')
@@ -124,8 +124,9 @@ class TestRegisterUsername:
 
   async def test_error_if_bad_email_signature(self, any_servicer: Servicer, emailer: Emailer):
     valid_proof = self.get_proof_of_email(any_servicer, emailer, 'alice@example.com')
-    invalid_proof = copy.copy(valid_proof)
-    invalid_proof.hmac = bytes([(invalid_proof.hmac[0] + 1) % 256, *invalid_proof.hmac[1:]])
+    # flip a character in the signature half (`<payload>.<hmac>`)
+    payload, mac = valid_proof.rsplit('.', 1)
+    invalid_proof = f"{payload}.{'B' if mac[0] == 'A' else 'A'}{mac[1:]}"
     assert 'invalid signature' in str(RegisterUsernameErr(any_servicer, None, invalid_proof, username=ALICE))
     RegisterUsernameOk(any_servicer, None, valid_proof, username=ALICE)  # ensure the failure was due to the mangled signature
 

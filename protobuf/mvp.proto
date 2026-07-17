@@ -120,19 +120,13 @@ message SendVerificationEmailRequest {
 // Returns Empty on 200; 400 if already logged in, 409 if the email is already
 // registered.
 
-message ProofOfEmail {
-  Payload payload = 1;
-  bytes salt = 2;
-  bytes hmac = 3;
-  message Payload {
-    string email_address = 1;
-  }
-}
-
 message RegisterUsernameRequest {
   string username = 1;
   string password = 2;
-  ProofOfEmail proof_of_email = 3;
+  // An opaque, server-signed proof that the registrant controls their email
+  // address; minted into a verification-email link and echoed back here. Sealed
+  // Pydantic ProofOfEmail -- see server/tokens.py.
+  string proof_of_email_token = 3;
 }
 // Returns AuthSuccess on 200; 409 if the username is taken, 400 on invalid
 // username/password/proof-of-email.

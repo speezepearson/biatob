@@ -11,7 +11,7 @@ from .test_api_server import post_proto, api_server
 
 @pytest.fixture
 def web_server(any_servicer, token_mint, clock):
-  return WebServer(servicer=any_servicer, token_glue=HttpTokenGlue(token_mint), elm_dist=Path(__file__)/'elm'/'dist')
+  return WebServer(servicer=any_servicer, token_glue=HttpTokenGlue(token_mint), token_mint=token_mint, elm_dist=Path(__file__)/"elm"/"dist")
 
 @pytest.fixture
 def app(loop, web_server):

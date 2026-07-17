@@ -22,6 +22,14 @@ class AuthToken(BaseModel):
     expires_unixtime: float
 
 
+class ProofOfEmail(BaseModel):
+    """Proof that whoever holds it controls `email_address` -- the server seals
+    one into an email link, and trusts it when it comes back at registration.
+    `salt` just makes each proof distinct."""
+    email_address: str
+    salt: str
+
+
 _Model = TypeVar("_Model", bound=BaseModel)
 
 
@@ -30,11 +38,13 @@ def _mac(secret_key: bytes, payload: bytes) -> bytes:
 
 
 def _b64(b: bytes) -> str:
-    return base64.urlsafe_b64encode(b).decode("ascii")
+    # No padding: a sealed token travels in an email-link URL, and `=` can be
+    # mangled by quoted-printable email encoding.
+    return base64.urlsafe_b64encode(b).rstrip(b"=").decode("ascii")
 
 
 def _unb64(s: str) -> bytes:
-    return base64.urlsafe_b64decode(s)
+    return base64.urlsafe_b64decode(s + "=" * (-len(s) % 4))
 
 
 def seal(secret_key: bytes, model: BaseModel) -> str:
