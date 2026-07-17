@@ -70,16 +70,12 @@ class ApiServer:
     @translates_api_errors
     async def RegisterUsername(self, http_req: web.Request) -> web.Response:
         auth_success = self._servicer.RegisterUsername(actor=self._token_glue.get_authorizing_user(http_req), request=await parse_proto(http_req, mvp_pb2.RegisterUsernameRequest))
-        # Same shape as LogInUsername: failure left via an exception, so the
-        # cookie can't be attached to a response that reports an error.
         http_resp = proto_response(auth_success)
         self._token_glue.set_cookie(auth_success.token, http_resp)
         return http_resp
     @translates_api_errors
     async def LogInUsername(self, http_req: web.Request) -> web.Response:
         auth_success = self._servicer.LogInUsername(actor=self._token_glue.get_authorizing_user(http_req), request=await parse_proto(http_req, mvp_pb2.LogInUsernameRequest))
-        # Reaching here means success: failure left via an exception, so the
-        # cookie can no longer be set on a response that reports an error.
         http_resp = proto_response(auth_success)
         self._token_glue.set_cookie(auth_success.token, http_resp)
         return http_resp

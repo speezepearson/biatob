@@ -63,7 +63,7 @@ async def test_CreatePrediction_and_GetPrediction(aiohttp_client, app, clock: Mo
   )
 
   cli = await aiohttp_client(app)
-  # Logged out: 401, not the 200-with-an-error-arm this used to assert.
+  # Creating a prediction while logged out is a 401.
   (http_resp, err) = await post_proto(cli, '/api/CreatePrediction', create_pb_req, mvp_pb2.ErrorResponse, expected_status=401)
   assert err.catchall == 'must log in to create predictions', err
 
@@ -198,8 +198,7 @@ async def test_LogInUsername_nonexistent_user_is_401(aiohttp_client, app):
 
 
 async def test_LogInUsername_failure_does_not_set_auth_cookie(aiohttp_client, app, any_servicer: Servicer):
-  """The old code set the cookie inside `if WhichOneof(...) == 'ok'`; now the
-  cookie line is simply unreachable on failure. Pin it so it stays that way."""
+  """A failed login must not set an auth cookie."""
   create_user(any_servicer, u('rando'), password='pw')
   cli = await aiohttp_client(app)
   await post_proto(

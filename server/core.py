@@ -26,9 +26,9 @@ class ForgottenTokenError(RuntimeError): pass
 
 # --- servicer failure modes --------------------------------------------------
 #
-# Servicers raise these instead of returning the `error` arm of a
-# `oneof foo_result`. They name the *failure mode*, not the HTTP status: the
-# status is a presentation detail that happens to hang off the class.
+# The exceptions a servicer raises to signal an expected, client-facing failure.
+# They name the *failure mode*, not the HTTP status: the status is a
+# presentation detail that happens to hang off the class.
 #
 # Deliberately no HTTP library import here. Servicers must stay
 # transport-agnostic, because web_server.py calls them directly to render pages

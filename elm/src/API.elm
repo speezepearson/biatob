@@ -108,13 +108,8 @@ httpErrorToString e =
     Http.BadStatus code -> "HTTP error code " ++ String.fromInt code
     Http.BadBody _ -> "unintelligible response"
 
-{-| Adapters kept so call sites keep their `Result String payload` shape.
-
-Every one of these used to be a twelve-line `case` unwrapping a `oneof`, with a
-dead third arm for "neither Ok nor Error" -- a state the protobuf forced us to
-have an opinion about, and which HTTP simply cannot express. Now that failure
-is carried by the status code, they're all one-liners, and the impossible arm
-is gone from all of them.
+{-| Adapters that flatten an `API.Error` down to its user-facing string, so call
+sites can work in terms of `Result String payload`.
 -}
 simplifyLogInUsernameResponse : Result Error Pb.AuthSuccess -> Result String Pb.AuthSuccess
 simplifyLogInUsernameResponse = Result.mapError errorToString

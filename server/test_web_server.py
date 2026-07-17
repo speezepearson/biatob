@@ -38,12 +38,6 @@ async def test_smoke(aiohttp_client, app, api_server, any_servicer, path: str, l
 
   cli = await aiohttp_client(app)
   if logged_in:
-    # NOTE: this used to POST RegisterUsername with no proof_of_email. That
-    # fails the HMAC check -- but under the old convention it came back as a 200
-    # carrying an error arm, so post_proto's `assert status == 200` passed, no
-    # auth cookie was set, and every logged_in=True case here silently ran
-    # LOGGED OUT. Registering properly and logging in makes the flag mean what
-    # it says.
     create_user(any_servicer, u('alice'), password='alice')
     await post_proto(cli, '/api/LogInUsername', mvp_pb2.LogInUsernameRequest(username='alice', password='alice'), mvp_pb2.AuthSuccess)
 
@@ -63,12 +57,6 @@ async def test_smoke_for_prediction_paths(aiohttp_client, app, api_server, any_s
 
   cli = await aiohttp_client(app)
   if logged_in:
-    # NOTE: this used to POST RegisterUsername with no proof_of_email. That
-    # fails the HMAC check -- but under the old convention it came back as a 200
-    # carrying an error arm, so post_proto's `assert status == 200` passed, no
-    # auth cookie was set, and every logged_in=True case here silently ran
-    # LOGGED OUT. Registering properly and logging in makes the flag mean what
-    # it says.
     create_user(any_servicer, u('alice'), password='alice')
     await post_proto(cli, '/api/LogInUsername', mvp_pb2.LogInUsernameRequest(username='alice', password='alice'), mvp_pb2.AuthSuccess)
 
@@ -87,12 +75,6 @@ async def test_smoke_for_username_paths(aiohttp_client, app, api_server, any_ser
 
   cli = await aiohttp_client(app)
   if logged_in:
-    # NOTE: this used to POST RegisterUsername with no proof_of_email. That
-    # fails the HMAC check -- but under the old convention it came back as a 200
-    # carrying an error arm, so post_proto's `assert status == 200` passed, no
-    # auth cookie was set, and every logged_in=True case here silently ran
-    # LOGGED OUT. Registering properly and logging in makes the flag mean what
-    # it says.
     create_user(any_servicer, u('alice'), password='alice')
     await post_proto(cli, '/api/LogInUsername', mvp_pb2.LogInUsernameRequest(username='alice', password='alice'), mvp_pb2.AuthSuccess)
 
@@ -113,12 +95,6 @@ async def test_smoke_for_invitation_paths(aiohttp_client, app, api_server, any_s
 
   cli = await aiohttp_client(app)
   if logged_in:
-    # NOTE: this used to POST RegisterUsername with no proof_of_email. That
-    # fails the HMAC check -- but under the old convention it came back as a 200
-    # carrying an error arm, so post_proto's `assert status == 200` passed, no
-    # auth cookie was set, and every logged_in=True case here silently ran
-    # LOGGED OUT. Registering properly and logging in makes the flag mean what
-    # it says.
     create_user(any_servicer, u('alice'), password='alice')
     await post_proto(cli, '/api/LogInUsername', mvp_pb2.LogInUsernameRequest(username='alice', password='alice'), mvp_pb2.AuthSuccess)
 
