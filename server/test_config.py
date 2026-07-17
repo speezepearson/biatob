@@ -5,7 +5,6 @@ from pydantic import ValidationError
 
 from .config import CredentialsConfig, MysqlDatabase, SqliteDatabase
 from .sql_schema import get_db_url
-from .scripts.convert_credentials import convert
 
 SQLITE_JSON = json.dumps({
     'smtp': {'hostname': 'h', 'port': 587, 'username': 'u', 'password': 'p', 'from_addr': 'f@x.com'},
@@ -35,8 +34,8 @@ def test_parses_mysql():
 
 
 def test_db_url_matches_legacy_format():
-    # These must exactly match what the old protobuf-based get_db_url produced,
-    # or existing databases become unreachable.
+    # These exact strings are the connection URLs existing databases expect;
+    # changing them makes those databases unreachable.
     assert get_db_url(CredentialsConfig.from_json(SQLITE_JSON).database) == 'sqlite+pysqlite:////tmp/x.db'
     assert get_db_url(CredentialsConfig.from_json(MYSQL_JSON).database) == 'mysql+pymysql://mu:mp@db/biatob'
 
@@ -57,85 +56,3 @@ def test_rejects_missing_smtp():
             'token_signing_secret': 's',
             'database': {'kind': 'sqlite', 'path': '/tmp/x'},
         }))
-
-
-# --- the one-shot converter from the old text-format ---
-
-OLD_SQLITE = '''
-smtp {
-  hostname: "smtp.example.com"
-  port: 587
-  username: "mailer@example.com"
-  password: "s3cr3t p@ss"
-  from_addr: "biatob@example.com"
-}
-token_signing_secret: "my-signing-key-123"
-database_info { sqlite: "/home/protected/server.WorldState.db" }
-'''
-
-OLD_MYSQL = '''
-smtp {
-  hostname: "smtp.example.com"
-  port: 25
-  username: "u"
-  password: "p"
-  from_addr: "f@example.com"
-}
-token_signing_secret: "key"
-database_info {
-  mysql {
-    hostname: "db.internal"
-    username: "biatob_user"
-    password: "dbpass"
-    dbname: "biatob"
-  }
-}
-'''
-
-
-def test_converter_sqlite_roundtrips_and_validates():
-    c = CredentialsConfig.model_validate(convert(OLD_SQLITE))
-    assert isinstance(c.database, SqliteDatabase)
-    assert c.database.path == '/home/protected/server.WorldState.db'
-    assert c.smtp.password == 's3cr3t p@ss'  # spaces and punctuation survive
-    assert c.token_signing_secret == 'my-signing-key-123'
-
-
-def test_converter_mysql_roundtrips_and_validates():
-    c = CredentialsConfig.model_validate(convert(OLD_MYSQL))
-    assert isinstance(c.database, MysqlDatabase)
-    assert c.database.hostname == 'db.internal'
-    assert c.database.dbname == 'biatob'
-
-
-# Protobuf's text-format serializer writes message fields with a colon before
-# the brace (`smtp: {`), whereas a hand-written file may omit it (`smtp {`).
-# Real credentials files use the colon form, so the converter must accept both.
-OLD_COLON_FORM = '''
-token_signing_secret: "sekrit"
-
-smtp: {
-  hostname: "smtp.example.com"
-  port: 465
-  username: "u"
-  password: "p"
-  from_addr: "f@example.com"
-}
-
-database_info: {
-  mysql: {
-    hostname: "db"
-    username: "mu"
-    password: "mp"
-    dbname: "biatob"
-  }
-}
-'''
-
-
-def test_converter_accepts_colon_before_brace():
-    c = CredentialsConfig.model_validate(convert(OLD_COLON_FORM))
-    assert isinstance(c.database, MysqlDatabase)
-    assert c.database.dbname == 'biatob'
-    assert c.smtp.port == 465
-    assert c.token_signing_secret == 'sekrit'

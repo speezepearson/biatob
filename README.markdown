@@ -35,9 +35,7 @@ This project uses the `doit` build system: https://pydoit.org/tutorial_1.html
 ```
 
 `database` is either `{"kind": "sqlite", "path": "..."}` or `{"kind": "mysql",
-"hostname": ..., "username": ..., "password": ..., "dbname": ...}`. To migrate an
-old protobuf-text-format credentials file, run
-`python -m server.scripts.convert_credentials old.textproto > credentials.json`.
+"hostname": ..., "username": ..., "password": ..., "dbname": ...}`.
 
 
 Dreamed-of enhancements
