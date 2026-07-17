@@ -1,5 +1,4 @@
 import abc
-import copy
 import datetime
 import hashlib
 import hmac
@@ -11,6 +10,7 @@ from typing import overload, Optional, Container, NewType, Callable
 from aiohttp import web
 from google.protobuf.message import Message
 
+from . import tokens
 from .protobuf import mvp_pb2
 
 PredictionId = NewType('PredictionId', str)
@@ -128,8 +128,8 @@ class InternalError(ApiError):
 @overload
 def token_owner(token: None) -> None: pass
 @overload
-def token_owner(token: mvp_pb2.AuthToken) -> AuthorizingUsername: pass
-def token_owner(token: Optional[mvp_pb2.AuthToken]) -> Optional[AuthorizingUsername]:
+def token_owner(token: tokens.AuthToken) -> AuthorizingUsername: pass
+def token_owner(token: Optional[tokens.AuthToken]) -> Optional[AuthorizingUsername]:
     return None if (token is None) else AuthorizingUsername(Username(token.owner))
 
 
@@ -276,6 +276,9 @@ class Servicer(abc.ABC):
         """Raises NoSuchInvitationError."""
 
 
+AUTH_TOKEN_TTL_SECONDS = 60 * 60 * 24 * 365
+
+
 class TokenMint:
 
     def __init__(self, secret_key: bytes, clock: Callable[[], datetime.datetime] = datetime.datetime.now) -> None:
@@ -285,39 +288,32 @@ class TokenMint:
     def _signature(self, message: Message) -> bytes:
         return hmac.digest(key=self._secret_key, msg=message.SerializeToString(), digest='sha256')
 
-    def _compute_token_hmac(self, token: mvp_pb2.AuthToken) -> bytes:
-        scratchpad = copy.copy(token)
-        scratchpad.hmac_of_rest = b''
-        return self._signature(scratchpad)
+    # --- auth tokens: sealed Pydantic JSON ---
 
-    def _sign_token(self, token: mvp_pb2.AuthToken) -> None:
-        token.hmac_of_rest = self._compute_token_hmac(token=token)
-
-    def mint_token(self, owner: Username, ttl_seconds: int) -> mvp_pb2.AuthToken:
+    def mint_token(self, owner: Username, ttl_seconds: int = AUTH_TOKEN_TTL_SECONDS) -> tokens.AuthToken:
         now = int(self._clock().timestamp())
-        token = mvp_pb2.AuthToken(
+        return tokens.AuthToken(
             owner=owner,
             minted_unixtime=now,
             expires_unixtime=now + ttl_seconds,
         )
-        self._sign_token(token=token)
-        return token
 
-    def check_token(self, token: Optional[mvp_pb2.AuthToken]) -> Optional[AuthorizingUsername]:
+    def seal_token(self, token: tokens.AuthToken) -> str:
+        return tokens.seal(self._secret_key, token)
+
+    def unseal_token(self, sealed: str) -> Optional[tokens.AuthToken]:
+        return tokens.unseal(self._secret_key, sealed, tokens.AuthToken)
+
+    def check_token(self, token: Optional[tokens.AuthToken]) -> Optional[AuthorizingUsername]:
+        # The signature is checked by unseal_token; this checks the time window.
         if token is None:
             return None
         now = int(self._clock().timestamp())
         if not (token.minted_unixtime <= now < token.expires_unixtime):
             return None
-
-        alleged_hmac = token.hmac_of_rest
-        true_hmac = self._compute_token_hmac(token)
-        if not hmac.compare_digest(alleged_hmac, true_hmac):
-            return None
-
         return AuthorizingUsername(Username(token.owner))
 
-    def revoke_token(self, token: mvp_pb2.AuthToken) -> None:
+    def revoke_token(self, token: tokens.AuthToken) -> None:
         pass  # TODO
 
     def sign_proof_of_email(self, email_address: str) -> mvp_pb2.ProofOfEmail:

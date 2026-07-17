@@ -783,9 +783,11 @@ class SqlServicer(Servicer):
             raise BadCredentialsError('bad password')
 
         logger.debug('username logged in', username=request.username)
-        token = self._token_mint.mint_token(owner=Username(request.username), ttl_seconds=60*60*24*365)
+        # The AuthSuccess carries the username so the client knows who it's now
+        # logged in as; the actual signed session cookie is minted by the
+        # transport (api_server), which owns cookies.
         return mvp_pb2.AuthSuccess(
-          token=token,
+          token=mvp_pb2.AuthToken(owner=Username(request.username)),
           user_info=self._conn.get_settings(AuthorizingUsername(Username(request.username))),
         )
 

@@ -6,7 +6,7 @@ from aiohttp import web
 from google.protobuf.message import Message
 import structlog
 
-from .core import ApiError, Servicer, TokenMint
+from .core import ApiError, Servicer, TokenMint, Username
 from .http_glue import HttpTokenGlue
 from .protobuf import mvp_pb2
 
@@ -71,13 +71,13 @@ class ApiServer:
     async def RegisterUsername(self, http_req: web.Request) -> web.Response:
         auth_success = self._servicer.RegisterUsername(actor=self._token_glue.get_authorizing_user(http_req), request=await parse_proto(http_req, mvp_pb2.RegisterUsernameRequest))
         http_resp = proto_response(auth_success)
-        self._token_glue.set_cookie(auth_success.token, http_resp)
+        self._token_glue.set_cookie_for_owner(Username(auth_success.token.owner), http_resp)
         return http_resp
     @translates_api_errors
     async def LogInUsername(self, http_req: web.Request) -> web.Response:
         auth_success = self._servicer.LogInUsername(actor=self._token_glue.get_authorizing_user(http_req), request=await parse_proto(http_req, mvp_pb2.LogInUsernameRequest))
         http_resp = proto_response(auth_success)
-        self._token_glue.set_cookie(auth_success.token, http_resp)
+        self._token_glue.set_cookie_for_owner(Username(auth_success.token.owner), http_resp)
         return http_resp
     @translates_api_errors
     async def CreatePrediction(self, http_req: web.Request) -> web.Response:
