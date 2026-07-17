@@ -10,18 +10,6 @@ message AuthToken {
 
 }
 
-message EmailFlowState {
-  oneof email_flow_state_kind {
-    Void unstarted = 1;
-    CodeSent code_sent = 2;
-    string verified = 3;
-  }
-  message CodeSent {
-    string email = 1;
-    HashedPassword code = 2;
-  }
-}
-
 message HashedPassword {
   bytes salt = 1;
   bytes scrypt = 2;
@@ -41,16 +29,6 @@ message GenericUserInfo {
 message Relationship {
   bool trusts_you = 1;
   bool trusted_by_you = 2;
-}
-
-message UsernameInfo {
-  GenericUserInfo info = 1;
-  HashedPassword password = 2;
-}
-
-message EmailAttempt {
-  double unixtime = 1;
-  bool succeeded = 2;
 }
 
 message ResolutionEvent {

@@ -1,5 +1,6 @@
 pytest-aiohttp
 pytest
+fastapi==0.139.2
 mypy
 mypy-protobuf
 sqlalchemy-stubs

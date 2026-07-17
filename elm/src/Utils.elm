@@ -150,8 +150,6 @@ mustPredictionCertainty : Pb.UserPredictionView -> Pb.CertaintyRange
 mustPredictionCertainty {certainty} = must "all predictions must have certainties" certainty
 
 
-mustUsernameGenericInfo : Pb.UsernameInfo -> Pb.GenericUserInfo
-mustUsernameGenericInfo {info} = must "all UserInfos must have GenericUserInfos" info
 
 mustPredictionsById : Pb.PredictionsById -> Dict PredictionId Pb.UserPredictionView
 mustPredictionsById {predictions} = predictions |> Dict.map (\_ v -> must "no null values are allowed in a PredictionsById" v)
