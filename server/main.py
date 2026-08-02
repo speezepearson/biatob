@@ -2,23 +2,19 @@
 
 import argparse
 import asyncio
+import datetime
 from pathlib import Path
 import sys
-import argparse
 import logging
-from email.message import EmailMessage
 
-from aiohttp import web
+import uvicorn
 
-from .api_server import *
-from .core import *
-from .emailer import *
-from .http_glue import *
-from .web_server import *
-from .protobuf import mvp_pb2
-from .sql_servicer import *
+from .core import TokenMint
+from .emailer import Emailer
+from .sql_servicer import SqlConn, SqlServicer, forever, email_resolution_reminders, email_daily_backups, email_invariant_violations
 from .sql_schema import create_engine
 from .config import CredentialsConfig
+from .asgi import build_app
 
 # adapted from https://www.structlog.org/en/stable/examples.html?highlight=json#processors
 # and https://www.structlog.org/en/stable/contextvars.html
@@ -46,19 +42,14 @@ parser.add_argument("--email-invariant-violations-to", help='send notifications 
 parser.add_argument("-v", "--verbose", action="count", default=0)
 parser.add_argument("--mock-out-emails", action="store_true")
 
-async def main(args: argparse.Namespace):
-    logging.basicConfig(level=logging.INFO if args.verbose==0 else logging.DEBUG)
-    if args.verbose < 2:
-        logging.getLogger('filelock').setLevel(logging.WARN)
-        logging.getLogger('aiohttp.access').setLevel(logging.WARN)
-    app = web.Application()
 
+def build_app_from_args(args: argparse.Namespace):
     credentials = CredentialsConfig.from_json(args.credentials_path.read_text())
 
     if args.mock_out_emails:
         from unittest.mock import Mock
-        async def _mock_send(message, *args, **kwargs):
-            print(message.as_string(), args, kwargs)
+        async def _mock_send(message, *a, **kw):
+            print(message.as_string(), a, kw)
             await asyncio.sleep(0)
         testing_overrides = {'aiosmtplib_for_testing': Mock(send=_mock_send)}
     else:
@@ -73,52 +64,38 @@ async def main(args: argparse.Namespace):
         **testing_overrides,
     )
     token_mint = TokenMint(secret_key=credentials.token_signing_secret_bytes)
-    token_glue = HttpTokenGlue(token_mint=token_mint)
     raw_conn = create_engine(credentials.database).connect()
     conn = SqlConn(raw_conn)
     servicer = SqlServicer(conn=conn, token_mint=token_mint, emailer=emailer)
 
-    token_glue.add_to_app(app)
-    WebServer(
-        token_glue=token_glue,
-        token_mint=token_mint,
-        elm_dist=args.elm_dist,
-        servicer=servicer,
-    ).add_to_app(app)
-    ApiServer(
-        token_glue=token_glue,
-        servicer=servicer,
-    ).add_to_app(app)
-    # print('\n'.join(sorted(set(p for p in (r.get_info().get('path') for r in app.router.routes()) if p and '/' not in p[1:])))); exit(1)
-
-    asyncio.get_running_loop().create_task(forever(
-        datetime.timedelta(hours=1),
-        lambda now: email_resolution_reminders(conn, emailer, now),
-    ))
-    if args.email_daily_backups_to is not None:
-        asyncio.get_running_loop().create_task(forever(
-            datetime.timedelta(hours=24),
-            lambda now: email_daily_backups(conn=raw_conn, emailer=emailer, recipient_email=args.email_daily_backups_to, now=now)
-        ))
-    if args.email_invariant_violations_to is not None:
-        asyncio.get_running_loop().create_task(forever(
+    def on_startup() -> None:
+        loop = asyncio.get_running_loop()
+        loop.create_task(forever(
             datetime.timedelta(hours=1),
-            lambda now: email_invariant_violations(raw_conn, emailer, recipient_email=args.email_invariant_violations_to, now=now),
+            lambda now: email_resolution_reminders(conn, emailer, now),
         ))
+        if args.email_daily_backups_to is not None:
+            loop.create_task(forever(
+                datetime.timedelta(hours=24),
+                lambda now: email_daily_backups(conn=raw_conn, emailer=emailer, recipient_email=args.email_daily_backups_to, now=now),
+            ))
+        if args.email_invariant_violations_to is not None:
+            loop.create_task(forever(
+                datetime.timedelta(hours=1),
+                lambda now: email_invariant_violations(raw_conn, emailer, recipient_email=args.email_invariant_violations_to, now=now),
+            ))
 
-    # adapted from https://docs.aiohttp.org/en/stable/web_advanced.html#application-runners
-    runner = web.AppRunner(app)
-    await runner.setup()
-    site = web.TCPSite(runner, host=args.host, port=args.port)
-    await site.start()
+    return build_app(servicer=servicer, token_mint=token_mint, elm_dist=args.elm_dist, on_startup=on_startup)
+
+
+def main(args: argparse.Namespace) -> None:
+    logging.basicConfig(level=logging.INFO if args.verbose == 0 else logging.DEBUG)
+    if args.verbose < 2:
+        logging.getLogger('filelock').setLevel(logging.WARN)
+    app = build_app_from_args(args)
     print(f'Running forever on http://{args.host}:{args.port}...', file=sys.stderr)
-    try:
-        while True:
-            await asyncio.sleep(3600)
-    except KeyboardInterrupt:
-        print('Shutting down server...', file=sys.stderr)
-        await runner.cleanup()
-        print('...server shut down.', file=sys.stderr)
+    uvicorn.run(app, host=args.host, port=args.port, log_level='info' if args.verbose else 'warning')
+
 
 if __name__ == '__main__':
-    asyncio.run(main(parser.parse_args()))
+    main(parser.parse_args())

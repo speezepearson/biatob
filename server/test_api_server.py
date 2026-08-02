@@ -1,48 +1,38 @@
 from pathlib import Path
+from typing import Tuple, Type, TypeVar
+from unittest.mock import patch
 
-import aiohttp
-from server.core import ForgottenTokenError
-from typing import AnyStr, TypeVar, Type, Tuple
-from unittest.mock import Mock, patch
-
-from aiohttp import web
+import httpx
 import pytest
 from google.protobuf.message import Message as PbMessage
 
-from .api_server import _Req, _Resp
+from server.core import ForgottenTokenError
 from .protobuf import mvp_pb2
-from .api_server import ApiServer
-from .http_glue import HttpTokenGlue
+from .asgi import build_app
 from .test_utils import *
 
-SECRET_KEY = b'secret for testing'
+_Req = TypeVar('_Req', bound=PbMessage)
+_Resp = TypeVar('_Resp', bound=PbMessage)
+
 
 @pytest.fixture
-def api_server(any_servicer: Servicer, token_mint: TokenMint):
-  return ApiServer(token_glue=HttpTokenGlue(token_mint), servicer=any_servicer)
+def app(any_servicer: Servicer, token_mint: TokenMint):
+  return build_app(servicer=any_servicer, token_mint=token_mint, elm_dist=Path(__file__).parent / 'elm' / 'dist')
 
 @pytest.fixture
-def app(loop, api_server):
-  """Adapted from https://docs.aiohttp.org/en/stable/testing.html"""
-  app = web.Application(loop=loop)
-  api_server.add_to_app(app)
-  return app
+def cli(app):
+  return httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url='http://test')
 
 
-async def post_proto(client, url: str, request_pb: _Req, response_pb_cls: Type[_Resp], expected_status: int = 200, **kwargs) -> Tuple[web.Response, _Resp]:
-  http_resp = await client.post(
-    url,
-    headers={'Content-Type': 'application/octet-stream'},
-    data=request_pb.SerializeToString(),
-  )
-  assert http_resp.status == expected_status
+async def post_proto(client, url: str, request_pb: _Req, response_pb_cls: Type[_Resp], expected_status: int = 200, **kwargs) -> Tuple[httpx.Response, _Resp]:
+  http_resp = await client.post(url, headers={'Content-Type': 'application/octet-stream'}, content=request_pb.SerializeToString())
+  assert http_resp.status_code == expected_status
   pb_resp = response_pb_cls()
-  pb_resp.ParseFromString(await http_resp.content.read())
+  pb_resp.ParseFromString(http_resp.content)
   return (http_resp, pb_resp)
 
 
-async def test_Whoami_and_RegisterUsername(aiohttp_client, app, token_mint: TokenMint):
-  cli = await aiohttp_client(app)
+async def test_Whoami_and_RegisterUsername(cli, token_mint: TokenMint):
   (http_resp, pb_resp) = await post_proto(cli, '/api/Whoami', mvp_pb2.WhoamiRequest(), mvp_pb2.WhoamiResponse)
   assert not pb_resp.username, pb_resp
 
@@ -52,7 +42,7 @@ async def test_Whoami_and_RegisterUsername(aiohttp_client, app, token_mint: Toke
   (http_resp, pb_resp) = await post_proto(cli, '/api/Whoami', mvp_pb2.WhoamiRequest(), mvp_pb2.WhoamiResponse)
   assert pb_resp.username == 'potato', pb_resp
 
-async def test_CreatePrediction_and_GetPrediction(aiohttp_client, app, clock: MockClock, token_mint: TokenMint):
+async def test_CreatePrediction_and_GetPrediction(cli, clock: MockClock, token_mint: TokenMint):
   create_pb_req = mvp_pb2.CreatePredictionRequest(
     prediction="Is 1 > 2?",
     certainty=mvp_pb2.CertaintyRange(low=0.90, high=1.00),
@@ -62,7 +52,6 @@ async def test_CreatePrediction_and_GetPrediction(aiohttp_client, app, clock: Mo
     special_rules="special rules string",
   )
 
-  cli = await aiohttp_client(app)
   # Creating a prediction while logged out is a 401.
   (http_resp, err) = await post_proto(cli, '/api/CreatePrediction', create_pb_req, mvp_pb2.ErrorResponse, expected_status=401)
   assert err.catchall == 'must log in to create predictions', err
@@ -83,7 +72,7 @@ async def test_CreatePrediction_and_GetPrediction(aiohttp_client, app, clock: Mo
   assert returned_prediction.special_rules == create_pb_req.special_rules
 
 
-async def test_CreatePrediction_enforces_future_resolution(aiohttp_client, app, clock: MockClock, token_mint: TokenMint):
+async def test_CreatePrediction_enforces_future_resolution(cli, clock: MockClock, token_mint: TokenMint):
   create_pb_req = mvp_pb2.CreatePredictionRequest(
     prediction="Is 1 > 2?",
     certainty=mvp_pb2.CertaintyRange(low=0.90, high=1.00),
@@ -93,7 +82,6 @@ async def test_CreatePrediction_enforces_future_resolution(aiohttp_client, app, 
     special_rules="special rules string",
   )
 
-  cli = await aiohttp_client(app)
   (http_resp, register_resp) = await post_proto(cli, '/api/RegisterUsername', mvp_pb2.RegisterUsernameRequest(username='potato', password='secret', proof_of_email_token=token_mint.sign_proof_of_email('potato@example.com')), mvp_pb2.AuthSuccess)
 
   (http_resp, err) = await post_proto(cli, '/api/CreatePrediction', create_pb_req, mvp_pb2.ErrorResponse, expected_status=400)
@@ -101,17 +89,16 @@ async def test_CreatePrediction_enforces_future_resolution(aiohttp_client, app, 
 
 
 
-async def test_forgotten_token_recovery(aiohttp_client, app, any_servicer: Servicer):
-  cli = await aiohttp_client(app)
+async def test_forgotten_token_recovery(cli, any_servicer: Servicer):
 
   with patch.object(any_servicer, 'Whoami', side_effect=ForgottenTokenError()):
     http_resp = await cli.post(
       '/api/Whoami',
       headers={'Content-Type': 'application/octet-stream'},
-      data=mvp_pb2.WhoamiRequest().SerializeToString(),
+      content=mvp_pb2.WhoamiRequest().SerializeToString(),
     )
-  assert http_resp.status == 500
-  assert b'obliterated your entire account' in await http_resp.content.read()
+  assert http_resp.status_code == 500
+  assert b'obliterated your entire account' in http_resp.content
 
   (http_resp, pb_resp) = await post_proto(cli, '/api/Whoami', mvp_pb2.WhoamiRequest(), mvp_pb2.WhoamiResponse)
   assert not pb_resp.username, pb_resp
@@ -136,7 +123,7 @@ async def test_forgotten_token_recovery(aiohttp_client, app, any_servicer: Servi
   ('/api/SendInvitation', mvp_pb2.SendInvitationRequest(), mvp_pb2.GenericUserInfo),
   ('/api/AcceptInvitation', mvp_pb2.AcceptInvitationRequest(), mvp_pb2.GenericUserInfo),
 ])
-async def test_smoke(aiohttp_client, app, any_servicer: Servicer, logged_in: bool, endpoint: str, request_pb: Message, success_pb_cls: Type[Message]):
+async def test_smoke(cli, any_servicer: Servicer, logged_in: bool, endpoint: str, request_pb: Message, success_pb_cls: Type[Message]):
   """Every endpoint answers a blank request coherently.
 
   Deliberately does NOT assert an exact status per endpoint: a blank request is
@@ -148,23 +135,22 @@ async def test_smoke(aiohttp_client, app, any_servicer: Servicer, logged_in: boo
     - a 200 body parses as that endpoint's success payload
     - a non-2xx body parses as an ErrorResponse that actually says something
   """
-  cli = await aiohttp_client(app)
 
   if logged_in:
     create_user(any_servicer, u('rando'), password='pw')
     await post_proto(cli, '/api/LogInUsername', mvp_pb2.LogInUsernameRequest(username='rando', password='pw'), mvp_pb2.AuthSuccess)
 
-  http_resp = await cli.post(endpoint, headers={'Content-Type': 'application/octet-stream'}, data=request_pb.SerializeToString())
-  body = await http_resp.content.read()
+  http_resp = await cli.post(endpoint, headers={'Content-Type': 'application/octet-stream'}, content=request_pb.SerializeToString())
+  body = http_resp.content
 
-  assert http_resp.status != 500, f'{endpoint} crashed: {body!r}'
-  if http_resp.status == 200:
+  assert http_resp.status_code != 500, f'{endpoint} crashed: {body!r}'
+  if http_resp.status_code == 200:
     success_pb_cls().ParseFromString(body)
   else:
-    assert 400 <= http_resp.status < 500, f'{endpoint}: unexpected status {http_resp.status}'
+    assert 400 <= http_resp.status_code < 500, f'{endpoint}: unexpected status {http_resp.status_code}'
     err = mvp_pb2.ErrorResponse()
     err.ParseFromString(body)
-    assert err.catchall, f'{endpoint} returned {http_resp.status} with no explanation'
+    assert err.catchall, f'{endpoint} returned {http_resp.status_code} with no explanation'
 
 
 # --- HTTP-status error propagation -------------------------------------------
@@ -172,72 +158,65 @@ async def test_smoke(aiohttp_client, app, any_servicer: Servicer, logged_in: boo
 # exception, arrive as a non-2xx status, and carry an ErrorResponse body the
 # client can actually read.
 
-async def test_GetPrediction_nonexistent_is_404_with_readable_body(aiohttp_client, app):
-  cli = await aiohttp_client(app)
+async def test_GetPrediction_nonexistent_is_404_with_readable_body(cli):
   (http_resp, err) = await post_proto(
     cli, '/api/GetPrediction', mvp_pb2.GetPredictionRequest(prediction_id='nope'),
     mvp_pb2.ErrorResponse, expected_status=404)
   assert err.catchall == 'no such prediction', err
 
 
-async def test_LogInUsername_bad_password_is_401_with_readable_body(aiohttp_client, app, any_servicer: Servicer):
+async def test_LogInUsername_bad_password_is_401_with_readable_body(cli, any_servicer: Servicer):
   create_user(any_servicer, u('rando'), password='pw')
-  cli = await aiohttp_client(app)
   (http_resp, err) = await post_proto(
     cli, '/api/LogInUsername', mvp_pb2.LogInUsernameRequest(username='rando', password='wrong'),
     mvp_pb2.ErrorResponse, expected_status=401)
   assert err.catchall == 'bad password', err
 
 
-async def test_LogInUsername_nonexistent_user_is_401(aiohttp_client, app):
-  cli = await aiohttp_client(app)
+async def test_LogInUsername_nonexistent_user_is_401(cli):
   (http_resp, err) = await post_proto(
     cli, '/api/LogInUsername', mvp_pb2.LogInUsernameRequest(username='ghost', password='pw'),
     mvp_pb2.ErrorResponse, expected_status=401)
   assert 'no such user' in err.catchall, err
 
 
-async def test_LogInUsername_failure_does_not_set_auth_cookie(aiohttp_client, app, any_servicer: Servicer):
+async def test_LogInUsername_failure_does_not_set_auth_cookie(cli, any_servicer: Servicer):
   """A failed login must not set an auth cookie."""
   create_user(any_servicer, u('rando'), password='pw')
-  cli = await aiohttp_client(app)
   await post_proto(
     cli, '/api/LogInUsername', mvp_pb2.LogInUsernameRequest(username='rando', password='wrong'),
     mvp_pb2.ErrorResponse, expected_status=401)
-  assert 'auth' not in cli.session.cookie_jar.filter_cookies('http://127.0.0.1')
+  assert 'auth' not in cli.cookies
 
 
-async def test_LogInUsername_success_is_200_and_sets_auth_cookie(aiohttp_client, app, any_servicer: Servicer):
+async def test_LogInUsername_success_is_200_and_sets_auth_cookie(cli, any_servicer: Servicer):
   create_user(any_servicer, u('rando'), password='pw')
-  cli = await aiohttp_client(app)
   (http_resp, auth_success) = await post_proto(
     cli, '/api/LogInUsername', mvp_pb2.LogInUsernameRequest(username='rando', password='pw'),
     mvp_pb2.AuthSuccess, expected_status=200)
   assert auth_success.token.owner == 'rando', auth_success
-  assert 'auth' in cli.session.cookie_jar.filter_cookies('http://127.0.0.1')
+  assert 'auth' in cli.cookies
 
 
 # --- exception class -> HTTP status ------------------------------------------
 # One case per status the ApiError hierarchy can produce, so a mis-set
 # `http_status` on any class fails loudly rather than silently degrading to 400.
 
-async def test_NotLoggedInError_is_401(aiohttp_client, app):
-  cli = await aiohttp_client(app)
+async def test_NotLoggedInError_is_401(cli):
   (_, err) = await post_proto(cli, '/api/GetSettings', mvp_pb2.GetSettingsRequest(),
                               mvp_pb2.ErrorResponse, expected_status=401)
   assert err.catchall == 'must log in to see your settings', err
 
 
-async def test_AlreadyLoggedInError_is_400(aiohttp_client, app, any_servicer: Servicer):
+async def test_AlreadyLoggedInError_is_400(cli, any_servicer: Servicer):
   create_user(any_servicer, u('rando'), password='pw')
-  cli = await aiohttp_client(app)
   await post_proto(cli, '/api/LogInUsername', mvp_pb2.LogInUsernameRequest(username='rando', password='pw'), mvp_pb2.AuthSuccess)
   (_, err) = await post_proto(cli, '/api/LogInUsername', mvp_pb2.LogInUsernameRequest(username='rando', password='pw'),
                               mvp_pb2.ErrorResponse, expected_status=400)
   assert 'already authenticated' in err.catchall, err
 
 
-async def test_ForbiddenError_is_403(aiohttp_client, app, any_servicer: Servicer, clock: MockClock):
+async def test_ForbiddenError_is_403(cli, any_servicer: Servicer, clock: MockClock):
   """Resolving someone else's prediction: authenticated, but not allowed."""
   create_user(any_servicer, u('creator'), password='pw')
   create_user(any_servicer, u('rando'), password='pw')
@@ -248,7 +227,6 @@ async def test_ForbiddenError_is_403(aiohttp_client, app, any_servicer: Servicer
     maximum_stake_cents=100_00,
     open_seconds=3600,
   ))
-  cli = await aiohttp_client(app)
   await post_proto(cli, '/api/LogInUsername', mvp_pb2.LogInUsernameRequest(username='rando', password='pw'), mvp_pb2.AuthSuccess)
   (_, err) = await post_proto(cli, '/api/Resolve',
                               mvp_pb2.ResolveRequest(prediction_id=prediction_id, resolution=mvp_pb2.RESOLUTION_YES),
@@ -256,33 +234,29 @@ async def test_ForbiddenError_is_403(aiohttp_client, app, any_servicer: Servicer
   assert err.catchall == 'you are not the creator', err
 
 
-async def test_NoSuchUserError_is_404(aiohttp_client, app):
-  cli = await aiohttp_client(app)
+async def test_NoSuchUserError_is_404(cli):
   (_, err) = await post_proto(cli, '/api/GetUser', mvp_pb2.GetUserRequest(who='ghost'),
                               mvp_pb2.ErrorResponse, expected_status=404)
   assert err.catchall == 'no such user', err
 
 
-async def test_NoSuchInvitationError_is_404(aiohttp_client, app):
-  cli = await aiohttp_client(app)
+async def test_NoSuchInvitationError_is_404(cli):
   (_, err) = await post_proto(cli, '/api/AcceptInvitation', mvp_pb2.AcceptInvitationRequest(nonce='bogus'),
                               mvp_pb2.ErrorResponse, expected_status=404)
   assert err.catchall == 'no such invitation', err
 
 
-async def test_AlreadyRegisteredError_is_409(aiohttp_client, app, any_servicer: Servicer, token_mint: TokenMint):
+async def test_AlreadyRegisteredError_is_409(cli, any_servicer: Servicer, token_mint: TokenMint):
   create_user(any_servicer, u('taken'), password='pw')
-  cli = await aiohttp_client(app)
   (_, err) = await post_proto(cli, '/api/RegisterUsername', mvp_pb2.RegisterUsernameRequest(
       username='taken', password='secret', proof_of_email_token=token_mint.sign_proof_of_email('other@example.com')),
       mvp_pb2.ErrorResponse, expected_status=409)
   assert err.catchall == 'username taken', err
 
 
-async def test_InvalidRequestError_is_400(aiohttp_client, app, any_servicer: Servicer):
+async def test_InvalidRequestError_is_400(cli, any_servicer: Servicer):
   """Trusting yourself is well-formed HTTP but nonsense."""
   create_user(any_servicer, u('rando'), password='pw')
-  cli = await aiohttp_client(app)
   await post_proto(cli, '/api/LogInUsername', mvp_pb2.LogInUsernameRequest(username='rando', password='pw'), mvp_pb2.AuthSuccess)
   (_, err) = await post_proto(cli, '/api/SetTrusted', mvp_pb2.SetTrustedRequest(who='rando', trusted=True),
                               mvp_pb2.ErrorResponse, expected_status=400)

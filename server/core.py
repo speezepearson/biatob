@@ -190,7 +190,7 @@ _MISC_RESERVED_TOPLEVEL_PATH_SEGMENTS = {
     'android',
 }
 def describe_username_problems(username: str) -> Optional[str]:
-    from . import web_server, api_server
+    from . import asgi
     problems = []
     if not username:
         problems.append('username must be non-empty')
@@ -200,7 +200,7 @@ def describe_username_problems(username: str) -> Optional[str]:
         problems.append('username must be at least 3 characters')
     if not username.isalnum():
         problems.append('username must be alphanumeric')
-    if username in (_MISC_RESERVED_TOPLEVEL_PATH_SEGMENTS | web_server.RESERVED_TOPLEVEL_PATH_SEGMENTS | api_server.RESERVED_TOPLEVEL_PATH_SEGMENTS):
+    if username in (_MISC_RESERVED_TOPLEVEL_PATH_SEGMENTS | asgi.RESERVED_TOPLEVEL_PATH_SEGMENTS):
         problems.append('username is a reserved word')
     return '; '.join(problems) if problems else None
 
