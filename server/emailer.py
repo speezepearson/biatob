@@ -25,6 +25,7 @@ class Emailer:
         username: str,
         password: str,
         from_addr: str,
+        base_url: str,
         *,
         aiosmtplib_for_testing=aiosmtplib,
     ) -> None:
@@ -33,6 +34,10 @@ class Emailer:
         self._username = username
         self._password = password
         self._from_addr = from_addr
+        # Full origin (no trailing slash) that outgoing-email links point at, so
+        # a link minted by a dev/staging server points at that server rather
+        # than hardcoded production. See config.CredentialsConfig.site_base_url.
+        self._base_url = base_url
         self._aiosmtplib = aiosmtplib_for_testing
 
         jenv = jinja2.Environment( # adapted from https://jinja.palletsprojects.com/en/2.11.x/api/#basics
@@ -92,6 +97,7 @@ class Emailer:
             bccs=bccs,
             subject=f'Prediction resolved: {json.dumps(prediction_text)}',
             body=self._ResolutionNotification_template.render(
+                base_url=self._base_url,
                 prediction_id=prediction_id,
                 prediction_text=prediction_text,
                 verbed=(
@@ -113,6 +119,7 @@ class Emailer:
             to=to,
             subject=f'Resolve your prediction: {json.dumps(prediction_text)}',
             body=self._ResolutionReminder_template.render(
+                base_url=self._base_url,
                 prediction_id=prediction_id,
                 prediction_text=prediction_text,
             ),
@@ -122,7 +129,7 @@ class Emailer:
         await self._send(
             to=to,
             subject='Your Biatob email-verification',
-            body=self._EmailVerification_template.render(email=to, code=proof_token),
+            body=self._EmailVerification_template.render(base_url=self._base_url, email=to, code=proof_token),
         )
 
     async def send_backup(self, to: str, now: datetime.datetime, body: str) -> None:
@@ -151,6 +158,7 @@ class Emailer:
             to=recipient_email,
             subject=f'Do you trust {inviter_email!r}?',
             body=self._Invitation_template.render(
+                base_url=self._base_url,
                 inviter_username=inviter_username,
                 inviter_email=inviter_email,
                 recipient_username=recipient_username,
@@ -167,6 +175,7 @@ class Emailer:
             to=inviter_email,
             subject=f'Invitation accepted by {recipient_username}',
             body=self._InvitationAccepted_template.render(
+                base_url=self._base_url,
                 inviter_email=inviter_email,
                 recipient_username=recipient_username,
             ),

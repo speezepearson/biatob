@@ -61,6 +61,7 @@ def build_app_from_args(args: argparse.Namespace):
         username=credentials.smtp.username,
         password=credentials.smtp.password,
         from_addr=credentials.smtp.from_addr,
+        base_url=credentials.site_base_url,
         **testing_overrides,
     )
     token_mint = TokenMint(secret_key=credentials.token_signing_secret_bytes)
