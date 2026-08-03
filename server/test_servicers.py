@@ -4,7 +4,9 @@ from typing import Sequence
 
 from unittest.mock import ANY
 
-from .protobuf import mvp_pb2
+import pydantic
+
+from . import api_types as T
 from .core import Servicer
 from .emailer import Emailer
 from .test_utils import *
@@ -23,7 +25,7 @@ class TestCUJs:
     prediction_id = CreatePredictionOk(any_servicer, ALICE, dict(
         prediction='a thing will happen',
         resolves_at_unixtime=clock.now().timestamp() + 86400,
-        certainty=mvp_pb2.CertaintyRange(low=0.40, high=0.60),
+        certainty=T.CertaintyRange(low=0.40, high=0.60),
         maximum_stake_cents=100_00,
         open_seconds=3600,
       ))
@@ -36,40 +38,41 @@ class TestCUJs:
     assert GetSettingsOk(any_servicer, BOB).relationships[ALICE].trusts_you
     assert GetSettingsOk(any_servicer, BOB).relationships[ALICE].trusted_by_you
 
-    prediction = StakeOk(any_servicer, BOB, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_is_a_skeptic=True, bettor_stake_cents=6_00))
-    assert list(prediction.your_trades) == [mvp_pb2.Trade(
+    prediction = StakeOk(any_servicer, BOB, T.StakeRequest(prediction_id=prediction_id, bettor_is_a_skeptic=True, bettor_stake_cents=6_00))
+    assert list(prediction.your_trades) == [T.Trade(
       bettor=BOB,
       bettor_is_a_skeptic=True,
       bettor_stake_cents=6_00,
       creator_stake_cents=4_00,
       transacted_unixtime=clock.now().timestamp(),
       updated_unixtime=clock.now().timestamp(),
-      state=mvp_pb2.TRADE_STATE_ACTIVE,
+      state=T.TradeState.ACTIVE,
+      notes='',
     )]
 
-    prediction = ResolveOk(any_servicer, ALICE, prediction_id, mvp_pb2.RESOLUTION_YES)
-    assert prediction.resolution == mvp_pb2.ResolutionEvent(unixtime=clock.now().timestamp(), resolution=mvp_pb2.RESOLUTION_YES)
+    prediction = ResolveOk(any_servicer, ALICE, prediction_id, T.Resolution.YES)
+    assert prediction.resolution == T.ResolutionEvent(unixtime=clock.now().timestamp(), resolution=T.Resolution.YES, notes='')
 
 
 
 class TestWhoami:
 
   async def test_returns_none_when_logged_out(self, any_servicer: Servicer):
-    assert not any_servicer.Whoami(actor=None, request=mvp_pb2.WhoamiRequest()).username
+    assert not any_servicer.Whoami(actor=None, request=T.WhoamiRequest()).username
 
   async def test_returns_token_when_logged_in(self, any_servicer: Servicer):
     create_user(any_servicer, ALICE)
-    assert any_servicer.Whoami(actor=ALICE, request=mvp_pb2.WhoamiRequest()).username == ALICE
+    assert any_servicer.Whoami(actor=ALICE, request=T.WhoamiRequest()).username == ALICE
 
 
 class TestSignOut:
 
   async def test_smoke_logged_out(self, any_servicer: Servicer):
-    any_servicer.SignOut(actor=None, request=mvp_pb2.SignOutRequest())
+    any_servicer.SignOut(actor=None, request=T.SignOutRequest())
 
   async def test_smoke_logged_in(self, any_servicer: Servicer):
     create_user(any_servicer, ALICE)
-    any_servicer.SignOut(actor=ALICE, request=mvp_pb2.SignOutRequest())
+    any_servicer.SignOut(actor=ALICE, request=T.SignOutRequest())
 
 
 class TestSendVerificationEmail:
@@ -104,14 +107,14 @@ class TestRegisterUsername:
   async def test_returns_auth_when_successful(self, any_servicer: Servicer, emailer: Emailer):
     proof_of_email = self.get_proof_of_email(any_servicer, emailer, 'alice@example.com')
     result = RegisterUsernameOk(any_servicer, None, proof_of_email, username=ALICE)
-    assert result.token.owner == ALICE
+    assert result.owner == ALICE
     assert result.user_info.email_address == 'alice@example.com'
 
   async def test_can_log_in_after_registering(self, any_servicer: Servicer, emailer: Emailer):
     assert 'no such user' in str(LogInUsernameErr(any_servicer, None, ALICE, 'secret'))
     proof_of_email = self.get_proof_of_email(any_servicer, emailer, 'alice@example.com')
     RegisterUsernameOk(any_servicer, None, proof_of_email, username=ALICE, password='secret')
-    assert LogInUsernameOk(any_servicer, None, ALICE, 'secret').token.owner == ALICE
+    assert LogInUsernameOk(any_servicer, None, ALICE, 'secret').owner == ALICE
 
   async def test_error_when_already_exists(self, any_servicer: Servicer, emailer: Emailer):
     password = 'pw'
@@ -155,7 +158,7 @@ class TestLogInUsername:
 
   async def test_success_when_user_exists_and_password_right(self, any_servicer: Servicer):
     create_user(any_servicer, ALICE, password='password')
-    assert LogInUsernameOk(any_servicer, None, ALICE, 'password').token.owner == ALICE
+    assert LogInUsernameOk(any_servicer, None, ALICE, 'password').owner == ALICE
 
   async def test_error_if_wrong_password(self, any_servicer: Servicer):
     create_user(any_servicer, ALICE, password='password')
@@ -197,7 +200,7 @@ class TestGetPrediction:
       prediction='a thing will happen',
       special_rules='some special rules',
       maximum_stake_cents=100_00,
-      certainty=mvp_pb2.CertaintyRange(low=0.50, high=1.00),
+      certainty=T.CertaintyRange(low=0.50, high=1.00),
     )
     req = some_create_prediction_request(**req_kwargs)
     register_friend_pair(any_servicer, ALICE, BOB)
@@ -207,14 +210,14 @@ class TestGetPrediction:
 
     clock.tick()
     stake_time = clock.now().timestamp()
-    StakeOk(any_servicer, BOB, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_is_a_skeptic=True, bettor_stake_cents=1_00))
+    StakeOk(any_servicer, BOB, T.StakeRequest(prediction_id=prediction_id, bettor_is_a_skeptic=True, bettor_stake_cents=1_00))
 
     clock.tick()
     resolve_time = clock.now().timestamp()
-    ResolveOk(any_servicer, ALICE, prediction_id, mvp_pb2.RESOLUTION_YES)
+    ResolveOk(any_servicer, ALICE, prediction_id, T.Resolution.YES)
 
     resp = GetPredictionOk(any_servicer, BOB, prediction_id)
-    assert resp == mvp_pb2.UserPredictionView(
+    assert resp == T.UserPredictionView(
       prediction=req.prediction,
       certainty=req.certainty,
       maximum_stake_cents=req.maximum_stake_cents,
@@ -225,9 +228,9 @@ class TestGetPrediction:
       resolves_at_unixtime=req.resolves_at_unixtime,
       special_rules=req.special_rules,
       creator=ALICE,
-      resolution=mvp_pb2.ResolutionEvent(unixtime=resolve_time, resolution=mvp_pb2.RESOLUTION_YES),
-      your_trades=[mvp_pb2.Trade(bettor=BOB, bettor_is_a_skeptic=True, bettor_stake_cents=1_00, creator_stake_cents=1_00, transacted_unixtime=stake_time, updated_unixtime=stake_time, state=mvp_pb2.TRADE_STATE_ACTIVE)],
-      your_following_status=mvp_pb2.PREDICTION_FOLLOWING_MANDATORY_BECAUSE_STAKED,
+      resolution=T.ResolutionEvent(unixtime=resolve_time, resolution=T.Resolution.YES, notes=''),
+      your_trades=[T.Trade(bettor=BOB, bettor_is_a_skeptic=True, bettor_stake_cents=1_00, creator_stake_cents=1_00, transacted_unixtime=stake_time, updated_unixtime=stake_time, state=T.TradeState.ACTIVE, notes='')],
+      your_following_status=T.PredictionFollowingStatus.MANDATORY_BECAUSE_STAKED,
     )
 
 
@@ -263,7 +266,7 @@ class TestListMyStakes:
     create_user(any_servicer, CHARLIE)
     prediction_id = CreatePredictionOk(any_servicer, BOB, {})
     irrelevant_prediction_id = CreatePredictionOk(any_servicer, CHARLIE, {})
-    StakeOk(any_servicer, ALICE, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_stake_cents=1_00))
+    StakeOk(any_servicer, ALICE, T.StakeRequest(prediction_id=prediction_id, bettor_is_a_skeptic=False, bettor_stake_cents=1_00))
     assert set(ListMyStakesOk(any_servicer, ALICE).predictions.keys()) == {prediction_id}
 
 
@@ -273,34 +276,34 @@ class TestListPredictions:
     create_user(any_servicer, ALICE)
     all_prediction_ids = {
       CreatePredictionOk(any_servicer, ALICE, {'view_privacy': privacy})
-      for privacy in mvp_pb2.PredictionViewPrivacy.values()
+      for privacy in list(T.PredictionViewPrivacy)
     }
     assert set(ListPredictionsOk(any_servicer, ALICE, ALICE).predictions.keys()) == all_prediction_ids
 
   async def test_returns_globally_accessible_predictions_for_other_person(self, any_servicer: Servicer):
     create_user(any_servicer, ALICE)
-    prediction_id = CreatePredictionOk(any_servicer, ALICE, {'view_privacy': mvp_pb2.PREDICTION_VIEW_PRIVACY_ANYBODY})
+    prediction_id = CreatePredictionOk(any_servicer, ALICE, {'view_privacy': T.PredictionViewPrivacy.ANYBODY})
     assert prediction_id in ListPredictionsOk(any_servicer, None, ALICE).predictions.keys()
 
   async def test_does_not_return_linkonly_predictions_for_other_person(self, any_servicer: Servicer):
     create_user(any_servicer, ALICE)
-    prediction_id = CreatePredictionOk(any_servicer, ALICE, {'view_privacy': mvp_pb2.PREDICTION_VIEW_PRIVACY_ANYBODY_WITH_THE_LINK})
+    prediction_id = CreatePredictionOk(any_servicer, ALICE, {'view_privacy': T.PredictionViewPrivacy.ANYBODY_WITH_THE_LINK})
     print('SRP', ListPredictionsOk(any_servicer, None, ALICE).predictions)
     assert prediction_id not in ListPredictionsOk(any_servicer, None, ALICE).predictions.keys()
 
   async def test_ignores_unrelated_predictions(self, any_servicer: Servicer):
     create_user(any_servicer, ALICE)
     create_user(any_servicer, BOB)
-    prediction_id = CreatePredictionOk(any_servicer, BOB, {'view_privacy': mvp_pb2.PREDICTION_VIEW_PRIVACY_ANYBODY})
+    prediction_id = CreatePredictionOk(any_servicer, BOB, {'view_privacy': T.PredictionViewPrivacy.ANYBODY})
 
     assert prediction_id not in ListPredictionsOk(any_servicer, ALICE, ALICE).predictions.keys()
 
 
-def some_stake_request(prediction_id: PredictionId, **kwargs) -> mvp_pb2.StakeRequest:
+def some_stake_request(prediction_id: PredictionId, **kwargs) -> T.StakeRequest:
   kwargs['prediction_id'] = prediction_id
   kwargs.setdefault('bettor_is_a_skeptic', True)
   kwargs.setdefault('bettor_stake_cents', 10)
-  return mvp_pb2.StakeRequest(**kwargs)
+  return T.StakeRequest(**kwargs)
 
 class TestStake:
 
@@ -308,10 +311,10 @@ class TestStake:
     async def test_error_if_resolved(self, any_servicer: Servicer):
       register_friend_pair(any_servicer, ALICE, BOB)
       prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
-      ResolveOk(any_servicer, ALICE, prediction_id, mvp_pb2.RESOLUTION_YES)
+      ResolveOk(any_servicer, ALICE, prediction_id, T.Resolution.YES)
 
       with assert_prediction_unchanged(any_servicer, prediction_id=prediction_id):
-        assert 'prediction has already resolved' in str(StakeErr(any_servicer, BOB, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_stake_cents=1_00)))
+        assert 'prediction has already resolved' in str(StakeErr(any_servicer, BOB, T.StakeRequest(prediction_id=prediction_id, bettor_is_a_skeptic=False, bettor_stake_cents=1_00)))
 
     async def test_error_if_closed(self, clock: MockClock, any_servicer: Servicer):
       register_friend_pair(any_servicer, ALICE, BOB)
@@ -319,7 +322,7 @@ class TestStake:
 
       clock.tick(86401)
       with assert_prediction_unchanged(any_servicer, prediction_id=prediction_id):
-        assert 'prediction is no longer open for betting' in str(StakeErr(any_servicer, BOB, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_stake_cents=1_00)))
+        assert 'prediction is no longer open for betting' in str(StakeErr(any_servicer, BOB, T.StakeRequest(prediction_id=prediction_id, bettor_is_a_skeptic=False, bettor_stake_cents=1_00)))
 
     class TestHappyPath:
 
@@ -340,7 +343,7 @@ class TestStake:
       async def test_copies_fields_from_request(self, any_servicer: Servicer):
         register_friend_pair(any_servicer, ALICE, BOB)
         prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
-        StakeOk(any_servicer, BOB, mvp_pb2.StakeRequest(
+        StakeOk(any_servicer, BOB, T.StakeRequest(
           prediction_id=prediction_id,
           bettor_is_a_skeptic=True,
           bettor_stake_cents=20,
@@ -356,17 +359,17 @@ class TestStake:
         clock.tick(12353)  # some random length less than open_seconds
         StakeOk(any_servicer, BOB, some_stake_request(prediction_id))
         [trade] = GetPredictionOk(any_servicer, ALICE, prediction_id).your_trades
-        assert trade.state == mvp_pb2.TRADE_STATE_ACTIVE
+        assert trade.state == T.TradeState.ACTIVE
         assert trade.transacted_unixtime == clock.now().timestamp()
         assert trade.updated_unixtime == clock.now().timestamp()
         assert trade.notes == ''
 
       async def test_computes_creator_stake_correctly(self, any_servicer: Servicer, clock: MockClock):
         register_friend_pair(any_servicer, ALICE, BOB)
-        prediction_id = CreatePredictionOk(any_servicer, ALICE, {'certainty': mvp_pb2.CertaintyRange(low=0.40, high=0.70)})
-        StakeOk(any_servicer, BOB, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_is_a_skeptic=True, bettor_stake_cents=13))
+        prediction_id = CreatePredictionOk(any_servicer, ALICE, {'certainty': T.CertaintyRange(low=0.40, high=0.70)})
+        StakeOk(any_servicer, BOB, T.StakeRequest(prediction_id=prediction_id, bettor_is_a_skeptic=True, bettor_stake_cents=13))
         clock.tick()
-        StakeOk(any_servicer, BOB, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_is_a_skeptic=False, bettor_stake_cents=8))
+        StakeOk(any_servicer, BOB, T.StakeRequest(prediction_id=prediction_id, bettor_is_a_skeptic=False, bettor_stake_cents=8))
         pred = GetPredictionOk(any_servicer, ALICE, prediction_id)
         [t1, t2] = pred.your_trades
         assert t1.creator_stake_cents == int(13 * 0.40/(1-0.40))
@@ -383,23 +386,23 @@ class TestStake:
 
     class TestExposureLimitEnforcement:
       @pytest.mark.parametrize('bettor_is_a_skeptic,certainty', [
-        (True, mvp_pb2.CertaintyRange(low=0.50, high=1.00)),
-        (False, mvp_pb2.CertaintyRange(low=0.10, high=0.50)),
+        (True, T.CertaintyRange(low=0.50, high=1.00)),
+        (False, T.CertaintyRange(low=0.10, high=0.50)),
       ])
-      async def test_prevents_overpromising_on_single_side(self, any_servicer: Servicer, bettor_is_a_skeptic: bool, certainty: mvp_pb2.CertaintyRange):
+      async def test_prevents_overpromising_on_single_side(self, any_servicer: Servicer, bettor_is_a_skeptic: bool, certainty: T.CertaintyRange):
         register_friend_pair(any_servicer, ALICE, BOB)
         prediction_id = CreatePredictionOk(any_servicer, ALICE, dict(
             certainty=certainty,
             maximum_stake_cents=100_00,
         ))
 
-        StakeOk(any_servicer, BOB, mvp_pb2.StakeRequest(
+        StakeOk(any_servicer, BOB, T.StakeRequest(
           prediction_id=prediction_id,
           bettor_is_a_skeptic=bettor_is_a_skeptic,
           bettor_stake_cents=99_00,
         ))
         with assert_prediction_unchanged(any_servicer, prediction_id=prediction_id):
-          assert 'bet would exceed creator tolerance' in str(StakeErr(any_servicer, BOB, mvp_pb2.StakeRequest(
+          assert 'bet would exceed creator tolerance' in str(StakeErr(any_servicer, BOB, T.StakeRequest(
             prediction_id=prediction_id,
             bettor_is_a_skeptic=bettor_is_a_skeptic,
             bettor_stake_cents=10_00,
@@ -408,28 +411,28 @@ class TestStake:
       async def test_bets_on_opposite_sides_dont_stack(self, any_servicer: Servicer, clock: MockClock):
         register_friend_pair(any_servicer, ALICE, BOB)
         prediction_id = CreatePredictionOk(any_servicer, ALICE, dict(
-            certainty=mvp_pb2.CertaintyRange(low=0.50, high=0.80),
+            certainty=T.CertaintyRange(low=0.50, high=0.80),
             maximum_stake_cents=100_00,
         ))
 
-        StakeOk(any_servicer, BOB, mvp_pb2.StakeRequest(
+        StakeOk(any_servicer, BOB, T.StakeRequest(
           prediction_id=prediction_id,
           bettor_is_a_skeptic=True,
           bettor_stake_cents=100_00,
         ))
         clock.tick()
-        StakeOk(any_servicer, BOB, mvp_pb2.StakeRequest(
+        StakeOk(any_servicer, BOB, T.StakeRequest(
           prediction_id=prediction_id,
           bettor_is_a_skeptic=False,
           bettor_stake_cents=400_00,
         ))
         with assert_prediction_unchanged(any_servicer, prediction_id=prediction_id):
-          assert 'bet would exceed creator tolerance' in str(StakeErr(any_servicer, BOB, mvp_pb2.StakeRequest(
+          assert 'bet would exceed creator tolerance' in str(StakeErr(any_servicer, BOB, T.StakeRequest(
             prediction_id=prediction_id,
             bettor_is_a_skeptic=True,
             bettor_stake_cents=1,
           )))
-          assert 'bet would exceed creator tolerance' in str(StakeErr(any_servicer, BOB, mvp_pb2.StakeRequest(
+          assert 'bet would exceed creator tolerance' in str(StakeErr(any_servicer, BOB, T.StakeRequest(
             prediction_id=prediction_id,
             bettor_is_a_skeptic=False,
             bettor_stake_cents=10_00,
@@ -439,7 +442,7 @@ class TestStake:
     create_user(any_servicer, ALICE)
     prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
     with assert_prediction_unchanged(any_servicer, prediction_id=prediction_id):
-      assert 'must log in to bet' in str(StakeErr(any_servicer, None, mvp_pb2.StakeRequest(prediction_id=prediction_id)))
+      assert 'must log in to bet' in str(StakeErr(any_servicer, None, T.StakeRequest(prediction_id=prediction_id, bettor_is_a_skeptic=False, bettor_stake_cents=1_00)))
 
   async def test_error_if_bettor_doesnt_trust_creator(self, any_servicer: Servicer):
     create_user(any_servicer, ALICE)
@@ -447,7 +450,7 @@ class TestStake:
     create_user(any_servicer, BOB)
     SetTrustedOk(any_servicer, ALICE, BOB, True)
     with assert_prediction_unchanged(any_servicer, prediction_id=prediction_id):
-      assert "you don't trust the creator" in str(StakeErr(any_servicer, BOB, mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_stake_cents=10)))
+      assert "you don't trust the creator" in str(StakeErr(any_servicer, BOB, T.StakeRequest(prediction_id=prediction_id, bettor_is_a_skeptic=False, bettor_stake_cents=10)))
 
   class TestQueueing:
 
@@ -462,7 +465,7 @@ class TestStake:
       prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
       StakeOk(any_servicer, BOB, some_stake_request(prediction_id))
       [trade] = GetPredictionOk(any_servicer, ALICE, prediction_id).your_trades
-      assert trade.state == mvp_pb2.TRADE_STATE_QUEUED
+      assert trade.state == T.TradeState.QUEUED
 
     async def test_queued_trades_dont_affect_remaining_stake(self, any_servicer: Servicer):
       self._make_bob_trust_alice(any_servicer)
@@ -480,8 +483,8 @@ class TestStake:
       StakeOk(any_servicer, BOB, request)
       StakeOk(any_servicer, CHARLIE, request)
       [committed, queued] = GetPredictionOk(any_servicer, ALICE, prediction_id).your_trades
-      assert committed.state == mvp_pb2.TRADE_STATE_ACTIVE
-      assert queued.state == mvp_pb2.TRADE_STATE_QUEUED
+      assert committed.state == T.TradeState.ACTIVE
+      assert queued.state == T.TradeState.QUEUED
       assert committed.bettor_stake_cents == queued.bettor_stake_cents
       assert committed.creator_stake_cents == queued.creator_stake_cents
       assert committed.bettor_is_a_skeptic == queued.bettor_is_a_skeptic
@@ -489,11 +492,11 @@ class TestStake:
     async def test_cant_overpromise_even_if_queueing(self, any_servicer: Servicer):
       self._make_bob_trust_alice(any_servicer)
       prediction_id = CreatePredictionOk(any_servicer, ALICE, dict(
-          certainty=mvp_pb2.CertaintyRange(low=0.50, high=1.00),
+          certainty=T.CertaintyRange(low=0.50, high=1.00),
           maximum_stake_cents=100_00,
       ))
       with assert_prediction_unchanged(any_servicer, prediction_id=prediction_id):
-        assert 'bet would exceed creator tolerance' in str(StakeErr(any_servicer, BOB, mvp_pb2.StakeRequest(
+        assert 'bet would exceed creator tolerance' in str(StakeErr(any_servicer, BOB, T.StakeRequest(
           prediction_id=prediction_id,
           bettor_is_a_skeptic=True,
           bettor_stake_cents=101_00,
@@ -504,26 +507,26 @@ class TestStake:
       prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
       StakeOk(any_servicer, BOB, some_stake_request(prediction_id))
       [trade] = GetPredictionOk(any_servicer, ALICE, prediction_id).your_trades
-      assert trade.state == mvp_pb2.TRADE_STATE_QUEUED
+      assert trade.state == T.TradeState.QUEUED
       SetTrustedOk(any_servicer, ALICE, BOB, True)
       [trade] = GetPredictionOk(any_servicer, ALICE, prediction_id).your_trades
-      assert trade.state == mvp_pb2.TRADE_STATE_ACTIVE
+      assert trade.state == T.TradeState.ACTIVE
 
     async def test_queued_trade_partially_applied_when_mutual_trust_created_if_would_overfill(self, any_servicer: Servicer):
       register_friend_pair(any_servicer, ALICE, BOB)
       create_user(any_servicer, CHARLIE)
       SetTrustedOk(any_servicer, CHARLIE, ALICE, True)
       prediction_id = CreatePredictionOk(any_servicer, ALICE, dict(
-          certainty=mvp_pb2.CertaintyRange(low=0.50, high=1.00),
+          certainty=T.CertaintyRange(low=0.50, high=1.00),
           maximum_stake_cents=100_00,
       ))
 
-      StakeOk(any_servicer, CHARLIE, mvp_pb2.StakeRequest(
+      StakeOk(any_servicer, CHARLIE, T.StakeRequest(
         prediction_id=prediction_id,
         bettor_is_a_skeptic=True,
         bettor_stake_cents=70_00,
       ))
-      StakeOk(any_servicer, BOB, mvp_pb2.StakeRequest(
+      StakeOk(any_servicer, BOB, T.StakeRequest(
         prediction_id=prediction_id,
         bettor_is_a_skeptic=True,
         bettor_stake_cents=60_00,
@@ -536,21 +539,21 @@ class TestStake:
       assert dequeued_trade.creator_stake_cents == dequeued_trade.bettor_stake_cents == (100_00 - 60_00)
 
     class TestDequeueFailure:
-      def _arrange_dequeue_failure(self, any_servicer: Servicer) -> mvp_pb2.UserPredictionView:
+      def _arrange_dequeue_failure(self, any_servicer: Servicer) -> T.UserPredictionView:
         register_friend_pair(any_servicer, ALICE, BOB)
         create_user(any_servicer, CHARLIE)
         SetTrustedOk(any_servicer, CHARLIE, ALICE, True)
         prediction_id = CreatePredictionOk(any_servicer, ALICE, dict(
-            certainty=mvp_pb2.CertaintyRange(low=0.50, high=1.00),
+            certainty=T.CertaintyRange(low=0.50, high=1.00),
             maximum_stake_cents=100_00,
         ))
 
-        StakeOk(any_servicer, CHARLIE, mvp_pb2.StakeRequest(
+        StakeOk(any_servicer, CHARLIE, T.StakeRequest(
           prediction_id=prediction_id,
           bettor_is_a_skeptic=True,
           bettor_stake_cents=20_00,
         ))
-        StakeOk(any_servicer, BOB, mvp_pb2.StakeRequest(
+        StakeOk(any_servicer, BOB, T.StakeRequest(
           prediction_id=prediction_id,
           bettor_is_a_skeptic=True,
           bettor_stake_cents=99_99,
@@ -561,7 +564,7 @@ class TestStake:
 
       async def test_sets_state(self, any_servicer: Servicer):
         [failed_trade, _] = self._arrange_dequeue_failure(any_servicer).your_trades
-        assert failed_trade.state == mvp_pb2.TRADE_STATE_DEQUEUE_FAILED
+        assert failed_trade.state == T.TradeState.DEQUEUE_FAILED
 
       async def test_notes_reflect_failure(self, any_servicer: Servicer):
         [failed_trade, _] = self._arrange_dequeue_failure(any_servicer).your_trades
@@ -570,7 +573,7 @@ class TestStake:
       async def test_failed_trade_doesnt_affect_exposure(self, any_servicer: Servicer):
         pred = self._arrange_dequeue_failure(any_servicer)
         assert pred.remaining_stake_cents_vs_skeptics + sum(t.creator_stake_cents for t in pred.your_trades) > pred.maximum_stake_cents
-        assert pred.remaining_stake_cents_vs_skeptics + sum(t.creator_stake_cents for t in pred.your_trades if t.state == mvp_pb2.TRADE_STATE_ACTIVE) == pred.maximum_stake_cents
+        assert pred.remaining_stake_cents_vs_skeptics + sum(t.creator_stake_cents for t in pred.your_trades if t.state == T.TradeState.ACTIVE) == pred.maximum_stake_cents
 
 
 class TestFollowing:
@@ -588,38 +591,38 @@ class TestFollowing:
     create_user(any_servicer, ALICE)
     create_user(any_servicer, BOB)
     prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
-    assert GetPredictionOk(any_servicer, BOB, prediction_id).your_following_status == mvp_pb2.PREDICTION_FOLLOWING_NOT_FOLLOWING
+    assert GetPredictionOk(any_servicer, BOB, prediction_id).your_following_status == T.PredictionFollowingStatus.NOT_FOLLOWING
 
   async def test_mandatory_for_creator(self, any_servicer: Servicer):
     create_user(any_servicer, ALICE)
     prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
-    assert GetPredictionOk(any_servicer, ALICE, prediction_id).your_following_status == mvp_pb2.PREDICTION_FOLLOWING_MANDATORY_BECAUSE_STAKED
+    assert GetPredictionOk(any_servicer, ALICE, prediction_id).your_following_status == T.PredictionFollowingStatus.MANDATORY_BECAUSE_STAKED
 
   async def test_mandatory_for_bettor(self, any_servicer: Servicer):
     register_friend_pair(any_servicer, ALICE, BOB)
     prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
     pred = StakeOk(any_servicer, BOB, some_stake_request(prediction_id))
-    assert pred.your_following_status == mvp_pb2.PREDICTION_FOLLOWING_MANDATORY_BECAUSE_STAKED
+    assert pred.your_following_status == T.PredictionFollowingStatus.MANDATORY_BECAUSE_STAKED
 
   async def test_sets_following_on_prediction_view(self, any_servicer: Servicer):
     create_user(any_servicer, ALICE)
     create_user(any_servicer, BOB)
     prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
-    assert FollowOk(any_servicer, BOB, prediction_id, True).your_following_status == mvp_pb2.PREDICTION_FOLLOWING_FOLLOWING
+    assert FollowOk(any_servicer, BOB, prediction_id, True).your_following_status == T.PredictionFollowingStatus.FOLLOWING
 
   async def test_unsets_following_on_prediction_view(self, any_servicer: Servicer):
     create_user(any_servicer, ALICE)
     create_user(any_servicer, BOB)
     prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
     FollowOk(any_servicer, BOB, prediction_id, True)
-    assert FollowOk(any_servicer, BOB, prediction_id, False).your_following_status == mvp_pb2.PREDICTION_FOLLOWING_NOT_FOLLOWING
+    assert FollowOk(any_servicer, BOB, prediction_id, False).your_following_status == T.PredictionFollowingStatus.NOT_FOLLOWING
 
   async def test_receives_email_notification(self, any_servicer: Servicer, emailer: Emailer):
     create_user(any_servicer, ALICE)
     create_user(any_servicer, BOB, email_address='bob@example.com')
     prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
     FollowOk(any_servicer, BOB, prediction_id, True)
-    ResolveOk(any_servicer, ALICE, prediction_id, mvp_pb2.RESOLUTION_YES)
+    ResolveOk(any_servicer, ALICE, prediction_id, T.Resolution.YES)
     assert 'bob@example.com' in emailer.send_resolution_notifications.call_args[1]['bccs']  # type: ignore
 
   async def test_no_email_notification_after_unfollow(self, any_servicer: Servicer, emailer: Emailer):
@@ -628,7 +631,7 @@ class TestFollowing:
     prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
     FollowOk(any_servicer, BOB, prediction_id, True)
     FollowOk(any_servicer, BOB, prediction_id, False)
-    ResolveOk(any_servicer, ALICE, prediction_id, mvp_pb2.RESOLUTION_YES)
+    ResolveOk(any_servicer, ALICE, prediction_id, T.Resolution.YES)
     calls = emailer.send_resolution_notifications.call_args_list  # type: ignore
     assert not any('bob@example.com' in call[1]['bccs'] for call in calls)
 
@@ -639,7 +642,7 @@ class TestResolve:
     create_user(any_servicer, ALICE)
     prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
     old_pred = GetPredictionOk(any_servicer, ALICE, prediction_id)
-    resp_pred = ResolveOk(any_servicer, ALICE, prediction_id, mvp_pb2.RESOLUTION_YES)
+    resp_pred = ResolveOk(any_servicer, ALICE, prediction_id, T.Resolution.YES)
     new_pred = GetPredictionOk(any_servicer, ALICE, prediction_id)
     assert new_pred == resp_pred != old_pred
 
@@ -648,36 +651,40 @@ class TestResolve:
     prediction_id = CreatePredictionOk(any_servicer, ALICE, {'open_seconds': 86400})
     clock.tick(18472)  # some random length less than open_seconds
 
-    assert ResolveOk(any_servicer, ALICE, prediction_id, mvp_pb2.RESOLUTION_YES, notes='my test notes').resolution == mvp_pb2.ResolutionEvent(
+    assert ResolveOk(any_servicer, ALICE, prediction_id, T.Resolution.YES, notes='my test notes').resolution == T.ResolutionEvent(
       unixtime=clock.now().timestamp(),
-      resolution=mvp_pb2.RESOLUTION_YES,
+      resolution=T.Resolution.YES,
       notes='my test notes',
     )
 
   async def test_remembers_prior_revision_when_reresolved(self, any_servicer: Servicer, clock: MockClock):
     create_user(any_servicer, ALICE)
     prediction_id = CreatePredictionOk(any_servicer, ALICE, {'open_seconds': 86400})
-    first_res = ResolveOk(any_servicer, ALICE, prediction_id, mvp_pb2.RESOLUTION_YES, notes='first').resolution
+    first_res = ResolveOk(any_servicer, ALICE, prediction_id, T.Resolution.YES, notes='first').resolution
     clock.tick()
-    second_res = ResolveOk(any_servicer, ALICE, prediction_id, mvp_pb2.RESOLUTION_NO, notes='second').resolution
-    assert not first_res.HasField('prior_revision')
+    second_res = ResolveOk(any_servicer, ALICE, prediction_id, T.Resolution.NO, notes='second').resolution
+    assert first_res is not None and second_res is not None
+    assert first_res.prior_revision is None
     assert second_res.prior_revision == first_res
 
   async def test_error_if_no_such_prediction(self, any_servicer: Servicer):
     create_user(any_servicer, ALICE)
     prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
-    assert 'no such prediction' in str(ResolveErr(any_servicer, ALICE, pid('not_'+prediction_id), mvp_pb2.RESOLUTION_YES))
+    assert 'no such prediction' in str(ResolveErr(any_servicer, ALICE, pid('not_'+prediction_id), T.Resolution.YES))
 
   async def test_error_if_notes_too_long(self, any_servicer: Servicer):
     create_user(any_servicer, ALICE)
     prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
-    assert 'unreasonably long notes' in str(ResolveErr(any_servicer, ALICE, prediction_id, mvp_pb2.RESOLUTION_YES, notes=99999*'foo'))
+    assert 'unreasonably long notes' in str(ResolveErr(any_servicer, ALICE, prediction_id, T.Resolution.YES, notes=99999*'foo'))
 
   async def test_error_if_invalid_resolution(self, any_servicer: Servicer):
     create_user(any_servicer, ALICE)
     prediction_id = CreatePredictionOk(any_servicer, ALICE, {})
-    bad_resolution_value: mvp_pb2.Resolution.V = 99  # type: ignore
-    assert 'unrecognized resolution' in str(ResolveErr(any_servicer, ALICE, prediction_id, bad_resolution_value))
+    # An invalid resolution is now unrepresentable: T.Resolution rejects it at
+    # construction, so it can never reach the servicer -- the wire layer turns
+    # this into a 400 (see test_api_server). No servicer-level check remains.
+    with pytest.raises(pydantic.ValidationError):
+      T.ResolveRequest(prediction_id=prediction_id, resolution=99, notes='')  # type: ignore[arg-type]
 
   async def test_error_if_not_creator(self, any_servicer: Servicer):
     register_friend_pair(any_servicer, ALICE, BOB)
@@ -686,19 +693,19 @@ class TestResolve:
     create_user(any_servicer, CHARLIE)
     for actor in [BOB, CHARLIE]:
       with assert_prediction_unchanged(any_servicer, prediction_id=prediction_id):
-        assert 'not the creator' in str(ResolveErr(any_servicer, actor, prediction_id, mvp_pb2.RESOLUTION_NO))
+        assert 'not the creator' in str(ResolveErr(any_servicer, actor, prediction_id, T.Resolution.NO))
 
   async def test_sends_notifications(self, emailer: Emailer, any_servicer: Servicer):
     register_friend_pair(any_servicer, ALICE, BOB)
     prediction_id = CreatePredictionOk(any_servicer, ALICE, dict(prediction='a thing will happen'))
-    StakeOk(any_servicer, BOB, request=mvp_pb2.StakeRequest(prediction_id=prediction_id, bettor_is_a_skeptic=True, bettor_stake_cents=10))
+    StakeOk(any_servicer, BOB, request=T.StakeRequest(prediction_id=prediction_id, bettor_is_a_skeptic=True, bettor_stake_cents=10))
 
-    ResolveOk(any_servicer, ALICE, prediction_id, mvp_pb2.RESOLUTION_YES)
+    ResolveOk(any_servicer, ALICE, prediction_id, T.Resolution.YES)
     emailer.send_resolution_notifications.assert_called_once_with(  # type: ignore
       bccs={'bob@example.com'},
       prediction_id=prediction_id,
       prediction_text='a thing will happen',
-      resolution=mvp_pb2.RESOLUTION_YES,
+      resolution=T.Resolution.YES,
     )
 
 
@@ -736,7 +743,7 @@ class TestSetTrusted:
     SendInvitationOk(any_servicer, ALICE, BOB)
     SetTrustedOk(any_servicer, ALICE, BOB, trust)
 
-    expected_invitations = {BOB: mvp_pb2.GenericUserInfo.Invitation()} if trust else {}
+    expected_invitations = {BOB: T.Invitation()} if trust else {}
     assert GetSettingsOk(any_servicer, ALICE).invitations == expected_invitations
 
 
@@ -749,29 +756,29 @@ class TestGetUser:
   async def test_success_when_self(self, any_servicer: Servicer):
     create_user(any_servicer, ALICE)
     resp = GetUserOk(any_servicer, ALICE, ALICE)
-    assert resp == mvp_pb2.Relationship(trusted_by_you=True, trusts_you=True)
+    assert resp == T.Relationship(trusted_by_you=True, trusts_you=True)
 
   async def test_success_when_friend(self, any_servicer: Servicer):
     register_friend_pair(any_servicer, ALICE, BOB)
     resp = GetUserOk(any_servicer, ALICE, BOB)
-    assert resp == mvp_pb2.Relationship(trusted_by_you=True, trusts_you=True)
+    assert resp == T.Relationship(trusted_by_you=True, trusts_you=True)
 
   async def test_shows_trust_correctly_when_logged_in(self, any_servicer: Servicer):
     create_user(any_servicer, ALICE)
     create_user(any_servicer, BOB)
     SetTrustedOk(any_servicer, BOB, ALICE, True)
     resp = GetUserOk(any_servicer, ALICE, BOB)
-    assert resp == mvp_pb2.Relationship(trusted_by_you=False, trusts_you=True)
+    assert resp == T.Relationship(trusted_by_you=False, trusts_you=True)
 
     create_user(any_servicer, CHARLIE)
     SetTrustedOk(any_servicer, ALICE, CHARLIE, True)
     resp = GetUserOk(any_servicer, ALICE, CHARLIE)
-    assert resp == mvp_pb2.Relationship(trusted_by_you=True, trusts_you=False)
+    assert resp == T.Relationship(trusted_by_you=True, trusts_you=False)
 
   async def test_no_trust_when_logged_out(self, any_servicer: Servicer):
     create_user(any_servicer, ALICE)
     resp = GetUserOk(any_servicer, None, ALICE)
-    assert resp == mvp_pb2.Relationship(trusted_by_you=False, trusts_you=False)
+    assert resp == T.Relationship(trusted_by_you=False, trusts_you=False)
 
 
 class TestChangePassword:
@@ -785,7 +792,7 @@ class TestChangePassword:
     orig_pw = 'pw'
     create_user(any_servicer, ALICE, password=orig_pw)
     ChangePasswordOk(any_servicer, ALICE, orig_pw, 'new password')
-    assert LogInUsernameOk(any_servicer, None, ALICE, 'new password').token.owner == ALICE
+    assert LogInUsernameOk(any_servicer, None, ALICE, 'new password').owner == ALICE
 
   async def test_error_when_wrong_old_password(self, any_servicer: Servicer):
     orig_pw = 'pw'
@@ -803,7 +810,7 @@ class TestGetSettings:
   async def test_happy_path(self, emailer: Emailer, any_servicer: Servicer):
     register_friend_pair(any_servicer, ALICE, BOB)
     geninfo = GetSettingsOk(any_servicer, ALICE)
-    assert dict(geninfo.relationships) == {BOB: mvp_pb2.Relationship(trusted_by_you=True, trusts_you=True)}
+    assert dict(geninfo.relationships) == {BOB: T.Relationship(trusted_by_you=True, trusts_you=True)}
 
 
 
@@ -868,7 +875,7 @@ class TestAcceptInvitation:
     StakeOk(any_servicer, BOB, some_stake_request(prediction_id))
     AcceptInvitationOk(any_servicer, ALICE, get_call_kwarg(emailer.send_invitation, 'nonce'))
     [trade] = GetPredictionOk(any_servicer, ALICE, prediction_id).your_trades
-    assert trade.state == mvp_pb2.TRADE_STATE_ACTIVE
+    assert trade.state == T.TradeState.ACTIVE
 
   async def test_successfully_creates_trust_even_if_logged_out(self, any_servicer: Servicer, emailer: Emailer):
     create_user(any_servicer, ALICE)

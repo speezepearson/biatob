@@ -11,7 +11,7 @@ from pathlib import Path
 import random
 import secrets
 import time
-from typing import Any, Awaitable, Iterator, Mapping, Optional, MutableMapping, MutableSequence, NoReturn, Callable, NoReturn, Iterable, Sequence, MutableSequence
+from typing import Any, Awaitable, Dict, Iterator, Mapping, Optional, MutableMapping, MutableSequence, NoReturn, Callable, NoReturn, Iterable, Sequence, MutableSequence
 from typing_extensions import TypedDict
 import logging
 import os
@@ -22,7 +22,7 @@ from sqlalchemy import sql
 
 from .core import *
 from .emailer import *
-from .protobuf import mvp_pb2
+from . import api_types as T
 from . import sql_schema as schema
 
 import structlog
@@ -54,7 +54,7 @@ class SqlConn:
         login_password_id=password_id,
       ))
 
-  def get_username_password_info(self, username: Username) -> Optional[mvp_pb2.HashedPassword]:
+  def get_username_password_info(self, username: Username) -> Optional[HashedPassword]:
     row = self._conn.execute(
       sqlalchemy.select([schema.passwords.c.salt, schema.passwords.c.scrypt])
       .where(sqlalchemy.and_(
@@ -64,14 +64,14 @@ class SqlConn:
     ).first()
     if row is None:
       return None
-    return mvp_pb2.HashedPassword(salt=row['salt'], scrypt=row['scrypt'])
+    return HashedPassword(salt=row['salt'], scrypt=row['scrypt'])
 
   def create_prediction(
     self,
     now: datetime.datetime,
     prediction_id: PredictionId,
     creator: Username,
-    request: mvp_pb2.CreatePredictionRequest,
+    request: T.CreatePredictionRequest,
   ) -> None:
     now_unixtime = round(now.timestamp())
     self._conn.execute(sqlalchemy.insert(schema.predictions).values(
@@ -83,7 +83,7 @@ class SqlConn:
       created_at_unixtime=now_unixtime,
       closes_at_unixtime=now_unixtime + request.open_seconds,
       resolves_at_unixtime=request.resolves_at_unixtime,
-      view_privacy=mvp_pb2.PredictionViewPrivacy.Name(request.view_privacy),
+      view_privacy=request.view_privacy.value,
       special_rules=request.special_rules,
       creator=creator,
     ))
@@ -109,7 +109,7 @@ class SqlConn:
 
     return bool(result)
 
-  def view_prediction(self, viewer: Optional[Username], prediction_id: PredictionId) -> Optional[mvp_pb2.UserPredictionView]:
+  def view_prediction(self, viewer: Optional[Username], prediction_id: PredictionId) -> Optional[T.UserPredictionView]:
     row = self._conn.execute(sqlalchemy.select(schema.predictions.c).where(schema.predictions.c.prediction_id == prediction_id)).first()
     if row is None:
       return None
@@ -148,9 +148,9 @@ class SqlConn:
       ))
     ).fetchone()
 
-    return mvp_pb2.UserPredictionView(
+    return T.UserPredictionView(
       prediction=row['prediction'],
-      certainty=mvp_pb2.CertaintyRange(low=row['certainty_low_p'], high=row['certainty_high_p']),
+      certainty=T.CertaintyRange(low=row['certainty_low_p'], high=row['certainty_high_p']),
       maximum_stake_cents=row['maximum_stake_cents'],
       remaining_stake_cents_vs_believers=remaining_stake_cents_vs_believers,
       remaining_stake_cents_vs_skeptics=remaining_stake_cents_vs_skeptics,
@@ -161,22 +161,22 @@ class SqlConn:
       creator=row['creator'],
       resolution=resolution,
       your_trades=[
-        mvp_pb2.Trade(
+        T.Trade(
           bettor=t['bettor'],
           bettor_is_a_skeptic=t['bettor_is_a_skeptic'],
           creator_stake_cents=t['creator_stake_cents'],
           bettor_stake_cents=t['bettor_stake_cents'],
           transacted_unixtime=t['transacted_at_unixtime'],
           updated_unixtime=t['updated_at_unixtime'],
-          state=mvp_pb2.TradeState.Value(t['state']),
+          state=T.TradeState(t['state']),
           notes=t['notes'],
         )
         for t in trade_rows
       ],
       your_following_status=(
-        mvp_pb2.PREDICTION_FOLLOWING_MANDATORY_BECAUSE_STAKED if (creator_is_viewer or trade_rows) else
-        mvp_pb2.PREDICTION_FOLLOWING_FOLLOWING if follow_row is not None else
-        mvp_pb2.PREDICTION_FOLLOWING_NOT_FOLLOWING
+        T.PredictionFollowingStatus.MANDATORY_BECAUSE_STAKED if (creator_is_viewer or trade_rows) else
+        T.PredictionFollowingStatus.FOLLOWING if follow_row is not None else
+        T.PredictionFollowingStatus.NOT_FOLLOWING
       ),
     )
 
@@ -192,13 +192,13 @@ class SqlConn:
           sqlalchemy.select([schema.trades.c.prediction_id.distinct()])
           .where(sqlalchemy.and_(
             schema.trades.c.bettor == user,
-            # schema.trades.c.state == mvp_pb2.TradeState.Name(mvp_pb2.TRADE_STATE_ACTIVE),
+            # schema.trades.c.state == T.TradeState.ACTIVE.value,
           ))
         ).fetchall()],
     }
 
-  def list_predictions_created(self, creator: Username, privacies: Iterable[mvp_pb2.PredictionViewPrivacy.V]) -> Iterable[PredictionId]:
-    privacy_names = {mvp_pb2.PredictionViewPrivacy.Name(p) for p in privacies}
+  def list_predictions_created(self, creator: Username, privacies: Iterable[T.PredictionViewPrivacy]) -> Iterable[PredictionId]:
+    privacy_names = {p.value for p in privacies}
     return {
       PredictionId(row['prediction_id'])
       for row in self._conn.execute(
@@ -240,32 +240,32 @@ class SqlConn:
     }
 
   @staticmethod
-  def _trade_row_to_pb(row) -> mvp_pb2.Trade:
-    return mvp_pb2.Trade(
+  def _trade_row_to_model(row) -> T.Trade:
+    return T.Trade(
       bettor=str(row['bettor']),
       bettor_is_a_skeptic=bool(row['bettor_is_a_skeptic']),
       bettor_stake_cents=int(row['bettor_stake_cents']),
       creator_stake_cents=int(row['creator_stake_cents']),
       transacted_unixtime=float(row['transacted_at_unixtime']),
       updated_unixtime=float(row['updated_at_unixtime']),
-      state=mvp_pb2.TradeState.Value(row['state']),
+      state=T.TradeState(row['state']),
       notes=str(row['notes']),
     )
 
   def get_trades(
     self,
     prediction_id: PredictionId,
-  ) -> Iterable[mvp_pb2.Trade]:
+  ) -> Iterable[T.Trade]:
     rows = self._conn.execute(
       sqlalchemy.select(schema.trades.c)
       .where(schema.trades.c.prediction_id == prediction_id)
     ).fetchall()
-    return [SqlConn._trade_row_to_pb(row) for row in rows]
+    return [SqlConn._trade_row_to_model(row) for row in rows]
 
   def get_resolution(
     self,
     prediction_id: PredictionId,
-  ) -> Optional[mvp_pb2.ResolutionEvent]:
+  ) -> Optional[T.ResolutionEvent]:
     rows = self._conn.execute(
       sqlalchemy.select(schema.resolutions.c)
       .where(schema.resolutions.c.prediction_id == prediction_id)
@@ -273,9 +273,9 @@ class SqlConn:
     ).fetchall()
     last_event = None
     for row in rows:
-      last_event = mvp_pb2.ResolutionEvent(
+      last_event = T.ResolutionEvent(
         unixtime=float(row['resolved_at_unixtime']),
-        resolution=mvp_pb2.Resolution.Value(row['resolution']),
+        resolution=T.Resolution(row['resolution']),
         notes=str(row['notes']),
         prior_revision=last_event,
       )
@@ -294,7 +294,7 @@ class SqlConn:
       .where(sqlalchemy.and_(
         schema.predictions.c.prediction_id == prediction_id,
         schema.trades.c.bettor_is_a_skeptic if against_skeptics else sqlalchemy.not_(schema.trades.c.bettor_is_a_skeptic),
-        schema.trades.c.state == mvp_pb2.TradeState.Name(mvp_pb2.TRADE_STATE_ACTIVE),
+        schema.trades.c.state == T.TradeState.ACTIVE.value,
       ))
     ).scalar() or 0)
 
@@ -313,7 +313,7 @@ class SqlConn:
         schema.trades.c.bettor == bettor,
         schema.predictions.c.prediction_id == prediction_id,
         schema.trades.c.bettor_is_a_skeptic if bettor_is_a_skeptic else sqlalchemy.not_(schema.trades.c.bettor_is_a_skeptic),
-        schema.trades.c.state == mvp_pb2.TradeState.Name(mvp_pb2.TRADE_STATE_ACTIVE),
+        schema.trades.c.state == T.TradeState.ACTIVE.value,
       ))
     ).scalar() or 0)
 
@@ -324,7 +324,7 @@ class SqlConn:
     bettor_is_a_skeptic: bool,
     bettor_stake_cents: int,
     creator_stake_cents: int,
-    state: mvp_pb2.TradeState.V,
+    state: T.TradeState,
     now: datetime.datetime,
   ) -> None:
     self._conn.execute(sqlalchemy.insert(schema.trades).values(
@@ -333,7 +333,7 @@ class SqlConn:
       bettor_is_a_skeptic=bettor_is_a_skeptic,
       bettor_stake_cents=bettor_stake_cents,
       creator_stake_cents=creator_stake_cents,
-      state=mvp_pb2.TradeState.Name(state),
+      state=state.value,
       transacted_at_unixtime=now.timestamp(),
       updated_at_unixtime=now.timestamp(),
     ))
@@ -363,12 +363,12 @@ class SqlConn:
 
   def resolve(
     self,
-    request: mvp_pb2.ResolveRequest,
+    request: T.ResolveRequest,
     now: datetime.datetime,
   ) -> None:
     self._conn.execute(sqlalchemy.insert(schema.resolutions).values(
       prediction_id=request.prediction_id,
-      resolution=mvp_pb2.Resolution.Name(request.resolution),
+      resolution=request.resolution.value,
       resolved_at_unixtime=round(now.timestamp()),
       notes=request.notes,
     ))
@@ -408,7 +408,7 @@ class SqlConn:
       sqlalchemy.select(schema.trades.c)
       .where(sqlalchemy.and_(
         schema.trades.c.bettor == bettor,
-        schema.trades.c.state == mvp_pb2.TradeState.Name(mvp_pb2.TRADE_STATE_QUEUED),
+        schema.trades.c.state == T.TradeState.QUEUED.value,
         schema.trades.c.prediction_id == schema.predictions.c.prediction_id,
         schema.predictions.c.creator == creator,
       ))
@@ -429,7 +429,7 @@ class SqlConn:
       if creator_stake_cents < 10 and bettor_stake_cents < 10:
         logger.warn('dropping a queued bet instead of partially committing a trivial trade', queued_trade=qt, predinfo=predinfo, new_creator_stake=creator_stake_cents, new_bettor_stake=bettor_stake_cents)
         values = dict(
-          state=mvp_pb2.TradeState.Name(mvp_pb2.TRADE_STATE_DEQUEUE_FAILED),
+          state=T.TradeState.DEQUEUE_FAILED.value,
           notes=f'[trade ignored during dequeue due to trivial stakes]' + (('\n'+qt['notes']) if qt['notes'] else ''),
         )
       else:
@@ -438,7 +438,7 @@ class SqlConn:
         values = dict(
           bettor_stake_cents=bettor_stake_cents,
           creator_stake_cents=creator_stake_cents,
-          state=mvp_pb2.TradeState.Name(mvp_pb2.TRADE_STATE_ACTIVE),
+          state=T.TradeState.ACTIVE.value,
           notes=qt['notes'] or f'Initially queued; committed at {now:%Y-%m-%d %H:%M}',
         )
       self._conn.execute(
@@ -492,7 +492,7 @@ class SqlConn:
     )
     return {row['email_address'] for row in self._conn.execute(q_bettors.union(q_followers))}
 
-  def get_settings(self, user: AuthorizingUsername, include_relationships_with_users: Iterable[Username] = ()) -> Optional[mvp_pb2.GenericUserInfo]:
+  def get_settings(self, user: AuthorizingUsername, include_relationships_with_users: Iterable[Username] = ()) -> Optional[T.GenericUserInfo]:
     row = self._conn.execute(
       sqlalchemy.select(schema.users.c)
       .where(schema.users.c.username == user)
@@ -513,17 +513,17 @@ class SqlConn:
         schema.relationships.c.trusted,
       ))
     )}
-    return mvp_pb2.GenericUserInfo(
+    return T.GenericUserInfo(
       email_address=str(row['email_address']),
       relationships={
-        who: mvp_pb2.Relationship(
+        who: T.Relationship(
           trusted_by_you=outgoing_relationships_by_name[who]['trusted'] if who in outgoing_relationships_by_name else False,
           trusts_you=who in trusting_users,
         )
         for who in include_relationships_with_users
       },
       invitations={
-        row['recipient']: mvp_pb2.GenericUserInfo.Invitation()
+        row['recipient']: T.Invitation()
         for row in self._conn.execute(
           sqlalchemy.select([schema.email_invitations.c.recipient])
           .where(schema.email_invitations.c.inviter == user)
@@ -541,19 +541,19 @@ class SqlConn:
       )
     )
 
-  def check_invitation(self, nonce: str) -> Optional[mvp_pb2.CheckInvitationResponse]:
+  def check_invitation(self, nonce: str) -> Optional[T.CheckInvitationResponse]:
     row = self._conn.execute(
       sqlalchemy.select(schema.email_invitations.c)
       .where(schema.email_invitations.c.nonce == nonce)
     ).fetchone()
     if row is None:
       return None
-    return mvp_pb2.CheckInvitationResponse(
+    return T.CheckInvitationResponse(
       inviter=row['inviter'],
       recipient=row['recipient'],
     )
 
-  def accept_invitation(self, nonce: str, now: datetime.datetime) -> Optional[mvp_pb2.CheckInvitationResponse]:
+  def accept_invitation(self, nonce: str, now: datetime.datetime) -> Optional[T.CheckInvitationResponse]:
     check_resp = self.check_invitation(nonce)
     if check_resp is None:
       return None
@@ -680,23 +680,23 @@ class SqlServicer(Servicer):
     @ensure_actor_exists
     @log_actor
     @log_action
-    def Whoami(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.WhoamiRequest) -> mvp_pb2.WhoamiResponse:
-        return mvp_pb2.WhoamiResponse(username=actor if (actor is not None) else '')
+    def Whoami(self, actor: Optional[AuthorizingUsername], request: T.WhoamiRequest) -> T.WhoamiResponse:
+        return T.WhoamiResponse(username=actor if (actor is not None) else '')
 
     @transactional
     @ensure_actor_exists
     @log_actor
     @log_action
-    def SignOut(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.SignOutRequest) -> mvp_pb2.SignOutResponse:
+    def SignOut(self, actor: Optional[AuthorizingUsername], request: T.SignOutRequest) -> T.Empty:
         if actor is not None:
             # self._token_mint.revoke_token(actor)
             pass # TODO(P3): figure out how token-revoking should work; is it enough for the browser to just forget the cookie?
-        return mvp_pb2.SignOutResponse()
+        return T.Empty()
 
     @transactional
     @log_actor
     @log_action
-    def SendVerificationEmail(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.SendVerificationEmailRequest) -> mvp_pb2.Empty:
+    def SendVerificationEmail(self, actor: Optional[AuthorizingUsername], request: T.SendVerificationEmailRequest) -> T.Empty:
       logger.debug('API call', email_address=request.email_address)
       if actor is not None:
         logger.warn('logged-in user trying to send a verification email', email_address=request.email_address)
@@ -712,13 +712,13 @@ class SqlServicer(Servicer):
         proof_token=self._token_mint.sign_proof_of_email(email_address=request.email_address),
       ))
 
-      return mvp_pb2.Empty()
+      return T.Empty()
 
     @transactional
     @ensure_actor_exists
     @log_actor
     @log_action
-    def RegisterUsername(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.RegisterUsernameRequest) -> mvp_pb2.AuthSuccess:
+    def RegisterUsername(self, actor: Optional[AuthorizingUsername], request: T.RegisterUsernameRequest) -> T.AuthSuccess:
       logger.debug('API call', username=request.username)
       if actor is not None:
         logger.warn('logged-in user trying to register a username', new_username=request.username)
@@ -753,7 +753,7 @@ class SqlServicer(Servicer):
       # to log in as the user we just created is our bug, not the caller's, and
       # shouldn't surface as (say) a 401.
       try:
-        return self.LogInUsername(None, mvp_pb2.LogInUsernameRequest(username=request.username, password=request.password))
+        return self.LogInUsername(None, T.LogInUsernameRequest(username=request.username, password=request.password))
       except ApiError as e:
         logger.error('unable to log in as freshly-created user', username=request.username, error=e.catchall)
         raise InternalError('somehow failed to log you into your fresh account')
@@ -762,7 +762,7 @@ class SqlServicer(Servicer):
     @ensure_actor_exists
     @log_actor
     @log_action
-    def LogInUsername(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.LogInUsernameRequest) -> mvp_pb2.AuthSuccess:
+    def LogInUsername(self, actor: Optional[AuthorizingUsername], request: T.LogInUsernameRequest) -> T.AuthSuccess:
         if actor is not None:
             logger.warn('logged-in user trying to log in again', new_username=request.username)
             # Not an auth failure -- the caller is authenticated, just confused.
@@ -782,17 +782,19 @@ class SqlServicer(Servicer):
         logger.debug('username logged in', username=request.username)
         # The AuthSuccess carries the username so the client knows who it's now
         # logged in as; the actual signed session cookie is minted by the
-        # transport (api_server), which owns cookies.
-        return mvp_pb2.AuthSuccess(
-          token=mvp_pb2.AuthToken(owner=Username(request.username)),
-          user_info=self._conn.get_settings(AuthorizingUsername(Username(request.username))),
+        # transport (asgi), which owns cookies.
+        user_info = self._conn.get_settings(AuthorizingUsername(Username(request.username)))
+        assert user_info is not None  # we just verified this user's password
+        return T.AuthSuccess(
+          owner=Username(request.username),
+          user_info=user_info,
         )
 
     @transactional
     @ensure_actor_exists
     @log_actor
     @log_action
-    def CreatePrediction(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.CreatePredictionRequest) -> mvp_pb2.CreatePredictionResponse:
+    def CreatePrediction(self, actor: Optional[AuthorizingUsername], request: T.CreatePredictionRequest) -> T.CreatePredictionResponse:
       logger.debug('API call', request=request)
       if actor is None:
         logger.warn('not logged in')
@@ -812,13 +814,13 @@ class SqlServicer(Servicer):
         creator=actor,
         request=request,
       )
-      return mvp_pb2.CreatePredictionResponse(new_prediction_id=prediction_id)
+      return T.CreatePredictionResponse(new_prediction_id=prediction_id)
 
     @transactional
     @ensure_actor_exists
     @log_actor
     @log_action
-    def GetPrediction(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.GetPredictionRequest) -> mvp_pb2.UserPredictionView:
+    def GetPrediction(self, actor: Optional[AuthorizingUsername], request: T.GetPredictionRequest) -> T.UserPredictionView:
       view = self._conn.view_prediction(actor, PredictionId(request.prediction_id))
       if view is None:
         logger.info('trying to get nonexistent prediction', prediction_id=request.prediction_id)
@@ -830,44 +832,44 @@ class SqlServicer(Servicer):
     @ensure_actor_exists
     @log_actor
     @log_action
-    def ListMyStakes(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.ListMyStakesRequest) -> mvp_pb2.PredictionsById:
+    def ListMyStakes(self, actor: Optional[AuthorizingUsername], request: T.ListMyStakesRequest) -> T.PredictionsById:
       if actor is None:
         logger.info('logged-out user trying to list their predictions')
-        return mvp_pb2.PredictionsById(predictions={})
+        return T.PredictionsById(predictions={})
 
       prediction_ids = self._conn.list_stakes(actor)
 
-      predictions_by_id: MutableMapping[str, mvp_pb2.UserPredictionView] = {}
+      predictions_by_id: Dict[str, T.UserPredictionView] = {}
       for prediction_id in prediction_ids:
         view = self._conn.view_prediction(actor, prediction_id)
         assert view is not None
         predictions_by_id[prediction_id] = view
-      return mvp_pb2.PredictionsById(predictions=predictions_by_id)
+      return T.PredictionsById(predictions=predictions_by_id)
 
     @transactional
     @ensure_actor_exists
     @log_actor
     @log_action
-    def ListPredictions(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.ListPredictionsRequest) -> mvp_pb2.PredictionsById:
+    def ListPredictions(self, actor: Optional[AuthorizingUsername], request: T.ListPredictionsRequest) -> T.PredictionsById:
       creator = Username(request.creator)
 
       prediction_ids = self._conn.list_predictions_created(
         creator=creator,
-        privacies=mvp_pb2.PredictionViewPrivacy.values() if actor == request.creator else {mvp_pb2.PREDICTION_VIEW_PRIVACY_ANYBODY},
+        privacies=list(T.PredictionViewPrivacy) if actor == request.creator else {T.PredictionViewPrivacy.ANYBODY},
       )
 
-      predictions_by_id: MutableMapping[str, mvp_pb2.UserPredictionView] = {}
+      predictions_by_id: Dict[str, T.UserPredictionView] = {}
       for prediction_id in prediction_ids:
         view = self._conn.view_prediction(actor, prediction_id)
         assert view is not None
         predictions_by_id[prediction_id] = view
-      return mvp_pb2.PredictionsById(predictions=predictions_by_id)
+      return T.PredictionsById(predictions=predictions_by_id)
 
     @transactional
     @ensure_actor_exists
     @log_actor
     @log_action
-    def Stake(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.StakeRequest) -> mvp_pb2.UserPredictionView:
+    def Stake(self, actor: Optional[AuthorizingUsername], request: T.StakeRequest) -> T.UserPredictionView:
       logger.debug('API call', request=request)
       if actor is None:
         logger.warn('not logged in')
@@ -893,7 +895,7 @@ class SqlServicer(Servicer):
         raise PredictionClosedError("prediction is no longer open for betting")
 
       resolution = self._conn.get_resolution(PredictionId(request.prediction_id))
-      if resolution and resolution.resolution != mvp_pb2.RESOLUTION_NONE_YET:
+      if resolution and resolution.resolution != T.Resolution.NONE_YET:
         logger.warn('trying to bet on a resolved prediction', prediction_id=request.prediction_id)
         raise PredictionClosedError("prediction has already resolved")
 
@@ -925,8 +927,8 @@ class SqlServicer(Servicer):
         bettor_stake_cents=request.bettor_stake_cents,
         creator_stake_cents=creator_stake_cents,
         state = (
-          mvp_pb2.TRADE_STATE_ACTIVE if self._conn.trusts(Username(predinfo['creator']), actor) else
-          mvp_pb2.TRADE_STATE_QUEUED
+          T.TradeState.ACTIVE if self._conn.trusts(Username(predinfo['creator']), actor) else
+          T.TradeState.QUEUED
         ),
         now=now,
       )
@@ -939,7 +941,7 @@ class SqlServicer(Servicer):
     @ensure_actor_exists
     @log_actor
     @log_action
-    def Follow(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.FollowRequest) -> mvp_pb2.UserPredictionView:
+    def Follow(self, actor: Optional[AuthorizingUsername], request: T.FollowRequest) -> T.UserPredictionView:
       logger.debug('API call', request=request)
       if actor is None:
         logger.warn('not logged in')
@@ -964,14 +966,13 @@ class SqlServicer(Servicer):
     @ensure_actor_exists
     @log_actor
     @log_action
-    def Resolve(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.ResolveRequest) -> mvp_pb2.UserPredictionView:
+    def Resolve(self, actor: Optional[AuthorizingUsername], request: T.ResolveRequest) -> T.UserPredictionView:
       logger.debug('API call', request=request)
       if actor is None:
         logger.warn('not logged in')
         raise NotLoggedInError('must log in to resolve a prediction')
-      if request.resolution not in {mvp_pb2.RESOLUTION_YES, mvp_pb2.RESOLUTION_NO, mvp_pb2.RESOLUTION_INVALID, mvp_pb2.RESOLUTION_NONE_YET}:
-        logger.warn('user sent unrecognized resolution', resolution=request.resolution)
-        raise InvalidRequestError('unrecognized resolution')
+      # request.resolution is a validated T.Resolution, so it's necessarily one
+      # of the four members -- no need to re-check as the proto version did.
       if len(request.notes) > 1024:
         logger.warn('unreasonably long notes', snipped_notes=request.notes[:256] + '  <snip>  ' + request.notes[-256:])
         raise InvalidRequestError('unreasonably long notes')
@@ -1003,7 +1004,7 @@ class SqlServicer(Servicer):
     @ensure_actor_exists
     @log_actor
     @log_action
-    def SetTrusted(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.SetTrustedRequest) -> mvp_pb2.GenericUserInfo:
+    def SetTrusted(self, actor: Optional[AuthorizingUsername], request: T.SetTrustedRequest) -> T.GenericUserInfo:
       logger.debug('API call', request=request)
       if actor is None:
         logger.warn('not logged in')
@@ -1029,12 +1030,12 @@ class SqlServicer(Servicer):
     @ensure_actor_exists
     @log_actor
     @log_action
-    def GetUser(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.GetUserRequest) -> mvp_pb2.Relationship:
+    def GetUser(self, actor: Optional[AuthorizingUsername], request: T.GetUserRequest) -> T.Relationship:
       if not self._conn.user_exists(Username(request.who)):
         logger.info('attempting to view nonexistent user', who=request.who)
         raise NoSuchUserError('no such user')
 
-      return mvp_pb2.Relationship(
+      return T.Relationship(
         trusted_by_you=self._conn.trusts(actor, Username(request.who)) if (actor is not None) else False,
         trusts_you=self._conn.trusts(Username(request.who), actor) if (actor is not None) else False,
       )
@@ -1043,7 +1044,7 @@ class SqlServicer(Servicer):
     @ensure_actor_exists
     @log_actor
     @log_action
-    def ChangePassword(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.ChangePasswordRequest) -> mvp_pb2.Empty:
+    def ChangePassword(self, actor: Optional[AuthorizingUsername], request: T.ChangePasswordRequest) -> T.Empty:
       logger.debug('API call')
       if actor is None:
         logger.warn('not logged in')
@@ -1065,13 +1066,13 @@ class SqlServicer(Servicer):
       logger.info('changing password', who=actor)
       self._conn.change_password(actor, request.new_password)
 
-      return mvp_pb2.Empty()
+      return T.Empty()
 
     @transactional
     @ensure_actor_exists
     @log_actor
     @log_action
-    def GetSettings(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.GetSettingsRequest) -> mvp_pb2.GenericUserInfo:
+    def GetSettings(self, actor: Optional[AuthorizingUsername], request: T.GetSettingsRequest) -> T.GenericUserInfo:
       if actor is None:
         logger.info('not logged in')
         raise NotLoggedInError('must log in to see your settings')
@@ -1085,7 +1086,7 @@ class SqlServicer(Servicer):
     @ensure_actor_exists
     @log_actor
     @log_action
-    def SendInvitation(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.SendInvitationRequest) -> mvp_pb2.GenericUserInfo:
+    def SendInvitation(self, actor: Optional[AuthorizingUsername], request: T.SendInvitationRequest) -> T.GenericUserInfo:
       logger.debug('API call', request=request)
       if actor is None:
         logger.warn('not logged in')
@@ -1128,7 +1129,7 @@ class SqlServicer(Servicer):
     @ensure_actor_exists
     @log_actor
     @log_action
-    def CheckInvitation(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.CheckInvitationRequest) -> mvp_pb2.CheckInvitationResponse:
+    def CheckInvitation(self, actor: Optional[AuthorizingUsername], request: T.CheckInvitationRequest) -> T.CheckInvitationResponse:
       result = self._conn.check_invitation(
         nonce=request.nonce,
       )
@@ -1141,7 +1142,7 @@ class SqlServicer(Servicer):
     @ensure_actor_exists
     @log_actor
     @log_action
-    def AcceptInvitation(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.AcceptInvitationRequest) -> mvp_pb2.GenericUserInfo:
+    def AcceptInvitation(self, actor: Optional[AuthorizingUsername], request: T.AcceptInvitationRequest) -> T.GenericUserInfo:
       logger.debug('API call', request=request)  # okay to log the nonce because it's one-time-use
       result = self._conn.accept_invitation(
         nonce=request.nonce,
@@ -1157,7 +1158,7 @@ class SqlServicer(Servicer):
         recipient_username=Username(result.recipient),
       ))
       if actor is None:
-        return mvp_pb2.GenericUserInfo()
+        return T.GenericUserInfo(email_address='', invitations={}, relationships={})
       info = self._conn.get_settings(actor)
       assert info is not None  # actor is authenticated, so they have settings
       return info
@@ -1180,7 +1181,7 @@ def find_invariant_violations(conn: sqlalchemy.engine.base.Connection) -> Sequen
       )
     )
     .where(
-      schema.trades.c.state == mvp_pb2.TradeState.Name(mvp_pb2.TRADE_STATE_ACTIVE),
+      schema.trades.c.state == T.TradeState.ACTIVE.value,
     )
     .group_by(
       schema.trades.c.prediction_id,

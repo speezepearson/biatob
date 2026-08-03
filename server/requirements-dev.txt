@@ -1,6 +1,4 @@
 pytest-aiohttp
 pytest
 mypy
-mypy-protobuf
 sqlalchemy-stubs
-types-protobuf

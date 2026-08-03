@@ -4,12 +4,10 @@ import hashlib
 import random
 import re
 import secrets
-from typing import overload, Optional, Container, NewType, Callable
-
-from aiohttp import web
+from typing import overload, Optional, Container, NewType, Callable, NamedTuple
 
 from . import tokens
-from .protobuf import mvp_pb2
+from . import api_types as T
 
 PredictionId = NewType('PredictionId', str)
 Username = NewType('Username', str)
@@ -135,10 +133,17 @@ def secret_eq(a: bytes, b: bytes) -> bool:
     return len(a) == len(b) and all(a[i]==b[i] for i in range(len(a)))
 def scrypt(password: str, salt: bytes) -> bytes:
     return hashlib.scrypt(password.encode('utf8'), salt=salt, n=16384, r=8, p=1)
-def new_hashed_password(password: str) -> mvp_pb2.HashedPassword:
+
+class HashedPassword(NamedTuple):
+    """A salted scrypt hash. Purely internal -- never crosses the wire, so it's
+    not an api_types model; it just replaces the old mvp_pb2.HashedPassword."""
+    salt: bytes
+    scrypt: bytes
+
+def new_hashed_password(password: str) -> HashedPassword:
     salt = secrets.token_bytes(4)
-    return mvp_pb2.HashedPassword(salt=salt, scrypt=scrypt(password, salt))
-def check_password(password: str, hashed: mvp_pb2.HashedPassword) -> bool:
+    return HashedPassword(salt=salt, scrypt=scrypt(password, salt))
+def check_password(password: str, hashed: HashedPassword) -> bool:
     return secret_eq(hashed.scrypt, scrypt(password, hashed.salt))
 
 def weak_rand_not_in(rng: random.Random, limit: int, xs: Container[int]) -> int:
@@ -212,12 +217,10 @@ def describe_password_problems(password: str) -> Optional[str]:
         problems.append('password must not exceed 256 characters, good lord')
     return '; '.join(problems) if problems else None
 
-def describe_CreatePredictionRequest_problems(request: mvp_pb2.CreatePredictionRequest, now: float) -> Optional[str]:
+def describe_CreatePredictionRequest_problems(request: T.CreatePredictionRequest, now: float) -> Optional[str]:
     problems = []
     if not request.prediction:
         problems.append('must have a prediction field')
-    if not request.certainty:
-        problems.append('must have a certainty')
     if not (0 < request.certainty.low <= request.certainty.high <= 1):
         problems.append('must have 0 < lowProb <= highProb <= 1')
     if not (request.maximum_stake_cents <= MAX_LEGAL_STAKE_CENTS):
@@ -228,7 +231,7 @@ def describe_CreatePredictionRequest_problems(request: mvp_pb2.CreatePredictionR
         problems.append(f'prediction must resolve after betting closes')
     return '; '.join(problems) if problems else None
 
-def describe_AcceptInvitationRequest_problems(request: mvp_pb2.AcceptInvitationRequest) -> Optional[str]:
+def describe_AcceptInvitationRequest_problems(request: T.AcceptInvitationRequest) -> Optional[str]:
     problems = []
     if not request.nonce:
         problems.append('no nonce given')
@@ -236,41 +239,60 @@ def describe_AcceptInvitationRequest_problems(request: mvp_pb2.AcceptInvitationR
 
 
 class Servicer(abc.ABC):
-    def Whoami(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.WhoamiRequest) -> mvp_pb2.WhoamiResponse: pass
-    def SignOut(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.SignOutRequest) -> mvp_pb2.SignOutResponse: pass
-    def SendVerificationEmail(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.SendVerificationEmailRequest) -> mvp_pb2.Empty:
+    @abc.abstractmethod
+    def Whoami(self, actor: Optional[AuthorizingUsername], request: T.WhoamiRequest) -> T.WhoamiResponse: pass
+    @abc.abstractmethod
+    def SignOut(self, actor: Optional[AuthorizingUsername], request: T.SignOutRequest) -> T.Empty: pass
+    @abc.abstractmethod
+    def SendVerificationEmail(self, actor: Optional[AuthorizingUsername], request: T.SendVerificationEmailRequest) -> T.Empty:
         """Raises AlreadyLoggedInError, AlreadyRegisteredError."""
-    def RegisterUsername(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.RegisterUsernameRequest) -> mvp_pb2.AuthSuccess:
+    @abc.abstractmethod
+    def RegisterUsername(self, actor: Optional[AuthorizingUsername], request: T.RegisterUsernameRequest) -> T.AuthSuccess:
         """Raises AlreadyLoggedInError, InvalidRequestError, AlreadyRegisteredError."""
-    def LogInUsername(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.LogInUsernameRequest) -> mvp_pb2.AuthSuccess:
+    @abc.abstractmethod
+    def LogInUsername(self, actor: Optional[AuthorizingUsername], request: T.LogInUsernameRequest) -> T.AuthSuccess:
         """Raises BadCredentialsError, AlreadyLoggedInError."""
-    def CreatePrediction(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.CreatePredictionRequest) -> mvp_pb2.CreatePredictionResponse:
+    @abc.abstractmethod
+    def CreatePrediction(self, actor: Optional[AuthorizingUsername], request: T.CreatePredictionRequest) -> T.CreatePredictionResponse:
         """Raises NotLoggedInError, InvalidRequestError."""
-    def GetPrediction(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.GetPredictionRequest) -> mvp_pb2.UserPredictionView:
+    @abc.abstractmethod
+    def GetPrediction(self, actor: Optional[AuthorizingUsername], request: T.GetPredictionRequest) -> T.UserPredictionView:
         """Raises NoSuchPredictionError if absent or not visible to the actor."""
-    def ListMyStakes(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.ListMyStakesRequest) -> mvp_pb2.PredictionsById:
+    @abc.abstractmethod
+    def ListMyStakes(self, actor: Optional[AuthorizingUsername], request: T.ListMyStakesRequest) -> T.PredictionsById:
         """Raises NotLoggedInError."""
-    def ListPredictions(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.ListPredictionsRequest) -> mvp_pb2.PredictionsById:
+    @abc.abstractmethod
+    def ListPredictions(self, actor: Optional[AuthorizingUsername], request: T.ListPredictionsRequest) -> T.PredictionsById:
         """Raises NotLoggedInError."""
-    def Stake(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.StakeRequest) -> mvp_pb2.UserPredictionView:
+    @abc.abstractmethod
+    def Stake(self, actor: Optional[AuthorizingUsername], request: T.StakeRequest) -> T.UserPredictionView:
         """Raises NotLoggedInError, NoSuchPredictionError, ForbiddenError, PredictionClosedError, StakeCapExceededError, InvalidRequestError."""
-    def Follow(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.FollowRequest) -> mvp_pb2.UserPredictionView:
+    @abc.abstractmethod
+    def Follow(self, actor: Optional[AuthorizingUsername], request: T.FollowRequest) -> T.UserPredictionView:
         """Raises NotLoggedInError, NoSuchPredictionError."""
-    def Resolve(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.ResolveRequest) -> mvp_pb2.UserPredictionView:
+    @abc.abstractmethod
+    def Resolve(self, actor: Optional[AuthorizingUsername], request: T.ResolveRequest) -> T.UserPredictionView:
         """Raises NotLoggedInError, NoSuchPredictionError, ForbiddenError, InvalidRequestError."""
-    def SetTrusted(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.SetTrustedRequest) -> mvp_pb2.GenericUserInfo:
+    @abc.abstractmethod
+    def SetTrusted(self, actor: Optional[AuthorizingUsername], request: T.SetTrustedRequest) -> T.GenericUserInfo:
         """Raises NotLoggedInError, NoSuchUserError, InvalidRequestError."""
-    def GetUser(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.GetUserRequest) -> mvp_pb2.Relationship:
+    @abc.abstractmethod
+    def GetUser(self, actor: Optional[AuthorizingUsername], request: T.GetUserRequest) -> T.Relationship:
         """Raises NoSuchUserError."""
-    def ChangePassword(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.ChangePasswordRequest) -> mvp_pb2.Empty:
+    @abc.abstractmethod
+    def ChangePassword(self, actor: Optional[AuthorizingUsername], request: T.ChangePasswordRequest) -> T.Empty:
         """Raises NotLoggedInError, BadCredentialsError, InvalidRequestError."""
-    def GetSettings(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.GetSettingsRequest) -> mvp_pb2.GenericUserInfo:
+    @abc.abstractmethod
+    def GetSettings(self, actor: Optional[AuthorizingUsername], request: T.GetSettingsRequest) -> T.GenericUserInfo:
         """Raises NotLoggedInError."""
-    def SendInvitation(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.SendInvitationRequest) -> mvp_pb2.GenericUserInfo:
+    @abc.abstractmethod
+    def SendInvitation(self, actor: Optional[AuthorizingUsername], request: T.SendInvitationRequest) -> T.GenericUserInfo:
         """Raises NotLoggedInError, NoSuchUserError, InvitationAlreadySentError."""
-    def CheckInvitation(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.CheckInvitationRequest) -> mvp_pb2.CheckInvitationResponse:
+    @abc.abstractmethod
+    def CheckInvitation(self, actor: Optional[AuthorizingUsername], request: T.CheckInvitationRequest) -> T.CheckInvitationResponse:
         """Raises NoSuchInvitationError."""
-    def AcceptInvitation(self, actor: Optional[AuthorizingUsername], request: mvp_pb2.AcceptInvitationRequest) -> mvp_pb2.GenericUserInfo:
+    @abc.abstractmethod
+    def AcceptInvitation(self, actor: Optional[AuthorizingUsername], request: T.AcceptInvitationRequest) -> T.GenericUserInfo:
         """Raises NoSuchInvitationError."""
 
 

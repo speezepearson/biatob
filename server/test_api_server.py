@@ -1,9 +1,9 @@
 """HTTP-boundary tests for the JSON API.
 
-The servicer's business logic is covered by test_servicers (still protobuf);
-these tests pin the JSON wire: that requests/responses round-trip through the
-proto_bridge, that the ApiError hierarchy maps to the right HTTP status with a
-readable ErrorResponse body, and that auth cookies are set/cleared correctly.
+The servicer's business logic is covered by test_servicers; these tests pin the
+JSON wire: that requests/responses round-trip through the Pydantic models, that
+the ApiError hierarchy maps to the right HTTP status with a readable
+ErrorResponse body, and that auth cookies are set/cleared correctly.
 """
 
 from pathlib import Path
@@ -101,7 +101,7 @@ async def test_ForbiddenError_is_403(cli, any_servicer: Servicer, token_mint: To
   create_user(any_servicer, u('creator'), password='pw')
   prediction_id = CreatePredictionOk(any_servicer, au('creator'), dict(
       prediction='a thing will happen', resolves_at_unixtime=clock.now().timestamp() + 86400,
-      certainty=mvp_pb2.CertaintyRange(low=0.40, high=0.60), maximum_stake_cents=100_00, open_seconds=3600))
+      certainty=T.CertaintyRange(low=0.40, high=0.60), maximum_stake_cents=100_00, open_seconds=3600))
   await _register(cli, token_mint, username='rando')
   (_, err) = await post(cli, '/api/Resolve', T.ResolveRequest(prediction_id=prediction_id, resolution=T.Resolution.YES, notes=''), T.ErrorResponse, expected_status=403)
   assert err.catchall == 'you are not the creator'

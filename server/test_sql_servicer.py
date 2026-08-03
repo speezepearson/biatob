@@ -4,7 +4,7 @@ import json
 from sqlalchemy.sql.ddl import CreateSchema
 from server.core import PredictionId
 from server.test_sql_conn import ALICE, BOB
-from server.protobuf import mvp_pb2
+from server import api_types as T
 from unittest import mock
 from unittest.mock import Mock
 
@@ -29,10 +29,10 @@ class TestFindInvariantViolations:
       predid = PredictionId('my_pred')
       conn.create_prediction(now, predid, ALICE, some_create_prediction_request(
         maximum_stake_cents=100,
-        certainty=mvp_pb2.CertaintyRange(low=0.5, high=1.0),
+        certainty=T.CertaintyRange(low=0.5, high=1.0),
       ))
-      conn.stake(predid, BOB, True, 80, creator_stake_cents=80, state=mvp_pb2.TRADE_STATE_ACTIVE, now=now)
-      conn.stake(predid, BOB, True, 70, creator_stake_cents=70, state=mvp_pb2.TRADE_STATE_ACTIVE, now=now+datetime.timedelta(seconds=1))
+      conn.stake(predid, BOB, True, 80, creator_stake_cents=80, state=T.TradeState.ACTIVE, now=now)
+      conn.stake(predid, BOB, True, 70, creator_stake_cents=70, state=T.TradeState.ACTIVE, now=now+datetime.timedelta(seconds=1))
 
       assert find_invariant_violations(raw_conn) == [{
         'type': 'exposure exceeded',
