@@ -2,8 +2,8 @@ module Api.Types exposing
     ( AcceptInvitationRequest, AuthSuccess, CertaintyRange, ChangePasswordRequest, CheckInvitationRequest, CheckInvitationResponse, CreatePredictionRequest
     , CreatePredictionResponse, Empty, FollowRequest, GenericUserInfo, GetPredictionRequest, GetSettingsRequest, GetUserRequest
     , HTTPValidationError, Invitation, ListMyStakesRequest, ListPredictionsRequest, LogInUsernameRequest, PredictionsById, RegisterUsernameRequest
-    , Relationship, ResolutionEvent(..), ResolveRequest, SendInvitationRequest, SendVerificationEmailRequest, SetTrustedRequest, SignOutRequest
-    , StakeRequest, Trade, UserPredictionView, ValidationError, WhoamiRequest, WhoamiResponse
+    , Relationship, ResolutionEvent(..), ResolveRequest, SavedCreatedPredictionFormState, SendInvitationRequest, SendVerificationEmailRequest, SetTrustedRequest
+    , SignOutRequest, StakeRequest, Trade, UserPredictionView, ValidationError, WhoamiRequest, WhoamiResponse
     , PredictionFollowingStatus(..), PredictionViewPrivacy(..), Resolution(..), TradeState(..), predictionFollowingStatusFromString, predictionFollowingStatusToString, predictionFollowingStatusVariants
     , predictionViewPrivacyFromString, predictionViewPrivacyToString, predictionViewPrivacyVariants, resolutionFromString, resolutionToString, resolutionVariants, tradeStateFromString
     , tradeStateToString, tradeStateVariants
@@ -17,8 +17,8 @@ module Api.Types exposing
 @docs CreatePredictionRequest, CreatePredictionResponse, Empty, FollowRequest, GenericUserInfo, GetPredictionRequest
 @docs GetSettingsRequest, GetUserRequest, HTTPValidationError, Invitation, ListMyStakesRequest, ListPredictionsRequest
 @docs LogInUsernameRequest, PredictionsById, RegisterUsernameRequest, Relationship, ResolutionEvent, ResolveRequest
-@docs SendInvitationRequest, SendVerificationEmailRequest, SetTrustedRequest, SignOutRequest, StakeRequest, Trade
-@docs UserPredictionView, ValidationError, WhoamiRequest, WhoamiResponse
+@docs SavedCreatedPredictionFormState, SendInvitationRequest, SendVerificationEmailRequest, SetTrustedRequest, SignOutRequest, StakeRequest
+@docs Trade, UserPredictionView, ValidationError, WhoamiRequest, WhoamiResponse
 
 ## Enum
 
@@ -148,6 +148,19 @@ type ResolutionEvent
 
 type alias ResolveRequest =
     { notes : String, predictionId : String, resolution : Resolution }
+
+
+type alias SavedCreatedPredictionFormState =
+    { highPField : String
+    , lowPField : String
+    , openForSecondsField : String
+    , openForUnitField : String
+    , predictionField : String
+    , resolvesAtField : String
+    , specialRulesField : String
+    , stakeField : String
+    , viewPrivacyField : String
+    }
 
 
 type alias SendInvitationRequest =

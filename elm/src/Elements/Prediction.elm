@@ -245,27 +245,18 @@ view model =
 viewBodyMockup : Globals.Globals -> Pb.UserPredictionView -> Html ()
 viewBodyMockup globals prediction =
   let
-    emptyBytes = Bytes.Encode.encode <| Bytes.Encode.sequence []
-    mockToken : Pb.AuthToken
-    mockToken =
-      { owner="__previewer__"
-      , mintedUnixtime=0
-      , expiresUnixtime=0
-      , hmacOfRest=emptyBytes
-      }
     mockSettings : Pb.GenericUserInfo
     mockSettings =
       { emailAddress = "example@example.com"
       , invitations = Dict.empty
-      , loginType = Just (Pb.LoginTypeLoginPassword {salt=emptyBytes, scrypt=emptyBytes})
-      , relationships = Dict.singleton prediction.creator (Just {trustsYou=True, trustedByYou=True})
+      , relationships = Dict.singleton prediction.creator {trustsYou=True, trustedByYou=True}
       }
 
     newGlobals =
       globals
       |> Globals.handleGetPredictionResponse {predictionId="my-predid"} (Ok prediction)
       |> Globals.handleSignOutResponse {} (Ok {})
-      |> Globals.handleLogInUsernameResponse {username="__previewer__", password=""} (Ok {token=Just mockToken, userInfo=Just mockSettings})
+      |> Globals.handleLogInUsernameResponse {username="__previewer__", password=""} (Ok {owner="__previewer__", userInfo=mockSettings})
   in
   initInternal newGlobals "my-predid"
   |> viewBody
@@ -775,23 +766,22 @@ unfoldResolutionEvent event =
   case event of
     Nothing -> []
     Just e ->
-      let (Pb.ResolutionEventPriorRevision prior) = e.priorRevision in
-      e :: unfoldResolutionEvent prior
+      e :: unfoldResolutionEvent (Utils.priorRevisionOf e)
 viewResolutionRow : Time.Posix -> Time.Zone -> Pb.UserPredictionView -> Html msg
 viewResolutionRow now timeZone prediction =
   let
     auditLog : Html msg
     auditLog =
-      let revisions = unfoldResolutionEvent prediction.resolution in
+      let revisions = unfoldResolutionEvent (Utils.resolutionEventOf prediction) in
       if List.isEmpty revisions then H.text "" else
       H.details [HA.style "display" "inline-block", HA.style "opacity" "50%"]
         [ H.summary [] [H.text "History"]
         , makeTable [HA.class "resolution-history-table"]
           [ ( [H.text "When"]
-            , \event -> [H.text <| Utils.yearMonthDayHourMinuteStr timeZone (Utils.unixtimeToTime event.unixtime)]
+            , \event -> [H.text <| Utils.yearMonthDayHourMinuteStr timeZone (Utils.unixtimeToTime (Utils.resolutionEventFields event).unixtime)]
             )
           , ( [H.text "Resolution"]
-            , \event -> [ H.text <| case event.resolution of
+            , \event -> [ H.text <| case (Utils.resolutionEventFields event).resolution of
                   Pb.Resolution__RESOLUTIONYES -> "happened"
                   Pb.Resolution__RESOLUTIONNO -> "did not happen"
                   Pb.Resolution__RESOLUTIONINVALID -> "INVALID"
@@ -799,7 +789,7 @@ viewResolutionRow now timeZone prediction =
                 ]
             )
           , ( [H.text "Notes"]
-            , \event -> [ H.text event.notes ]
+            , \event -> [ H.text (Utils.resolutionEventFields event).notes ]
             )
           ]
           revisions

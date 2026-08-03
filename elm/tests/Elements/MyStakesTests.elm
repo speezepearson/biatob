@@ -5,14 +5,16 @@ import Fuzz exposing (Fuzzer, int, list, string)
 import Test exposing (..)
 import Time
 
-import Biatob.Proto.Mvp as Pb
+import Api.Types as Pb
+import Api.Json
+import OpenApi.Common
 import Elements.MyStakes exposing (..)
 import Utils exposing (unixtimeToTime)
 
 mockPrediction : Pb.UserPredictionView
 mockPrediction =
   { prediction = "a thing will happen"
-  , certainty = Just {low = 0.10 , high = 0.90}
+  , certainty = {low = 0.10 , high = 0.90}
   , maximumStakeCents = 10000
   , remainingStakeCentsVsBelievers = 10000
   , remainingStakeCentsVsSkeptics = 10000
@@ -23,15 +25,13 @@ mockPrediction =
   , resolution = Nothing
   , yourTrades = []
   , resolvesAtUnixtime = 200
-  , yourFollowingStatus = Pb.PredictionFollowingNotFollowing
+  , yourFollowingStatus = Pb.PredictionFollowingStatus__PREDICTIONFOLLOWINGNOTFOLLOWING
   }
+mkResolutionEvent : Pb.Resolution -> Pb.ResolutionEvent
+mkResolutionEvent res = Pb.ResolutionEvent { resolution = res, unixtime = 1, notes = "", priorRevision = Nothing }
+
 exampleResolutionEvent : Pb.ResolutionEvent
-exampleResolutionEvent =
-  { resolution = Pb.ResolutionYes
-  , unixtime = 1
-  , notes = ""
-  , priorRevision = Pb.ResolutionEventPriorRevision Nothing
-  }
+exampleResolutionEvent = mkResolutionEvent Pb.Resolution__RESOLUTIONYES
 filterMatchesTest : Test
 filterMatchesTest =
   let
@@ -83,7 +83,7 @@ phaseMatchTest =
     , test "does not match after closesUnixtime" <|
       \() -> Expect.false "" <| phaseMatches preResolveTime Open prediction
     , test "does not match resolved prediction" <|
-      \() -> Expect.false "" <| phaseMatches preCloseTime Open {prediction | resolution = Just exampleResolutionEvent}
+      \() -> Expect.false "" <| phaseMatches preCloseTime Open {prediction | resolution = Just (OpenApi.Common.Present exampleResolutionEvent)}
     ]
   , describe "Closed"
     [ test "does not match before closesUnixtime" <|
@@ -93,7 +93,7 @@ phaseMatchTest =
     , test "does not match after resolvesAtUnixtime" <|
       \() -> Expect.false "" <| phaseMatches postResolveTime Closed prediction
     , test "does not match resolved prediction" <|
-      \() -> Expect.false "" <| phaseMatches preResolveTime Closed {prediction | resolution = Just exampleResolutionEvent}
+      \() -> Expect.false "" <| phaseMatches preResolveTime Closed {prediction | resolution = Just (OpenApi.Common.Present exampleResolutionEvent)}
     ]
   , describe "NeedsResolution"
     [ describe "before scheduled resolution time"
@@ -104,23 +104,23 @@ phaseMatchTest =
       [ test "matches if there no resolutions" <|
         \() -> Expect.true "" <| phaseMatches postResolveTime NeedsResolution { prediction | resolution = Nothing }
       , test "matches if resolution is NoneYet" <|
-        \() -> Expect.true "" <| phaseMatches postResolveTime NeedsResolution { prediction | resolution = Just {exampleResolutionEvent | resolution=Pb.ResolutionNoneYet} }
+        \() -> Expect.true "" <| phaseMatches postResolveTime NeedsResolution { prediction | resolution = Just (OpenApi.Common.Present (mkResolutionEvent Pb.Resolution__RESOLUTIONNONEYET)) }
       , test "does not match if resolved" <|
-        \() -> Expect.false "" <| phaseMatches postResolveTime NeedsResolution { prediction | resolution = Just {exampleResolutionEvent | resolution=Pb.ResolutionYes} }
+        \() -> Expect.false "" <| phaseMatches postResolveTime NeedsResolution { prediction | resolution = Just (OpenApi.Common.Present (mkResolutionEvent Pb.Resolution__RESOLUTIONYES)) }
       ]
     ]
   , describe "Resolved"
     [ describe "before scheduled resolution time"
       [ test "matches if resolved" <|
-        \() -> Expect.true "" <| phaseMatches preCloseTime Resolved { prediction | resolution = Just {exampleResolutionEvent | resolution=Pb.ResolutionYes} }
+        \() -> Expect.true "" <| phaseMatches preCloseTime Resolved { prediction | resolution = Just (OpenApi.Common.Present (mkResolutionEvent Pb.Resolution__RESOLUTIONYES)) }
       , test "does not match if resolution is NoneYet" <|
-        \() -> Expect.false "" <| phaseMatches preCloseTime Resolved { prediction | resolution = Just {exampleResolutionEvent | resolution=Pb.ResolutionNoneYet} }
+        \() -> Expect.false "" <| phaseMatches preCloseTime Resolved { prediction | resolution = Just (OpenApi.Common.Present (mkResolutionEvent Pb.Resolution__RESOLUTIONNONEYET)) }
       ]
     , describe "after scheduled resolution time"
       [ test "matches if resolved" <|
-        \() -> Expect.true "" <| phaseMatches postResolveTime Resolved { prediction | resolution = Just {exampleResolutionEvent | resolution=Pb.ResolutionYes} }
+        \() -> Expect.true "" <| phaseMatches postResolveTime Resolved { prediction | resolution = Just (OpenApi.Common.Present (mkResolutionEvent Pb.Resolution__RESOLUTIONYES)) }
       , test "does not match if resolution is NoneYet" <|
-        \() -> Expect.false "" <| phaseMatches postResolveTime Resolved { prediction | resolution = Just {exampleResolutionEvent | resolution=Pb.ResolutionNoneYet} }
+        \() -> Expect.false "" <| phaseMatches postResolveTime Resolved { prediction | resolution = Just (OpenApi.Common.Present (mkResolutionEvent Pb.Resolution__RESOLUTIONNONEYET)) }
       ]
     ]
   ]

@@ -1,29 +1,19 @@
 module TestUtils exposing (..)
 
-import Bytes.Encode as BE
 import Json.Decode as JD
 
 import Dict exposing (Dict)
 
-import Biatob.Proto.Mvp as Pb
+import Api.Types as Pb
+import Api.Json
 import Globals
 import Utils exposing (PredictionId, Username)
 import Time
 
-emptyBytes = BE.encode <| BE.sequence []
-
-exampleToken : Pb.AuthToken
-exampleToken =
-  { owner = "rando"
-  , mintedUnixtime = 0
-  , expiresUnixtime = 0
-  , hmacOfRest = emptyBytes
-  }
 exampleSettings : Pb.GenericUserInfo
 exampleSettings =
   { emailAddress = "user@example.com"
   , invitations = Dict.empty
-  , loginType = Just (Pb.LoginTypeLoginPassword {salt=emptyBytes, scrypt=emptyBytes})
   , relationships = Dict.empty
   }
 

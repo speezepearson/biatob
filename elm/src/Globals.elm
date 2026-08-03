@@ -151,11 +151,11 @@ addPrediction predictionId prediction state =
 
 addPredictions : Pb.PredictionsById -> ServerState -> ServerState
 addPredictions predictions state =
-  { state | predictions = state.predictions |> Dict.union (Utils.mustMapValues predictions.predictions) }
+  { state | predictions = state.predictions |> Dict.union predictions.predictions }
 
 addRelationship : Username -> Pb.Relationship -> Globals -> Globals
 addRelationship username relationship globals =
-  { globals | self = globals.self |> Maybe.map (\self -> { self | settings = self.settings |> (\settings -> { settings | relationships = settings.relationships |> Dict.insert username (Just relationship) }) }) }
+  { globals | self = globals.self |> Maybe.map (\self -> { self | settings = self.settings |> (\settings -> { settings | relationships = settings.relationships |> Dict.insert username relationship }) }) }
 
 updateUserInfo : (Pb.GenericUserInfo -> Pb.GenericUserInfo) -> Globals -> Globals
 updateUserInfo f globals =
@@ -183,7 +183,6 @@ getRelationship globals who =
   globals.self
   |> Maybe.map (.settings >> .relationships)
   |> Maybe.andThen (Dict.get who)
-  |> Maybe.andThen identity
 
 globalsDecoder : JD.Decoder Globals
 globalsDecoder =
@@ -195,7 +194,7 @@ globalsDecoder =
     JD.succeed
       { self = authSuccess |> Maybe.map (\succ -> {username=succ.owner , settings=Utils.mustAuthSuccessUserInfo succ})
       , serverState =
-          { predictions = predictions |> Utils.mustMapValues
+          { predictions = predictions
           }
       , now = now
       , timeZone = timeZone

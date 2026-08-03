@@ -2,15 +2,15 @@ module Api.Json exposing
     ( encodeAcceptInvitationRequest, encodeAuthSuccess, encodeCertaintyRange, encodeChangePasswordRequest, encodeCheckInvitationRequest, encodeCheckInvitationResponse, encodeCreatePredictionRequest
     , encodeCreatePredictionResponse, encodeEmpty, encodeFollowRequest, encodeGenericUserInfo, encodeGetPredictionRequest, encodeGetSettingsRequest, encodeGetUserRequest
     , encodeHTTPValidationError, encodeInvitation, encodeListMyStakesRequest, encodeListPredictionsRequest, encodeLogInUsernameRequest, encodePredictionFollowingStatus, encodePredictionViewPrivacy
-    , encodePredictionsById, encodeRegisterUsernameRequest, encodeRelationship, encodeResolution, encodeResolutionEvent, encodeResolveRequest, encodeSendInvitationRequest
-    , encodeSendVerificationEmailRequest, encodeSetTrustedRequest, encodeSignOutRequest, encodeStakeRequest, encodeTrade, encodeTradeState, encodeUserPredictionView
-    , encodeValidationError, encodeWhoamiRequest, encodeWhoamiResponse
+    , encodePredictionsById, encodeRegisterUsernameRequest, encodeRelationship, encodeResolution, encodeResolutionEvent, encodeResolveRequest, encodeSavedCreatedPredictionFormState
+    , encodeSendInvitationRequest, encodeSendVerificationEmailRequest, encodeSetTrustedRequest, encodeSignOutRequest, encodeStakeRequest, encodeTrade, encodeTradeState
+    , encodeUserPredictionView, encodeValidationError, encodeWhoamiRequest, encodeWhoamiResponse
     , decodeAcceptInvitationRequest, decodeAuthSuccess, decodeCertaintyRange, decodeChangePasswordRequest, decodeCheckInvitationRequest, decodeCheckInvitationResponse, decodeCreatePredictionRequest
     , decodeCreatePredictionResponse, decodeEmpty, decodeFollowRequest, decodeGenericUserInfo, decodeGetPredictionRequest, decodeGetSettingsRequest, decodeGetUserRequest
     , decodeHTTPValidationError, decodeInvitation, decodeListMyStakesRequest, decodeListPredictionsRequest, decodeLogInUsernameRequest, decodePredictionFollowingStatus, decodePredictionViewPrivacy
-    , decodePredictionsById, decodeRegisterUsernameRequest, decodeRelationship, decodeResolution, decodeResolutionEvent, decodeResolveRequest, decodeSendInvitationRequest
-    , decodeSendVerificationEmailRequest, decodeSetTrustedRequest, decodeSignOutRequest, decodeStakeRequest, decodeTrade, decodeTradeState, decodeUserPredictionView
-    , decodeValidationError, decodeWhoamiRequest, decodeWhoamiResponse
+    , decodePredictionsById, decodeRegisterUsernameRequest, decodeRelationship, decodeResolution, decodeResolutionEvent, decodeResolveRequest, decodeSavedCreatedPredictionFormState
+    , decodeSendInvitationRequest, decodeSendVerificationEmailRequest, decodeSetTrustedRequest, decodeSignOutRequest, decodeStakeRequest, decodeTrade, decodeTradeState
+    , decodeUserPredictionView, decodeValidationError, decodeWhoamiRequest, decodeWhoamiResponse
     )
 
 {-|
@@ -20,9 +20,9 @@ module Api.Json exposing
 @docs encodeCreatePredictionRequest, encodeCreatePredictionResponse, encodeEmpty, encodeFollowRequest, encodeGenericUserInfo, encodeGetPredictionRequest
 @docs encodeGetSettingsRequest, encodeGetUserRequest, encodeHTTPValidationError, encodeInvitation, encodeListMyStakesRequest, encodeListPredictionsRequest
 @docs encodeLogInUsernameRequest, encodePredictionFollowingStatus, encodePredictionViewPrivacy, encodePredictionsById, encodeRegisterUsernameRequest, encodeRelationship
-@docs encodeResolution, encodeResolutionEvent, encodeResolveRequest, encodeSendInvitationRequest, encodeSendVerificationEmailRequest, encodeSetTrustedRequest
-@docs encodeSignOutRequest, encodeStakeRequest, encodeTrade, encodeTradeState, encodeUserPredictionView, encodeValidationError
-@docs encodeWhoamiRequest, encodeWhoamiResponse
+@docs encodeResolution, encodeResolutionEvent, encodeResolveRequest, encodeSavedCreatedPredictionFormState, encodeSendInvitationRequest, encodeSendVerificationEmailRequest
+@docs encodeSetTrustedRequest, encodeSignOutRequest, encodeStakeRequest, encodeTrade, encodeTradeState, encodeUserPredictionView
+@docs encodeValidationError, encodeWhoamiRequest, encodeWhoamiResponse
 
 ## Decoders
 
@@ -30,9 +30,9 @@ module Api.Json exposing
 @docs decodeCreatePredictionRequest, decodeCreatePredictionResponse, decodeEmpty, decodeFollowRequest, decodeGenericUserInfo, decodeGetPredictionRequest
 @docs decodeGetSettingsRequest, decodeGetUserRequest, decodeHTTPValidationError, decodeInvitation, decodeListMyStakesRequest, decodeListPredictionsRequest
 @docs decodeLogInUsernameRequest, decodePredictionFollowingStatus, decodePredictionViewPrivacy, decodePredictionsById, decodeRegisterUsernameRequest, decodeRelationship
-@docs decodeResolution, decodeResolutionEvent, decodeResolveRequest, decodeSendInvitationRequest, decodeSendVerificationEmailRequest, decodeSetTrustedRequest
-@docs decodeSignOutRequest, decodeStakeRequest, decodeTrade, decodeTradeState, decodeUserPredictionView, decodeValidationError
-@docs decodeWhoamiRequest, decodeWhoamiResponse
+@docs decodeResolution, decodeResolutionEvent, decodeResolveRequest, decodeSavedCreatedPredictionFormState, decodeSendInvitationRequest, decodeSendVerificationEmailRequest
+@docs decodeSetTrustedRequest, decodeSignOutRequest, decodeStakeRequest, decodeTrade, decodeTradeState, decodeUserPredictionView
+@docs decodeValidationError, decodeWhoamiRequest, decodeWhoamiResponse
 -}
 
 
@@ -278,6 +278,22 @@ encodeResolveRequest rec =
         [ ( "notes", Json.Encode.string rec.notes )
         , ( "predictionId", Json.Encode.string rec.predictionId )
         , ( "resolution", encodeResolution rec.resolution )
+        ]
+
+
+encodeSavedCreatedPredictionFormState :
+    Api.Types.SavedCreatedPredictionFormState -> Json.Encode.Value
+encodeSavedCreatedPredictionFormState rec =
+    Json.Encode.object
+        [ ( "highPField", Json.Encode.string rec.highPField )
+        , ( "lowPField", Json.Encode.string rec.lowPField )
+        , ( "openForSecondsField", Json.Encode.string rec.openForSecondsField )
+        , ( "openForUnitField", Json.Encode.string rec.openForUnitField )
+        , ( "predictionField", Json.Encode.string rec.predictionField )
+        , ( "resolvesAtField", Json.Encode.string rec.resolvesAtField )
+        , ( "specialRulesField", Json.Encode.string rec.specialRulesField )
+        , ( "stakeField", Json.Encode.string rec.stakeField )
+        , ( "viewPrivacyField", Json.Encode.string rec.viewPrivacyField )
         ]
 
 
@@ -766,6 +782,42 @@ decodeResolveRequest =
                (Json.Decode.field "predictionId" Json.Decode.string)
         |> OpenApi.Common.jsonDecodeAndMap
                (Json.Decode.field "resolution" decodeResolution)
+
+
+decodeSavedCreatedPredictionFormState :
+    Json.Decode.Decoder Api.Types.SavedCreatedPredictionFormState
+decodeSavedCreatedPredictionFormState =
+    Json.Decode.succeed
+        (\highPField lowPField openForSecondsField openForUnitField predictionField resolvesAtField specialRulesField stakeField viewPrivacyField ->
+             { highPField = highPField
+             , lowPField = lowPField
+             , openForSecondsField = openForSecondsField
+             , openForUnitField = openForUnitField
+             , predictionField = predictionField
+             , resolvesAtField = resolvesAtField
+             , specialRulesField = specialRulesField
+             , stakeField = stakeField
+             , viewPrivacyField = viewPrivacyField
+             }
+        )
+        |> OpenApi.Common.jsonDecodeAndMap
+               (Json.Decode.field "highPField" Json.Decode.string)
+        |> OpenApi.Common.jsonDecodeAndMap
+               (Json.Decode.field "lowPField" Json.Decode.string)
+        |> OpenApi.Common.jsonDecodeAndMap
+               (Json.Decode.field "openForSecondsField" Json.Decode.string)
+        |> OpenApi.Common.jsonDecodeAndMap
+               (Json.Decode.field "openForUnitField" Json.Decode.string)
+        |> OpenApi.Common.jsonDecodeAndMap
+               (Json.Decode.field "predictionField" Json.Decode.string)
+        |> OpenApi.Common.jsonDecodeAndMap
+               (Json.Decode.field "resolvesAtField" Json.Decode.string)
+        |> OpenApi.Common.jsonDecodeAndMap
+               (Json.Decode.field "specialRulesField" Json.Decode.string)
+        |> OpenApi.Common.jsonDecodeAndMap
+               (Json.Decode.field "stakeField" Json.Decode.string)
+        |> OpenApi.Common.jsonDecodeAndMap
+               (Json.Decode.field "viewPrivacyField" Json.Decode.string)
 
 
 decodeSendInvitationRequest :

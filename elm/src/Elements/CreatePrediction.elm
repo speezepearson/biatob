@@ -108,7 +108,7 @@ buildCreateRequest model =
   parseViewPrivacy model |> Result.toMaybe |> Maybe.andThen (\viewPrivacy ->
     Just
       { prediction = prediction
-      , certainty = Just { low=lowP, high=highP }
+      , certainty = { low=lowP, high=highP }
       , maximumStakeCents = stake
       , openSeconds = openForSeconds
       , specialRules = model.specialRulesField
@@ -222,7 +222,7 @@ init flags =
     , viewPrivacyField = anybody
     , specialRulesField = ""
     , createRequestStatus = Unstarted
-    } |> case Utils.decodePbFromFlags Pb.savedCreatedPredictionFormStateDecoder "formStatePbB64" flags of
+    } |> case Utils.decodeFromFlags Api.Json.decodeSavedCreatedPredictionFormState "formState" flags of
           Nothing -> identity
           Just state -> loadFormState state
   , Cmd.none
@@ -288,7 +288,7 @@ update msg model =
       )
     SaveFormState ->
       ( model
-      , saveFormState (extractSavedFormState model |> Pb.toSavedCreatedPredictionFormStateEncoder |> Utils.encodePbB64)
+      , saveFormState (extractSavedFormState model |> Api.Json.encodeSavedCreatedPredictionFormState |> Utils.encodeToString)
       )
     Tick now ->
       ( { model | globals = model.globals |> Globals.tick now }

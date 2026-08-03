@@ -17,7 +17,7 @@ import Widgets.Navbar as Navbar
 import Globals
 import Time
 import Dict exposing (Dict)
-import Biatob.Proto.Mvp exposing (Relationship)
+import Api.Types exposing (Relationship)
 
 port copy : String -> Cmd msg
 port navigate : Maybe String -> Cmd msg
@@ -264,7 +264,7 @@ view model =
             ]
           else
             let
-              (trustsYou, trustedByYou) = case Dict.get model.who (Utils.mustMapValues settings.relationships) of
+              (trustsYou, trustedByYou) = case Dict.get model.who settings.relationships of
                 Nothing -> (False, False)
                 Just rel -> (rel.trustsYou, rel.trustedByYou)
               haveSentInvitation = Dict.member model.who settings.invitations
@@ -351,7 +351,7 @@ view model =
               { isHeader = False
               , predictedOn = H.text <| Utils.yearMonthDayStr model.globals.timeZone (Utils.unixtimeToTime prediction.createdUnixtime)
               , prediction = H.a [HA.href <| Utils.pathToPrediction id] [H.text <| "By " ++ Utils.yearMonthDayStr model.globals.timeZone (Utils.unixtimeToTime prediction.resolvesAtUnixtime) ++ ", " ++ prediction.prediction]
-              , resolution = case prediction.resolution |> Maybe.map .resolution of
+              , resolution = case Utils.resolutionEventOf prediction |> Maybe.map (\e -> (Utils.resolutionEventFields e).resolution) of
                     Nothing -> H.text ""
                     Just Pb.Resolution__RESOLUTIONNONEYET -> H.text ""
                     Just Pb.Resolution__RESOLUTIONYES -> H.text "Yes"

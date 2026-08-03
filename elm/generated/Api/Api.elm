@@ -1,22 +1,22 @@
 module Api.Api exposing
-    ( acceptInvitation, acceptInvitationTask, changePassword, changePasswordTask, checkInvitation, checkInvitationTask
-    , createPrediction, createPredictionTask, follow, followTask, getPrediction, getPredictionTask, getSettings
-    , getSettingsTask, getUser, getUserTask, listMyStakes, listMyStakesTask, listPredictions, listPredictionsTask
-    , logInUsername, logInUsernameTask, registerUsername, registerUsernameTask, resolve, resolveTask, sendInvitation
-    , sendInvitationTask, sendVerificationEmail, sendVerificationEmailTask, setTrusted, setTrustedTask, signOut, signOutTask
-    , stake, stakeTask, whoami, whoamiTask
+    ( formstate, formstateTask, acceptInvitation, acceptInvitationTask, changePassword, changePasswordTask
+    , checkInvitation, checkInvitationTask, createPrediction, createPredictionTask, follow, followTask, getPrediction
+    , getPredictionTask, getSettings, getSettingsTask, getUser, getUserTask, listMyStakes, listMyStakesTask
+    , listPredictions, listPredictionsTask, logInUsername, logInUsernameTask, registerUsername, registerUsernameTask, resolve
+    , resolveTask, sendInvitation, sendInvitationTask, sendVerificationEmail, sendVerificationEmailTask, setTrusted, setTrustedTask
+    , signOut, signOutTask, stake, stakeTask, whoami, whoamiTask
     )
 
 {-|
 ## Operations
 
-@docs acceptInvitation, acceptInvitationTask, changePassword, changePasswordTask, checkInvitation, checkInvitationTask
-@docs createPrediction, createPredictionTask, follow, followTask, getPrediction, getPredictionTask
-@docs getSettings, getSettingsTask, getUser, getUserTask, listMyStakes, listMyStakesTask
-@docs listPredictions, listPredictionsTask, logInUsername, logInUsernameTask, registerUsername, registerUsernameTask
-@docs resolve, resolveTask, sendInvitation, sendInvitationTask, sendVerificationEmail, sendVerificationEmailTask
-@docs setTrusted, setTrustedTask, signOut, signOutTask, stake, stakeTask
-@docs whoami, whoamiTask
+@docs formstate, formstateTask, acceptInvitation, acceptInvitationTask, changePassword, changePasswordTask
+@docs checkInvitation, checkInvitationTask, createPrediction, createPredictionTask, follow, followTask
+@docs getPrediction, getPredictionTask, getSettings, getSettingsTask, getUser, getUserTask
+@docs listMyStakes, listMyStakesTask, listPredictions, listPredictionsTask, logInUsername, logInUsernameTask
+@docs registerUsername, registerUsernameTask, resolve, resolveTask, sendInvitation, sendInvitationTask
+@docs sendVerificationEmail, sendVerificationEmailTask, setTrusted, setTrustedTask, signOut, signOutTask
+@docs stake, stakeTask, whoami, whoamiTask
 -}
 
 
@@ -29,6 +29,41 @@ import Json.Encode
 import OpenApi.Common
 import Task
 import Url.Builder
+
+
+{-| <Lambda> -}
+formstate config =
+    Http.request
+        { url = Url.Builder.absolute [ "_formstate" ] []
+        , method = "POST"
+        , headers = []
+        , expect =
+            OpenApi.Common.expectJsonCustom
+                (Dict.fromList [])
+                Api.Json.decodeSavedCreatedPredictionFormState
+                config.toMsg
+        , body = Http.emptyBody
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
+{-| <Lambda> -}
+formstateTask :
+    {}
+    -> Task.Task (OpenApi.Common.Error err String) Api.Types.SavedCreatedPredictionFormState
+formstateTask config =
+    Http.task
+        { url = Url.Builder.absolute [ "_formstate" ] []
+        , method = "POST"
+        , headers = []
+        , resolver =
+            OpenApi.Common.jsonResolverCustom
+                (Dict.fromList [])
+                Api.Json.decodeSavedCreatedPredictionFormState
+        , body = Http.emptyBody
+        , timeout = Nothing
+        }
 
 
 {-| H -}

@@ -5,6 +5,7 @@ import Html.Attributes as HA
 import Html.Events as HE
 import Json.Decode as JD
 import Json.Encode as JE
+import OpenApi.Common
 import Set
 import Time
 
@@ -140,11 +141,27 @@ mustMapValues d = d |> Dict.map (\_ v -> must "no null values are allowed in a m
 mustAuthSuccessUserInfo : Pb.AuthSuccess -> Pb.GenericUserInfo
 mustAuthSuccessUserInfo {userInfo} = userInfo
 
+nullableToMaybe : OpenApi.Common.Nullable a -> Maybe a
+nullableToMaybe n =
+  case n of
+    OpenApi.Common.Null -> Nothing
+    OpenApi.Common.Present a -> Just a
+
+{-| The prediction's resolution event, or Nothing if unresolved. Collapses the
+generated `Maybe (Nullable ResolutionEvent)` to a plain `Maybe`. -}
+resolutionEventOf : Pb.UserPredictionView -> Maybe Pb.ResolutionEvent
+resolutionEventOf prediction = prediction.resolution |> Maybe.andThen nullableToMaybe
+
+resolutionEventFields (Pb.ResolutionEvent r) = r
+
+priorRevisionOf : Pb.ResolutionEvent -> Maybe Pb.ResolutionEvent
+priorRevisionOf event = (resolutionEventFields event).priorRevision |> Maybe.andThen nullableToMaybe
+
 currentResolution : Pb.UserPredictionView -> Pb.Resolution
 currentResolution prediction =
-  case prediction.resolution of
+  case resolutionEventOf prediction of
     Nothing -> Pb.Resolution__RESOLUTIONNONEYET
-    Just event -> event.resolution
+    Just event -> (resolutionEventFields event).resolution
 
 resolutionIsTerminal : Pb.Resolution -> Bool
 resolutionIsTerminal res =
