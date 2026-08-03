@@ -46,6 +46,11 @@ class CredentialsConfig(BaseModel):
     # human-set. Encoded to bytes (utf-8) where a key is needed.
     token_signing_secret: str
     database: DatabaseInfo
+    # The full origin this deployment serves from, used to build absolute links
+    # in outgoing emails (verification, invitations, etc.). A scheme + host
+    # (+ optional port) with NO trailing slash, e.g. "https://biatob.com" for
+    # production or "http://localhost:8080" for a local dev server.
+    site_base_url: str
 
     @property
     def token_signing_secret_bytes(self) -> bytes:

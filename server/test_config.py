@@ -10,12 +10,14 @@ SQLITE_JSON = json.dumps({
     'smtp': {'hostname': 'h', 'port': 587, 'username': 'u', 'password': 'p', 'from_addr': 'f@x.com'},
     'token_signing_secret': 'sekrit',
     'database': {'kind': 'sqlite', 'path': '/tmp/x.db'},
+    'site_base_url': 'https://biatob.com',
 })
 
 MYSQL_JSON = json.dumps({
     'smtp': {'hostname': 'h', 'port': 25, 'username': 'u', 'password': 'p', 'from_addr': 'f@x.com'},
     'token_signing_secret': 'sekrit',
     'database': {'kind': 'mysql', 'hostname': 'db', 'username': 'mu', 'password': 'mp', 'dbname': 'biatob'},
+    'site_base_url': 'https://biatob.com',
 })
 
 
@@ -25,6 +27,7 @@ def test_parses_sqlite():
     assert c.database.path == '/tmp/x.db'
     assert c.smtp.port == 587
     assert c.token_signing_secret_bytes == b'sekrit'
+    assert c.site_base_url == 'https://biatob.com'
 
 
 def test_parses_mysql():

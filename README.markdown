@@ -30,12 +30,20 @@ This project uses the `doit` build system: https://pydoit.org/tutorial_1.html
     "from_addr": "biatob@example.com"
   },
   "token_signing_secret": "some long random string",
-  "database": { "kind": "sqlite", "path": "/home/protected/server.WorldState.db" }
+  "database": { "kind": "sqlite", "path": "/home/protected/server.WorldState.db" },
+  "site_base_url": "https://biatob.com"
 }
 ```
 
 `database` is either `{"kind": "sqlite", "path": "..."}` or `{"kind": "mysql",
 "hostname": ..., "username": ..., "password": ..., "dbname": ...}`.
+
+`site_base_url` is the full origin this deployment serves from -- a scheme +
+host (+ optional port), with NO trailing slash (e.g. `https://biatob.com` in
+production, or `http://localhost:8080` for a local dev server). It's used to
+build the absolute links in outgoing emails, so a verification/invitation link
+sent by a dev or staging server points back at that server instead of
+production.
 
 
 Dreamed-of enhancements

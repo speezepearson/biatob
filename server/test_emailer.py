@@ -22,6 +22,7 @@ def emailer(aiosmtplib):
     username='myusername',
     password='mypassword',
     from_addr='myfrom@ddre.ss',
+    base_url='https://test.example',
     aiosmtplib_for_testing=aiosmtplib,
   )
 
@@ -57,13 +58,26 @@ class TestEmailVerification:
     # `=\n` undoes quoted-printable soft line-wraps, in case the token spans one
     assert 'some-sealed-proof-token' in message_to_string(aiosmtplib.send.call_args[1]['message']).replace('=\n', '')
 
+  async def test_verify_link_uses_configured_base_url(self, aiosmtplib, emailer: Emailer):
+    # Regression: the verification link must point at THIS deployment's origin,
+    # not hardcoded production -- a link minted by a dev/staging server that
+    # points at biatob.com just 500s there.
+    await emailer.send_email_verification(to='a@a', proof_token='some-token')
+    body = message_to_string(aiosmtplib.send.call_args[1]['message'])
+    assert 'https://test.example/verify_email/some-token' in body
+    # No site link points at hardcoded production. (The `contact@biatob.com`
+    # Reply-To header is an email address, not a site origin, so we check for
+    # the production origin specifically rather than the bare domain.)
+    assert 'https://biatob.com' not in body
+
 class TestResolutionNotification:
   async def test_smoke(self, aiosmtplib, emailer: Emailer):
     await emailer.send_resolution_notifications(bccs=['a','b'], prediction_id=PredictionId('my_pred_id'), prediction_text='a thing will happen', resolution=mvp_pb2.RESOLUTION_YES)
     body = message_to_string(aiosmtplib.send.call_args[1]['message'])
     assert 'a thing will happen' in body
     assert 'came true' in body
-    assert 'https://biatob.com/p/my_pred_id' in body
+    assert 'https://test.example/p/my_pred_id' in body
+    assert 'biatob.com/p/my_pred_id' not in body
 
 class TestResolutionReminder:
   async def test_smoke(self, aiosmtplib, emailer: Emailer):
