@@ -5,9 +5,9 @@ import Html.Attributes as HA
 import Html.Events as HE
 import Http
 
-import Biatob.Proto.Mvp as Pb
+import Api.Types as Pb
+import Api.Json
 
-import Biatob.Proto.Mvp exposing (StakeResult(..))
 import API
 import Utils exposing (Password, RequestStatus(..), isOk, viewError)
 

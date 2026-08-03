@@ -11,7 +11,8 @@ import Time
 import Globals
 import Widgets.AuthWidget as AuthWidget
 import Widgets.Navbar as Navbar
-import Biatob.Proto.Mvp as Pb
+import Api.Types as Pb
+import Api.Json
 import API
 import Utils
 import Utils exposing (RequestStatus(..))
@@ -33,7 +34,7 @@ type Msg
   | SendVerificationEmail
   | SendVerificationEmailFinished Pb.SendVerificationEmailRequest (Result API.Error Pb.Empty)
   | SignOut AuthWidget.State Pb.SignOutRequest
-  | SignOutFinished Pb.SignOutRequest (Result API.Error Pb.SignOutResponse)
+  | SignOutFinished Pb.SignOutRequest (Result API.Error Pb.Empty)
   | SetEmailField String
   | Tick Time.Posix
   | AuthWidgetExternallyModified AuthWidget.DomModification

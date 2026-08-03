@@ -7,7 +7,8 @@ import Html.Events as HE
 import Http
 import Json.Decode as JD
 
-import Biatob.Proto.Mvp as Pb
+import Api.Types as Pb
+import Api.Json
 import API
 import Utils exposing (RequestStatus(..), Username)
 
@@ -16,7 +17,7 @@ import Widgets.Navbar as Navbar
 import Globals
 import Time
 import Dict exposing (Dict)
-import Biatob.Proto.Mvp exposing (Relationship)
+import Api.Types exposing (Relationship)
 
 port copy : String -> Cmd msg
 port navigate : Maybe String -> Cmd msg
@@ -51,7 +52,7 @@ type Msg
   | SetTrusted Bool
   | SetTrustedFinished Pb.SetTrustedRequest (Result API.Error Pb.GenericUserInfo)
   | SignOut AuthWidget.State Pb.SignOutRequest
-  | SignOutFinished Pb.SignOutRequest (Result API.Error Pb.SignOutResponse)
+  | SignOutFinished Pb.SignOutRequest (Result API.Error Pb.Empty)
   | SetPredictionFilterPhase (Maybe LifecyclePhase)
   | SetPredictionSortOrder SortOrder
   | Copy String
@@ -181,7 +182,7 @@ viewControls filter order =
 
 phaseMatches : Time.Posix -> LifecyclePhase -> Pb.UserPredictionView -> Bool
 phaseMatches now phase prediction =
-  if Utils.currentResolution prediction /= Pb.ResolutionNoneYet then
+  if Utils.currentResolution prediction /= Pb.Resolution__RESOLUTIONNONEYET then
     phase == Resolved
   else if Utils.timeToUnixtime now < prediction.closesUnixtime then
     phase == Open
@@ -263,7 +264,7 @@ view model =
             ]
           else
             let
-              (trustsYou, trustedByYou) = case Dict.get model.who (Utils.mustMapValues settings.relationships) of
+              (trustsYou, trustedByYou) = case Dict.get model.who settings.relationships of
                 Nothing -> (False, False)
                 Just rel -> (rel.trustsYou, rel.trustedByYou)
               haveSentInvitation = Dict.member model.who settings.invitations
@@ -350,13 +351,12 @@ view model =
               { isHeader = False
               , predictedOn = H.text <| Utils.yearMonthDayStr model.globals.timeZone (Utils.unixtimeToTime prediction.createdUnixtime)
               , prediction = H.a [HA.href <| Utils.pathToPrediction id] [H.text <| "By " ++ Utils.yearMonthDayStr model.globals.timeZone (Utils.unixtimeToTime prediction.resolvesAtUnixtime) ++ ", " ++ prediction.prediction]
-              , resolution = case prediction.resolution |> Maybe.map .resolution of
+              , resolution = case Utils.resolutionEventOf prediction |> Maybe.map (\e -> (Utils.resolutionEventFields e).resolution) of
                     Nothing -> H.text ""
-                    Just Pb.ResolutionNoneYet -> H.text ""
-                    Just Pb.ResolutionYes -> H.text "Yes"
-                    Just Pb.ResolutionNo -> H.text "No"
-                    Just Pb.ResolutionInvalid -> H.text "Invalid!"
-                    Just (Pb.ResolutionUnrecognized_ _) -> Debug.todo "unrecognized resolution"
+                    Just Pb.Resolution__RESOLUTIONNONEYET -> H.text ""
+                    Just Pb.Resolution__RESOLUTIONYES -> H.text "Yes"
+                    Just Pb.Resolution__RESOLUTIONNO -> H.text "No"
+                    Just Pb.Resolution__RESOLUTIONINVALID -> H.text "Invalid!"
               })
           |> H.tbody []
         ]

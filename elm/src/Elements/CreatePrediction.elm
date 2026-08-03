@@ -8,7 +8,8 @@ import Http
 import Json.Decode as JD
 import Time
 
-import Biatob.Proto.Mvp as Pb
+import Api.Types as Pb
+import Api.Json
 import Utils exposing (i, isOk, maxLegalStakeCents, viewError, Cents, RequestStatus(..))
 import Elements.Prediction as Prediction
 
@@ -55,7 +56,7 @@ type Msg
   | LogInUsername AuthWidget.State Pb.LogInUsernameRequest
   | LogInUsernameFinished Pb.LogInUsernameRequest (Result API.Error Pb.AuthSuccess)
   | SignOut AuthWidget.State Pb.SignOutRequest
-  | SignOutFinished Pb.SignOutRequest (Result API.Error Pb.SignOutResponse)
+  | SignOutFinished Pb.SignOutRequest (Result API.Error Pb.Empty)
   | SaveFormState
   | Tick Time.Posix
   | AuthWidgetExternallyModified AuthWidget.DomModification
@@ -107,7 +108,7 @@ buildCreateRequest model =
   parseViewPrivacy model |> Result.toMaybe |> Maybe.andThen (\viewPrivacy ->
     Just
       { prediction = prediction
-      , certainty = Just { low=lowP, high=highP }
+      , certainty = { low=lowP, high=highP }
       , maximumStakeCents = stake
       , openSeconds = openForSeconds
       , specialRules = model.specialRulesField
@@ -201,9 +202,9 @@ anybodyWithTheLink = "anybody with the link"
 parseViewPrivacy : Model -> Result String Pb.PredictionViewPrivacy
 parseViewPrivacy model =
   if model.viewPrivacyField == anybody then
-    Ok Pb.PredictionViewPrivacyAnybody
+    Ok Pb.PredictionViewPrivacy__PREDICTIONVIEWPRIVACYANYBODY
   else if model.viewPrivacyField == anybodyWithTheLink then
-    Ok Pb.PredictionViewPrivacyAnybodyWithTheLink
+    Ok Pb.PredictionViewPrivacy__PREDICTIONVIEWPRIVACYANYBODYWITHTHELINK
   else
     Err <| "unrecognized view-privacy: " ++ model.viewPrivacyField
 
@@ -221,7 +222,7 @@ init flags =
     , viewPrivacyField = anybody
     , specialRulesField = ""
     , createRequestStatus = Unstarted
-    } |> case Utils.decodePbFromFlags Pb.savedCreatedPredictionFormStateDecoder "formStatePbB64" flags of
+    } |> case Utils.decodeFromFlags Api.Json.decodeSavedCreatedPredictionFormState "formState" flags of
           Nothing -> identity
           Just state -> loadFormState state
   , Cmd.none
@@ -287,7 +288,7 @@ update msg model =
       )
     SaveFormState ->
       ( model
-      , saveFormState (extractSavedFormState model |> Pb.toSavedCreatedPredictionFormStateEncoder |> Utils.encodePbB64)
+      , saveFormState (extractSavedFormState model |> Api.Json.encodeSavedCreatedPredictionFormState |> Utils.encodeToString)
       )
     Tick now ->
       ( { model | globals = model.globals |> Globals.tick now }
@@ -672,7 +673,7 @@ previewPrediction {request, creatorName, createdAt} =
   , resolution = Nothing
   , yourTrades = []
   , resolvesAtUnixtime = request.resolvesAtUnixtime
-  , yourFollowingStatus = Pb.PredictionFollowingNotFollowing
+  , yourFollowingStatus = Pb.PredictionFollowingStatus__PREDICTIONFOLLOWINGNOTFOLLOWING
   }
 
 subscriptions : Model -> Sub Msg

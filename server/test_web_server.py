@@ -3,14 +3,14 @@ from pathlib import Path
 import httpx
 import pytest
 
-from .protobuf import mvp_pb2
+from . import api_types as T
 from .test_utils import *
-from .test_api_server import post_proto, app, cli
+from .test_api_server import post, app, cli
 
 
 async def _log_in_as_alice(cli, any_servicer):
   create_user(any_servicer, u('alice'), password='alice')
-  await post_proto(cli, '/api/LogInUsername', mvp_pb2.LogInUsernameRequest(username='alice', password='alice'), mvp_pb2.AuthSuccess)
+  await post(cli, '/api/LogInUsername', T.LogInUsernameRequest(username='alice', password='alice'), T.AuthSuccess)
 
 
 @pytest.mark.parametrize('logged_in', [True, False])

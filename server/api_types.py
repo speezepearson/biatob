@@ -106,7 +106,8 @@ class UserPredictionView(_Base):
     closes_unixtime: float
     special_rules: str
     creator: str
-    resolution: ResolutionEvent
+    # None until the prediction is resolved.
+    resolution: Optional[ResolutionEvent] = None
     your_trades: List[Trade]
     resolves_at_unixtime: float
     your_following_status: PredictionFollowingStatus

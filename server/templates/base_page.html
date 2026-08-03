@@ -16,7 +16,7 @@
 
   <script type="text/javascript">
     window.elmGlobalFlags = {
-      authSuccessPbB64: {% if auth_success_pb_b64 is defined %} {{ auth_success_pb_b64 | tojson }} {% else %} null {% endif %},
+      authSuccess: {% if auth_success is defined %} {{ auth_success | tojson }} {% else %} null {% endif %},
       timeZoneOffsetMinutes: new Date().getTimezoneOffset(),
       httpOrigin: window.origin,
       initUnixtime: +(new Date()) / 1000,

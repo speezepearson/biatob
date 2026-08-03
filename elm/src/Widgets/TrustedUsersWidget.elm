@@ -6,7 +6,8 @@ import Html.Events as HE
 import Http
 import Dict as D
 
-import Biatob.Proto.Mvp as Pb
+import Api.Types as Pb
+import Api.Json
 import Utils
 
 import API
@@ -44,7 +45,7 @@ view : Config msg -> State -> Html msg
 view config state =
   H.div [HA.class "row"]
     [ Utils.b "Your relationships: "
-    , H.div [HA.class "col-md-8"] <| List.singleton <| let relationships = config.userInfo |> .relationships |> Utils.mustMapValues in
+    , H.div [HA.class "col-md-8"] <| List.singleton <| let relationships = config.userInfo |> .relationships in
       if D.isEmpty relationships then
         H.text "nobody yet!"
       else

@@ -13,7 +13,8 @@ import Widgets.AuthWidget as AuthWidget
 import Widgets.Navbar as Navbar
 import Globals
 import API
-import Biatob.Proto.Mvp as Pb
+import Api.Types as Pb
+import Api.Json
 import Utils exposing (Cents, PredictionId, Username, isOk, viewError)
 import Time
 import Bytes.Encode
@@ -159,7 +160,7 @@ type Msg
   | SetCreatorTrusted
   | SetCreatorTrustedFinished Pb.SetTrustedRequest (Result API.Error Pb.GenericUserInfo)
   | SignOut AuthWidgetLoc AuthWidget.State Pb.SignOutRequest
-  | SignOutFinished AuthWidgetLoc Pb.SignOutRequest (Result API.Error Pb.SignOutResponse)
+  | SignOutFinished AuthWidgetLoc Pb.SignOutRequest (Result API.Error Pb.Empty)
   | Stake Cents
   | StakeFinished Pb.StakeRequest (Result API.Error Pb.UserPredictionView)
   | Follow Bool
@@ -244,27 +245,18 @@ view model =
 viewBodyMockup : Globals.Globals -> Pb.UserPredictionView -> Html ()
 viewBodyMockup globals prediction =
   let
-    emptyBytes = Bytes.Encode.encode <| Bytes.Encode.sequence []
-    mockToken : Pb.AuthToken
-    mockToken =
-      { owner="__previewer__"
-      , mintedUnixtime=0
-      , expiresUnixtime=0
-      , hmacOfRest=emptyBytes
-      }
     mockSettings : Pb.GenericUserInfo
     mockSettings =
       { emailAddress = "example@example.com"
       , invitations = Dict.empty
-      , loginType = Just (Pb.LoginTypeLoginPassword {salt=emptyBytes, scrypt=emptyBytes})
-      , relationships = Dict.singleton prediction.creator (Just {trustsYou=True, trustedByYou=True})
+      , relationships = Dict.singleton prediction.creator {trustsYou=True, trustedByYou=True}
       }
 
     newGlobals =
       globals
       |> Globals.handleGetPredictionResponse {predictionId="my-predid"} (Ok prediction)
       |> Globals.handleSignOutResponse {} (Ok {})
-      |> Globals.handleLogInUsernameResponse {username="__previewer__", password=""} (Ok {token=Just mockToken, userInfo=Just mockSettings})
+      |> Globals.handleLogInUsernameResponse {username="__previewer__", password=""} (Ok {owner="__previewer__", userInfo=mockSettings})
   in
   initInternal newGlobals "my-predid"
   |> viewBody
@@ -304,7 +296,7 @@ getBetParameters side prediction =
       Utils.Believer -> (1 - certainty.high) / certainty.high
     queuedCreatorStake =
       prediction.yourTrades
-      |> List.filter (.state >> (==) Pb.TradeStateQueued)
+      |> List.filter (.state >> (==) Pb.TradeState__TRADESTATEQUEUED)
       |> List.filter (.bettorIsASkeptic >> Utils.betSideFromIsSkeptical >> (==) side)
       |> List.map .creatorStakeCents
       |> List.sum
@@ -394,7 +386,7 @@ viewBody model =
       [ viewSummaryTable model.globals.now model.globals.timeZone prediction
       , if isOwnPrediction then H.text "" else
         case prediction.yourFollowingStatus of
-          Pb.PredictionFollowingNotFollowing ->
+          Pb.PredictionFollowingStatus__PREDICTIONFOLLOWINGNOTFOLLOWING ->
             H.div []
             [ H.button
               [ HE.onClick (Follow True)
@@ -404,7 +396,7 @@ viewBody model =
               [ H.text "Notify me when this prediction resolves"
               ]
             ]
-          Pb.PredictionFollowingFollowing ->
+          Pb.PredictionFollowingStatus__PREDICTIONFOLLOWINGFOLLOWING ->
             H.div []
             [ H.text "I'll notify you when this prediction resolves. "
             , H.button
@@ -415,13 +407,9 @@ viewBody model =
               [ H.text "No, don't notify me"
               ]
             ]
-          Pb.PredictionFollowingMandatoryBecauseStaked ->
+          Pb.PredictionFollowingStatus__PREDICTIONFOLLOWINGMANDATORYBECAUSESTAKED ->
             H.div []
             [ H.text "You have a stake in this prediction, so I'll notify you when it resolves."
-            ]
-          Pb.PredictionFollowingStatusUnrecognized_ _ ->
-            H.div []
-            [ Utils.redText "Something's gone very wrong! I'm not sure whether I'll notify you when this prediction resolves!"
             ]
       ]
     , H.div [HA.class "col-md-8"]
@@ -557,7 +545,7 @@ viewResolutionForm notesField resolveStatus currentResolution =
         , H.text ". If that was a mistake, you can always "
         , H.button
           [ HA.disabled working
-          , HE.onClick <| Resolve Pb.ResolutionNoneYet
+          , HE.onClick <| Resolve Pb.Resolution__RESOLUTIONNONEYET
           , HA.class "btn btn-sm py-0 btn-outline-secondary"
           ]
           [ H.text "un-resolve it." ]
@@ -566,25 +554,20 @@ viewResolutionForm notesField resolveStatus currentResolution =
   in
     H.div []
     [ case currentResolution of
-        Pb.ResolutionYes ->
+        Pb.Resolution__RESOLUTIONYES ->
           mistakeInfo "HAPPENED"
-        Pb.ResolutionNo ->
+        Pb.Resolution__RESOLUTIONNO ->
           mistakeInfo "DID NOT HAPPEN"
-        Pb.ResolutionInvalid ->
+        Pb.Resolution__RESOLUTIONINVALID ->
           mistakeInfo "was INVALID"
-        Pb.ResolutionNoneYet ->
+        Pb.Resolution__RESOLUTIONNONEYET ->
           H.div []
           [ notesFieldBlock
           , H.div [HA.class "my-2"]
-            [ H.button [HA.class "btn btn-sm py-0 btn-outline-primary   mx-1", HA.disabled working, HE.onClick <| Resolve Pb.ResolutionYes    ] [H.text "It happened!"]
-            , H.button [HA.class "btn btn-sm py-0 btn-outline-primary   mx-1", HA.disabled working, HE.onClick <| Resolve Pb.ResolutionNo     ] [H.text "It didn't happen!"]
-            , H.button [HA.class "btn btn-sm py-0 btn-outline-secondary mx-1", HA.disabled working, HE.onClick <| Resolve Pb.ResolutionInvalid] [H.text "Invalid prediction / impossible to resolve"]
+            [ H.button [HA.class "btn btn-sm py-0 btn-outline-primary   mx-1", HA.disabled working, HE.onClick <| Resolve Pb.Resolution__RESOLUTIONYES    ] [H.text "It happened!"]
+            , H.button [HA.class "btn btn-sm py-0 btn-outline-primary   mx-1", HA.disabled working, HE.onClick <| Resolve Pb.Resolution__RESOLUTIONNO     ] [H.text "It didn't happen!"]
+            , H.button [HA.class "btn btn-sm py-0 btn-outline-secondary mx-1", HA.disabled working, HE.onClick <| Resolve Pb.Resolution__RESOLUTIONINVALID] [H.text "Invalid prediction / impossible to resolve"]
             ]
-          ]
-        Pb.ResolutionUnrecognized_ _ ->
-          H.span []
-          [ H.span [HA.style "color" "red"] [H.text "unrecognized resolution"]
-          , mistakeInfo "??????"
           ]
     , H.text " "
     , case resolveStatus of
@@ -783,32 +766,30 @@ unfoldResolutionEvent event =
   case event of
     Nothing -> []
     Just e ->
-      let (Pb.ResolutionEventPriorRevision prior) = e.priorRevision in
-      e :: unfoldResolutionEvent prior
+      e :: unfoldResolutionEvent (Utils.priorRevisionOf e)
 viewResolutionRow : Time.Posix -> Time.Zone -> Pb.UserPredictionView -> Html msg
 viewResolutionRow now timeZone prediction =
   let
     auditLog : Html msg
     auditLog =
-      let revisions = unfoldResolutionEvent prediction.resolution in
+      let revisions = unfoldResolutionEvent (Utils.resolutionEventOf prediction) in
       if List.isEmpty revisions then H.text "" else
       H.details [HA.style "display" "inline-block", HA.style "opacity" "50%"]
         [ H.summary [] [H.text "History"]
         , makeTable [HA.class "resolution-history-table"]
           [ ( [H.text "When"]
-            , \event -> [H.text <| Utils.yearMonthDayHourMinuteStr timeZone (Utils.unixtimeToTime event.unixtime)]
+            , \event -> [H.text <| Utils.yearMonthDayHourMinuteStr timeZone (Utils.unixtimeToTime (Utils.resolutionEventFields event).unixtime)]
             )
           , ( [H.text "Resolution"]
-            , \event -> [ H.text <| case event.resolution of
-                  Pb.ResolutionYes -> "happened"
-                  Pb.ResolutionNo -> "did not happen"
-                  Pb.ResolutionInvalid -> "INVALID"
-                  Pb.ResolutionNoneYet -> "UN-RESOLVED"
-                  Pb.ResolutionUnrecognized_ _ -> "(??? unrecognized resolution ???)"
+            , \event -> [ H.text <| case (Utils.resolutionEventFields event).resolution of
+                  Pb.Resolution__RESOLUTIONYES -> "happened"
+                  Pb.Resolution__RESOLUTIONNO -> "did not happen"
+                  Pb.Resolution__RESOLUTIONINVALID -> "INVALID"
+                  Pb.Resolution__RESOLUTIONNONEYET -> "UN-RESOLVED"
                 ]
             )
           , ( [H.text "Notes"]
-            , \event -> [ H.text event.notes ]
+            , \event -> [ H.text (Utils.resolutionEventFields event).notes ]
             )
           ]
           revisions
@@ -817,25 +798,19 @@ viewResolutionRow now timeZone prediction =
   H.div []
   [ H.strong [] [H.text "Resolution: "]
   , case Utils.currentResolution prediction of
-      Pb.ResolutionYes ->
+      Pb.Resolution__RESOLUTIONYES ->
         H.text "it happened"
-      Pb.ResolutionNo ->
+      Pb.Resolution__RESOLUTIONNO ->
         H.text "it didn't happen"
-      Pb.ResolutionInvalid ->
+      Pb.Resolution__RESOLUTIONINVALID ->
         H.text "INVALID PREDICTION"
-      Pb.ResolutionNoneYet ->
+      Pb.Resolution__RESOLUTIONNONEYET ->
         H.text <|
           "none yet"
           ++ if prediction.resolvesAtUnixtime < Utils.timeToUnixtime now then
             " (even though it should have resolved by now! Consider nudging the creator.)"
           else
             ""
-      Pb.ResolutionUnrecognized_ _ ->
-        H.span [HA.style "color" "red"]
-          [ H.text "Oh dear, something has gone very strange with this prediction. Please "
-          , H.a [HA.href "mailto:bugs@biatob.com"] [H.text "email bugs@biatob.com"]
-          , H.text " with this URL to report it!"
-          ]
   , H.text " "
   , auditLog
   ]
@@ -864,11 +839,10 @@ viewTradesAsCreator timeZone prediction =
           , \t ->
               [ H.text <|
                 case t.state of
-                  Pb.TradeStateActive -> ""
-                  Pb.TradeStateQueued -> "[queued, pending @" ++ prediction.creator ++ "'s trust]"
-                  Pb.TradeStateDisavowed -> "[disavowed]"
-                  Pb.TradeStateDequeueFailed -> "[dequeue failed]"
-                  Pb.TradeStateUnrecognized_ _ -> "???"
+                  Pb.TradeState__TRADESTATEACTIVE -> ""
+                  Pb.TradeState__TRADESTATEQUEUED -> "[queued, pending @" ++ prediction.creator ++ "'s trust]"
+                  Pb.TradeState__TRADESTATEDISAVOWED -> "[disavowed]"
+                  Pb.TradeState__TRADESTATEDEQUEUEFAILED -> "[dequeue failed]"
               , H.text <| " " ++ t.notes
               ]
           )
@@ -885,17 +859,17 @@ viewTradesAsCreator timeZone prediction =
       )
     winningsColumns =
       case Utils.currentResolution prediction of
-        Pb.ResolutionYes ->
+        Pb.Resolution__RESOLUTIONYES ->
           [ ( [H.text "Winnings"]
             , \(_, trades) -> [H.text <| formatYouWin <| getTotalCreatorWinnings True trades]
             )
           ]
-        Pb.ResolutionNo ->
+        Pb.Resolution__RESOLUTIONNO ->
           [ ( [H.text "Winnings"]
             , \(_, trades) -> [H.text <| formatYouWin <| getTotalCreatorWinnings False trades]
             )
           ]
-        Pb.ResolutionInvalid ->
+        Pb.Resolution__RESOLUTIONINVALID ->
           [ ( [H.text "if it happens"]
             , \(_, trades) -> [H.text <| formatYouWin <| getTotalCreatorWinnings True trades]
             )
@@ -903,7 +877,7 @@ viewTradesAsCreator timeZone prediction =
             , \(_, trades) -> [H.text <| formatYouWin <| getTotalCreatorWinnings False trades]
             )
           ]
-        Pb.ResolutionNoneYet ->
+        Pb.Resolution__RESOLUTIONNONEYET ->
           [ ( [H.text "if it happens"]
             , \(_, trades) -> [H.text <| formatYouWin <| getTotalCreatorWinnings True trades]
             )
@@ -911,8 +885,6 @@ viewTradesAsCreator timeZone prediction =
             , \(_, trades) -> [H.text <| formatYouWin <| getTotalCreatorWinnings False trades]
             )
           ]
-        Pb.ResolutionUnrecognized_ _ ->
-          []
   in
     makeTable [HA.class "winnings-by-bettor-table"] (bettorColumn :: winningsColumns) (Dict.toList tradesByBettor)
 
@@ -940,11 +912,10 @@ viewTradesAsBettor timeZone prediction trades =
           , \t ->
               [ H.text <|
                 case t.state of
-                  Pb.TradeStateActive -> ""
-                  Pb.TradeStateQueued -> "[queued, pending @" ++ prediction.creator ++ "'s trust]"
-                  Pb.TradeStateDisavowed -> "[disavowed]"
-                  Pb.TradeStateDequeueFailed -> "[dequeue failed]"
-                  Pb.TradeStateUnrecognized_ _ -> "???"
+                  Pb.TradeState__TRADESTATEACTIVE -> ""
+                  Pb.TradeState__TRADESTATEQUEUED -> "[queued, pending @" ++ prediction.creator ++ "'s trust]"
+                  Pb.TradeState__TRADESTATEDISAVOWED -> "[disavowed]"
+                  Pb.TradeState__TRADESTATEDEQUEUEFAILED -> "[dequeue failed]"
               , H.text <| " " ++ t.notes
               ]
           )
@@ -953,39 +924,36 @@ viewTradesAsBettor timeZone prediction trades =
       ]
   in
     case Utils.currentResolution prediction of
-      Pb.ResolutionYes ->
+      Pb.Resolution__RESOLUTIONYES ->
         H.span []
         [ H.text "The predicted event happened: "
         , Utils.b <| formatYouWin -(getTotalCreatorWinnings True trades) ++ "!"
         , allTradesDetails
         ]
-      Pb.ResolutionNo ->
+      Pb.Resolution__RESOLUTIONNO ->
         H.span []
         [ H.text "The predicted event didn't happen: "
         , Utils.b <| formatYouWin -(getTotalCreatorWinnings False trades) ++ "!"
         , allTradesDetails
         ]
-      Pb.ResolutionInvalid ->
+      Pb.Resolution__RESOLUTIONINVALID ->
         H.span []
         [ H.text <| "If it happens, " ++ formatYouWin -(getTotalCreatorWinnings True trades)
         , H.text <| "; if not, " ++ formatYouWin -(getTotalCreatorWinnings False trades)
         , H.text "."
         , allTradesDetails
         ]
-      Pb.ResolutionNoneYet ->
+      Pb.Resolution__RESOLUTIONNONEYET ->
         H.span []
         [ H.text <| "If it happens, " ++ formatYouWin -(getTotalCreatorWinnings True trades)
         , H.text <| "; if not, " ++ formatYouWin -(getTotalCreatorWinnings False trades)
         , H.text "."
         , allTradesDetails
         ]
-      Pb.ResolutionUnrecognized_ _ ->
-        H.text "??????"
-
 getTotalCreatorWinnings : Bool -> List Pb.Trade -> Cents
 getTotalCreatorWinnings resolvedYes trades =
   trades
-  |> List.filter (\t -> t.state == Pb.TradeStateActive)
+  |> List.filter (\t -> t.state == Pb.TradeState__TRADESTATEACTIVE)
   |> List.map (\t -> if (resolvedYes == t.bettorIsASkeptic) then t.bettorStakeCents else -t.creatorStakeCents)
   |> List.sum
 

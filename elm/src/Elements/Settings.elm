@@ -13,7 +13,8 @@ import API
 import Utils
 import Widgets.AuthWidget as AuthWidget
 import Widgets.Navbar as Navbar
-import Biatob.Proto.Mvp as Pb
+import Api.Types as Pb
+import Api.Json
 import Time
 
 port copy : String -> Cmd msg
@@ -38,7 +39,7 @@ type Msg
   | SetTrusted TrustedUsersWidget.State Pb.SetTrustedRequest
   | SetTrustedFinished Pb.SetTrustedRequest (Result API.Error Pb.GenericUserInfo)
   | SignOut AuthWidget.State Pb.SignOutRequest
-  | SignOutFinished Pb.SignOutRequest (Result API.Error Pb.SignOutResponse)
+  | SignOutFinished Pb.SignOutRequest (Result API.Error Pb.Empty)
   | Copy String
   | Tick Time.Posix
   | AuthWidgetExternallyModified AuthWidget.DomModification

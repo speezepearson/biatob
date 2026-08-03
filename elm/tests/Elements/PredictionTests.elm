@@ -11,7 +11,8 @@ import Test.Html.Query as HQ
 import Test.Html.Selector as HS
 
 import Globals
-import Biatob.Proto.Mvp as Pb
+import Api.Types as Pb
+import Api.Json
 import Elements.Prediction exposing (..)
 import TestUtils as TU exposing (exampleGlobals)
 import Elements.MyStakesTests exposing (exampleResolutionEvent)
@@ -26,7 +27,7 @@ exampleFields = {style=PlainLink, fontSize=TwelvePt, contentType=Link, format=Em
 mockPrediction : Pb.UserPredictionView
 mockPrediction =
   { prediction = "a thing will happen"
-  , certainty = Just {low = 0.10 , high = 0.70}
+  , certainty = {low = 0.10 , high = 0.70}
   , maximumStakeCents = 10000
   , remainingStakeCentsVsBelievers = 10000
   , remainingStakeCentsVsSkeptics = 10000
@@ -37,7 +38,7 @@ mockPrediction =
   , resolution = Nothing
   , yourTrades = []
   , resolvesAtUnixtime = 200
-  , yourFollowingStatus = Pb.PredictionFollowingNotFollowing
+  , yourFollowingStatus = Pb.PredictionFollowingStatus__PREDICTIONFOLLOWINGNOTFOLLOWING
   }
 
 exampleTrade : Pb.Trade
@@ -47,7 +48,7 @@ exampleTrade =
   , bettorStakeCents = 7
   , creatorStakeCents = 13
   , transactedUnixtime = 0
-  , state = Pb.TradeStateActive
+  , state = Pb.TradeState__TRADESTATEACTIVE
   , updatedUnixtime = 0
   , notes = ""
   }
@@ -56,10 +57,10 @@ embeddedLinkTextTest =
   describe "embeddedLinkText"
   [ test "with both low and high probs set" <|
     \() -> Expect.equal "(bet: $100 at 10-30%)"
-          <| embeddedLinkText { mockPrediction | certainty = Just {low = 0.10 , high = 0.30} , maximumStakeCents = 10000 }
+          <| embeddedLinkText { mockPrediction | certainty = {low = 0.10 , high = 0.30} , maximumStakeCents = 10000 }
   , test "with only low prob set" <|
     \() -> Expect.equal "(bet: $100 at 10%)"
-          <| embeddedLinkText { mockPrediction | certainty = Just {low = 0.10 , high = 1.00} , maximumStakeCents = 10000 }
+          <| embeddedLinkText { mockPrediction | certainty = {low = 0.10 , high = 1.00} , maximumStakeCents = 10000 }
   ]
 
 embeddedImageUrlTest : Test
@@ -76,7 +77,7 @@ expectContains q s =
 embeddingCodeTest : Test
 embeddingCodeTest =
   let
-    prediction = { mockPrediction | certainty = Just {low = 0.10 , high = 1.00} , maximumStakeCents = 10000 }
+    prediction = { mockPrediction | certainty = {low = 0.10 , high = 1.00} , maximumStakeCents = 10000 }
   in
   describe "embeddingCode"
   [ describe "links"
@@ -135,11 +136,11 @@ getBetParametersTest =
     [ test "computes correct ratio against skeptics" <|
       \() -> Expect.within (Expect.Absolute 0.00001) (0.80 / 0.20)
             <| .creatorStakeFactor
-            <| getBetParameters Utils.Skeptic { mockPrediction | certainty = Just {low=0.80, high=1.00} }
+            <| getBetParameters Utils.Skeptic { mockPrediction | certainty = {low=0.80, high=1.00} }
     , test "computes correct ratio against believers" <|
       \() -> Expect.within (Expect.Absolute 0.00001) (0.20 / 0.80)
             <| .creatorStakeFactor
-            <| getBetParameters Utils.Believer { mockPrediction | certainty = Just {low=0.50, high=0.80} }
+            <| getBetParameters Utils.Believer { mockPrediction | certainty = {low=0.50, high=0.80} }
     ]
   , describe "maxBettorStake"
     [ fuzz2 percentage (intRange 0 100) "never exceeds creator risk tolerance" <|
@@ -147,12 +148,12 @@ getBetParametersTest =
         if lowP == 0 || lowP == 1 then Expect.pass else
         Expect.atMost remainingStake
         <| (\bet -> floor (toFloat bet.maxBettorStake * bet.creatorStakeFactor))
-        <| getBetParameters Utils.Skeptic { mockPrediction | certainty = Just {low=lowP, high=1.00} , remainingStakeCentsVsSkeptics = remainingStake }
+        <| getBetParameters Utils.Skeptic { mockPrediction | certainty = {low=lowP, high=1.00} , remainingStakeCentsVsSkeptics = remainingStake }
     , fuzz2 percentage (intRange 0 100) "never suggests a zero-to-nonzero-stake bet" <|
       \lowP remainingStake ->
         if lowP == 0 || lowP == 1 then Expect.pass else
         let
-          bet = getBetParameters Utils.Skeptic { mockPrediction | certainty = Just {low=lowP, high=1.00} , remainingStakeCentsVsSkeptics = remainingStake }
+          bet = getBetParameters Utils.Skeptic { mockPrediction | certainty = {low=lowP, high=1.00} , remainingStakeCentsVsSkeptics = remainingStake }
           bettorStake = bet.maxBettorStake
           creatorStake = floor (toFloat bet.maxBettorStake * bet.creatorStakeFactor)
         in
@@ -175,10 +176,10 @@ getTotalCreatorWinningsTest =
       getTotalCreatorWinnings resolvedYes [{ exampleTrade | bettorIsASkeptic = not resolvedYes , creatorStakeCents = creatorStake }]
       |> Expect.equal (-creatorStake)
   , test "ignores queued trades" <|
-    \() -> getTotalCreatorWinnings True [{ exampleTrade | state = Pb.TradeStateQueued }]
+    \() -> getTotalCreatorWinnings True [{ exampleTrade | state = Pb.TradeState__TRADESTATEQUEUED }]
       |> Expect.equal 0
   , test "ignores aborted trades" <|
-    \() -> getTotalCreatorWinnings True [{ exampleTrade | state = Pb.TradeStateDequeueFailed }]
+    \() -> getTotalCreatorWinnings True [{ exampleTrade | state = Pb.TradeState__TRADESTATEDEQUEUEFAILED }]
       |> Expect.equal 0
   ]
 
@@ -202,18 +203,18 @@ fuzzFinalResolutions : Fuzz.Fuzzer Pb.Resolution
 fuzzFinalResolutions =
   Fuzz.oneOf
   <| List.map Fuzz.constant
-  <| [ Pb.ResolutionYes
-     , Pb.ResolutionNoneYet
-     , Pb.ResolutionInvalid
+  <| [ Pb.Resolution__RESOLUTIONYES
+     , Pb.Resolution__RESOLUTIONNONEYET
+     , Pb.Resolution__RESOLUTIONINVALID
      ]
 fuzzResolutions : Fuzz.Fuzzer Pb.Resolution
 fuzzResolutions =
   Fuzz.oneOf
   <| List.map Fuzz.constant
-  <| [ Pb.ResolutionNoneYet
-     , Pb.ResolutionYes
-     , Pb.ResolutionNoneYet
-     , Pb.ResolutionInvalid
+  <| [ Pb.Resolution__RESOLUTIONNONEYET
+     , Pb.Resolution__RESOLUTIONYES
+     , Pb.Resolution__RESOLUTIONNONEYET
+     , Pb.Resolution__RESOLUTIONINVALID
      ]
 
 fuzzRequestStatus : Fuzz.Fuzzer RequestStatus
@@ -236,27 +237,27 @@ viewResolutionFormTest =
   describe "viewResolutionForm"
   [ describe "unresolved"
     [ test "has buttons for yes/no/invalid" <|
-      \() -> viewResolutionForm "" Unstarted Pb.ResolutionNoneYet
+      \() -> viewResolutionForm "" Unstarted Pb.Resolution__RESOLUTIONNONEYET
               |> HQ.fromHtml
               |> Expect.all
-                  [ findButton yesButtonText     >> HEM.simulate HEM.click >> HEM.expect (Resolve Pb.ResolutionYes)
-                  , findButton noButtonText      >> HEM.simulate HEM.click >> HEM.expect (Resolve Pb.ResolutionNo)
-                  , findButton invalidButtonText >> HEM.simulate HEM.click >> HEM.expect (Resolve Pb.ResolutionInvalid)
+                  [ findButton yesButtonText     >> HEM.simulate HEM.click >> HEM.expect (Resolve Pb.Resolution__RESOLUTIONYES)
+                  , findButton noButtonText      >> HEM.simulate HEM.click >> HEM.expect (Resolve Pb.Resolution__RESOLUTIONNO)
+                  , findButton invalidButtonText >> HEM.simulate HEM.click >> HEM.expect (Resolve Pb.Resolution__RESOLUTIONINVALID)
                   ]
     , test "has no button for un-resolving" <|
-      \() -> viewResolutionForm "" Unstarted Pb.ResolutionNoneYet
+      \() -> viewResolutionForm "" Unstarted Pb.Resolution__RESOLUTIONNONEYET
               |> HQ.fromHtml
               |> HQ.hasNot [buttonSelector unresolveButtonText]
     ]
   , describe "resolved"
     [ test "has button for un-resolving" <|
-      \() -> viewResolutionForm "" Unstarted Pb.ResolutionYes
+      \() -> viewResolutionForm "" Unstarted Pb.Resolution__RESOLUTIONYES
               |> HQ.fromHtml
               |> findButton unresolveButtonText
               |> HEM.simulate HEM.click
-              |> HEM.expect (Resolve Pb.ResolutionNoneYet)
+              |> HEM.expect (Resolve Pb.Resolution__RESOLUTIONNONEYET)
     , test "has no buttons for yes/no/invalid" <|
-      \() -> viewResolutionForm "" Unstarted Pb.ResolutionYes
+      \() -> viewResolutionForm "" Unstarted Pb.Resolution__RESOLUTIONYES
               |> HQ.fromHtml
               |> Expect.all
                   [ HQ.hasNot [HS.containing [buttonSelector yesButtonText]]
@@ -340,10 +341,10 @@ viewStakeWidgetTest =
   describe "viewStakeWidget"
   [ fuzz2 fuzzBettability fuzzRequestStatus "button is disabled when awaiting response" <|
     \bettability status ->
-      viewStakeWidget bettability "1" status Utils.Skeptic { mockPrediction | certainty = Just { low = 0.50 , high = 1.00 } }
+      viewStakeWidget bettability "1" status Utils.Skeptic { mockPrediction | certainty = { low = 0.50 , high = 1.00 } }
       |> expectButtonHas [HS.disabled (status == AwaitingResponse)]
   , let
-      prediction = { mockPrediction | certainty = Just { low = 0.50 , high = 0.75 }, maximumStakeCents = 1000, remainingStakeCentsVsSkeptics = 1000, remainingStakeCentsVsBelievers = 40 }
+      prediction = { mockPrediction | certainty = { low = 0.50 , high = 0.75 }, maximumStakeCents = 1000, remainingStakeCentsVsSkeptics = 1000, remainingStakeCentsVsBelievers = 40 }
     in
     describe "validity testing"
     [ fuzz (intRange 1 100) "invalid if intended bet would exhaust creator stake" <|
@@ -532,7 +533,7 @@ viewAsFriendTest =
       exampleGlobals
       |> TU.logInAs "friend"
           { exampleSettings
-          | relationships = exampleSettings.relationships |> Dict.insert creator (Just {trustsYou = True , trustedByYou = True})
+          | relationships = exampleSettings.relationships |> Dict.insert creator {trustsYou = True , trustedByYou = True}
           }
       |> (\g -> { g | now = Utils.unixtimeToTime prediction.createdUnixtime })
       |> TU.addPrediction predictionId prediction
@@ -567,7 +568,7 @@ creatorViewTest =
     \() -> initInternal globals predictionId
             |> (\m -> { m | resolveNotesField = "potato"})
             |> viewModelForTest
-            |> HQ.contains [viewResolutionForm "potato" Unstarted Pb.ResolutionNoneYet]
+            |> HQ.contains [viewResolutionForm "potato" Unstarted Pb.Resolution__RESOLUTIONNONEYET]
   ]
 
 viewTest : Test
