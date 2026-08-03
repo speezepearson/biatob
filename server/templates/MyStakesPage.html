@@ -4,8 +4,8 @@
   <script type="text/javascript" src="/elm/MyStakes.js"></script>
   <script type="text/javascript">
 
-    var predictionsPbB64 = {{ predictions_pb_b64 | tojson }};
+    var predictions = {{ predictions | tojson }};
 
-    main({elmApp: Elm.Elements.MyStakes, flags: {predictionsPbB64}});
+    main({elmApp: Elm.Elements.MyStakes, flags: {predictions}});
   </script>
 {% endblock %}

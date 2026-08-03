@@ -5,8 +5,8 @@
   <script type="text/javascript">
 
     var who = {{ who | tojson }};
-    var predictionsPbB64 = {{ predictions_pb_b64 | tojson }};
+    var predictions = {{ predictions | tojson }};
 
-    main({elmApp: Elm.Elements.ViewUser, flags: {who, predictionsPbB64}});
+    main({elmApp: Elm.Elements.ViewUser, flags: {who, predictions}});
   </script>
 {% endblock %}

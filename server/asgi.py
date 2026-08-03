@@ -1,26 +1,27 @@
-"""The biatob server as a single FastAPI/uvicorn app: the JSON... no -- for now,
-the *protobuf* API, the server-rendered pages, the embed images, static files,
-cookie auth, and the background email jobs. This replaces the old aiohttp trio
-(api_server / web_server / http_glue).
+"""The biatob server as a single FastAPI/uvicorn app: the JSON API, the
+server-rendered pages, the embed images, static files, cookie auth, and the
+background email jobs.
 
-Phase 3a of the protobuf->pydantic migration deliberately keeps the wire
-protobuf: endpoints still read and write serialized mvp_pb2 messages, and the
-Elm client is untouched. Phase B swaps the wire to JSON.
+The API speaks JSON (api_types), but the servicer underneath still speaks
+protobuf; proto_bridge converts at the edge. That seam is temporary -- the final
+phase makes the servicer return Pydantic and removes the bridge.
 """
 
-import base64
 import datetime
 import contextlib
 from pathlib import Path
-from typing import AbstractSet, Awaitable, Callable, Optional, Sequence
+from typing import AbstractSet, Awaitable, Callable, Optional, cast
 
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 from google.protobuf.message import Message
 import jinja2
+from pydantic import BaseModel, ValidationError
 import structlog
 
+from . import api_types
 from .core import ApiError, AuthorizingUsername, ForgottenTokenError, Servicer, TokenMint, Username, token_owner
+from .proto_bridge import pydantic_to_proto, proto_to_pydantic
 from .rendering import Style, render_text
 from .tokens import AuthToken
 from .protobuf import mvp_pb2
@@ -29,7 +30,6 @@ logger = structlog.get_logger()
 
 _HERE = Path(__file__).parent
 _AUTH_COOKIE_NAME = 'auth'
-_OCTET_STREAM = 'application/octet-stream'
 
 # The 16 endpoints the API exposes over HTTP. (ListMyStakes / ListPredictions /
 # CheckInvitation are servicer methods too, but the server-rendered pages call
@@ -40,11 +40,13 @@ _API_METHODS = [
     'GetUser', 'ChangePassword', 'GetSettings', 'SendInvitation', 'AcceptInvitation',
 ]
 
+# (name, request_model, response_model) for the endpoints the client calls,
+# from the canonical api_types.ENDPOINTS contract.
+_CLIENT_ENDPOINTS = [ep for ep in api_types.ENDPOINTS if ep[0] in _API_METHODS]
 
-def pb_b64(message: Optional[Message]) -> Optional[str]:
-    if message is None:
-        return None
-    return base64.b64encode(message.SerializeToString()).decode('ascii')
+
+def _json_response(model: BaseModel, status_code: int = 200) -> Response:
+    return Response(status_code=status_code, media_type='application/json', content=model.model_dump_json())
 
 
 def build_app(
@@ -82,7 +84,7 @@ def build_app(
     def set_auth_cookie(response: Response, owner: Username) -> None:
         response.set_cookie(_AUTH_COOKIE_NAME, token_mint.seal_token(token_mint.mint_token(owner)))
 
-    def get_auth_success(auth: Optional[AuthToken], req: mvp_pb2.GetSettingsRequest = mvp_pb2.GetSettingsRequest()) -> Optional[mvp_pb2.AuthSuccess]:
+    def get_auth_success(auth: Optional[AuthToken], req: mvp_pb2.GetSettingsRequest = mvp_pb2.GetSettingsRequest()) -> Optional[api_types.AuthSuccess]:
         if auth is None:
             return None
         try:
@@ -90,7 +92,11 @@ def build_app(
         except ApiError as e:
             logger.error('failed to get settings for valid-looking user', data_loss=True, auth=auth, error=e.catchall)
             return None
-        return mvp_pb2.AuthSuccess(token=mvp_pb2.AuthToken(owner=auth.owner), user_info=user_info)
+        return api_types.AuthSuccess(owner=auth.owner, user_info=proto_to_pydantic(user_info, api_types.GenericUserInfo))
+
+    def flag(model: Optional[BaseModel]) -> Optional[dict]:
+        """A Pydantic model as a plain dict for a page's JS flags, or None."""
+        return None if model is None else model.model_dump(mode='json')
 
     def render(template: str, **kwargs) -> HTMLResponse:
         return HTMLResponse(jinja.get_template(template).render(**kwargs))
@@ -102,32 +108,51 @@ def build_app(
         resp.delete_cookie(_AUTH_COOKIE_NAME)
         return resp
 
-    # --- API (protobuf wire) -------------------------------------------------
+    # --- API (JSON wire) -----------------------------------------------------
+    #
+    # The client speaks JSON (api_types); the servicer still speaks protobuf.
+    # proto_bridge converts at the edge, and this whole seam disappears in the
+    # final phase when the servicer returns Pydantic directly.
 
-    def make_api_route(method_name: str) -> Callable[[Request], Awaitable[Response]]:
-        request_cls = getattr(mvp_pb2, f'{method_name}Request')
+    def proto_resp_to_pydantic(proto_resp: Message, response_model) -> BaseModel:
+        if response_model is api_types.AuthSuccess:
+            # The proto AuthSuccess wraps the owner in a whole AuthToken; the
+            # api_types one carries just the owner (the real token is the cookie).
+            auth = cast(mvp_pb2.AuthSuccess, proto_resp)
+            return api_types.AuthSuccess(
+                owner=auth.token.owner,
+                user_info=proto_to_pydantic(auth.user_info, api_types.GenericUserInfo),
+            )
+        return proto_to_pydantic(proto_resp, response_model)
+
+    def make_api_route(method_name: str, request_model, response_model) -> Callable[[Request], Awaitable[Response]]:
+        proto_request_cls = getattr(mvp_pb2, f'{method_name}Request')
 
         async def route(http_req: Request) -> Response:
-            req = request_cls()
-            req.ParseFromString(await http_req.body())
+            body = await http_req.body()
+            try:
+                pyd_req = request_model.model_validate_json(body or b'{}')
+            except ValidationError as e:
+                return _json_response(api_types.ErrorResponse(catchall=f'malformed request: {e.error_count()} validation error(s)'), status_code=400)
+            proto_req = pydantic_to_proto(pyd_req, proto_request_cls)
             actor = token_owner(auth_token(http_req))
             try:
-                resp = getattr(servicer, method_name)(actor, req)
+                proto_resp = getattr(servicer, method_name)(actor, proto_req)
             except ApiError as e:
                 logger.info('api error', path=http_req.url.path, status=e.http_status, catchall=e.catchall)
-                return Response(status_code=e.http_status, media_type=_OCTET_STREAM,
-                                content=mvp_pb2.ErrorResponse(catchall=e.catchall).SerializeToString())
-            http_resp = Response(media_type=_OCTET_STREAM, content=resp.SerializeToString())
+                return _json_response(api_types.ErrorResponse(catchall=e.catchall), status_code=e.http_status)
+            pyd_resp = proto_resp_to_pydantic(proto_resp, response_model)
+            http_resp = _json_response(pyd_resp)
             if method_name in ('LogInUsername', 'RegisterUsername'):
-                set_auth_cookie(http_resp, Username(resp.token.owner))
+                set_auth_cookie(http_resp, Username(proto_resp.token.owner))
             elif method_name == 'SignOut':
                 http_resp.delete_cookie(_AUTH_COOKIE_NAME)
             return http_resp
 
         return route
 
-    for name in _API_METHODS:
-        app.post(f'/api/{name}')(make_api_route(name))
+    for method_name, request_model, response_model in _CLIENT_ENDPOINTS:
+        app.post(f'/api/{method_name}')(make_api_route(method_name, request_model, response_model))
 
     # --- server-rendered pages ----------------------------------------------
 
@@ -139,7 +164,7 @@ def build_app(
 
     @app.get('/welcome', response_class=HTMLResponse)
     async def welcome(request: Request):
-        return render('Welcome.html', auth_success_pb_b64=pb_b64(get_auth_success(auth_token(request))))
+        return render('Welcome.html', auth_success=flag(get_auth_success(auth_token(request))))
 
     @app.get('/fast', response_class=HTMLResponse)
     async def fast_bet(request: Request):
@@ -147,7 +172,7 @@ def build_app(
 
     @app.get('/new', response_class=HTMLResponse)
     async def create_prediction_page(request: Request):
-        return render('CreatePredictionPage.html', auth_success_pb_b64=pb_b64(get_auth_success(auth_token(request))))
+        return render('CreatePredictionPage.html', auth_success=flag(get_auth_success(auth_token(request))))
 
     @app.get('/my_stakes', response_class=HTMLResponse)
     async def my_stakes(request: Request):
@@ -159,23 +184,23 @@ def build_app(
         except ApiError as e:
             return Response(status_code=e.http_status, content=e.catchall)
         return render('MyStakesPage.html',
-                      auth_success_pb_b64=pb_b64(get_auth_success(auth)),
-                      predictions_pb_b64=pb_b64(predictions))
+                      auth_success=flag(get_auth_success(auth)),
+                      predictions=flag(proto_to_pydantic(predictions, api_types.PredictionsById)))
 
     @app.get('/settings', response_class=HTMLResponse)
     async def settings(request: Request):
         auth = auth_token(request)
         if auth is None:
             return RedirectResponse('/login?dest=/settings')
-        return render('SettingsPage.html', auth_success_pb_b64=pb_b64(get_auth_success(auth)))
+        return render('SettingsPage.html', auth_success=flag(get_auth_success(auth)))
 
     @app.get('/login', response_class=HTMLResponse)
     async def login(request: Request):
-        return render('LoginPage.html', auth_success_pb_b64=pb_b64(get_auth_success(auth_token(request))))
+        return render('LoginPage.html', auth_success=flag(get_auth_success(auth_token(request))))
 
     @app.get('/signup', response_class=HTMLResponse)
     async def signup(request: Request):
-        return render('SignupPage.html', auth_success_pb_b64=pb_b64(get_auth_success(auth_token(request))))
+        return render('SignupPage.html', auth_success=flag(get_auth_success(auth_token(request))))
 
     @app.get('/p/{prediction_id}', response_class=HTMLResponse)
     async def view_prediction_page(prediction_id: str, request: Request):
@@ -189,8 +214,8 @@ def build_app(
         auth_success = get_auth_success(auth, mvp_pb2.GetSettingsRequest(include_relationships_with_users=[prediction.creator]))
         return render('ViewPredictionPage.html',
                       title=f'Prediction: by {datetime.datetime.fromtimestamp(prediction.resolves_at_unixtime).strftime("%Y-%m-%d")}, {prediction.prediction}',
-                      auth_success_pb_b64=pb_b64(auth_success),
-                      predictions_pb_b64=pb_b64(mvp_pb2.PredictionsById(predictions={prediction_id: prediction})),
+                      auth_success=flag(auth_success),
+                      predictions=flag(proto_to_pydantic(mvp_pb2.PredictionsById(predictions={prediction_id: prediction}), api_types.PredictionsById)),
                       prediction_id=prediction_id)
 
     @app.get('/p/{prediction_id}/embed{style}.png')
@@ -239,7 +264,7 @@ def build_app(
         except ApiError as e:
             return Response(status_code=e.http_status, content=e.catchall)
         return render('AcceptInvitationPage.html',
-                      auth_success_pb_b64=pb_b64(get_auth_success(auth)),
+                      auth_success=flag(get_auth_success(auth)),
                       recipient=invitation.recipient, inviter=invitation.inviter, nonce=nonce)
 
     @app.get('/verify_email/{code}', response_class=HTMLResponse)
@@ -248,7 +273,7 @@ def build_app(
         if email is None:
             return Response(status_code=400, content='This email-verification link is invalid or has expired.')
         return render('InitUserPage.html',
-                      auth_success_pb_b64=pb_b64(get_auth_success(auth_token(request))),
+                      auth_success=flag(get_auth_success(auth_token(request))),
                       email=email, proof_of_email_token=code)
 
     # --- static-ish ----------------------------------------------------------
@@ -273,8 +298,8 @@ def build_app(
         except ApiError as e:
             return Response(status_code=e.http_status, content=e.catchall)
         return render('ViewUserPage.html',
-                      auth_success_pb_b64=pb_b64(auth_success),
-                      who=username, predictions_pb_b64=pb_b64(predictions))
+                      auth_success=flag(auth_success),
+                      who=username, predictions=flag(proto_to_pydantic(predictions, api_types.PredictionsById)))
 
     @app.get('/username/{username}', response_class=HTMLResponse)
     async def username_page_explicit(username: str, request: Request):

@@ -4,10 +4,10 @@
   <script type="text/javascript" src="/elm/Prediction.js"></script>
   <script type="text/javascript">
 
-    var predictionsPbB64 = {{ predictions_pb_b64 | tojson }};
+    var predictions = {{ predictions | tojson }};
     var predictionId = {{ prediction_id | tojson }};
 
-    main({elmApp: Elm.Elements.Prediction, flags: {predictionsPbB64, predictionId}});
+    main({elmApp: Elm.Elements.Prediction, flags: {predictions, predictionId}});
     var stakeField = document.getElementById('stakeField');
     if (stakeField) stakeField.focus();
     else {
