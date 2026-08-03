@@ -8,7 +8,7 @@ import pytest
 
 from .emailer import Emailer
 from .core import PredictionId
-from .protobuf import mvp_pb2
+from . import api_types as T
 
 @pytest.fixture
 def aiosmtplib():
@@ -59,7 +59,7 @@ class TestEmailVerification:
 
 class TestResolutionNotification:
   async def test_smoke(self, aiosmtplib, emailer: Emailer):
-    await emailer.send_resolution_notifications(bccs=['a','b'], prediction_id=PredictionId('my_pred_id'), prediction_text='a thing will happen', resolution=mvp_pb2.RESOLUTION_YES)
+    await emailer.send_resolution_notifications(bccs=['a','b'], prediction_id=PredictionId('my_pred_id'), prediction_text='a thing will happen', resolution=T.Resolution.YES)
     body = message_to_string(aiosmtplib.send.call_args[1]['message'])
     assert 'a thing will happen' in body
     assert 'came true' in body

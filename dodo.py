@@ -1,69 +1,36 @@
 from pathlib import Path
-import re
 import subprocess
 
 def has_executable(executable: str) -> bool:
   return subprocess.call(['which', executable], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) == 0
 
-def task_proto():
-  protos = list(Path('protobuf').glob('**/*.proto'))
-  snake_to_camel = lambda s: re.sub(r'(?:^|_)([a-z])', lambda m: m.group(1).upper(), s)
+def task_genapi():
+  """Regenerate the committed Elm API bindings (elm/generated/Api/*) from the
+  OpenAPI schema that FastAPI derives from the api_types Pydantic models.
 
-  yield {
-    'name': 'python',
-    'file_dep': protos,
-    'targets':
-      ['server/protobuf/__init__.py']
-      + [Path('server/protobuf/')/(p.with_suffix('').name+'_pb2.py') for p in protos]
-      ,
+  This is the successor to the old protoc-gen-elm step. It needs `npx
+  elm-open-api`, so it is not a default task -- run it explicitly (`doit
+  genapi`) after changing api_types.py, then commit the regenerated files.
+  """
+  return {
     'actions': [
-      'mkdir -p server/protobuf',
-      'touch server/protobuf/__init__.py',
-      f'protoc --python_out=server {" ".join(str(p) for p in protos)}',
+      'python -m server.openapi_spec > elm/generated/openapi.json',
+      'cd elm && npx --yes elm-open-api generated/openapi.json --output-dir generated --module-name Api',
     ],
+    'verbosity': 2,
   }
-
-  has_protoc_gen_for = lambda lang: has_executable(f'protoc-gen-{lang}')
-
-  if has_protoc_gen_for('elm'):
-    elm_protodir = Path('elm/protobuf')
-    yield {
-      'name': 'elm',
-      'file_dep': protos,
-      'targets': [(elm_protodir/'Biatob/Proto')/snake_to_camel(p.with_suffix('.elm').name) for p in protos],
-      'actions': [
-        f'if test -d {elm_protodir}; then rm -r {elm_protodir}; fi',
-        f'mkdir -p {elm_protodir}',
-        f'protoc --elm_out={elm_protodir} {" ".join(str(p) for p in protos)}',
-      ],
-    }
-  else:
-    print('WARNING: protoc-gen-elm not found, not generating elm protos')
-
-  if has_protoc_gen_for('mypy'):
-    yield {
-      'name': 'mypy',
-      'file_dep': protos,
-      'targets': [Path('server/protobuf/')/(p.with_suffix('').name+'_pb2.pyi') for p in protos],
-      'actions': [
-        'mkdir -p server/protobuf',
-        'touch server/protobuf/__init__.py',
-        f'protoc --mypy_out=server {" ".join(str(p) for p in protos)}',
-      ],
-    }
-  else:
-    print('WARNING: protoc-gen-mypy not found, not generating mypy protos')
 
 
 def task_elm():
   src = Path('elm/src')
+  generated = Path('elm/generated')
   dist = Path('elm/dist')
   modules = [p.with_suffix('').name for p in (src/'Elements').glob('**/*.elm')]
   return {
     'file_dep': [
       'elm/elm.json',
       *src.glob('**/*.elm'),
-      *[t for d in task_proto() for t in d['targets'] if d['name']=='elm'],
+      *generated.glob('**/*.elm'),
     ],
     'targets': [
       *[dist/f'{mod}.js' for mod in modules],
@@ -89,7 +56,7 @@ def task_test():
     'file_dep': [
       'elm/elm.json',
       *Path('elm/src').glob('**/*.elm'),
-      *[t for d in task_proto() for t in d['targets'] if d['name']=='elm'],
+      *Path('elm/generated').glob('**/*.elm'),
       *Path('elm/tests').glob('**/*.elm'),
     ],
     'actions': [
@@ -134,40 +101,11 @@ def task_devsetup():
       print("[to edit the UI] Install Elm: https://github.com/elm/compiler/blob/master/installers/linux/README.md", file=sys.stderr)
     if not has_executable('elm-test'):
       print("[to edit the UI] Install `elm-test`: https://elmprogramming.com/easy-to-test.html", file=sys.stderr)
-    if not has_executable('protoc'):
-      print("[to edit the UI] Install protoc: https://github.com/elm/compiler/blob/master/installers/linux/README.md", file=sys.stderr)
-    if not has_executable('protoc-gen-elm'):
-      print("[to edit the UI] Install protoc-gen-elm: `npm install protoc-gen-elm` (and ensure it's on your path)", file=sys.stderr)
-    if not has_executable('protoc-gen-mypy'):
-      print("[to edit the UI] Install protoc-gen-mypy: `pip install mypy-protobuf`", file=sys.stderr)
+    print("[to regenerate the Elm API bindings after changing server/api_types.py] "
+          "`npx elm-open-api` is used by `doit genapi`; it runs via npx, no global install needed.", file=sys.stderr)
 
   return {
     'actions': [(print_instructions,)],
-  }
-
-def pprint_state(state_path: str):
-  if not state_path:
-    raise ValueError('state_path must be given to pprint')
-  from server.protobuf.mvp_pb2 import WorldState
-  ws = WorldState()
-  ws.ParseFromString(open(state_path, 'rb').read())
-  print(ws)
-
-def task_pprint():
-  def ensure_state_path_given(state_path):
-    if not state_path:
-      raise RuntimeError('--state_path must be given')
-  return {
-    'setup': ['proto:python'],
-    'params': [
-      {'name': 'state_path',
-       'short': 'p',
-       'long': 'state_path',
-       'default': '',
-       'help': f'path to state file to pprint'},
-    ],
-    'actions': [pprint_state],
-    'verbosity': 2,
   }
 
 def task_nfsdeploy():
@@ -175,7 +113,7 @@ def task_nfsdeploy():
     if not nfsuser:
       raise RuntimeError('--nfsuser must be given')
   return {
-    'setup': ['elm', 'proto', 'test'],
+    'setup': ['elm', 'test'],
     'params': [
       {'name': 'nfsuser',
        'long': 'nfsuser',
@@ -193,6 +131,6 @@ def task_nfsdeploy():
 DOIT_CONFIG = {
   'default_tasks': list(
     {name[5:] for name, obj in locals().items() if name.startswith('task_') and callable(obj)}
-    - {'nfsdeploy', 'devsetup', 'pprint'}
+    - {'nfsdeploy', 'devsetup', 'genapi'}
   ),
 }

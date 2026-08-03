@@ -11,7 +11,7 @@ import jinja2
 import structlog
 
 from .core import PredictionId, Username
-from .protobuf import mvp_pb2
+from . import api_types as T
 
 logger = structlog.get_logger()
 
@@ -86,7 +86,7 @@ class Emailer:
         bccs: Iterable[str],
         prediction_id: PredictionId,
         prediction_text: str,
-        resolution: mvp_pb2.Resolution.V,
+        resolution: T.Resolution,
     ) -> None:
         await self._send_bccs(
             bccs=bccs,
@@ -95,9 +95,9 @@ class Emailer:
                 prediction_id=prediction_id,
                 prediction_text=prediction_text,
                 verbed=(
-                    'came true' if resolution == mvp_pb2.RESOLUTION_YES else
-                    'did not come true' if resolution == mvp_pb2.RESOLUTION_NO else
-                    'resolved INVALID' if resolution == mvp_pb2.RESOLUTION_INVALID else
+                    'came true' if resolution == T.Resolution.YES else
+                    'did not come true' if resolution == T.Resolution.NO else
+                    'resolved INVALID' if resolution == T.Resolution.INVALID else
                     'UN-resolved'
                 ),
             ),

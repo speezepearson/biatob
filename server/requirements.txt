@@ -2,7 +2,6 @@ aiohttp==3.7.3
 pydantic==2.13.4
 fastapi==0.139.2
 uvicorn==0.30.6
-protobuf==3.14.0
 requests==2.25.1
 Pillow==10.3.0
 Jinja2==2.11.3

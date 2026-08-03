@@ -72,7 +72,7 @@ async def test_smoke_for_username_paths(cli, any_servicer: Servicer, path: str, 
 async def test_smoke_for_invitation_paths(cli, any_servicer: Servicer, emailer: Emailer, path: str, logged_in: bool):
   create_user(any_servicer, u('recipient'))
   create_user(any_servicer, u('inviter'))
-  any_servicer.SendInvitation(au('inviter'), mvp_pb2.SendInvitationRequest(recipient='recipient'))
+  any_servicer.SendInvitation(au('inviter'), T.SendInvitationRequest(recipient='recipient'))
   nonce = get_call_kwarg(emailer.send_invitation, 'nonce')
 
   if logged_in:

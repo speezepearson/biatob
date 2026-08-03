@@ -6,7 +6,7 @@ import sqlalchemy
 
 from .core import UsernameAlreadyRegisteredError, Username, PredictionId
 from .sql_servicer import SqlConn
-from .protobuf import mvp_pb2
+from . import api_types as T
 from .test_utils import au, some_create_prediction_request, sqlite_engine
 
 @pytest.fixture
@@ -90,20 +90,20 @@ class TestSettings:
     conn.register_username(username=ALICE, password='password', password_id='alicepwid', email_address='ALICE@example.com')
     conn.register_username(username=BOB, password='password', password_id='bobpwid', email_address='BOB@example.com')
     conn.set_trusted(ALICE, BOB, True, now=T0)
-    assert must(conn.get_settings(au(ALICE))).relationships == {BOB: mvp_pb2.Relationship(trusted_by_you=True)}
+    assert must(conn.get_settings(au(ALICE))).relationships == {BOB: T.Relationship(trusted_by_you=True, trusts_you=False)}
 
   def test_get_settings_includes_mutually_trusting_users(self, conn: SqlConn):
     conn.register_username(username=ALICE, password='password', password_id='alicepwid', email_address='ALICE@example.com')
     conn.register_username(username=BOB, password='password', password_id='bobpwid', email_address='BOB@example.com')
     conn.set_trusted(ALICE, BOB, True, now=T0)
     conn.set_trusted(BOB, ALICE, True, now=T0)
-    assert must(conn.get_settings(au(ALICE))).relationships == {BOB: mvp_pb2.Relationship(trusted_by_you=True, trusts_you=True)}
+    assert must(conn.get_settings(au(ALICE))).relationships == {BOB: T.Relationship(trusted_by_you=True, trusts_you=True)}
 
   def test_get_settings_includes_explicitly_untrusted_users(self, conn: SqlConn):
     conn.register_username(username=ALICE, password='password', password_id='alicepwid', email_address='ALICE@example.com')
     conn.register_username(username=BOB, password='password', password_id='bobpwid', email_address='BOB@example.com')
     conn.set_trusted(ALICE, BOB, False, now=T0)
-    assert must(conn.get_settings(au(ALICE))).relationships == {BOB: mvp_pb2.Relationship(trusted_by_you=False)}
+    assert must(conn.get_settings(au(ALICE))).relationships == {BOB: T.Relationship(trusted_by_you=False, trusts_you=False)}
 
   @pytest.mark.parametrize('a_trusts_b', [True, False])
   @pytest.mark.parametrize('b_trusts_a', [True, False, None])
@@ -113,7 +113,7 @@ class TestSettings:
     conn.set_trusted(ALICE, BOB, a_trusts_b, now=T0)
     if b_trusts_a is not None:
       conn.set_trusted(BOB, ALICE, b_trusts_a, now=T0)
-    assert must(conn.get_settings(au(ALICE))).relationships == {BOB: mvp_pb2.Relationship(trusted_by_you=a_trusts_b or False, trusts_you=b_trusts_a or False)}
+    assert must(conn.get_settings(au(ALICE))).relationships == {BOB: T.Relationship(trusted_by_you=a_trusts_b or False, trusts_you=b_trusts_a or False)}
 
   @pytest.mark.parametrize('b_trusts_a', [True, False, None])
   def test_get_settings_ignores_unacknowledged_users(self, conn: SqlConn, b_trusts_a: Optional[bool]):
@@ -129,7 +129,7 @@ class TestSettings:
     conn.register_username(username=BOB, password='password', password_id='bobpwid', email_address='BOB@example.com')
     if b_trusts_a is not None:
       conn.set_trusted(BOB, ALICE, b_trusts_a, now=T0)
-    assert must(conn.get_settings(au(ALICE), include_relationships_with_users=[BOB])).relationships == {BOB: mvp_pb2.Relationship(trusts_you=b_trusts_a or False)}
+    assert must(conn.get_settings(au(ALICE), include_relationships_with_users=[BOB])).relationships == {BOB: T.Relationship(trusts_you=b_trusts_a or False, trusted_by_you=False)}
 
 
 
@@ -138,7 +138,7 @@ class TestInvitations:
     conn.register_username(username=ALICE, password='password', password_id='alicepwid', email_address='ALICE@example.com')
     conn.register_username(username=BOB, password='password', password_id='bobpwid', email_address='BOB@example.com')
     conn.create_invitation('mynonce', inviter=ALICE, recipient=BOB)
-    assert conn.accept_invitation('mynonce', now=T0) == mvp_pb2.CheckInvitationResponse(inviter=ALICE, recipient=BOB)
+    assert conn.accept_invitation('mynonce', now=T0) == T.CheckInvitationResponse(inviter=ALICE, recipient=BOB)
 
   def test_returns_none_if_no_such_invitation(self, conn: SqlConn):
     conn.register_username(username=ALICE, password='password', password_id='alicepwid', email_address='ALICE@example.com')
@@ -152,17 +152,18 @@ class TestPredictions:
     predid = PredictionId(PRED_ID)
     conn.register_username(username=ALICE, password='password', password_id='alicepwid', email_address='ALICE@example.com')
 
-    conn.create_prediction(now=T0, prediction_id=predid, creator=ALICE, request=mvp_pb2.CreatePredictionRequest(
+    conn.create_prediction(now=T0, prediction_id=predid, creator=ALICE, request=T.CreatePredictionRequest(
       prediction='a thing will happen',
-      certainty=mvp_pb2.CertaintyRange(low=0.25, high=0.75),
+      certainty=T.CertaintyRange(low=0.25, high=0.75),
       maximum_stake_cents=100,
       open_seconds=86400,
       special_rules='my rules',
       resolves_at_unixtime=T1.timestamp(),
+      view_privacy=T.PredictionViewPrivacy.ANYBODY,
     ))
-    assert conn.view_prediction(viewer=ALICE, prediction_id=predid) == mvp_pb2.UserPredictionView(
+    assert conn.view_prediction(viewer=ALICE, prediction_id=predid) == T.UserPredictionView(
       prediction='a thing will happen',
-      certainty=mvp_pb2.CertaintyRange(low=0.25, high=0.75),
+      certainty=T.CertaintyRange(low=0.25, high=0.75),
       maximum_stake_cents=100,
       remaining_stake_cents_vs_believers=100,
       remaining_stake_cents_vs_skeptics=100,
@@ -171,7 +172,8 @@ class TestPredictions:
       special_rules='my rules',
       creator=ALICE,
       resolves_at_unixtime=T1.timestamp(),
-      your_following_status=mvp_pb2.PREDICTION_FOLLOWING_MANDATORY_BECAUSE_STAKED,
+      your_trades=[],
+      your_following_status=T.PredictionFollowingStatus.MANDATORY_BECAUSE_STAKED,
     )
 
   def test_stake_errors_on_nonexistent_prediction(self, conn: SqlConn):
@@ -183,7 +185,7 @@ class TestPredictions:
         bettor_is_a_skeptic=True,
         bettor_stake_cents=1,
         creator_stake_cents=1,
-        state=mvp_pb2.TRADE_STATE_ACTIVE,
+        state=T.TradeState.ACTIVE,
         now=T0,
       )
 
@@ -193,7 +195,7 @@ class TestResolutionNotifications:
     conn.register_username(username=BOB, password='password', password_id='bobpwid', email_address='BOB@example.com')
 
     conn.create_prediction(now=T0, prediction_id=PRED_ID, creator=ALICE, request=some_create_prediction_request())
-    conn.stake(prediction_id=PRED_ID, bettor=BOB, bettor_is_a_skeptic=True, bettor_stake_cents=1, creator_stake_cents=1, state=mvp_pb2.TRADE_STATE_ACTIVE, now=T0)
+    conn.stake(prediction_id=PRED_ID, bettor=BOB, bettor_is_a_skeptic=True, bettor_stake_cents=1, creator_stake_cents=1, state=T.TradeState.ACTIVE, now=T0)
 
     expected_emails = {'BOB@example.com'}
     assert set(conn.get_resolution_notification_addrs(PRED_ID)) == expected_emails
@@ -203,7 +205,7 @@ class TestResolutionNotifications:
     conn.register_username(username=BOB, password='password', password_id='bobpwid', email_address='BOB@example.com')
 
     conn.create_prediction(now=T0, prediction_id=PRED_ID, creator=ALICE, request=some_create_prediction_request())
-    conn.stake(prediction_id=PRED_ID, bettor=BOB, bettor_is_a_skeptic=True, bettor_stake_cents=1, creator_stake_cents=1, state=mvp_pb2.TRADE_STATE_ACTIVE, now=T0)
+    conn.stake(prediction_id=PRED_ID, bettor=BOB, bettor_is_a_skeptic=True, bettor_stake_cents=1, creator_stake_cents=1, state=T.TradeState.ACTIVE, now=T0)
 
     assert 'ALICE@example.com' not in conn.get_resolution_notification_addrs(PRED_ID)
 
@@ -213,7 +215,7 @@ class TestResolutionNotifications:
 
     for creator, bettor, predid in [(ALICE, BOB, '123'), (BOB, CHARLIE, '234'), (ALICE, DOLORES, '345'), (CHARLIE, DOLORES, '456')]:
       conn.create_prediction(now=T0, prediction_id=PredictionId(predid), creator=creator, request=some_create_prediction_request())
-      conn.stake(prediction_id=PredictionId(predid), bettor=bettor, bettor_is_a_skeptic=True, bettor_stake_cents=1, creator_stake_cents=1, state=mvp_pb2.TRADE_STATE_ACTIVE, now=T0)
+      conn.stake(prediction_id=PredictionId(predid), bettor=bettor, bettor_is_a_skeptic=True, bettor_stake_cents=1, creator_stake_cents=1, state=T.TradeState.ACTIVE, now=T0)
 
     assert set(conn.get_resolution_notification_addrs(PredictionId('456'))) == {f'{DOLORES}@example.com'}
 
@@ -228,22 +230,22 @@ class TestResolutionReminders:
     conn.register_username(ALICE, password='password', password_id=f'{ALICE} pwid', email_address=f'{ALICE}@example.com')
     conn.create_prediction(now=T0, prediction_id=PRED_ID, creator=ALICE, request=some_create_prediction_request(resolves_at_unixtime=T1.timestamp()))
     assert [r['prediction_id'] for r in conn.get_predictions_needing_resolution_reminders(now=T2)] == [PRED_ID]
-    conn.resolve(now=T1, request=mvp_pb2.ResolveRequest(prediction_id=PRED_ID, resolution=mvp_pb2.RESOLUTION_YES))
+    conn.resolve(now=T1, request=T.ResolveRequest(prediction_id=PRED_ID, resolution=T.Resolution.YES, notes=''))
     assert [r['prediction_id'] for r in conn.get_predictions_needing_resolution_reminders(now=T2)] == []
 
   def test_catches_flipflop_unresolved_predictions(self, conn: SqlConn):
     conn.register_username(ALICE, password='password', password_id=f'{ALICE} pwid', email_address=f'{ALICE}@example.com')
     conn.create_prediction(now=T0, prediction_id=PRED_ID, creator=ALICE, request=some_create_prediction_request(resolves_at_unixtime=T1.timestamp()))
-    conn.resolve(now=T1, request=mvp_pb2.ResolveRequest(prediction_id=PRED_ID, resolution=mvp_pb2.RESOLUTION_YES))
-    conn.resolve(now=T2, request=mvp_pb2.ResolveRequest(prediction_id=PRED_ID, resolution=mvp_pb2.RESOLUTION_NONE_YET))
+    conn.resolve(now=T1, request=T.ResolveRequest(prediction_id=PRED_ID, resolution=T.Resolution.YES, notes=''))
+    conn.resolve(now=T2, request=T.ResolveRequest(prediction_id=PRED_ID, resolution=T.Resolution.NONE_YET, notes=''))
     assert [r['prediction_id'] for r in conn.get_predictions_needing_resolution_reminders(now=T3)] == [PRED_ID]
 
   def test_ignores_flipflop_resolved_predictions(self, conn: SqlConn):
     conn.register_username(ALICE, password='password', password_id=f'{ALICE} pwid', email_address=f'{ALICE}@example.com')
     conn.create_prediction(now=T0, prediction_id=PRED_ID, creator=ALICE, request=some_create_prediction_request(resolves_at_unixtime=T1.timestamp()))
-    conn.resolve(now=T1, request=mvp_pb2.ResolveRequest(prediction_id=PRED_ID, resolution=mvp_pb2.RESOLUTION_YES))
-    conn.resolve(now=T2, request=mvp_pb2.ResolveRequest(prediction_id=PRED_ID, resolution=mvp_pb2.RESOLUTION_NONE_YET))
-    conn.resolve(now=T3, request=mvp_pb2.ResolveRequest(prediction_id=PRED_ID, resolution=mvp_pb2.RESOLUTION_YES))
+    conn.resolve(now=T1, request=T.ResolveRequest(prediction_id=PRED_ID, resolution=T.Resolution.YES, notes=''))
+    conn.resolve(now=T2, request=T.ResolveRequest(prediction_id=PRED_ID, resolution=T.Resolution.NONE_YET, notes=''))
+    conn.resolve(now=T3, request=T.ResolveRequest(prediction_id=PRED_ID, resolution=T.Resolution.YES, notes=''))
     assert [r['prediction_id'] for r in conn.get_predictions_needing_resolution_reminders(now=T4)] == []
 
   def test_skips_previously_reminded(self, conn: SqlConn):
