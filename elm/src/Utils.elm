@@ -4,16 +4,15 @@ import Html as H exposing (Html)
 import Html.Attributes as HA
 import Html.Events as HE
 import Json.Decode as JD
+import Json.Encode as JE
 import Set
 import Time
 
-import Base64
 import Iso8601
-import Protobuf.Decode as PD
-import Protobuf.Encode as PE
 import Dict exposing (Dict)
 
-import Biatob.Proto.Mvp as Pb
+import Api.Types as Pb
+import Api.Json
 import Parser exposing ((|.), (|=))
 
 type alias Username = String
@@ -109,37 +108,18 @@ outlineIfInvalid : Bool -> H.Attribute msg
 outlineIfInvalid isInvalid =
   HA.style "outline" (if isInvalid then "2px solid red" else "none")
 
-pbB64Decoder : PD.Decoder a -> JD.Decoder a
-pbB64Decoder dec =
-  JD.string
-  |> JD.andThen (\s ->
-      case s |> Base64.toBytes |> Maybe.andThen (PD.decode dec) of
-        Just a -> JD.succeed a
-        Nothing -> JD.fail "invalid b64 protobuf"
-      )
-
-encodePbB64 : PE.Encoder -> String
-encodePbB64 enc =
-  enc
-  |> PE.encode
-  |> Base64.fromBytes
-  |> must "Base64.fromBytes docs say it should never return Nothing"
+encodeToString : JE.Value -> String
+encodeToString v = JE.encode 0 v
 
 mustResult : String -> Result e x -> x
 mustResult reason res =
   case res of
     Ok x -> x
     Err e -> Debug.todo (reason ++ " -- " ++ Debug.toString e)
-decodePbFromFlags : PD.Decoder a -> String -> JD.Value -> Maybe a
-decodePbFromFlags dec field val =
-  JD.decodeValue (JD.field field (pbB64Decoder dec)) val
-  |> Debug.log ("init " ++ field)
+decodeFromFlags : JD.Decoder a -> String -> JD.Value -> Maybe a
+decodeFromFlags dec field val =
+  JD.decodeValue (JD.field field dec) val
   |> Result.toMaybe
-
-mustDecodePbFromFlags : PD.Decoder a -> String -> JD.Value -> a
-mustDecodePbFromFlags dec field val =
-  decodePbFromFlags dec field val
-  |> must field
 
 mustDecodeFromFlags : JD.Decoder a -> String -> JD.Value -> a
 mustDecodeFromFlags dec field val =
@@ -147,36 +127,32 @@ mustDecodeFromFlags dec field val =
   |> mustResult field
 
 mustPredictionCertainty : Pb.UserPredictionView -> Pb.CertaintyRange
-mustPredictionCertainty {certainty} = must "all predictions must have certainties" certainty
+mustPredictionCertainty {certainty} = certainty
 
 
 
 mustPredictionsById : Pb.PredictionsById -> Dict PredictionId Pb.UserPredictionView
-mustPredictionsById {predictions} = predictions |> Dict.map (\_ v -> must "no null values are allowed in a PredictionsById" v)
+mustPredictionsById {predictions} = predictions
 
 mustMapValues : Dict comparable (Maybe v) -> Dict comparable v
 mustMapValues d = d |> Dict.map (\_ v -> must "no null values are allowed in a map" v)
 
-mustAuthSuccessToken : Pb.AuthSuccess -> Pb.AuthToken
-mustAuthSuccessToken {token} = must "all AuthSuccesses must have tokens" token
-
 mustAuthSuccessUserInfo : Pb.AuthSuccess -> Pb.GenericUserInfo
-mustAuthSuccessUserInfo {userInfo} = must "all AuthSuccesses must have user_infos" userInfo
+mustAuthSuccessUserInfo {userInfo} = userInfo
 
 currentResolution : Pb.UserPredictionView -> Pb.Resolution
 currentResolution prediction =
   case prediction.resolution of
-    Nothing -> Pb.ResolutionNoneYet
+    Nothing -> Pb.Resolution__RESOLUTIONNONEYET
     Just event -> event.resolution
 
 resolutionIsTerminal : Pb.Resolution -> Bool
 resolutionIsTerminal res =
   case res of
-    Pb.ResolutionYes -> True
-    Pb.ResolutionNo -> True
-    Pb.ResolutionNoneYet -> False
-    Pb.ResolutionInvalid -> True
-    Pb.ResolutionUnrecognized_ _ -> Debug.todo "unrecognized resolution"
+    Pb.Resolution__RESOLUTIONYES -> True
+    Pb.Resolution__RESOLUTIONNO -> True
+    Pb.Resolution__RESOLUTIONNONEYET -> False
+    Pb.Resolution__RESOLUTIONINVALID -> True
 
 invitationPath : InvitationNonce -> String
 invitationPath nonce =

@@ -6,7 +6,8 @@ import Html.Events as HE
 import Http
 import Dict as D
 
-import Biatob.Proto.Mvp as Pb
+import Api.Types as Pb
+import Api.Json
 import Utils
 
 import API

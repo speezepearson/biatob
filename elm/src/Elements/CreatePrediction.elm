@@ -8,7 +8,8 @@ import Http
 import Json.Decode as JD
 import Time
 
-import Biatob.Proto.Mvp as Pb
+import Api.Types as Pb
+import Api.Json
 import Utils exposing (i, isOk, maxLegalStakeCents, viewError, Cents, RequestStatus(..))
 import Elements.Prediction as Prediction
 
@@ -55,7 +56,7 @@ type Msg
   | LogInUsername AuthWidget.State Pb.LogInUsernameRequest
   | LogInUsernameFinished Pb.LogInUsernameRequest (Result API.Error Pb.AuthSuccess)
   | SignOut AuthWidget.State Pb.SignOutRequest
-  | SignOutFinished Pb.SignOutRequest (Result API.Error Pb.SignOutResponse)
+  | SignOutFinished Pb.SignOutRequest (Result API.Error Pb.Empty)
   | SaveFormState
   | Tick Time.Posix
   | AuthWidgetExternallyModified AuthWidget.DomModification
@@ -201,9 +202,9 @@ anybodyWithTheLink = "anybody with the link"
 parseViewPrivacy : Model -> Result String Pb.PredictionViewPrivacy
 parseViewPrivacy model =
   if model.viewPrivacyField == anybody then
-    Ok Pb.PredictionViewPrivacyAnybody
+    Ok Pb.PredictionViewPrivacy__PREDICTIONVIEWPRIVACYANYBODY
   else if model.viewPrivacyField == anybodyWithTheLink then
-    Ok Pb.PredictionViewPrivacyAnybodyWithTheLink
+    Ok Pb.PredictionViewPrivacy__PREDICTIONVIEWPRIVACYANYBODYWITHTHELINK
   else
     Err <| "unrecognized view-privacy: " ++ model.viewPrivacyField
 
@@ -672,7 +673,7 @@ previewPrediction {request, creatorName, createdAt} =
   , resolution = Nothing
   , yourTrades = []
   , resolvesAtUnixtime = request.resolvesAtUnixtime
-  , yourFollowingStatus = Pb.PredictionFollowingNotFollowing
+  , yourFollowingStatus = Pb.PredictionFollowingStatus__PREDICTIONFOLLOWINGNOTFOLLOWING
   }
 
 subscriptions : Model -> Sub Msg

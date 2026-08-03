@@ -11,7 +11,8 @@ import Time
 import Globals
 import Widgets.AuthWidget as AuthWidget
 import Widgets.Navbar as Navbar
-import Biatob.Proto.Mvp as Pb
+import Api.Types as Pb
+import Api.Json
 import API
 import Utils
 import Utils exposing (RequestStatus(..))
@@ -37,7 +38,7 @@ type Msg
   | RegisterUsername
   | RegisterUsernameFinished Pb.RegisterUsernameRequest (Result API.Error Pb.AuthSuccess)
   | SignOut AuthWidget.State Pb.SignOutRequest
-  | SignOutFinished Pb.SignOutRequest (Result API.Error Pb.SignOutResponse)
+  | SignOutFinished Pb.SignOutRequest (Result API.Error Pb.Empty)
   | SetUsernameField String
   | SetPasswordField String
   | SetConfirmPasswordField String

@@ -10,7 +10,8 @@ import Time
 import Globals
 import Widgets.AuthWidget as AuthWidget
 import Widgets.Navbar as Navbar
-import Biatob.Proto.Mvp as Pb
+import Api.Types as Pb
+import Api.Json
 import API
 import Utils
 
@@ -28,7 +29,7 @@ type Msg
   | LogInUsername AuthWidget.State Pb.LogInUsernameRequest
   | LogInUsernameFinished Pb.LogInUsernameRequest (Result API.Error Pb.AuthSuccess)
   | SignOut AuthWidget.State Pb.SignOutRequest
-  | SignOutFinished Pb.SignOutRequest (Result API.Error Pb.SignOutResponse)
+  | SignOutFinished Pb.SignOutRequest (Result API.Error Pb.Empty)
   | Tick Time.Posix
   | AuthWidgetExternallyModified AuthWidget.DomModification
   | Ignore

@@ -7,7 +7,8 @@ import Json.Decode as JD
 import Http
 import Dict
 
-import Biatob.Proto.Mvp as Pb
+import Api.Types as Pb
+import Api.Json
 import Utils
 
 import Widgets.AuthWidget as AuthWidget
@@ -44,7 +45,7 @@ type Msg
   | LogInUsername AuthWidget.State Pb.LogInUsernameRequest
   | LogInUsernameFinished Pb.LogInUsernameRequest (Result API.Error Pb.AuthSuccess)
   | SignOut AuthWidget.State Pb.SignOutRequest
-  | SignOutFinished Pb.SignOutRequest (Result API.Error Pb.SignOutResponse)
+  | SignOutFinished Pb.SignOutRequest (Result API.Error Pb.Empty)
   | AuthWidgetExternallyModified AuthWidget.DomModification
   | SetFilterOwn (Maybe Bool)
   | SetFilterPhase (Maybe LifecyclePhase)
@@ -101,11 +102,11 @@ view model =
                       , creator = Utils.renderUser prediction.creator
                       , predictedOn = H.text <| Utils.yearMonthDayStr model.globals.timeZone (Utils.unixtimeToTime prediction.createdUnixtime)
                       , prediction = H.a [HA.href <| Utils.pathToPrediction id] [H.text <| "By " ++ Utils.yearMonthDayStr model.globals.timeZone (Utils.unixtimeToTime prediction.resolvesAtUnixtime) ++ ", " ++ prediction.prediction]
-                      , resolution = case prediction.resolution |> Maybe.map .resolution |> Maybe.withDefault Pb.ResolutionNoneYet of
-                            Pb.ResolutionNoneYet -> H.text ""
-                            Pb.ResolutionYes -> H.text "Yes"
-                            Pb.ResolutionNo -> H.text "No"
-                            Pb.ResolutionInvalid -> H.text "Invalid!"
+                      , resolution = case prediction.resolution |> Maybe.map .resolution |> Maybe.withDefault Pb.Resolution__RESOLUTIONNONEYET of
+                            Pb.Resolution__RESOLUTIONNONEYET -> H.text ""
+                            Pb.Resolution__RESOLUTIONYES -> H.text "Yes"
+                            Pb.Resolution__RESOLUTIONNO -> H.text "No"
+                            Pb.Resolution__RESOLUTIONINVALID -> H.text "Invalid!"
                             (Pb.ResolutionUnrecognized_ _) -> Debug.todo "unrecognized resolution"
                       })
                   |> H.tbody []
@@ -158,7 +159,7 @@ viewControls filter order =
 
 phaseMatches : Time.Posix -> LifecyclePhase -> Pb.UserPredictionView -> Bool
 phaseMatches now phase prediction =
-  if Utils.currentResolution prediction /= Pb.ResolutionNoneYet then
+  if Utils.currentResolution prediction /= Pb.Resolution__RESOLUTIONNONEYET then
     phase == Resolved
   else if Utils.timeToUnixtime now < prediction.closesUnixtime then
     phase == Open

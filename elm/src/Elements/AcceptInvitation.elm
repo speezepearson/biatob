@@ -8,7 +8,8 @@ import Html.Events as HE
 import Http
 import Json.Decode as JD
 
-import Biatob.Proto.Mvp as Pb
+import Api.Types as Pb
+import Api.Json
 
 import Widgets.AuthWidget as AuthWidget
 import Globals
@@ -36,7 +37,7 @@ type Msg
   | LogInUsername AuthWidget.State Pb.LogInUsernameRequest
   | LogInUsernameFinished Pb.LogInUsernameRequest (Result API.Error Pb.AuthSuccess)
   | SignOut AuthWidget.State Pb.SignOutRequest
-  | SignOutFinished Pb.SignOutRequest (Result API.Error Pb.SignOutResponse)
+  | SignOutFinished Pb.SignOutRequest (Result API.Error Pb.Empty)
   | AuthWidgetExternallyModified AuthWidget.DomModification
   | Ignore
 

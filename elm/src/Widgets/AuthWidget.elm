@@ -5,7 +5,8 @@ import Html.Attributes as HA
 import Html.Events as HE
 import Html exposing (s)
 
-import Biatob.Proto.Mvp as Pb
+import Api.Types as Pb
+import Api.Json
 import Http
 
 import API
@@ -44,7 +45,7 @@ handleLogInUsernameResponse res state =
               Ok _ -> Succeeded
               Err e -> Failed e
   }
-handleSignOutResponse : Result API.Error Pb.SignOutResponse -> State -> State
+handleSignOutResponse : Result API.Error Pb.Empty -> State -> State
 handleSignOutResponse res state =
   { state | requestStatus = case API.simplifySignOutResponse res of
               Ok _ -> Succeeded

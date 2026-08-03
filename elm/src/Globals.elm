@@ -36,7 +36,8 @@ import Time
 import Http
 
 import API
-import Biatob.Proto.Mvp as Pb
+import Api.Types as Pb
+import Api.Json
 import Utils exposing (Username, PredictionId)
 
 type alias Globals =
@@ -66,7 +67,7 @@ getTrustRelationship globals who =
 
 handleWhoamiResponse : Pb.WhoamiRequest -> Result API.Error Pb.WhoamiResponse -> Globals -> Globals
 handleWhoamiResponse _ _ globals = globals
-handleSignOutResponse : Pb.SignOutRequest -> Result API.Error Pb.SignOutResponse -> Globals -> Globals
+handleSignOutResponse : Pb.SignOutRequest -> Result API.Error Pb.Empty -> Globals -> Globals
 handleSignOutResponse _ res globals =
   case res of
     Ok _ -> { globals | self = Nothing }
@@ -76,12 +77,12 @@ handleSendVerificationEmailResponse _ _ globals = globals
 handleRegisterUsernameResponse : Pb.RegisterUsernameRequest -> Result API.Error Pb.AuthSuccess -> Globals -> Globals
 handleRegisterUsernameResponse _ res globals =
   case res of
-    Ok authSuccess -> { globals | self = Just {username=Utils.mustAuthSuccessToken authSuccess |> .owner, settings=Utils.mustAuthSuccessUserInfo authSuccess} }
+    Ok authSuccess -> { globals | self = Just {username=authSuccess.owner, settings=Utils.mustAuthSuccessUserInfo authSuccess} }
     Err _ -> globals
 handleLogInUsernameResponse : Pb.LogInUsernameRequest -> Result API.Error Pb.AuthSuccess -> Globals -> Globals
 handleLogInUsernameResponse _ res globals =
   case res of
-    Ok authSuccess -> { globals | self = Just {username=Utils.mustAuthSuccessToken authSuccess |> .owner, settings=Utils.mustAuthSuccessUserInfo authSuccess} }
+    Ok authSuccess -> { globals | self = Just {username=authSuccess.owner, settings=Utils.mustAuthSuccessUserInfo authSuccess} }
     Err _ -> globals
 handleCreatePredictionResponse : Pb.CreatePredictionRequest -> Result API.Error Pb.CreatePredictionResponse -> Globals -> Globals
 handleCreatePredictionResponse _ _ globals = globals
@@ -186,13 +187,13 @@ getRelationship globals who =
 
 globalsDecoder : JD.Decoder Globals
 globalsDecoder =
-  (JD.field "authSuccessPbB64" <| JD.nullable <| Utils.pbB64Decoder Pb.authSuccessDecoder) |> JD.andThen (\authSuccess ->
-  (JD.maybe <| JD.field "predictionsPbB64" <| Utils.pbB64Decoder Pb.predictionsByIdDecoder) |> JD.map (Maybe.map .predictions >> Maybe.withDefault Dict.empty) |> JD.andThen (\predictions ->
+  (JD.field "authSuccess" <| JD.nullable Api.Json.decodeAuthSuccess) |> JD.andThen (\authSuccess ->
+  (JD.maybe <| JD.field "predictions" Api.Json.decodePredictionsById) |> JD.map (Maybe.map .predictions >> Maybe.withDefault Dict.empty) |> JD.andThen (\predictions ->
   (JD.field "initUnixtime" JD.float |> JD.map Utils.unixtimeToTime) |> JD.andThen (\now ->
   (JD.field "timeZoneOffsetMinutes" JD.int |> JD.map (\n -> Time.customZone n [])) |> JD.andThen (\timeZone ->
   (JD.field "httpOrigin" JD.string) |> JD.andThen (\httpOrigin ->
     JD.succeed
-      { self = authSuccess |> Maybe.map (\succ -> {username=Utils.mustAuthSuccessToken succ |> .owner , settings=Utils.mustAuthSuccessUserInfo succ})
+      { self = authSuccess |> Maybe.map (\succ -> {username=succ.owner , settings=Utils.mustAuthSuccessUserInfo succ})
       , serverState =
           { predictions = predictions |> Utils.mustMapValues
           }

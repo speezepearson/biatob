@@ -13,7 +13,8 @@ import Widgets.AuthWidget as AuthWidget
 import Globals
 import API
 import Widgets.Navbar as Navbar
-import Biatob.Proto.Mvp as Pb
+import Api.Types as Pb
+import Api.Json
 
 port copy : String -> Cmd msg
 port navigate : Maybe String -> Cmd msg
@@ -31,7 +32,7 @@ type Msg
   | LogInUsername AuthWidgetLoc AuthWidget.State Pb.LogInUsernameRequest
   | LogInUsernameFinished AuthWidgetLoc Pb.LogInUsernameRequest (Result API.Error Pb.AuthSuccess)
   | SignOut AuthWidgetLoc AuthWidget.State Pb.SignOutRequest
-  | SignOutFinished AuthWidgetLoc Pb.SignOutRequest (Result API.Error Pb.SignOutResponse)
+  | SignOutFinished AuthWidgetLoc Pb.SignOutRequest (Result API.Error Pb.Empty)
   | Copy String
   | Tick Time.Posix
   | AuthWidgetExternallyModified AuthWidget.DomModification
