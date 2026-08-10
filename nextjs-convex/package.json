@@ -1,0 +1,49 @@
+{
+  "name": "biatob",
+  "version": "1.0.0",
+  "description": "Prediction market app built with Next.js and Convex",
+  "private": true,
+  "scripts": {
+    "dev": "npm-run-all --parallel dev:frontend dev:backend",
+    "dev:frontend": "next dev",
+    "dev:backend": "convex dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "test": "vitest",
+    "test:run": "vitest run"
+  },
+  "dependencies": {
+    "@auth/core": "^0.34.0",
+    "@convex-dev/auth": "^0.0.71",
+    "@noble/hashes": "^2.0.1",
+    "@react-email/components": "^0.0.22",
+    "@react-email/render": "^0.0.17",
+    "convex": "^1.17.0",
+    "date-fns": "^3.6.0",
+    "next": "^14.2.0",
+    "oslo": "^1.2.1",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "resend": "^4.0.0"
+  },
+  "devDependencies": {
+    "@testing-library/react": "^16.0.0",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^20.12.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "autoprefixer": "^10.4.19",
+    "better-sqlite3": "^12.6.2",
+    "convex-test": "^0.0.41",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "^14.2.0",
+    "eslint-plugin-local-rules": "^3.0.2",
+    "mysql2": "^3.16.1",
+    "npm-run-all": "^4.1.5",
+    "postcss": "^8.4.38",
+    "tailwindcss": "^3.4.3",
+    "typescript": "^5.4.0",
+    "vitest": "^2.0.0"
+  }
+}
